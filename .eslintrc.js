@@ -22,14 +22,14 @@ module.exports = {
      */
     quotes: [1, 'single'],
     // "no-console": process.env.NODE_ENV === 'production' ? 2 : 0, // do not disable the console
-    'no-debugger': process.env.NODE_ENV === 'production' ? 2 : 0, // disable debugger
+    'no-debugger': process && process.env.NODE_ENV === 'production' ? 2 : 0, // disable debugger
     semi: 0,
     'no-control-regex': 2,
     'linebreak-style': [0, 'error', 'windows'],
     // indent: ['error', 2, { SwitchCase: 1 }],
     'array-bracket-spacing': [2, 'never'],
     'no-irregular-whitespace': 0,
-    'no-trailing-spaces': 1,
+    'no-trailing-spaces': 0, // annoying
     'eol-last': 0,
     'no-unused-vars': [1, { vars: 'all', args: 'after-used' }],
     'no-underscore-dangle': 0,
@@ -46,10 +46,11 @@ module.exports = {
     'no-func-assign': 2,
     'no-invalid-this': 0,
     'no-this-before-super': 0,
-    'no-undef': 1,
+    'no-undef': 0, // false positive.
     'no-use-before-define': 0,
     camelcase: 0,
     '@typescript-eslint/no-var-requires': 0,
+    '@typescript-eslint/ban-ts-comment': 0,
 
     'react/display-name': 0,
     'react/react-in-jsx-scope': 0,
