@@ -3,58 +3,58 @@ import { browserRuntimeConnect } from '@/background/webapi/browser';
 import Message from './index';
 
 class PortMessage extends Message {
-  port: any | null = null;
-  listenCallback: any;
+    port: any | null = null;
+    listenCallback: any;
 
-  constructor(port?: any) {
-    super();
+    constructor(port?: any) {
+        super();
 
-    if (port) {
-      this.port = port;
+        if (port) {
+            this.port = port;
+        }
     }
-  }
 
-  connect = (name?: string) => {
-    this.port = browserRuntimeConnect(undefined, name ? { name } : undefined);
-    this.port.onMessage.addListener(({ _type_, data }) => {
-      if (_type_ === `${this._EVENT_PRE}message`) {
-        this.emit('message', data);
-        return;
-      }
+    connect = (name?: string) => {
+        this.port = browserRuntimeConnect(undefined, name ? { name } : undefined);
+        this.port.onMessage.addListener(({ _type_, data }) => {
+            if (_type_ === `${this._EVENT_PRE}message`) {
+                this.emit('message', data);
+                return;
+            }
 
-      if (_type_ === `${this._EVENT_PRE}response`) {
-        this.onResponse(data);
-      }
-    });
+            if (_type_ === `${this._EVENT_PRE}response`) {
+                this.onResponse(data);
+            }
+        });
 
-    return this;
-  };
+        return this;
+    };
 
-  listen = (listenCallback: any) => {
-    if (!this.port) return;
-    this.listenCallback = listenCallback;
-    this.port.onMessage.addListener(({ _type_, data }) => {
-      if (_type_ === `${this._EVENT_PRE}request`) {
-        this.onRequest(data);
-      }
-    });
+    listen = (listenCallback: any) => {
+        if (!this.port) return;
+        this.listenCallback = listenCallback;
+        this.port.onMessage.addListener(({ _type_, data }) => {
+            if (_type_ === `${this._EVENT_PRE}request`) {
+                this.onRequest(data);
+            }
+        });
 
-    return this;
-  };
+        return this;
+    };
 
-  send = (type, data) => {
-    if (!this.port) return;
-    try {
-      this.port.postMessage({ _type_: `${this._EVENT_PRE}${type}`, data });
-    } catch (e) {
-      // DO NOTHING BUT CATCH THIS ERROR
-    }
-  };
+    send = (type, data) => {
+        if (!this.port) return;
+        try {
+            this.port.postMessage({ _type_: `${this._EVENT_PRE}${type}`, data });
+        } catch (e) {
+            // DO NOTHING BUT CATCH THIS ERROR
+        }
+    };
 
-  dispose = () => {
-    this._dispose();
-    this.port?.disconnect();
-  };
+    dispose = () => {
+        this._dispose();
+        this.port?.disconnect();
+    };
 }
 
 export default PortMessage;

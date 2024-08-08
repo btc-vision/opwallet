@@ -16,20 +16,20 @@ import { Text } from './Text';
 import { TextArea } from './TextArea';
 
 export {
-  Button,
-  Layout,
-  Content,
-  Icon,
-  Header,
-  Text,
-  Logo,
-  Input,
-  Footer,
-  AddressBar,
-  Column,
-  Row,
-  Card,
-  Grid,
-  Image,
-  TextArea
+    Button,
+    Layout,
+    Content,
+    Icon,
+    Header,
+    Text,
+    Logo,
+    Input,
+    Footer,
+    AddressBar,
+    Column,
+    Row,
+    Card,
+    Grid,
+    Image,
+    TextArea
 };

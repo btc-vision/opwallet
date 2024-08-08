@@ -7,6 +7,7 @@ import browser from '@/background/webapi/browser';
 import { EVENTS } from '@/shared/constant';
 import eventBus from '@/shared/eventBus';
 import { Message } from '@/shared/utils';
+import { PriceProvider } from '@/ui/provider/PriceProvider';
 import AccountUpdater from '@/ui/state/accounts/updater';
 import '@/ui/styles/global.less';
 
@@ -15,7 +16,7 @@ import { AppDimensions } from './components/Responsive';
 import AsyncMainRoute from './pages/MainRoute';
 import store from './state';
 import { WalletProvider } from './utils';
-import { PriceProvider } from '@/ui/provider/PriceProvider';
+
 
 // disabled sentry
 // Sentry.init({
@@ -33,24 +34,24 @@ import { PriceProvider } from '@/ui/provider/PriceProvider';
 // const AsyncMainRoute = lazy(() => import('./pages/MainRoute'));
 
 message.config({
-  maxCount: 1
+    maxCount: 1
 });
 const antdConfig = {
-  locale: en
+    locale: en
 };
 
 // For fix chrome extension render problem in external screen
 if (
-  // From testing the following conditions seem to indicate that the popup was opened on a secondary monitor
-  window.screenLeft < 0 ||
-  window.screenTop < 0 ||
-  window.screenLeft > window.screen.width ||
-  window.screenTop > window.screen.height
+    // From testing the following conditions seem to indicate that the popup was opened on a secondary monitor
+    window.screenLeft < 0 ||
+    window.screenTop < 0 ||
+    window.screenLeft > window.screen.width ||
+    window.screenTop > window.screen.height
 ) {
-  browser.runtime.getPlatformInfo(function(info) {
-    if (info.os === 'mac') {
-      const fontFaceSheet = new CSSStyleSheet();
-      fontFaceSheet.insertRule(`
+    browser.runtime.getPlatformInfo(function (info) {
+        if (info.os === 'mac') {
+            const fontFaceSheet = new CSSStyleSheet();
+            fontFaceSheet.insertRule(`
         @keyframes redraw {
           0% {
             opacity: 1;
@@ -60,14 +61,14 @@ if (
           }
         }
       `);
-      fontFaceSheet.insertRule(`
+            fontFaceSheet.insertRule(`
         html {
           animation: redraw 1s linear infinite;
         }
       `);
-      (document as any).adoptedStyleSheets = [...(document as any).adoptedStyleSheets, fontFaceSheet];
-    }
-  });
+            (document as any).adoptedStyleSheets = [...(document as any).adoptedStyleSheets, fontFaceSheet];
+        }
+    });
 }
 
 const { PortMessage } = Message;
@@ -77,59 +78,59 @@ const portMessageChannel = new PortMessage();
 portMessageChannel.connect('popup');
 
 const wallet: Record<string, any> = new Proxy(
-  {},
-  {
-    get(obj, key) {
-      switch (key) {
-        case 'openapi':
-          return new Proxy(
-            {},
-            {
-              get(obj, key) {
-                return function(...params: any) {
-                  return portMessageChannel.request({
-                    type: 'openapi',
-                    method: key,
-                    params
-                  });
-                };
-              }
+    {},
+    {
+        get(obj, key) {
+            switch (key) {
+                case 'openapi':
+                    return new Proxy(
+                        {},
+                        {
+                            get(obj, key) {
+                                return function (...params: any) {
+                                    return portMessageChannel.request({
+                                        type: 'openapi',
+                                        method: key,
+                                        params
+                                    });
+                                };
+                            }
+                        }
+                    );
+                    break;
+                default:
+                    return function (...params: any) {
+                        return portMessageChannel.request({
+                            type: 'controller',
+                            method: key,
+                            params
+                        });
+                    };
             }
-          );
-          break;
-        default:
-          return function(...params: any) {
-            return portMessageChannel.request({
-              type: 'controller',
-              method: key,
-              params
-            });
-          };
-      }
+        }
     }
-  }
 );
 
 portMessageChannel.listen((data) => {
-  if (data.type === 'broadcast') {
-    eventBus.emit(data.method, data.params);
-  }
+    if (data.type === 'broadcast') {
+        eventBus.emit(data.method, data.params);
+    }
 });
 
 eventBus.addEventListener(EVENTS.broadcastToBackground, (data) => {
-  portMessageChannel.request({
-    type: 'broadcast',
-    method: data.method,
-    params: data.data
-  });
+    portMessageChannel.request({
+        type: 'broadcast',
+        method: data.method,
+        params: data.data
+    });
 });
 
 function Updaters() {
-  return (
-    <>
-      <AccountUpdater />
-    </>
-  );
+    return (
+        <>
+            <AccountUpdater />
+        </>
+    );
 }
 
 // wallet.getLocale().then((locale) => {
@@ -152,16 +153,16 @@ function Updaters() {
 
 const root = ReactDOM.createRoot(document.getElementById('root') as HTMLElement);
 root.render(
-  <Provider store={store}>
-    <WalletProvider {...antdConfig} wallet={wallet as any}>
-      <ActionComponentProvider>
-        <AppDimensions>
-          <PriceProvider>
-            <Updaters />
-            <AsyncMainRoute />
-          </PriceProvider>
-        </AppDimensions>
-      </ActionComponentProvider>
-    </WalletProvider>
-  </Provider>
+    <Provider store={store}>
+        <WalletProvider {...antdConfig} wallet={wallet as any}>
+            <ActionComponentProvider>
+                <AppDimensions>
+                    <PriceProvider>
+                        <Updaters />
+                        <AsyncMainRoute />
+                    </PriceProvider>
+                </AppDimensions>
+            </ActionComponentProvider>
+        </WalletProvider>
+    </Provider>
 );
