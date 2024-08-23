@@ -44,3 +44,9 @@
 ## Conclusion
 
 You have successfully installed the OP_WALLET Chrome extension. You can now use it to manage your OP_NET tokens and interact with the Bitcoin blockchain.
+
+# Updateing/Upgrading the OP_WALLET Chrome Extension
+
+1. Ensure you have your seed phrase handy.
+2. Remove (or disable) the previous version of the extension.
+3. Download and install new version following **Installing the OP_WALLET Chrome Extension** above.
