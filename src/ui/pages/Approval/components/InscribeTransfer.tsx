@@ -6,7 +6,6 @@ import { InscribeOrder, RawTxInfo, TokenBalance, TokenInfo, TxType } from '@/sha
 import { Button, Card, Column, Content, Footer, Header, Icon, Input, Layout, Row, Text } from '@/ui/components';
 import { useTools } from '@/ui/components/ActionComponent';
 import { Loading } from '@/ui/components/ActionComponent/Loading';
-import { BRC20Ticker } from '@/ui/components/BRC20Ticker';
 import { BtcUsd } from '@/ui/components/BtcUsd';
 import { Empty } from '@/ui/components/Empty';
 import { FeeRateBar } from '@/ui/components/FeeRateBar';
@@ -317,8 +316,6 @@ function InscribeTransferStep({ contextData, updateContextData }: StepProps) {
                                                         </Row>
                                                     </div>
                                                 </Tooltip>
-
-                                                <BRC20Ticker tick={tokenBalance.ticker} preset="sm" />
                                             </Row>
                                         ) : (
                                             <Row
@@ -332,8 +329,6 @@ function InscribeTransferStep({ contextData, updateContextData }: StepProps) {
                                                     textCenter
                                                     size="xs"
                                                 />
-
-                                                <BRC20Ticker tick={tokenBalance.ticker} preset="sm" />
                                             </Row>
                                         )}
                                     </Column>
@@ -445,7 +440,6 @@ function InscribeConfirmStep({ contextData, updateContextData }: StepProps) {
                         <Column justifyCenter style={{ height: 250 }}>
                             <Row itemsCenter justifyCenter>
                                 <Text text={`${amount}`} preset="title-bold" size="xxl" textCenter wrap digital />
-                                <BRC20Ticker tick={tokenBalance.ticker} preset="lg" />
                             </Row>
                             <Row itemsCenter justifyCenter>
                                 <TickUsdWithoutPrice tick={tokenBalance.ticker} balance={amount + ''} type={'brc20'} />
@@ -647,13 +641,6 @@ function InscribeResultStep({
                         inscriptionNumber: result.inscriptionNumber,
                         ticker: tokenBalance.ticker,
                         amount: result.amount
-                    });
-                } else {
-                    navigate('BRC20SendScreen', {
-                        tokenBalance: v.tokenBalance,
-                        selectedInscriptionIds: [result.inscriptionId],
-                        selectedAmount: result.amount,
-                        tokenInfo: v.tokenInfo
                     });
                 }
             })

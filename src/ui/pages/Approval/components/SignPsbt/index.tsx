@@ -16,10 +16,7 @@ import {
 import { Button, Card, Column, Content, Footer, Header, Icon, Image, Layout, Row, Text } from '@/ui/components';
 import { useTools } from '@/ui/components/ActionComponent';
 import { AddressText } from '@/ui/components/AddressText';
-import Arc20PreviewCard from '@/ui/components/Arc20PreviewCard';
 import AssetTag from '@/ui/components/AssetTag';
-import AtomicalsNFTPreview from '@/ui/components/AtomicalsNFTPreview';
-import BRC20Preview from '@/ui/components/BRC20Preview';
 import { BtcUsd } from '@/ui/components/BtcUsd';
 import InscriptionPreview from '@/ui/components/InscriptionPreview';
 import RunesPreviewCard from '@/ui/components/RunesPreviewCard';
@@ -294,12 +291,6 @@ function SignTxDetails({
                             <Row>
                                 <AssetTag type="ARC20" />
                             </Row>
-
-                            <Row overflowX>
-                                {arc20Array.map((w, index) => {
-                                    return <Arc20PreviewCard key={w.ticker} ticker={w.ticker || ''} amt={w.amt} />;
-                                })}
-                            </Row>
                         </Column>
                     ) : null}
 
@@ -317,26 +308,6 @@ function SignTxDetails({
                             }}>
                             <Row>
                                 <AssetTag type="BRC20" />
-                            </Row>
-
-                            <Row overflowX>
-                                {brc20Array.map((w, index) => {
-                                    return (
-                                        <BRC20Preview
-                                            preset="small"
-                                            key={w.tick}
-                                            tick={w.tick || ''}
-                                            balance={w.amt}
-                                            type="TRANSFER"
-                                            inscriptionNumber={w.inscriptionNumber}
-                                            onClick={() => {
-                                                window.open(w.preview);
-                                            }}
-                                            priceInProps={true}
-                                            price={brc20PriceMap?.[w.tick]}
-                                        />
-                                    );
-                                })}
                             </Row>
                         </Column>
                     ) : null}
@@ -1036,33 +1007,6 @@ export default function SignPsbt({
                                                             </Row>
                                                         )}
 
-                                                        {atomicals_nft.length > 0 && (
-                                                            <Row>
-                                                                <Column justifyCenter>
-                                                                    <Text
-                                                                        text={`Atomicals NFT (${inscriptions.length})`}
-                                                                        color={isToSign ? 'white' : 'textDim'}
-                                                                    />
-                                                                    <Row
-                                                                        overflowX
-                                                                        gap="lg"
-                                                                        style={{ width: 280 }}
-                                                                        pb="lg">
-                                                                        {atomicals_nft.map((w) => (
-                                                                            <AtomicalsNFTPreview
-                                                                                key={w.atomicalId}
-                                                                                data={w as any}
-                                                                                preset="small"
-                                                                                onClick={() => {
-                                                                                    window.open(w.preview);
-                                                                                }}
-                                                                            />
-                                                                        ))}
-                                                                    </Row>
-                                                                </Column>
-                                                            </Row>
-                                                        )}
-
                                                         {atomicals_ft.length > 0 && (
                                                             <Row>
                                                                 <Column justifyCenter>
@@ -1070,19 +1014,6 @@ export default function SignPsbt({
                                                                         text={'ARC20'}
                                                                         color={isToSign ? 'white' : 'textDim'}
                                                                     />
-                                                                    <Row
-                                                                        overflowX
-                                                                        gap="lg"
-                                                                        style={{ width: 280 }}
-                                                                        pb="lg">
-                                                                        {atomicals_ft.map((w) => (
-                                                                            <Arc20PreviewCard
-                                                                                key={w.ticker}
-                                                                                ticker={w.ticker || ''}
-                                                                                amt={w.atomicalValue}
-                                                                            />
-                                                                        ))}
-                                                                    </Row>
                                                                 </Column>
                                                             </Row>
                                                         )}
@@ -1184,49 +1115,6 @@ export default function SignPsbt({
                                                                     ))}
                                                                 </Row>
                                                             </Column>{' '}
-                                                        </Row>
-                                                    )}
-
-                                                    {atomicals_nft.length > 0 && (
-                                                        <Row>
-                                                            <Column justifyCenter>
-                                                                <Text
-                                                                    text={`Atomicals NFT (${inscriptions.length})`}
-                                                                    color={isMyAddress ? 'white' : 'textDim'}
-                                                                />
-                                                                <Row overflowX gap="lg" style={{ width: 280 }} pb="lg">
-                                                                    {atomicals_nft.map((v) => (
-                                                                        <AtomicalsNFTPreview
-                                                                            key={v.atomicalId}
-                                                                            data={v as any}
-                                                                            preset="small"
-                                                                            onClick={() => {
-                                                                                window.open(v.preview);
-                                                                            }}
-                                                                        />
-                                                                    ))}
-                                                                </Row>
-                                                            </Column>{' '}
-                                                        </Row>
-                                                    )}
-
-                                                    {atomicals_ft.length > 0 && (
-                                                        <Row>
-                                                            <Column justifyCenter>
-                                                                <Text
-                                                                    text={'ARC20'}
-                                                                    color={isMyAddress ? 'white' : 'textDim'}
-                                                                />
-                                                                <Row overflowX gap="lg" style={{ width: 280 }} pb="lg">
-                                                                    {atomicals_ft.map((w) => (
-                                                                        <Arc20PreviewCard
-                                                                            key={w.ticker}
-                                                                            ticker={w.ticker || ''}
-                                                                            amt={w.atomicalValue}
-                                                                        />
-                                                                    ))}
-                                                                </Row>
-                                                            </Column>
                                                         </Row>
                                                     )}
 
