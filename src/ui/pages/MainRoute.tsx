@@ -22,11 +22,6 @@ import UnlockScreen from './Account/UnlockScreen';
 import ApprovalScreen from './Approval/ApprovalScreen';
 import ConnectedSitesScreen from './Approval/ConnectedSitesScreen';
 import { InscribeTransferScreen } from './Approval/components/InscribeTransfer';
-import AtomicalsNFTScreen from './Atomicals/AtomicalsNFTScreen';
-import SendArc20Screen from './Atomicals/SendArc20Screen';
-import SendAtomicalsInscriptionScreen from './Atomicals/SendAtomicalsNFTScreen';
-import BRC20SendScreen from './BRC20/BRC20SendScreen';
-import BRC20TokenScreen from './BRC20/BRC20TokenScreen';
 import AppTabScrren from './Main/AppTabScreen';
 import BoostScreen from './Main/BoostScreen';
 import DiscoverTabScreen from './Main/DiscoverTabScreen';
@@ -44,12 +39,6 @@ import Swap from './OpNet/SwapToken';
 import UnStakeWBTCoPNet from './OpNet/UnStakeWBTCoPNet';
 import UnWrapBitcoinOpnet from './OpNet/UnWrapBitcoinOpnet';
 import WrapBitcoinOpnet from './OpNet/WrapBitcoinOpnet';
-import OrdinalsInscriptionScreen from './Ordinals/OrdinalsInscriptionScreen';
-import SendOrdinalsInscriptionScreen from './Ordinals/SendOrdinalsInscriptionScreen';
-import SignOrdinalsTransactionScreen from './Ordinals/SignOrdinalsTransactionScreen';
-import SplitOrdinalsInscriptionScreen from './Ordinals/SplitOrdinalsInscriptionScreen';
-import RunesTokenScreen from './Runes/RunesTokenScreen';
-import SendRunesScreen from './Runes/SendRunesScreen';
 import AddressTypeScreen from './Settings/AddressTypeScreen';
 import AdvancedScreen from './Settings/AdvancedScreen';
 import ChangePasswordScreen from './Settings/ChangePasswordScreen';
@@ -141,36 +130,6 @@ export const routes = {
         element: <TxFailScreen />
     },
 
-    OrdinalsInscriptionScreen: {
-        path: '/ordinals/inscription-detail',
-        element: <OrdinalsInscriptionScreen />
-    },
-
-    SendOrdinalsInscriptionScreen: {
-        path: '/wallet/ordinals-tx/create',
-        element: <SendOrdinalsInscriptionScreen />
-    },
-
-    SignOrdinalsTransactionScreen: {
-        path: '/wallet/ordinals-tx/confirm',
-        element: <SignOrdinalsTransactionScreen />
-    },
-
-    AtomicalsInscriptionScreen: {
-        path: '/atomicals/inscription-detail',
-        element: <AtomicalsNFTScreen />
-    },
-
-    SendAtomicalsInscriptionScreen: {
-        path: '/atomicals/send-inscription',
-        element: <SendAtomicalsInscriptionScreen />
-    },
-
-    SendArc20Screen: {
-        path: '/atomicals/send-arc20',
-        element: <SendArc20Screen />
-    },
-
     NetworkTypeScreen: {
         path: '/settings/network-type',
         element: <NetworkTypeScreen />
@@ -239,34 +198,13 @@ export const routes = {
         path: '/inscribe/transfer',
         element: <InscribeTransferScreen />
     },
-    BRC20SendScreen: {
-        path: '/brc20/send',
-        element: <BRC20SendScreen />
-    },
-    BRC20TokenScreen: {
-        path: '/brc20/token',
-        element: <BRC20TokenScreen />
-    },
     TestScreen: {
         path: '/test',
         element: <TestScreen />
     },
-    SplitOrdinalsInscriptionScreen: {
-        path: '/wallet/split-tx/create',
-        element: <SplitOrdinalsInscriptionScreen />
-    },
     UnavailableUtxoScreen: {
         path: '/wallet/unavailable-utxo',
         element: <UnavailableUtxoScreen />
-    },
-
-    SendRunesScreen: {
-        path: '/runes/send-runes',
-        element: <SendRunesScreen />
-    },
-    RunesTokenScreen: {
-        path: '/runes/token',
-        element: <RunesTokenScreen />
     },
     OpNetTokenScreen: {
         path: '/opnet/token',

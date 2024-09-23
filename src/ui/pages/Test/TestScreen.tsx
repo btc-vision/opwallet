@@ -1,11 +1,10 @@
 import { useEffect } from 'react';
 
-import { NetworkType, ToAddressInfo, TokenBalance, TxType } from '@/shared/types';
+import { NetworkType, ToAddressInfo, TxType } from '@/shared/types';
 import { Card, Column, Content, Input, Layout, Text } from '@/ui/components';
 import { AddressDetailPopover } from '@/ui/components/AddressDetailPopover';
 import { AddressText } from '@/ui/components/AddressText';
 import { AddressTypeCard2 } from '@/ui/components/AddressTypeCard';
-import BRC20BalanceCard from '@/ui/components/BRC20BalanceCard';
 import { RemoveWalletPopover } from '@/ui/components/RemoveWalletPopover';
 import { SignPsbtWithRisksPopover } from '@/ui/components/SignPsbtWithRisksPopover';
 import { useCurrentKeyring } from '@/ui/state/keyrings/hooks';
@@ -30,25 +29,6 @@ function TestSignPsbtWithRisksPopover() {
             }}
             decodedPsbt={testDecodedTx.data as any}
         />
-    );
-}
-
-const tokenBalance: TokenBalance = {
-    ticker: 'MEME',
-    availableBalance: '40',
-    transferableBalance: '60',
-    overallBalance: '100',
-    availableBalanceSafe: '',
-    availableBalanceUnSafe: ''
-};
-
-function TestBRC20BalanceCard() {
-    return (
-        <Layout>
-            <Content>
-                <BRC20BalanceCard tokenBalance={tokenBalance} />
-            </Content>
-        </Layout>
     );
 }
 

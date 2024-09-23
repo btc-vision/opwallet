@@ -1,4 +1,4 @@
-import { Tabs, Tooltip } from 'antd';
+import { Tooltip } from 'antd';
 import BigNumber from 'bignumber.js';
 import { CSSProperties, useEffect, useMemo, useRef, useState } from 'react';
 
@@ -30,17 +30,14 @@ import {
 } from '@/ui/state/settings/hooks';
 import { useFetchUtxosCallback, useSafeBalance } from '@/ui/state/transactions/hooks';
 import { useAssetTabKey, useResetUiTxCreateScreen } from '@/ui/state/ui/hooks';
-import { AssetTabKey, uiActions } from '@/ui/state/ui/reducer';
+import { AssetTabKey } from '@/ui/state/ui/reducer';
 import { fontSizes } from '@/ui/theme/font';
 import { amountToSatoshis, satoshisToAmount, useWallet } from '@/ui/utils';
 
 import { BuyBTCModal } from '../../BuyBTC/BuyBTCModal';
 import { useNavigate } from '../../MainRoute';
 import { SwitchChainModal } from '../../Settings/SwitchChainModal';
-import { AtomicalsTab } from './AtomicalsTab';
 import { OPNetList } from './OPNetList';
-import { OrdinalsTab } from './OrdinalsTab';
-import { RunesList } from './RunesList';
 
 const $noBreakStyle: CSSProperties = {
     whiteSpace: 'nowrap',
@@ -57,7 +54,7 @@ export default function WalletTabScreen() {
     const currentKeyring = useCurrentKeyring();
     const currentAccount = useCurrentAccount();
     const balanceValue = useMemo(() => {
-        return accountBalance.amount;
+        return Math.floor(Number(accountBalance.amount) * 1e5) / 1e5;
     }, [accountBalance.amount]);
 
     const wallet = useWallet();
@@ -143,48 +140,13 @@ export default function WalletTabScreen() {
         void run();
     }, []);
 
-    let tabItems = [
+    const tabItems = [
         {
             key: AssetTabKey.OP_NET,
             label: 'OP_NET',
             children: <OPNetList />
-        },
-        {
-            key: AssetTabKey.ORDINALS,
-            label: 'Ordinals',
-            children: <OrdinalsTab />
-        },
-        {
-            key: AssetTabKey.ATOMICALS,
-            label: 'Atomicals',
-            children: <AtomicalsTab />
-        },
-        {
-            key: AssetTabKey.RUNES,
-            label: 'Runes',
-            children: <RunesList />
         }
     ];
-
-    if (chainType !== ChainType.BITCOIN_MAINNET) {
-        tabItems = [
-            {
-                key: AssetTabKey.OP_NET,
-                label: 'OP_NET',
-                children: <OPNetList />
-            },
-            {
-                key: AssetTabKey.ORDINALS,
-                label: 'Ordinals',
-                children: <OrdinalsTab />
-            },
-            {
-                key: AssetTabKey.RUNES,
-                label: 'Runes',
-                children: <RunesList />
-            }
-        ];
-    }
 
     const finalAssetTabKey = useMemo(() => {
         if (chainType !== ChainType.BITCOIN_MAINNET && assetTabKey === AssetTabKey.ATOMICALS) {
@@ -404,7 +366,7 @@ export default function WalletTabScreen() {
                         )}
                     </Row>
 
-                    <Tabs
+                    {/* <Tabs
                         size={'small'}
                         defaultActiveKey={finalAssetTabKey as unknown as string}
                         activeKey={finalAssetTabKey as unknown as string}
@@ -412,9 +374,9 @@ export default function WalletTabScreen() {
                         onTabClick={(key) => {
                             dispatch(uiActions.updateAssetTabScreen({ assetTabKey: key as unknown as AssetTabKey }));
                         }}
-                    />
+                    /> */}
 
-                    {/*{tabItems[assetTabKey].children}*/}
+                    {tabItems[assetTabKey].children}
                 </Column>
                 {showSafeNotice && (
                     <NoticePopover

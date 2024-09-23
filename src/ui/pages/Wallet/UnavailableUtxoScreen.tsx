@@ -4,7 +4,6 @@ import { useEffect, useMemo, useState } from 'react';
 import { UNCONFIRMED_HEIGHT } from '@/shared/constant';
 import { Button, Card, Column, Content, Footer, Header, Layout, Row, Text } from '@/ui/components';
 import { Loading } from '@/ui/components/ActionComponent/Loading';
-import Arc20PreviewCard from '@/ui/components/Arc20PreviewCard';
 import AssetTag from '@/ui/components/AssetTag';
 import { Empty } from '@/ui/components/Empty';
 import InscriptionPreview from '@/ui/components/InscriptionPreview';
@@ -35,7 +34,7 @@ export default function UnavailableUtxoScreen() {
         });
     }, []);
 
-  const setSpendUnavailableUtxos = useSetSpendUnavailableUtxosCallback();
+    const setSpendUnavailableUtxos = useSetSpendUnavailableUtxosCallback();
 
     const selectedCount = useMemo(() => {
         return Object.keys(selectedUtxoIds).filter((key) => selectedUtxoIds[key]).length;
@@ -114,17 +113,6 @@ export default function UnavailableUtxoScreen() {
                                                 style={{ borderBottomWidth: 1, borderColor: colors.border }}></Row>
                                         ) : null}
 
-                                        {item.atomicals.length > 0 ? (
-                                            <Row overflowX fullX>
-                                                {item.atomicals.map((w) => (
-                                                    <Arc20PreviewCard
-                                                        key={w.ticker}
-                                                        ticker={w.ticker || ''}
-                                                        amt={item.satoshis}
-                                                    />
-                                                ))}
-                                            </Row>
-                                        ) : null}
                                         {item.atomicals.length > 0 ? (
                                             <Row
                                                 full
