@@ -66,7 +66,7 @@
         "bip-schnorr": "^0.6.7",
         "bitcoinjs-lib": "https://github.com/btc-vision/bitcoinjs-lib.git",
         "bitcore-lib": "^10.2.1",
-        "browser-passworder": "^2.0.3",
+        "@metamask/browser-passworder": "^5.0.1",
         "browserify": "^17.0.0",
         "browserslist": "^4.18.1",
         "buffer": "^6.0.3",

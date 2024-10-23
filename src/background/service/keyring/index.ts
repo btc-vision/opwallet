@@ -2,7 +2,6 @@
 import * as bip39 from 'bip39';
 import { networks } from 'bitcoinjs-lib';
 import { Network } from 'bitcoinjs-lib/src/networks.js';
-import * as oldEncryptor from 'browser-passworder';
 import { EventEmitter } from 'events';
 import log from 'loglevel';
 
@@ -15,6 +14,7 @@ import { AddressType } from '@/shared/types';
 import * as encryptor from '@btc-vision/passworder';
 import { HdKeyring, IKeyringBase, KeystoneKeyring, SimpleKeyring } from '@btc-vision/wallet-sdk';
 import { bitcoin } from '@btc-vision/wallet-sdk/lib/bitcoin-core';
+import * as oldEncryptor from '@metamask/browser-passworder';
 import { ObservableStore } from '@metamask/obs-store';
 
 import {
