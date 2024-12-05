@@ -184,8 +184,11 @@ export function Step2({
         setPathError('');
         setPathText(text);
         if (text !== '') {
-            // @ts-ignore
-            const isValid = bitcore.HDPrivateKey.isValidPath(text);
+            // TODO (typing): HDPrivateKey class is extended later and isValidPath does not exist in the type definitions
+            // given in https://github.com/DefinitelyTyped/DefinitelyTyped/blob/master/types/bitcore-lib/index.d.ts. That's why
+            // eslint is disabled here.
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-call
+            const isValid = bitcore.HDPrivateKey.isValidPath(text) as boolean;
             if (!isValid) {
                 setPathError('Invalid derivation path.');
                 return;
@@ -309,7 +312,7 @@ export function Step2({
                     return (
                         <AddressTypeCard2
                             key={index}
-                            label={`${options.label}`}
+                            label={options.label}
                             items={item.address_arr.map((v, index) => ({
                                 address: v,
                                 satoshis: item.satoshis_arr[index],
@@ -342,7 +345,7 @@ export function Step2({
                     return (
                         <AddressTypeCard2
                             key={index}
-                            label={`${item.label}`}
+                            label={item.label}
                             items={[
                                 {
                                     address,

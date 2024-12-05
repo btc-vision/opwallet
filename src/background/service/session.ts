@@ -8,11 +8,11 @@ export interface SessionInfo {
 }
 
 export class Session {
-    public origin: string = '';
-    public icon: string = '';
-    public name: string = '';
+    public origin = '';
+    public icon = '';
+    public name = '';
 
-    public key: number = 0;
+    public key = 0;
 
     setProp(params: SessionInfo) {
         this.origin = params.origin;
@@ -20,22 +20,20 @@ export class Session {
         this.name = params.name;
     }
 
-    pushMessage<T extends SessionEvent>(_ev: T, _data?: SessionEventPayload<T>, _origin?: string) {}
+    pushMessage<T extends SessionEvent>(_ev: T, _data?: SessionEventPayload<T>, _origin?: string) {
+        // Method intentionally left blank as it will be assigned in another part.
+    }
 }
 
 // for each tab
-const sessionMap = new Map();
+const sessionMap: Map<number, Session> = new Map();
 
 const getSession = (id: number) => {
     return sessionMap.get(id);
 };
 
 const getOrCreateSession = (id: number) => {
-    if (sessionMap.has(id)) {
-        return getSession(id);
-    }
-
-    return createSession(id);
+    return getSession(id) ?? createSession(id);
 };
 
 const createSession = (id: number) => {

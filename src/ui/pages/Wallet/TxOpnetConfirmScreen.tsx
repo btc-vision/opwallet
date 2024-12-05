@@ -273,10 +273,10 @@ export default function TxOpnetConfirmScreen() {
             swapParameters.tokens[1].divisibility
         );
 
-        const addressOfContract: AddressesInfo = await Web3API.provider.getPublicKeysInfo([
+        const addressOfContract = await Web3API.provider.getPublicKeysInfo([
             swapParameters.tokenIn,
             swapParameters.tokenOut
-        ]);
+        ]) as AddressesInfo;
 
         const block = await Web3API.provider.getBlockNumber();
         const contractData = await getSwap.swapExactTokensForTokensSupportingFeeOnTransferTokens(
@@ -437,9 +437,9 @@ export default function TxOpnetConfirmScreen() {
 
                 const getChain = await wallet.getChainType();
                 const tokensImported = localStorage.getItem('opnetTokens_' + getChain);
-                let updatedTokens: string[] = tokensImported ? JSON.parse(tokensImported) : [];
+                let updatedTokens: string[] = tokensImported ? JSON.parse(tokensImported) as string[] : [];
                 if (tokensImported) {
-                    updatedTokens = JSON.parse(tokensImported);
+                    updatedTokens = JSON.parse(tokensImported) as string[];
                 }
 
                 if (!updatedTokens.includes(sendTransact.contractAddress.toString())) {

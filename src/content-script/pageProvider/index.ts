@@ -19,7 +19,7 @@ import {
 } from './Web3Provider';
 import PushEventHandlers from './pushEventHandlers';
 import ReadyPromise from './readyPromise';
-import { $, domReadyCall } from './utils';
+import { $, domReadyCall, isPushEventHandlerMethod } from './utils';
 
 declare global {
     interface Window {
@@ -100,12 +100,16 @@ export class OpnetProvider extends EventEmitter {
 
         _opnetPrividerPrivate._bcm.connect().on('message', this._handleBackgroundMessage);
         domReadyCall(async () => {
-            const origin = window.top?.location.origin;
-            // @ts-ignore
-            const icon = $('head > link[rel~="icon"]')?.href || $('head > meta[itemprop="image"]')?.content;
+            const origin = window.top?.location.origin || '';
 
-            // @ts-ignore
-            const name = document.title || $('head > meta[name="title"]')?.content || origin;
+            const iconElement = $('head > link[rel~="icon"]');
+            let icon = (iconElement instanceof HTMLLinkElement) ? iconElement.href : '';
+            const metaImageElement = $('head > meta[itemprop="image"]');
+            const iconFallback = (metaImageElement instanceof HTMLMetaElement) ? metaImageElement.content : '';
+            icon = icon || iconFallback;
+            
+            const metaTitleElement = $('head > meta[name="title"]');
+            const name = document.title || ((metaTitleElement instanceof HTMLMetaElement) ? metaTitleElement.content : origin);
 
             await _opnetPrividerPrivate._bcm.request({
                 method: 'tabCheckin',
@@ -418,10 +422,11 @@ export class OpnetProvider extends EventEmitter {
     private _handleBackgroundMessage = (params: { event: string; data: unknown }) => {
         log('[push event]', params.event, params.data);
 
-        // @ts-ignore
-        if (_opnetPrividerPrivate._pushEventHandlers?.[params.event]) {
-            // @ts-ignore
-            return _opnetPrividerPrivate._pushEventHandlers[params.event](params.data);
+        // TODO (typing): Ideally this is not the type-safe solution but in the _handleBackgroundMessage
+        // function, we are directly passing the data as unknown and all of the pushEventHandler's methods
+        // have either one argument or none. So, it should be safe to cast it as below. 
+        if (_opnetPrividerPrivate._pushEventHandlers && isPushEventHandlerMethod(params.event)) {
+            return (_opnetPrividerPrivate._pushEventHandlers[params.event] as (data: unknown) => unknown)(params.data);
         }
 
         this.emit(params.event, params.data);
