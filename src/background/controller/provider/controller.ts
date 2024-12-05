@@ -222,7 +222,7 @@ class ProviderController extends BaseController {
         return verifyMessageOfBIP322Simple(params.address, params.message, params.signature, params.network) ? 1 : 0;
     };
 
-    // @ts-ignore
+    // @ts-expect-error
     @Reflect.metadata('APPROVAL', ['SignPsbt', (_req: ProviderControllerRequest) => {
         //const { data: { params: { toAddress, satoshis } } } = req;
     }])
@@ -235,7 +235,7 @@ class ProviderController extends BaseController {
         return await wallet.pushTx(rawtx);
     };
 
-    // @ts-ignore
+    // @ts-expect-error
     @Reflect.metadata('APPROVAL', ['SignPsbt', (_req: ProviderControllerRequest) => {
         //const { data: { params: { toAddress, satoshis } } } = req;
     }])
@@ -248,7 +248,7 @@ class ProviderController extends BaseController {
         return await wallet.pushTx(rawtx);
     };
 
-    // @ts-ignore
+    // @ts-expect-error
     @Reflect.metadata('APPROVAL', ['SignInteraction', (_req: ProviderControllerRequest) => {
         const interactionParams = _req.data.params as DetailedInteractionParameters;
         if (!Web3API.isValidAddress(interactionParams.interactionParameters.to)) {
@@ -265,7 +265,7 @@ class ProviderController extends BaseController {
         return wallet.signAndBroadcastInteraction(request.data.params.interactionParameters);
     };
 
-    // @ts-ignore
+    // @ts-expect-error
     @Reflect.metadata('APPROVAL', ['SignInteraction', (_req: ProviderControllerRequest) => {
         const interactionParams = _req.data.params as DetailedInteractionParameters;
         if (!Web3API.isValidAddress(interactionParams.interactionParameters.to)) {
@@ -279,26 +279,26 @@ class ProviderController extends BaseController {
         return wallet.signInteraction(request.data.params.interactionParameters);
     };
 
-    // @ts-ignore
+    // @ts-expect-error
     @Reflect.metadata('APPROVAL', ['SignDeployment', (_req: ProviderControllerRequest) => {
         const interactionParams = _req.data.params as IDeploymentParametersWithoutSigner;
         if (!interactionParams.bytecode) {
             throw new Error('Invalid bytecode');
         }
 
-            if (!interactionParams.utxos || !interactionParams.utxos.length) {
-                throw new Error('No utxos');
-            }
+        if (!interactionParams.utxos || !interactionParams.utxos.length) {
+            throw new Error('No utxos');
+        }
 
-            if (!interactionParams.feeRate) {
-                throw new Error('No feeRate');
-            }
+        if (!interactionParams.feeRate) {
+            throw new Error('No feeRate');
+        }
 
-            // @ts-expect-error
-            interactionParams.priorityFee = BigInt(interactionParams.priorityFee);
+        // @ts-expect-error
+        interactionParams.priorityFee = BigInt(interactionParams.priorityFee);
 
-            // @ts-expect-error
-            interactionParams.bytecode = objToBuffer(interactionParams.bytecode);
+        // @ts-expect-error
+        interactionParams.bytecode = objToBuffer(interactionParams.bytecode);
         }
     ])
     deployContract = async (request: {
@@ -409,7 +409,7 @@ class ProviderController extends BaseController {
         };
         approvalRes: { signed: boolean; psbtHex: string };
     }) => {
-        if (approvalRes && approvalRes.signed) {
+        if (approvalRes?.signed) {
             return approvalRes.psbtHex;
         }
 
@@ -462,7 +462,7 @@ class ProviderController extends BaseController {
         const result: string[] = [];
         for (let i = 0; i < psbtHexs.length; i++) {
             const psbt = bitcoin.Psbt.fromHex(psbtHexs[i], { network: psbtNetwork });
-            const autoFinalized = (!(options && options[i] && !options[i].autoFinalized));
+            const autoFinalized = options?.[i]?.autoFinalized ?? true;
             const toSignInputs = await wallet.formatOptionsToSignInputs(psbtHexs[i], options[i]);
             await wallet.signPsbt(psbt, toSignInputs, autoFinalized);
             result.push(psbt.toHex());

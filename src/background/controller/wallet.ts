@@ -202,7 +202,7 @@ export class WalletController extends BaseController {
             inscription_amount: '0'
         };
         if (!address) return defaultBalance;
-        return preferenceService.getAddressBalance(address) || defaultBalance;
+        return preferenceService.getAddressBalance(address) ?? defaultBalance;
     };
 
     getAddressHistory = async (params: { address: string; start: number; limit: number }) => {
@@ -578,8 +578,7 @@ export class WalletController extends BaseController {
                     const output = tx.outs[psbt.txInputs[index].index];
                     script = output.script;
                 }
-
-                const isSigned = v.finalScriptSig || v.finalScriptWitness;
+                const isSigned = v.finalScriptSig ?? v.finalScriptWitness;
                 if (script && !isSigned) {
                     const address = scriptPkToAddress(script, networkType);
                     if (account.address === address) {
@@ -612,7 +611,7 @@ export class WalletController extends BaseController {
         }
 
         psbt.data.inputs.forEach((v) => {
-            const isNotSigned = !(v.finalScriptSig || v.finalScriptWitness);
+            const isNotSigned = !(v.finalScriptSig ?? v.finalScriptWitness);
             const isP2TR = keyring.addressType === AddressType.P2TR || keyring.addressType === AddressType.M44_P2TR;
             const lostInternalPubkey = !v.tapInternalKey;
 
@@ -865,9 +864,9 @@ export class WalletController extends BaseController {
             }
         }
 
-        // @ts-ignore
+        // @ts-expect-error
         if (keyring[methodName]) {
-            // @ts-ignore
+            // @ts-expect-error
             return keyring[methodName].call(keyring, ...params);
         }
     };
@@ -1383,8 +1382,8 @@ export class WalletController extends BaseController {
     };
 
     setPsbtSignNonSegwitEnable(psbt: bitcoin.Psbt, enabled: boolean) {
-        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-        //@ts-ignore
+         
+        //@ts-expect-error
         psbt.__CACHE.__UNSAFE_SIGN_NONSEGWIT = enabled;
     }
 
@@ -1409,7 +1408,7 @@ export class WalletController extends BaseController {
             throw new Error('keyring does not exist');
         }
 
-        // @ts-ignore
+        // @ts-expect-error
         if (!keyring[method]) {
             throw new Error(`keyring does not have ${method} method`);
         }

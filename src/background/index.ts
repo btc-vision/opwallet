@@ -141,7 +141,7 @@ const addAppInstalledEvent = async () => {
 };
 
 browserRuntimeOnInstalled(async (details) => {
-    if (details.reason === 'install') {
+    if (details.reason === chrome.runtime.OnInstalledReason.INSTALL) {
         await addAppInstalledEvent();
     }
 });

@@ -230,10 +230,10 @@ export default function Swap() {
                     const balance = await contract.balanceOf(walletAddressPub);
                     tokenBalances.push({
                         address: tokenAddress,
-                        name: contractInfo?.name || '',
+                        name: contractInfo?.name ?? '',
                         amount: balance.properties.balance,
-                        divisibility: contractInfo?.decimals || 8,
-                        symbol: contractInfo?.symbol || '',
+                        divisibility: contractInfo?.decimals ?? 8,
+                        symbol: contractInfo?.symbol ?? '',
                         logo: contractInfo?.logo
                     });
                 } catch (e) {
