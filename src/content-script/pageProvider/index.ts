@@ -1,15 +1,16 @@
 // this script is injected into webpage's context
-import { ethErrors, serializeError } from 'eth-rpc-errors';
 import { EventEmitter } from 'events';
 import { BroadcastedTransaction } from 'opnet';
 
-import { TxType } from '@/shared/types';
+import { SignPsbtOptions, TxType } from '@/shared/types';
 import { RequestParams } from '@/shared/types/Request.js';
 import BroadcastChannelMessage from '@/shared/utils/message/broadcastChannelMessage';
 import Web3API from '@/shared/web3/Web3API';
 import { ContractInformation } from '@/shared/web3/interfaces/ContractInformation';
 import { DeploymentResult, Unisat, UTXO } from '@btc-vision/transaction';
 
+import { rpcErrors } from '@/shared/lib/bitcoin-rpc-errors/errors';
+import { ProviderState } from '@/shared/types/Provider';
 import {
     BroadcastTransactionOptions,
     IDeploymentParametersWithoutSigner,
@@ -50,7 +51,7 @@ interface StateProvider {
     isPermanentlyDisconnected: boolean;
 }
 
-const _opnetPrividerPrivate: {
+export interface OpnetProviderPrivate {
     _selectedAddress: string | null;
     _network: string | null;
     _isConnected: boolean;
@@ -62,7 +63,9 @@ const _opnetPrividerPrivate: {
     _pushEventHandlers: PushEventHandlers | null;
     _requestPromise: ReadyPromise;
     _bcm: BroadcastChannelMessage;
-} = {
+}
+
+const _opnetPrividerPrivate: OpnetProviderPrivate = {
     _selectedAddress: null,
     _network: null,
     _isConnected: false,
@@ -114,9 +117,9 @@ export class OpnetProvider extends EventEmitter {
         });
 
         try {
-            const { network, chain, accounts, isUnlocked }: any = await this._request({
+            const { network, chain, accounts, isUnlocked }: ProviderState = await this._request({
                 method: 'getProviderState'
-            });
+            }) as ProviderState;
 
             if (isUnlocked) {
                 _opnetPrividerPrivate._isUnlocked = true;
@@ -142,7 +145,7 @@ export class OpnetProvider extends EventEmitter {
 
     _request = async (data: RequestParams) => {
         if (!data) {
-            throw ethErrors.rpc.invalidRequest();
+            throw rpcErrors.invalidRequest();
         }
 
         this._requestPromiseCheckVisibility();
@@ -151,9 +154,10 @@ export class OpnetProvider extends EventEmitter {
             .call(async () => {
                 log('[request]', JSON.stringify(data, null, 2));
 
-                const res = await _opnetPrividerPrivate._bcm.request(data).catch((err: unknown) => {
-                    log('[request: error]', data.method, serializeError(err));
-                    throw serializeError(err);
+                const res = await _opnetPrividerPrivate._bcm.request(data).catch((err) => {
+                    // TODO (typing): Check if sending error without serialization cause any issues on the dApp side.
+                    log('[request: error]', data.method, err);
+                    throw err;
                 });
 
                 log('[request: success]', data.method, res);
@@ -357,7 +361,7 @@ export class OpnetProvider extends EventEmitter {
         });
     };
 
-    signPsbt = async (psbtHex: string, options?: any) => {
+    signPsbt = async (psbtHex: string, options?: SignPsbtOptions) => {
         return this._request({
             method: 'signPsbt',
             params: {
@@ -368,7 +372,7 @@ export class OpnetProvider extends EventEmitter {
         });
     };
 
-    signPsbts = async (psbtHexs: string[], options?: any[]) => {
+    signPsbts = async (psbtHexs: string[], options?: SignPsbtOptions[]) => {
         return this._request({
             method: 'multiSignPsbt',
             params: {
@@ -433,7 +437,7 @@ export class OpnetProvider extends EventEmitter {
                 params: {}
             });
         } catch (e) {
-            log('[keepAlive: error]', serializeError(e));
+            log('[keepAlive: error]', e);
         }
 
         setTimeout(async () => {

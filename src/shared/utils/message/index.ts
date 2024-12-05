@@ -1,10 +1,13 @@
 /**
  * this script is live in content-script / dapp's page
  */
-import { ethErrors } from 'eth-rpc-errors';
 import { EventEmitter } from 'events';
 
+import { providerErrors, rpcErrors } from '@/shared/lib/bitcoin-rpc-errors/errors';
+import { SerializedWalletError, WalletError } from '@/shared/types/Error';
 import { ListenCallback, RequestParams } from '@/shared/types/Request.js';
+import { SendPayload, SendRequestPayload, SendResponsePayload } from '../../types/Message';
+import { deserializeError, serializeError } from '../errors';
 
 abstract class Message extends EventEmitter {
     // available id list
@@ -16,17 +19,17 @@ abstract class Message extends EventEmitter {
     private _waitingMap = new Map<
         number,
         {
-            data: any;
-            resolve: (arg: any) => any;
-            reject: (arg: any) => any;
+            data: RequestParams;
+            resolve: (arg: any) => void;
+            reject: (arg: WalletError) => void;
         }
     >();
 
-    abstract send(type: string, data: any): void;
+    abstract send(type: string, data: SendPayload): void;
 
     request = (data: RequestParams) => {
         if (!this._requestIdPool.length) {
-            throw ethErrors.rpc.limitExceeded();
+            throw rpcErrors.limitExceeded();
         }
         const ident = this._requestIdPool.shift()!;
 
@@ -41,12 +44,13 @@ abstract class Message extends EventEmitter {
                 this.send('request', { ident, data });
             } catch (e) {
                 this._waitingMap.delete(ident);
-                reject(e);
+                const error = e instanceof Error ? e : new Error('Unknown error during message send')
+                reject(error);
             }
         });
     };
 
-    onResponse = ({ ident, res, err }: any = {}) => {
+    onResponse = ({ ident, res, err }: SendResponsePayload) => {
         // the url may update
         if (!this._waitingMap.has(ident)) {
             return;
@@ -56,24 +60,19 @@ abstract class Message extends EventEmitter {
 
         this._requestIdPool.push(ident);
         this._waitingMap.delete(ident);
-        err ? reject(err) : resolve(res);
+        err ? reject(deserializeError(err)) : resolve(res);
     };
 
-    onRequest = async ({ ident, data }) => {
+    onRequest = async ({ ident, data }: SendRequestPayload) => {
         if (this.listenCallback) {
-            let res, err;
+            let res;
+            let err: SerializedWalletError | undefined;
 
             try {
                 res = await this.listenCallback(data);
             } catch (_e) {
-                const e = _e as Error & { code?: number; data?: unknown };
-
-                err = {
-                    message: e.message,
-                    stack: e.stack
-                };
-                e.code && (err.code = e.code);
-                e.data && (err.data = e.data);
+                const e = _e as WalletError;
+                err = serializeError(e);
             }
 
             this.send('response', { ident, res, err });
@@ -81,8 +80,9 @@ abstract class Message extends EventEmitter {
     };
 
     _dispose = () => {
+        const userRejectedRequest = providerErrors.userRejectedRequest();
         for (const request of this._waitingMap.values()) {
-            request.reject(ethErrors.provider.userRejectedRequest());
+            request.reject(userRejectedRequest);
         }
 
         this._waitingMap.clear();
