@@ -95,6 +95,10 @@ export class OpnetProvider extends EventEmitter {
         _opnetPrividerPrivate._pushEventHandlers = new PushEventHandlers(this, _opnetPrividerPrivate);
     }
 
+    public get isOPWallet(): boolean {
+        return true;
+    }
+
     initialize = async () => {
         document.addEventListener('visibilitychange', this._requestPromiseCheckVisibility);
 
@@ -472,7 +476,7 @@ setTimeout(() => {
 
         window.dispatchEvent(new Event('unisat#initialized'));
     }
-}, 2000);
+}, 3000);
 
 // force opnet.
 

@@ -228,7 +228,7 @@ export const CHAINS_MAP: { [key in ChainType]: TypeChain<key> } = {
         ordinalsUrl: 'https://ordinals.com',
         faucetUrl: '',
         okxExplorerUrl: '',
-        disable: true,
+        disable: false,
         showPrice: true,
         defaultExplorer: 'mempool-space'
     },
