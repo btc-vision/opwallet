@@ -28,11 +28,31 @@ export default function ExportMnemonicsScreen() {
 
     const btnClick = async () => {
         try {
-            const { mnemonic, hdPath, passphrase } = await wallet.getMnemonics(password, keyring);
+            const data = await wallet.getMnemonics(password, keyring);
+            if(!data) {
+                setStatus('error');
+                setError('Password is incorrect');
+                return;
+            }
+
+            const { mnemonic, passphrase } = data;
+            if(!mnemonic) {
+                setStatus('error');
+                setError('mnemonic not found');
+                return;
+            }
+
+            if(!passphrase) {
+                setStatus('error');
+                setError('passphrase not found');
+                return;
+            }
+
             setMnemonic(mnemonic);
             setPassphrase(passphrase);
         } catch (e) {
             setStatus('error');
+
             if (isWalletError(e)) {
                 setError(e.message);
             } else {

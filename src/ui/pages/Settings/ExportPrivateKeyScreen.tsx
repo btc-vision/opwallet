@@ -30,6 +30,12 @@ export default function ExportPrivateKeyScreen() {
     const btnClick = async () => {
         try {
             const _res = await wallet.getPrivateKey(password, account);
+            if(!_res) {
+                setStatus('error');
+                setError('Password is incorrect');
+                return;
+            }
+
             setPrivateKey(_res);
         } catch (e) {
             setStatus('error');

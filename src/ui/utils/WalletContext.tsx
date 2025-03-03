@@ -87,18 +87,14 @@ export interface WalletController {
 
     clearKeyrings(): Promise<void>;
 
-    getPrivateKey(password: string, account: { address: string; type: string }): Promise<{ hex: string; wif: string }>;
+    getPrivateKey(password: string, account: { address: string; type: string }): Promise<{ hex: string; wif: string } | null>;
 
     getInternalPrivateKey(account: { pubkey: string; type: string }): Promise<{ hex: string; wif: string }>;
 
     getMnemonics(
         password: string,
         keyring: WalletKeyring
-    ): Promise<{
-        hdPath: string;
-        mnemonic: string;
-        passphrase: string;
-    }>;
+    ): Promise<{ mnemonic: string | undefined; hdPath: string | undefined; passphrase: string | undefined }>;
 
     createKeyringWithPrivateKey(data: string, addressType: AddressType, alianName?: string): Promise<Account[]>;
 
