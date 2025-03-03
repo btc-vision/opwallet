@@ -142,8 +142,8 @@ export class WalletController {
     /**
      * Verify a given password against the vault.
      */
-    public verifyPassword = (password: string): void => {
-        keyringService.verifyPassword(password);
+    public verifyPassword = (password: string): Promise<boolean> => {
+        return keyringService.verifyPassword(password);
     };
 
     /**
@@ -369,11 +369,15 @@ export class WalletController {
     /**
      * Export a private key in both hex and WIF format.
      */
-    public getPrivateKey = (
+    public getPrivateKey = async (
         password: string,
         { pubkey, type }: { pubkey: string; type: string }
-    ): { hex: string; wif: string } | null => {
-        this.verifyPassword(password);
+    ): Promise<{ hex: string; wif: string } | null> => {
+        const isValid = await this.verifyPassword(password);
+        if(!isValid) {
+            throw new WalletControllerError('Invalid password');
+        }
+
         const keyring = keyringService.getKeyringForAccount(pubkey, type);
         if (!keyring) return null;
 
@@ -417,11 +421,15 @@ export class WalletController {
      * Export a BIP39 mnemonic from a given keyring.
      * @throws WalletControllerError if the keyring lacks a mnemonic
      */
-    public getMnemonics = (
+    public getMnemonics = async (
         password: string,
         keyring: WalletKeyring
-    ): { mnemonic: string | undefined; hdPath: string | undefined; passphrase: string | undefined } => {
-        this.verifyPassword(password);
+    ): Promise<{ mnemonic: string | undefined; hdPath: string | undefined; passphrase: string | undefined }> => {
+        const isValid = await this.verifyPassword(password);
+        if(!isValid) {
+            throw new WalletControllerError('Invalid password');
+        }
+
         const originKeyring = keyringService.keyrings[keyring.index];
         const serialized = originKeyring.serialize();
 
