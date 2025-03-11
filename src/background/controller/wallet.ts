@@ -76,6 +76,7 @@ import { InteractionResponse } from '@btc-vision/transaction/src/transaction/Tra
 import { ContactBookItem, ContactBookStore } from '../service/contactBook';
 import { OpenApiService } from '../service/openapi';
 import { ConnectedSite } from '../service/permission';
+import { Buffer } from 'buffer';
 
 export interface AccountAsset {
     name: string;
@@ -982,7 +983,10 @@ export class WalletController {
                 value: typeof utxo.value === 'bigint' ? utxo.value : BigInt(utxo.value as unknown as string)
             }));
 
+            const preimage = await Web3API.provider.getPreimage();
+
             const interactionParametersSubmit: IInteractionParameters = {
+                preimage: preimage,
                 from: interactionParameters.from,
                 to: interactionParameters.to,
                 utxos,
@@ -1093,6 +1097,8 @@ export class WalletController {
 
         try {
             const walletGet: Wallet = Wallet.fromWif(wifWallet.wif, Web3API.network);
+            const preimage = await Web3API.provider.getPreimage();
+
             const utxos = interactionParameters.utxos.map((utxo) => ({
                 ...utxo,
                 value: typeof utxo.value === 'bigint' ? utxo.value : BigInt(utxo.value as unknown as string)
@@ -1101,6 +1107,7 @@ export class WalletController {
             const interactionParametersSubmit: IInteractionParameters = {
                 from: interactionParameters.from,
                 to: interactionParameters.to,
+                preimage,
                 utxos,
                 signer: walletGet.keypair,
                 network: Web3API.network,

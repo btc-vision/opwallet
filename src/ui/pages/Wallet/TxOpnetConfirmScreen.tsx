@@ -409,7 +409,10 @@ export default function TxOpnetConfirmScreen() {
             const arrayBuffer = await parameters.file.arrayBuffer();
             const uint8Array = new Uint8Array(arrayBuffer);
 
+            const preimage = await Web3API.provider.getPreimage();
+
             const deploymentParameters: IDeploymentParameters = {
+                preimage,
                 utxos: utxos,
                 signer: userWallet.keypair,
                 network: Web3API.network,

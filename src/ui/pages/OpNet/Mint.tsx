@@ -201,8 +201,6 @@ export default function Mint() {
                             action: Action.Mint
                         };
 
-                        console.log(txInfo);
-
                         navigate(RouteTypes.TxOpnetConfirmScreen, {
                             rawTxInfo: txInfo
                         });
