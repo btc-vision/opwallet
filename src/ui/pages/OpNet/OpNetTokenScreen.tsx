@@ -114,21 +114,16 @@ export default function OpNetTokenScreen() {
             }
 
             try {
-                const getOwner = await contract.owner();
-                setIsOwner(myWallet.address.equals(getOwner.properties.owner));
+                const deployer = await contract.deployer();
+                setIsOwner(myWallet.address.equals(deployer.properties.deployer));
             } catch {
                 try {
-                    const deployer = await contract.deployer();
-                    setIsOwner(myWallet.address.equals(deployer.properties.deployer));
-                } catch {
-                    try {
-                        const addy: AddressMap<bigint> = new AddressMap();
-                        addy.set(myWallet.address, 100000000n);
+                    const addy: AddressMap<bigint> = new AddressMap();
+                    addy.set(myWallet.address, 100000000n);
 
-                        await contract.airdrop(addy);
-                        setIsOwner(true);
-                    } catch {}
-                }
+                    await contract.airdrop(addy);
+                    setIsOwner(true);
+                } catch {}
             }
 
             setLoading(false);
