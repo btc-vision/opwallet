@@ -29,35 +29,32 @@ export default function ExportMnemonicsScreen() {
     const btnClick = async () => {
         try {
             const data = await wallet.getMnemonics(password, keyring);
-            if(!data) {
+            if (!data) {
                 setStatus('error');
                 setError('Password is incorrect');
                 return;
             }
 
             const { mnemonic, passphrase } = data;
-            if(!mnemonic) {
+            if (!mnemonic) {
                 setStatus('error');
                 setError('mnemonic not found');
                 return;
             }
 
-            if(!passphrase) {
-                setStatus('error');
-                setError('passphrase not found');
-                return;
-            }
-
             setMnemonic(mnemonic);
-            setPassphrase(passphrase);
+
+            if (passphrase) {
+                setPassphrase(passphrase);
+            }
         } catch (e) {
             setStatus('error');
 
             if (isWalletError(e)) {
                 setError(e.message);
             } else {
-                setError("An unexpected error occurred.");
-                console.error("Non-WalletError caught: ", e);
+                setError('An unexpected error occurred.');
+                console.error('Non-WalletError caught: ', e);
             }
         }
     };

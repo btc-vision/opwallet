@@ -427,6 +427,7 @@ export class WalletController {
         keyring: WalletKeyring
     ): Promise<{ mnemonic: string | undefined; hdPath: string | undefined; passphrase: string | undefined }> => {
         const isValid = await this.verifyPassword(password);
+
         if(!isValid) {
             throw new WalletControllerError('Invalid password');
         }
