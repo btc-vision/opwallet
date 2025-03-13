@@ -29,7 +29,7 @@ export function selectorToString(calldata: string): string {
         case InteractionTypeNativeSwap.AddLiquidity:
             return 'addLiquidity(address,string)';
         case InteractionTypeNativeSwap.Reserve:
-            return 'reserve(address,uint256,uint256,bool)';
+            return 'reserve(address,uint256,uint256,bool,uint8)';
         case InteractionTypeNativeSwap.ListLiquidity:
             return 'listLiquidity(address,string,uint256,bool)';
         case InteractionTypeNativeSwap.CancelListing:
