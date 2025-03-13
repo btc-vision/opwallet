@@ -519,10 +519,11 @@ class KeyringService extends EventEmitter {
             throw new Error(i18n.t('Cannot unlock without a previous vault'));
         }
 
-        if (encryptedBooted.includes('keyMetadata')) {
-            await this.encryptor.decrypt(password, encryptedBooted);
 
-            return false;
+        if (encryptedBooted.includes('keyMetadata')) {
+            const resp = await this.encryptor.decrypt(password, encryptedBooted) as string;
+
+            return resp == 'true';
         }
 
         const isValid = await oldEncryptor.decrypt(password, encryptedBooted);
