@@ -459,27 +459,6 @@ export class OpnetProvider extends EventEmitter {
 }
 
 const provider = new OpnetProvider();
-
-// Allow website that support unisat to support OP_NET.
-setTimeout(() => {
-    if (!window.unisat) {
-        window.unisat = new Proxy(provider, {
-            deleteProperty: () => true
-        }) as unknown as Unisat;
-
-        Object.defineProperty(window, 'unisat', {
-            value: new Proxy(provider, {
-                deleteProperty: () => true
-            }),
-            writable: true
-        });
-
-        window.dispatchEvent(new Event('unisat#initialized'));
-    }
-}, 3000);
-
-// force opnet.
-
 window.opnet = new Proxy(provider, {
     deleteProperty: () => true
 }) as unknown as Unisat;
