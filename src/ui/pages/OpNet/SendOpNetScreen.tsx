@@ -2,7 +2,6 @@ import BigNumber from 'bignumber.js';
 import { useEffect, useState } from 'react';
 
 import { Action, TransferParameters } from '@/shared/interfaces/RawTxParameters';
-import { runesUtils } from '@/shared/lib/runes-utils';
 import { OPTokenInfo } from '@/shared/types';
 import { bigIntToDecimal } from '@/shared/web3/Web3API';
 import { Button, Column, Content, Header, Image, Input, Layout, Row, Text } from '@/ui/components';
@@ -14,6 +13,7 @@ import { fontSizes } from '@/ui/theme/font';
 
 import { useLocationState } from '@/ui/utils';
 import { RouteTypes, useNavigate } from '../MainRoute';
+import { BitcoinUtils } from 'opnet';
 
 BigNumber.config({ EXPONENTIAL_AT: 256 });
 
@@ -23,7 +23,7 @@ export default function SendOpNetScreen() {
     const navigate = useNavigate();
     const [inputAmount, setInputAmount] = useState('');
     const [disabled, setDisabled] = useState(true);
-    const [OpnetRateInputVal, adjustFeeRateInput] = useState('5000');
+    const [OpnetRateInputVal, adjustFeeRateInput] = useState('0');
     const [toInfo, setToInfo] = useState<{
         address: string;
         domain: string;
@@ -81,9 +81,9 @@ export default function SendOpNetScreen() {
                 <Row itemsCenter fullX justifyCenter>
                     {props.logo && <Image src={props.logo} size={fontSizes.tiny} />}
                     <Text
-                        text={`${Number(
-                            runesUtils.toDecimalAmount(props.amount.toString(), props.divisibility)
-                        ).toFixed(8)} ${props.symbol} `}
+                        text={`${
+                            new BigNumber(BitcoinUtils.formatUnits(props.amount, props.divisibility)).toFixed(8)
+                        } ${props.symbol} `}
                         preset="bold"
                         textCenter
                         size="xxl"
@@ -109,13 +109,13 @@ export default function SendOpNetScreen() {
                         <Row
                             itemsCenter
                             onClick={() => {
-                                setInputAmount(runesUtils.toDecimalAmount(props.amount.toString(), props.divisibility));
+                                setInputAmount(BitcoinUtils.formatUnits(props.amount, props.divisibility));
                             }}>
                             <Text text="MAX" preset="sub" style={{ color: colors.white_muted }} />
                             <Text
-                                text={`${Number(
-                                    runesUtils.toDecimalAmount(props.amount.toString(), props.divisibility)
-                                ).toFixed(8)} ${props.symbol} `}
+                                text={`${
+                                    new BigNumber(BitcoinUtils.formatUnits(props.amount, props.divisibility)).toFixed(8)
+                                } ${props.symbol} `}
                                 preset="bold"
                                 size="sm"
                                 wrap

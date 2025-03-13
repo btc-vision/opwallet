@@ -1,7 +1,6 @@
-import { getContract, IOP_20Contract, OP_20_ABI } from 'opnet';
+import { BitcoinUtils, getContract, IOP_20Contract, OP_20_ABI } from 'opnet';
 import { CSSProperties, useEffect, useState } from 'react';
 
-import { runesUtils } from '@/shared/lib/runes-utils';
 import { OPTokenInfo } from '@/shared/types';
 import Web3API from '@/shared/web3/Web3API';
 import { ContractInformation } from '@/shared/web3/interfaces/ContractInformation';
@@ -15,6 +14,7 @@ import { Address } from '@btc-vision/transaction';
 
 import { BaseView, BaseViewProps } from '../BaseView';
 import { RunesTicker } from '../RunesTicker';
+import BigNumber from 'bignumber.js';
 
 export interface SelectOption {
     value: string;
@@ -187,13 +187,9 @@ export function Select(props: SelectProps) {
         setIsOpen(false);
         setSearchTerm('');
     };
+
     const calculateBalance = (amount: bigint | undefined, divisibility: number | undefined) => {
-        const balance = runesUtils.toDecimalNumber((amount ?? 0n).toString(), divisibility ?? 0);
-        let str = balance.toFixed(8);
-        if (balance.lt(0.0001)) {
-            str = '0';
-        }
-        return str;
+        return BitcoinUtils.formatUnits(amount ?? 0n, divisibility);
     };
 
     return (
@@ -219,10 +215,10 @@ export function Select(props: SelectProps) {
                             <Row itemsCenter fullY gap="zero">
                                 <Text text={'Balance:'} size="xs" />
                                 <Text
-                                    text={calculateBalance(
+                                    text={new BigNumber(BitcoinUtils.formatUnits(calculateBalance(
                                         selectedOption?.amount || 0n,
                                         selectedOption?.divisibility || 0
-                                    )}
+                                    ))).toFixed(8)}
                                     size="xs"
                                 />
                             </Row>

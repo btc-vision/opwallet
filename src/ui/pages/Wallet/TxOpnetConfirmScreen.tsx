@@ -107,8 +107,6 @@ const waitForTransaction = async (
 
 export default function TxOpnetConfirmScreen() {
     const navigate = useNavigate();
-    const [acceptWrapMessage, setAcceptWrapMessage] = useState<string>('');
-    const [openAcceptbar, setAcceptBar] = useState<boolean>(false);
     const [openLoading, setOpenLoading] = useState<boolean>(false);
     const [disabled, setDisabled] = useState<boolean>(false);
     const { rawTxInfo } = useLocationState<LocationState>();

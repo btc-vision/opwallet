@@ -1,8 +1,7 @@
-import { getContract, IOP_20Contract, OP_20_ABI } from 'opnet';
+import { BitcoinUtils, getContract, IOP_20Contract, OP_20_ABI } from 'opnet';
 import { useCallback, useEffect, useState } from 'react';
 
 import { Action, Features, MintParameters } from '@/shared/interfaces/RawTxParameters';
-import { runesUtils } from '@/shared/lib/runes-utils';
 import { OPTokenInfo } from '@/shared/types';
 import Web3API, { bigIntToDecimal } from '@/shared/web3/Web3API';
 import { Button, Column, Content, Header, Input, Layout, Row, Text } from '@/ui/components';
@@ -22,7 +21,7 @@ export default function Mint() {
     const navigate = useNavigate();
     const [inputAmount, setInputAmount] = useState('');
     const [disabled, setDisabled] = useState(true);
-    const [OpnetRateInputVal, adjustFeeRateInput] = useState('5000');
+    const [OpnetRateInputVal, adjustFeeRateInput] = useState('0');
 
     const [error, setError] = useState('');
     const tools = useTools();
@@ -104,7 +103,7 @@ export default function Mint() {
                 <Row itemsCenter fullX justifyCenter>
                     {props.logo && <img src={props.logo} style={{ width: fontSizes.tiny, height: fontSizes.tiny }} />}
                     <Text
-                        text={`${runesUtils.toDecimalAmount(props.amount.toString(), props.divisibility)} ${
+                        text={`${BitcoinUtils.expandToDecimals(props.amount.toString(), props.divisibility)} ${
                             props.symbol
                         } `}
                         preset="bold"
@@ -120,11 +119,11 @@ export default function Mint() {
                         <Row
                             itemsCenter
                             onClick={() => {
-                                setInputAmount(runesUtils.toDecimalAmount(maxSupply.toString(), props.divisibility));
+                                setInputAmount(BitcoinUtils.formatUnits(maxSupply.toString(), props.divisibility));
                             }}>
                             <Text text="MAX" preset="sub" style={{ color: colors.white_muted }} />
                             <Text
-                                text={`${runesUtils.toDecimalAmount(maxSupply.toString(), props.divisibility)} `}
+                                text={`${BitcoinUtils.expandToDecimals(maxSupply.toString(), props.divisibility)} `}
                                 preset="bold"
                                 size="sm"
                                 wrap
@@ -142,7 +141,7 @@ export default function Mint() {
                             if (numAmount <= Number(maxSupplyParsed)) {
                                 setInputAmount(amount);
                             } else {
-                                setInputAmount(runesUtils.toDecimalAmount(maxSupply.toString(), props.divisibility));
+                                setInputAmount(BitcoinUtils.formatUnits(maxSupply.toString(), props.divisibility));
                             }
                         }}
                         runesDecimal={props.divisibility}

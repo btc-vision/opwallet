@@ -24,9 +24,9 @@ export function FeeRateBar({ readonly, onChange }: { readonly?: boolean; onChang
         const getData = async () => {
             if ((await wallet.getNetworkType()) == NetworkType.REGTEST) {
                 const feeArray = [
-                    { title: 'Slow', desc: 'Slow', feeRate: 100 },
-                    { title: 'Medium', desc: 'Medium', feeRate: 100 },
-                    { title: 'Fast', desc: 'Fast', feeRate: 100 }
+                    { title: 'Slow', desc: 'Slow', feeRate: 2 },
+                    { title: 'Medium', desc: 'Medium', feeRate: 3 },
+                    { title: 'Fast', desc: 'Fast', feeRate: 5 }
                 ];
                 setFeeOptions([...feeArray, { title: 'Custom', feeRate: 0 }]);
             } else {
@@ -142,15 +142,11 @@ export function FeeRateBar({ readonly, onChange }: { readonly?: boolean; onChang
                 <Input
                     preset="amount"
                     placeholder={'sat/vB'}
-                    value={feeRateInputVal}
                     runesDecimal={1}
+                    value={feeRateInputVal}
                     onAmountInputChange={(amount) => {
                         adjustFeeRateInput(amount);
                     }}
-                    // onBlur={() => {
-                    //   const val = parseInt(feeRateInputVal) + '';
-                    //   setFeeRateInputVal(val);
-                    // }}
                     autoFocus={true}
                 />
             )}

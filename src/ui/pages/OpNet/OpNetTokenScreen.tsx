@@ -1,8 +1,7 @@
 import BigNumber from 'bignumber.js';
-import { getContract, IOP_20Contract, OP_20_ABI } from 'opnet';
+import { BitcoinUtils, getContract, IOP_20Contract, OP_20_ABI } from 'opnet';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
-import { runesUtils } from '@/shared/lib/runes-utils';
 import { OPTokenInfo } from '@/shared/types';
 import { addressShortner } from '@/shared/utils';
 import Web3API from '@/shared/web3/Web3API';
@@ -28,15 +27,6 @@ export default function OpNetTokenScreen() {
 
     const params = useLocationState<LocationState>();
     const [tokenSummary, setTokenSummary] = useState<OPTokenInfo>({
-        address: '',
-        name: '',
-        symbol: '',
-        logo: '',
-        amount: 0n,
-        divisibility: 0
-    });
-
-    const [btcBalance, setBtcBalance] = useState<OPTokenInfo>({
         address: '',
         name: '',
         symbol: '',
@@ -71,16 +61,6 @@ export default function OpNetTokenScreen() {
             Web3API.setNetwork(await wallet.getChainType());
 
             const myWallet = await getWallet();
-            const btcBalance = await Web3API.getBalance(account.address, true);
-            setBtcBalance({
-                address: '',
-                amount: btcBalance,
-                divisibility: 8,
-                symbol: unitBtc,
-                name: 'Bitcoin',
-                logo: ''
-            });
-
             const contract: IOP_20Contract = getContract<IOP_20Contract>(
                 params.address,
                 OP_20_ABI,
@@ -185,10 +165,10 @@ export default function OpNetTokenScreen() {
                         <Row itemsCenter fullX justifyCenter>
                             <Image src={tokenSummary.logo} size={fontSizes.tiny} />
                             <Text
-                                text={`${runesUtils.toDecimalAmount(
-                                    new BigNumber(tokenSummary.amount.toString()),
+                                text={`${new BigNumber(BitcoinUtils.formatUnits(
+                                    tokenSummary.amount,
                                     tokenSummary.divisibility
-                                )} ${tokenSummary.symbol}`}
+                                )).toFixed(tokenSummary.divisibility)} ${tokenSummary.symbol}`}
                                 preset="bold"
                                 textCenter
                                 size="xxl"
@@ -226,67 +206,6 @@ export default function OpNetTokenScreen() {
                                 full
                             />
                         </Row>
-                        <Row justifyBetween mt="lg">
-                            {/*btcBalance.divisibility == 8 ? (
-                                <>
-                                    <Button
-                                        text="Stake WBTC"
-                                        preset="primary"
-                                        icon="down"
-                                        onClick={(e) => {
-                                            navigate(RouteTypes.StakeWBTCoPNet, tokenSummary);
-                                        }}
-                                        full
-                                    />
-                                    <Button
-                                        text="Unstake WBTC"
-                                        preset="primary"
-                                        icon="up"
-                                        onClick={(e) => {
-                                            navigate(RouteTypes.UnStakeWBTCoPNet, tokenSummary);
-                                        }}
-                                        full
-                                    />
-                                </>
-                            ) : (
-                                <></>
-                            )*/}
-                        </Row>
-
-                        {/*btcBalance.divisibility == 8 ? (
-                            <>
-                                <Row itemsCenter fullX justifyBetween>
-                                    <Text text={'Active Stake'} color="textDim" size="md" />
-                                    <Text
-                                        text={bigIntToDecimal(stakedAmount, 8).toString() + ' ' + tokenSummary.symbol}
-                                        size="md"
-                                    />
-                                </Row>
-                                <Row itemsCenter fullX justifyBetween>
-                                    <Text text={'Reward'} color="textDim" size="md" />
-                                    <Text
-                                        text={bigIntToDecimal(stakedReward, 8).toString() + ' ' + tokenSummary.symbol}
-                                        size="md"
-                                    />
-                                </Row>
-                                <Row itemsCenter fullX justifyBetween>
-                                    <Text text={'Total Staked'} color="textDim" size="md" />
-                                    <Text
-                                        text={bigIntToDecimal(totalStaked, 8).toString() + ' ' + tokenSummary.symbol}
-                                        size="md"
-                                    />
-                                </Row>
-                                <Row itemsCenter fullX justifyBetween>
-                                    <Text text={'Reward Pool'} color="textDim" size="md" />
-                                    <Text
-                                        text={bigIntToDecimal(rewardPool, 8).toString() + ' ' + tokenSummary.symbol}
-                                        size="md"
-                                    />
-                                </Row>
-                            </>
-                        ) : (
-                            <></>
-                        )*/}
                     </Column>
 
                     <Text

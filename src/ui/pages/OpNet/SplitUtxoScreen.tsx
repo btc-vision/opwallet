@@ -19,7 +19,7 @@ export default function SplitUtxoScreen() {
     const navigate = useNavigate();
     const [amount, setAmount] = useState('');
     const [feeRate, setFeeRate] = useState(5);
-    const [OpnetRateInputVal, adjustFeeRateInput] = useState('5000');
+    const [OpnetRateInputVal, adjustFeeRateInput] = useState('0');
 
     const [enableRBF, setEnableRBF] = useState(false);
     const handleAmountChange = (value: string) => {

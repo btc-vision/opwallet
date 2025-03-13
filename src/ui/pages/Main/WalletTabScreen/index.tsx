@@ -33,6 +33,7 @@ import { amountToSatoshis, satoshisToAmount, useWallet } from '@/ui/utils';
 import { RouteTypes, useNavigate } from '../../MainRoute';
 import { SwitchChainModal } from '../../Settings/SwitchChainModal';
 import { OPNetList } from './OPNetList';
+import { BitcoinUtils } from 'opnet';
 
 const $noBreakStyle: CSSProperties = {
     whiteSpace: 'nowrap',
@@ -48,7 +49,7 @@ export default function WalletTabScreen() {
     const currentKeyring = useCurrentKeyring();
     const currentAccount = useCurrentAccount();
     const balanceValue = useMemo(() => {
-        return Math.floor(Number(accountBalance.amount) * 1e5) / 1e5;
+        return new BigNumber(accountBalance.amount).toString();
     }, [accountBalance.amount]);
 
     const wallet = useWallet();
@@ -114,23 +115,6 @@ export default function WalletTabScreen() {
             setShowDisableUnconfirmedUtxoNotice(true);
         })();
     }, [addressSummary, currentAccount]);
-
-    /*useEffect(() => {
-        const run = async () => {
-            const show = await wallet.getShowSafeNotice();
-            setShowSafeNotice(show);
-
-            const activeTab = await getCurrentTab();
-            if (!activeTab) return;
-
-
-            const site = await wallet.getCurrentConnectedSite(activeTab.id);
-            if (site) {
-                setConnected(site.isConnected);
-            }
-        };
-        void run();
-    }, []);*/
 
     const tabItems: { key: AssetTabKey; label: string; children: ReactElement }[] = [
         {
