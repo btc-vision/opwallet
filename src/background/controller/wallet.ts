@@ -375,7 +375,7 @@ export class WalletController {
         { pubkey, type }: { pubkey: string; type: string }
     ): Promise<{ hex: string; wif: string } | null> => {
         const isValid = await this.verifyPassword(password);
-        if(!isValid) {
+        if (!isValid) {
             throw new WalletControllerError('Invalid password');
         }
 
@@ -428,7 +428,7 @@ export class WalletController {
     ): Promise<{ mnemonic: string | undefined; hdPath: string | undefined; passphrase: string | undefined }> => {
         const isValid = await this.verifyPassword(password);
 
-        if(!isValid) {
+        if (!isValid) {
             throw new WalletControllerError('Invalid password');
         }
 
@@ -1052,10 +1052,12 @@ export class WalletController {
                 value: typeof utxo.value === 'bigint' ? utxo.value : BigInt(utxo.value as unknown as string)
             }));
 
+            const preimage = await Web3API.provider.getPreimage();
             const walletGet: Wallet = Wallet.fromWif(wifWallet.wif, Web3API.network);
             const deployContractParameters: IDeploymentParameters = {
                 ...params,
                 utxos,
+                preimage,
                 signer: walletGet.keypair,
                 network: Web3API.network,
                 feeRate: Number(params.feeRate.toString()),

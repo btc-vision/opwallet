@@ -9,8 +9,8 @@ import {
     UTXO
 } from '@btc-vision/transaction';
 
-export type InteractionParametersWithoutSigner = Omit<IInteractionParameters, 'signer'>;
-export type IDeploymentParametersWithoutSigner = Omit<IDeploymentParameters, 'signer' | 'network'>;
+export type InteractionParametersWithoutSigner = Omit<IInteractionParameters, 'signer' | 'preimage'>;
+export type IDeploymentParametersWithoutSigner = Omit<IDeploymentParameters, 'signer' | 'network' | 'preimage'>;
 
 export interface BroadcastTransactionOptions {
     raw: string;
