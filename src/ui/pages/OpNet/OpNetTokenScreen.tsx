@@ -165,10 +165,9 @@ export default function OpNetTokenScreen() {
                         <Row itemsCenter fullX justifyCenter>
                             <Image src={tokenSummary.logo} size={fontSizes.tiny} />
                             <Text
-                                text={`${new BigNumber(BitcoinUtils.formatUnits(
-                                    tokenSummary.amount,
-                                    tokenSummary.divisibility
-                                )).toFixed(tokenSummary.divisibility)} ${tokenSummary.symbol}`}
+                                text={`${new BigNumber(
+                                    BitcoinUtils.formatUnits(tokenSummary.amount, tokenSummary.divisibility)
+                                ).toFixed(tokenSummary.divisibility)} ${tokenSummary.symbol}`}
                                 preset="bold"
                                 textCenter
                                 size="xxl"

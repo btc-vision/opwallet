@@ -1266,10 +1266,10 @@
   dependencies:
     "@metamask/utils" "^9.0.0"
 
-"@btc-vision/transaction@^1.3.1":
-  version "1.3.1"
-  resolved "https://registry.yarnpkg.com/@btc-vision/transaction/-/transaction-1.3.1.tgz#2a44064c2aac60aa06fd0f17f0811be6e3f79761"
-  integrity sha512-5be37uOd4X3Ek15tSZSD80RtTkCOouicpC3t/cgBSuMl8zlg/H5TeArRmB1zhMbqcDs3Db4bZ4NYDZIlnWlcEg==
+"@btc-vision/transaction@1.3.2", "@btc-vision/transaction@^1.3.2":
+  version "1.3.2"
+  resolved "https://registry.yarnpkg.com/@btc-vision/transaction/-/transaction-1.3.2.tgz#c947fbba04863125404b873f597ed84735811663"
+  integrity sha512-sDpFIvM9wyf/UGjtFlj/C28Qcl0tHJRcs/jEz2H6rY0/x5qcqAX4E44Sj0flWIr0Xj6XB3vqsuDhsiLVZACBEQ==
   dependencies:
     "@babel/plugin-proposal-object-rest-spread" "^7.20.7"
     "@bitcoinerlab/secp256k1" "^1.1.1"
@@ -10417,20 +10417,21 @@ open@^8.4.0:
     is-docker "^2.1.1"
     is-wsl "^2.2.0"
 
-opnet@1.3.2:
-  version "1.3.2"
-  resolved "https://registry.yarnpkg.com/opnet/-/opnet-1.3.2.tgz#55e8dbe5148d364415f4c9f081891ab51605935d"
-  integrity sha512-MK0Uz+p6GsAihjV5llHFF1cpT5FYJQG3rndNSRmDUdE3qOQ3Gcjg/3IsSoYx9xPTph+wPEp/u1gGYP1p0TC6/Q==
+opnet@1.3.4:
+  version "1.3.4"
+  resolved "https://registry.yarnpkg.com/opnet/-/opnet-1.3.4.tgz#60fb79da292fa55100298f38dd16b60cdb1fad04"
+  integrity sha512-9fi2ob1t+KSWuGozdodOXY6zrBTYoaW5HjoOLdCq/r6xVa1v35pkDfDS4ddkoIrq8adT4ACr1AYIxsv4UcERzQ==
   dependencies:
     "@bitcoinerlab/secp256k1" "^1.2.0"
     "@btc-vision/bitcoin" "^6.3.6"
     "@btc-vision/bitcoin-rpc" "^1.0.1"
-    "@btc-vision/transaction" "^1.3.1"
+    "@btc-vision/transaction" "^1.3.2"
     "@noble/hashes" "^1.7.1"
     bignumber.js "^9.1.2"
     buffer "^6.0.3"
     ecpair "^2.1.0"
     tiny-secp256k1 "^2.2.3"
+    undici "^7.5.0"
 
 optionator@^0.9.3:
   version "0.9.4"
@@ -14248,7 +14249,7 @@ undici-types@~6.20.0:
   resolved "https://registry.yarnpkg.com/undici-types/-/undici-types-6.20.0.tgz#8171bf22c1f588d1554d55bf204bc624af388433"
   integrity sha512-Ny6QZ2Nju20vw1SRHe3d9jVu6gJ+4e3+MMpqu7pqE5HT6WsTSlce++GQmK5UXS8mzV8DSYHrQH+Xrf2jVcuKNg==
 
-undici@^7.1.0, undici@^7.3.0:
+undici@^7.1.0, undici@^7.3.0, undici@^7.5.0:
   version "7.5.0"
   resolved "https://registry.yarnpkg.com/undici/-/undici-7.5.0.tgz#51db4d33e0556ea9ca0ea28ccae7448dd8c23ac9"
   integrity sha512-NFQG741e8mJ0fLQk90xKxFdaSM7z4+IQpAgsFI36bCDY9Z2+aXXZjVy2uUksMouWfMI9+w5ejOq5zYYTBCQJDQ==
