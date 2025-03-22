@@ -1,4 +1,4 @@
-import { BroadcastedTransaction } from 'opnet';
+import { BroadcastedTransaction, UTXOs } from 'opnet';
 
 import {
     contactBookService,
@@ -73,10 +73,10 @@ import { AbstractWallet } from '@btc-vision/wallet-sdk/lib/wallet';
 
 import { address as bitcoinAddress, Psbt } from '@btc-vision/bitcoin';
 import { InteractionResponse } from '@btc-vision/transaction/src/transaction/TransactionFactory';
+import { Buffer } from 'buffer';
 import { ContactBookItem, ContactBookStore } from '../service/contactBook';
 import { OpenApiService } from '../service/openapi';
 import { ConnectedSite } from '../service/permission';
-import { Buffer } from 'buffer';
 
 export interface AccountAsset {
     name: string;
@@ -996,7 +996,9 @@ export class WalletController {
                 feeRate: interactionParameters.feeRate,
                 priorityFee: BigInt(interactionParameters.priorityFee || 0n),
                 gasSatFee: BigInt(interactionParameters.gasSatFee || 330n),
-                calldata: Buffer.from(interactionParameters.calldata as unknown as string, 'hex')
+                calldata: Buffer.from(interactionParameters.calldata as unknown as string, 'hex'),
+                optionalOutputs: interactionParameters.optionalOutputs || [],
+                optionalInputs: (interactionParameters.optionalInputs as UTXOs) || []
             };
 
             const sendTransaction = await Web3API.transactionFactory.signInteraction(interactionParametersSubmit);
@@ -1072,7 +1074,8 @@ export class WalletController {
                         ? Buffer.from(params.calldata, 'hex')
                         : Buffer.from(params.calldata)
                     : undefined,
-                optionalOutputs: params.optionalOutputs || []
+                optionalOutputs: params.optionalOutputs || [],
+                optionalInputs: (params.optionalInputs as UTXOs) || []
             };
 
             return await Web3API.transactionFactory.signDeployment(deployContractParameters);
@@ -1088,6 +1091,8 @@ export class WalletController {
     public signInteraction = async (
         interactionParameters: InteractionParametersWithoutSigner
     ): Promise<InteractionResponse> => {
+        console.log('OPTIONAL INPUTS', interactionParameters.optionalInputs);
+
         const account = await this.getCurrentAccount();
         if (!account) throw new WalletControllerError('No current account');
 
@@ -1118,7 +1123,8 @@ export class WalletController {
                 priorityFee: BigInt(interactionParameters.priorityFee || 0n),
                 gasSatFee: BigInt(interactionParameters.gasSatFee || 330n),
                 calldata: Buffer.from(interactionParameters.calldata as unknown as string, 'hex'),
-                optionalOutputs: interactionParameters.optionalOutputs || []
+                optionalOutputs: interactionParameters.optionalOutputs || [],
+                optionalInputs: (interactionParameters.optionalInputs as UTXOs) || []
             };
             return await Web3API.transactionFactory.signInteraction(interactionParametersSubmit);
         } catch (err) {

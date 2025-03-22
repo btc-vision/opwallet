@@ -320,6 +320,8 @@ export class OpnetProvider extends EventEmitter {
             interactionParameters.to
         );
 
+        console.log('interactionParameters', interactionParameters);
+
         return (await this._request({
             method: 'signInteraction',
             params: {
