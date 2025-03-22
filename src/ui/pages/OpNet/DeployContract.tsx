@@ -15,19 +15,15 @@ interface ItemData {
 }
 
 export default function DeployContractOpnet() {
-
     const account = useCurrentAccount();
 
     const navigate = useNavigate();
-    const [inputAmount, setInputAmount] = useState('');
     const [disabled, setDisabled] = useState(true);
-    const [OpnetRateInputVal, adjustFeeRateInput] = useState('25000');
+    const [OpnetRateInputVal, adjustFeeRateInput] = useState('0');
     const [getFile, setFile] = useState<File | null>(null);
 
     const [error, setError] = useState('');
     const tools = useTools();
-
-    const [file, ç] = useState<File | null>(null);
 
     const [feeRate, setFeeRate] = useState(5);
     const keyring = useCurrentKeyring();
@@ -39,7 +35,7 @@ export default function DeployContractOpnet() {
             };
         });
         return _items;
-    }, []);
+    }, [keyring.accounts]);
 
     useEffect(() => {
         setError('');
@@ -146,7 +142,7 @@ export default function DeployContractOpnet() {
                             rawTxInfo: {
                                 items: items,
                                 account: account, // replace with actual account
-                                inputAmount: inputAmount, // replace with actual inputAmount
+                                inputAmount: '', // replace with actual inputAmount
                                 address: '', // replace with actual address
                                 feeRate: feeRate, // replace with actual feeRate
                                 priorityFee: BigInt(OpnetRateInputVal), // replace with actual OpnetRateInputVal

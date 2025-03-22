@@ -123,7 +123,7 @@ export default function Mint() {
                             }}>
                             <Text text="MAX" preset="sub" style={{ color: colors.white_muted }} />
                             <Text
-                                text={`${BitcoinUtils.expandToDecimals(maxSupply.toString(), props.divisibility)} `}
+                                text={`${BitcoinUtils.formatUnits(maxSupply.toString(), props.divisibility)} `}
                                 preset="bold"
                                 size="sm"
                                 wrap
