@@ -9,13 +9,16 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout the code
+      - uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v3
+      - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: latest
           registry-url: https://registry.npmjs.org
-          cache: yarn
+
+      - run: npm install -g corepack
+        shell: bash
 
       - run: corepack enable
         shell: bash
@@ -34,10 +37,6 @@ jobs:
         shell: bash
 
       - uses: gradle/gradle-build-action@v2
-
-      - name: Checkout the code
-        uses: actions/checkout@v2
-      - uses: ./.github/actions/setup
 
       - name: Get Version Name
         uses: actions/github-script@v3
