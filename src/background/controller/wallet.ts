@@ -1052,6 +1052,12 @@ export class WalletController {
                 value: typeof utxo.value === 'bigint' ? utxo.value : BigInt(utxo.value as unknown as string)
             }));
 
+            const optionalInputs =
+                params.optionalInputs?.map((utxo) => ({
+                    ...utxo,
+                    value: typeof utxo.value === 'bigint' ? utxo.value : BigInt(utxo.value as unknown as string)
+                })) || [];
+
             const preimage = await Web3API.provider.getPreimage();
             const walletGet: Wallet = Wallet.fromWif(wifWallet.wif, Web3API.network);
             const deployContractParameters: IDeploymentParameters = {
@@ -1072,7 +1078,8 @@ export class WalletController {
                         ? Buffer.from(params.calldata, 'hex')
                         : Buffer.from(params.calldata)
                     : undefined,
-                optionalOutputs: params.optionalOutputs || []
+                optionalOutputs: params.optionalOutputs || [],
+                optionalInputs: optionalInputs
             };
 
             return await Web3API.transactionFactory.signDeployment(deployContractParameters);
@@ -1107,6 +1114,12 @@ export class WalletController {
                 value: typeof utxo.value === 'bigint' ? utxo.value : BigInt(utxo.value as unknown as string)
             }));
 
+            const optionalInputs =
+                interactionParameters.optionalInputs?.map((utxo) => ({
+                    ...utxo,
+                    value: typeof utxo.value === 'bigint' ? utxo.value : BigInt(utxo.value as unknown as string)
+                })) || [];
+
             const interactionParametersSubmit: IInteractionParameters = {
                 from: interactionParameters.from,
                 to: interactionParameters.to,
@@ -1118,6 +1131,7 @@ export class WalletController {
                 priorityFee: BigInt(interactionParameters.priorityFee || 0n),
                 gasSatFee: BigInt(interactionParameters.gasSatFee || 330n),
                 calldata: Buffer.from(interactionParameters.calldata as unknown as string, 'hex'),
+                optionalInputs: optionalInputs,
                 optionalOutputs: interactionParameters.optionalOutputs || []
             };
             return await Web3API.transactionFactory.signInteraction(interactionParametersSubmit);
