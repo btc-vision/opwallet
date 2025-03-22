@@ -19,7 +19,7 @@ export default function DeployContractOpnet() {
 
     const navigate = useNavigate();
     const [disabled, setDisabled] = useState(true);
-    const [OpnetRateInputVal, adjustFeeRateInput] = useState('0');
+    const [OpnetRateInputVal, adjustFeeRateInput] = useState('10000');
     const [getFile, setFile] = useState<File | null>(null);
 
     const [error, setError] = useState('');
