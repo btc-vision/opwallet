@@ -985,7 +985,6 @@ export class WalletController {
             }));
 
             const preimage = await Web3API.provider.getPreimage();
-
             const interactionParametersSubmit: IInteractionParameters = {
                 preimage: preimage,
                 from: interactionParameters.from,
@@ -996,7 +995,9 @@ export class WalletController {
                 feeRate: interactionParameters.feeRate,
                 priorityFee: BigInt(interactionParameters.priorityFee || 0n),
                 gasSatFee: BigInt(interactionParameters.gasSatFee || 330n),
-                calldata: Buffer.from(interactionParameters.calldata as unknown as string, 'hex')
+                calldata: Buffer.from(interactionParameters.calldata as unknown as string, 'hex'),
+                optionalOutputs: interactionParameters.optionalOutputs,
+                optionalInputs: interactionParameters.optionalInputs
             };
 
             const sendTransaction = await Web3API.transactionFactory.signInteraction(interactionParametersSubmit);
@@ -1097,7 +1098,7 @@ export class WalletController {
     ): Promise<InteractionResponse> => {
         const account = await this.getCurrentAccount();
         if (!account) throw new WalletControllerError('No current account');
-
+        
         const wifWallet = this.getInternalPrivateKey({
             pubkey: account.pubkey,
             type: account.type
@@ -1115,10 +1116,12 @@ export class WalletController {
             }));
 
             const optionalInputs =
-                interactionParameters.optionalInputs?.map((utxo) => ({
-                    ...utxo,
-                    value: typeof utxo.value === 'bigint' ? utxo.value : BigInt(utxo.value as unknown as string)
-                })) || [];
+                interactionParameters.optionalInputs?.map((utxo) => {
+                    return {
+                        ...utxo,
+                        value: typeof utxo.value === 'bigint' ? utxo.value : BigInt(utxo.value as unknown as string)
+                    };
+                }) || [];
 
             const interactionParametersSubmit: IInteractionParameters = {
                 from: interactionParameters.from,
@@ -1134,6 +1137,7 @@ export class WalletController {
                 optionalInputs: optionalInputs,
                 optionalOutputs: interactionParameters.optionalOutputs || []
             };
+
             return await Web3API.transactionFactory.signInteraction(interactionParametersSubmit);
         } catch (err) {
             throw new WalletControllerError(`Failed to sign interaction: ${String(err)}`, {
