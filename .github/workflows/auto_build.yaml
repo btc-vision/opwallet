@@ -24,7 +24,7 @@ jobs:
           key: ${{ runner.os }}-install-${{ hashFiles('**/package-lock.json') }}
 
       - if: steps.install-cache.outputs.cache-hit != 'true'
-        run: npm ci
+        run: npm ci --force
         shell: bash
 
       - uses: gradle/gradle-build-action@v2
