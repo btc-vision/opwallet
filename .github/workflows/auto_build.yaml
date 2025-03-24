@@ -11,29 +11,20 @@ jobs:
     steps:
       - name: Checkout the code
         uses: actions/checkout@v4
-        
+
       - uses: actions/setup-node@v4
         with:
           node-version: latest
           registry-url: https://registry.npmjs.org
 
-      - run: npm install -g corepack
-        shell: bash
-
-      - run: corepack enable
-        shell: bash
-
-      - run: yarn set version stable
-        shell: bash
-
       - uses: actions/cache@v3
         id: install-cache
         with:
           path: node_modules/
-          key: ${{ runner.os }}-install-${{ hashFiles('**/yarn.lock') }}
+          key: ${{ runner.os }}-install-${{ hashFiles('**/package-lock.json') }}
 
       - if: steps.install-cache.outputs.cache-hit != 'true'
-        run: yarn install --frozen-lockfile
+        run: npm ci
         shell: bash
 
       - uses: gradle/gradle-build-action@v2
@@ -49,11 +40,11 @@ jobs:
 
       - name: Build Extension
         run: |
-          yarn build:firefox
-          yarn build:brave
-          yarn build:edge
-          yarn build:opera
-          yarn build:chrome
+          npm run build:firefox
+          npm run build:brave
+          npm run build:edge
+          npm run build:opera
+          npm run build:chrome
 
       - name: Create Release
         id: create_release

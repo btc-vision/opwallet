@@ -1082,7 +1082,7 @@ export class WalletController {
                 optionalOutputs: params.optionalOutputs || [],
                 optionalInputs: optionalInputs
             };
-
+            
             return await Web3API.transactionFactory.signDeployment(deployContractParameters);
         } catch (err) {
             throw new WalletControllerError(`Failed to deploy contract: ${String(err)}`, { params });
@@ -1098,7 +1098,7 @@ export class WalletController {
     ): Promise<InteractionResponse> => {
         const account = await this.getCurrentAccount();
         if (!account) throw new WalletControllerError('No current account');
-        
+
         const wifWallet = this.getInternalPrivateKey({
             pubkey: account.pubkey,
             type: account.type

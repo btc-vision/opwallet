@@ -7,7 +7,7 @@ import { RequestParams } from '@/shared/types/Request.js';
 import BroadcastChannelMessage from '@/shared/utils/message/broadcastChannelMessage';
 import Web3API from '@/shared/web3/Web3API';
 import { ContractInformation } from '@/shared/web3/interfaces/ContractInformation';
-import { DeploymentResult, InteractionResponse, Unisat, UTXO } from '@btc-vision/transaction';
+import { DeploymentResult, InteractionResponse, Unisat, UTXO, WindowWithWallets } from '@btc-vision/transaction';
 
 import { rpcErrors } from '@/shared/lib/bitcoin-rpc-errors/errors';
 import { ProviderState } from '@/shared/types/Provider';
@@ -459,7 +459,7 @@ export class OpnetProvider extends EventEmitter {
 }
 
 const provider = new OpnetProvider();
-window.opnet = new Proxy(provider, {
+(window as WindowWithWallets).opnet = new Proxy(provider, {
     deleteProperty: () => true
 }) as unknown as Unisat;
 

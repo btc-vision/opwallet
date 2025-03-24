@@ -409,6 +409,7 @@ export default function TxOpnetConfirmScreen() {
 
             const preimage = await Web3API.provider.getPreimage();
 
+            // TODO: Add calldata support
             const deploymentParameters: IDeploymentParameters = {
                 preimage,
                 utxos: utxos,
@@ -418,7 +419,10 @@ export default function TxOpnetConfirmScreen() {
                 priorityFee: 0n,
                 gasSatFee: parameters.priorityFee,
                 from: currentWalletAddress.address,
-                bytecode: Buffer.from(uint8Array)
+                bytecode: Buffer.from(uint8Array),
+                calldata: Buffer.from([]),
+                optionalInputs: [],
+                optionalOutputs: []
             };
 
             const sendTransact: DeploymentResult =
