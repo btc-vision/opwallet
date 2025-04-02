@@ -2,9 +2,11 @@ import BigNumber from 'bignumber.js';
 
 import { ContractInformation } from '@/shared/web3/interfaces/ContractInformation';
 import { Card, Column, Image, Row, Text } from '@/ui/components';
-import { fontSizes } from '@/ui/theme/font';
-import { sliceAddress } from '@/ui/pages/OpNet/decoded/helpper';
 import { DecodedApprove } from '@/ui/pages/OpNet/decoded/DecodedTypes';
+import { sliceAddress } from '@/ui/pages/OpNet/decoded/helpper';
+import { fontSizes } from '@/ui/theme/font';
+
+export const MAX_UINT256 = new BigNumber('0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff');
 
 interface DecodedApproveProps {
     readonly decoded: DecodedApprove;
@@ -22,6 +24,8 @@ export function ApproveDecodedInfo(props: DecodedApproveProps) {
 
     const slicedAddress = sliceAddress(decoded.spender);
 
+    const isUnlimitedApproval = new BigNumber(decoded.amount.toString()).isGreaterThanOrEqualTo(MAX_UINT256);
+
     return (
         <Card>
             <Column>
@@ -29,9 +33,18 @@ export function ApproveDecodedInfo(props: DecodedApproveProps) {
                 <Row>
                     <Image src={contractInfo.logo} size={fontSizes.logo} />
                     <Text
-                        text={`${balanceFormatted} ${(contractInfo.symbol || '').toUpperCase()}`}
+                        text={
+                            isUnlimitedApproval
+                                ? `Unlimited ${(contractInfo.symbol || '').toUpperCase()}`
+                                : `${balanceFormatted} ${(contractInfo.symbol || '').toUpperCase()}`
+                        }
                         preset="large"
                         textCenter
+                        style={{
+                            wordBreak: 'break-word',
+                            overflowWrap: 'break-word',
+                            whiteSpace: 'normal'
+                        }}
                     />
                 </Row>
                 <Text text={`spender: ✓ ${slicedAddress}`} preset="sub" textCenter />

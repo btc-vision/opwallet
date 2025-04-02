@@ -303,7 +303,9 @@ export class ProviderController {
             interactionParams.bytecode = objToBuffer(interactionParams.bytecode);
 
             // @ts-expect-error
-            interactionParams.calldata = objToBuffer(interactionParams.calldata);
+            interactionParams.calldata = interactionParams.calldata
+                ? objToBuffer(interactionParams.calldata)
+                : Buffer.from([]);
         }
     ])
     deployContract = async (request: {
