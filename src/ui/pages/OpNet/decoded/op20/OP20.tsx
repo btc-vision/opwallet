@@ -1,5 +1,3 @@
-import React from 'react';
-
 import { ContractInformation } from '@/shared/web3/interfaces/ContractInformation';
 import { Card, Column, Image, Row, Text } from '@/ui/components';
 import { fontSizes } from '@/ui/theme/font';
@@ -15,8 +13,10 @@ import {
     DecodedTransfer,
     DecodedTransferFrom
 } from '@/ui/pages/OpNet/decoded/DecodedTypes';
-import { BitcoinUtils } from 'opnet';
 import { sliceAddress } from '@/ui/pages/OpNet/decoded/helpper';
+import BigNumber from 'bignumber.js';
+import { BitcoinUtils } from 'opnet';
+import { MAX_UINT256 } from './ApproveDecodedInfo';
 
 interface CommonProps {
     readonly contractInfo: Partial<ContractInformation>;
@@ -46,6 +46,11 @@ export function TransferDecodedInfo(props: TransferDecodedProps) {
                         text={`${balanceFormatted} ${(contractInfo.symbol || '').toUpperCase()}`}
                         preset="large"
                         textCenter
+                        style={{
+                            wordBreak: 'break-word',
+                            overflowWrap: 'break-word',
+                            whiteSpace: 'normal'
+                        }}
                     />
                 </Row>
                 <Text text={`recipient: ✓ ${slicedRecipient}`} preset="sub" textCenter />
@@ -78,6 +83,11 @@ export function TransferFromDecodedInfo(props: TransferFromDecodedProps) {
                         text={`${balanceFormatted} ${(contractInfo.symbol || '').toUpperCase()}`}
                         preset="large"
                         textCenter
+                        style={{
+                            wordBreak: 'break-word',
+                            overflowWrap: 'break-word',
+                            whiteSpace: 'normal'
+                        }}
                     />
                 </Row>
                 <Text text={`sender: ✗ ${slicedSender}`} preset="sub" textCenter />
@@ -100,6 +110,8 @@ export function ApproveDecodedInfo(props: ApproveDecodedProps) {
     const balanceFormatted = BitcoinUtils.formatUnits(decoded.amount, contractInfo.decimals || 8);
     const slicedSpender = sliceAddress(decoded.spender);
 
+    const isUnlimitedApproval = new BigNumber(decoded.amount.toString()).isGreaterThanOrEqualTo(MAX_UINT256);
+
     return (
         <Card>
             <Column>
@@ -107,9 +119,18 @@ export function ApproveDecodedInfo(props: ApproveDecodedProps) {
                 <Row>
                     <Image src={contractInfo.logo} size={fontSizes.logo} />
                     <Text
-                        text={`${balanceFormatted} ${(contractInfo.symbol || '').toUpperCase()}`}
+                        text={
+                            isUnlimitedApproval
+                                ? `Unlimited ${(contractInfo.symbol || '').toUpperCase()}`
+                                : `${balanceFormatted} ${(contractInfo.symbol || '').toUpperCase()}`
+                        }
                         preset="large"
                         textCenter
+                        style={{
+                            wordBreak: 'break-word',
+                            overflowWrap: 'break-word',
+                            whiteSpace: 'normal'
+                        }}
                     />
                 </Row>
                 <Text text={`spender: ✓ ${slicedSpender}`} preset="sub" textCenter />
@@ -135,6 +156,8 @@ export function ApproveFromDecodedInfo(props: ApproveFromDecodedProps) {
     // For simplicity, we just show its length
     const signatureLength = decoded.signature?.length || 0;
 
+    const isUnlimitedApproval = new BigNumber(decoded.amount.toString()).isGreaterThanOrEqualTo(MAX_UINT256);
+
     return (
         <Card>
             <Column>
@@ -142,9 +165,18 @@ export function ApproveFromDecodedInfo(props: ApproveFromDecodedProps) {
                 <Row>
                     <Image src={contractInfo.logo} size={fontSizes.logo} />
                     <Text
-                        text={`${balanceFormatted} ${(contractInfo.symbol || '').toUpperCase()}`}
+                        text={
+                            isUnlimitedApproval
+                                ? `Unlimited ${(contractInfo.symbol || '').toUpperCase()}`
+                                : `${balanceFormatted} ${(contractInfo.symbol || '').toUpperCase()}`
+                        }
                         preset="large"
                         textCenter
+                        style={{
+                            wordBreak: 'break-word',
+                            overflowWrap: 'break-word',
+                            whiteSpace: 'normal'
+                        }}
                     />
                 </Row>
                 <Text text={`spender: ✓ ${slicedSpender}`} preset="sub" textCenter />
@@ -176,6 +208,11 @@ export function BurnDecodedInfo(props: BurnDecodedProps) {
                         text={`${balanceFormatted} ${(contractInfo.symbol || '').toUpperCase()} burned`}
                         preset="large"
                         textCenter
+                        style={{
+                            wordBreak: 'break-word',
+                            overflowWrap: 'break-word',
+                            whiteSpace: 'normal'
+                        }}
                     />
                 </Row>
             </Column>
@@ -206,6 +243,11 @@ export function MintDecodedInfo(props: MintDecodedProps) {
                         text={`${balanceFormatted} ${(contractInfo.symbol || '').toUpperCase()} minted`}
                         preset="large"
                         textCenter
+                        style={{
+                            wordBreak: 'break-word',
+                            overflowWrap: 'break-word',
+                            whiteSpace: 'normal'
+                        }}
                     />
                 </Row>
                 <Text text={`to: ✓ ${slicedAddr}`} preset="sub" textCenter />
@@ -258,6 +300,11 @@ export function AirdropWithAmountDecodedInfo(props: AirdropWithAmountProps) {
                     text={`Airdrop with Amount: ${balanceFormatted} ${(contractInfo.symbol || '').toUpperCase()}`}
                     preset="large"
                     textCenter
+                    style={{
+                        wordBreak: 'break-word',
+                        overflowWrap: 'break-word',
+                        whiteSpace: 'normal'
+                    }}
                 />
                 <Text text={`Addresses:`} preset="sub-bold" textCenter />
                 {decoded.addresses?.map((addr, i) => (

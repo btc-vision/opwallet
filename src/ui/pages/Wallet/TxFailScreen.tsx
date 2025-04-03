@@ -19,20 +19,38 @@ export default function TxFailScreen() {
 
                     <Text preset="title" text="Payment Failed" textCenter />
                     {error.split('\n').map((line, index) => {
-                        return (
-                            <Text
-                                key={index}
-                                preset="regular-bold"
-                                style={{
-                                    color: colors.red,
-                                    backgroundColor: 'rgba(225, 45, 53, 0.1)',
-                                    padding: 5,
-                                    borderRadius: 7
-                                }}
-                                text={line}
-                                textCenter
-                            />
-                        );
+                        switch (line) {
+                            case 'Expected value to be of type Address (recipient)':
+                                return (
+                                    <Text
+                                        key={index}
+                                        preset="regular-bold"
+                                        style={{
+                                            color: colors.red,
+                                            backgroundColor: 'rgba(225, 45, 53, 0.1)',
+                                            padding: 5,
+                                            borderRadius: 7
+                                        }}
+                                        text="The recipient's public key was not found. Please provide their public key directly to proceed with the transaction."
+                                        textCenter
+                                    />
+                                );
+                            default:
+                                return (
+                                    <Text
+                                        key={index}
+                                        preset="regular-bold"
+                                        style={{
+                                            color: colors.red,
+                                            backgroundColor: 'rgba(225, 45, 53, 0.1)',
+                                            padding: 5,
+                                            borderRadius: 7
+                                        }}
+                                        text={line}
+                                        textCenter
+                                    />
+                                );
+                        }
                     })}
                 </Column>
             </Content>
