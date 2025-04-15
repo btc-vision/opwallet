@@ -1,11 +1,13 @@
-import { Dispatch, SetStateAction, useState } from 'react';
 import { CloseOutlined } from '@ant-design/icons';
+import { Dispatch, SetStateAction, useState } from 'react';
 
+import Web3API from '@/shared/web3/Web3API';
 import { Button, Column, Input, Row, Text } from '@/ui/components';
 import { useTools } from '@/ui/components/ActionComponent';
 import { BottomModal } from '@/ui/components/BottomModal';
-import { useWallet } from '@/ui/utils';
 import { useCurrentAccount } from '@/ui/state/accounts/hooks';
+import { useWallet } from '@/ui/utils';
+import { Address } from '@btc-vision/transaction';
 
 // Simple interface for tokens in localStorage
 interface StoredToken {
@@ -29,9 +31,28 @@ export const AddOpNetToken = ({
 
     const saveToLocalStorage = async () => {
         try {
-            if (!tokenState.trim()) {
+            let tokenAddress = tokenState.trim();
+
+            if (!tokenAddress) {
                 tools.toastError('Please enter a valid token address.');
                 return;
+            }
+
+            if (tokenAddress.startsWith('0x')) {
+                const pubKey = Address.fromString(tokenAddress);
+                const network = Web3API.network;
+
+                if (!pubKey.isValid(network)) {
+                    tools.toastError('The pubkey is invalid.');
+                    return;
+                }
+
+                tokenAddress = pubKey.p2tr(network);
+
+                if (!tokenAddress) {
+                    tools.toastError('The Taproot address was not generated.');
+                    return;
+                }
             }
 
             const chain = await wallet.getChainType();
@@ -48,14 +69,14 @@ export const AddOpNetToken = ({
             const isDuplicate = parsedTokens.some((t) =>
                 typeof t === 'object' ? t.address === tokenState : t === tokenState
             );
-            
+
             if (isDuplicate) {
                 tools.toastError('Token already imported.');
                 return;
             }
 
             // Add new token as an object
-            parsedTokens.unshift({ address: tokenState.trim(), hidden: false });
+            parsedTokens.unshift({ address: tokenAddress, hidden: false });
             localStorage.setItem(storageKey, JSON.stringify(parsedTokens));
 
             // Refresh token list in parent
@@ -64,7 +85,11 @@ export const AddOpNetToken = ({
             // Close modal
             setImportTokenBool(false);
         } catch (err) {
-            tools.toastError('Failed to import token.');
+            if (err instanceof Error) {
+                tools.toastError(err.message);
+            } else {
+                tools.toastError('Failed to import token, check the console for more details.');
+            }
             console.error(err);
         }
     };

@@ -10,7 +10,15 @@ export enum InteractionOP20 {
 }
 
 export enum InteractionMotoswap {
-    AddLiquidity = 'x'
+    AddLiquidity = '4c2a940b' // addLiquidity(address,address,uint256,uint256,uint256,uint256,address,uint64)
+}
+
+export enum InteractionMotoChef {
+    StakeBTC = '09fd1691', // stakeBTC(uint256)
+    UnstakeBTC = '8f2235ed', // unstakeBTC()
+    Harvest = '77b7872f', // harvest(uint64,address)
+    Deposit = '51eb2cd8', // deposit(uint64,uint256,address)
+    Withdraw = 'f3813d86' // withdraw(uint64,uint256,address)
 }
 
 export enum InteractionTypeNativeSwap {
@@ -25,9 +33,9 @@ export enum InteractionTypeNativeSwap {
     Swap = 'dbed39e2' // swap(address)
 }
 
-export type InteractionType = InteractionOP20 | InteractionTypeNativeSwap | InteractionMotoswap;
+export type InteractionType = InteractionOP20 | InteractionTypeNativeSwap | InteractionMotoswap | InteractionMotoChef;
 
-const interactionTypes = [InteractionOP20, InteractionMotoswap, InteractionTypeNativeSwap];
+const interactionTypes = [InteractionOP20, InteractionMotoswap, InteractionMotoChef, InteractionTypeNativeSwap];
 
 export function isInteractionType(selector: string): selector is InteractionType {
     return interactionTypes.some((type) => Object.values(type).includes(selector));
