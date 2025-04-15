@@ -1,16 +1,30 @@
+import { ChainType } from '@/shared/constant';
 import { ContractInformation } from '@/shared/web3/interfaces/ContractInformation';
+import Web3API from '@/shared/web3/Web3API';
 import {
-    AddLiquidityDecoded,
-    AddLiquidityDecodedInfo
-} from '@/ui/pages/OpNet/decoded/motoswap/AddLiquidityDecodedInfo';
-import { ApproveDecodedInfo } from '@/ui/pages/OpNet/decoded/op20/ApproveDecodedInfo';
-import { TransferDecodedInfo } from '@/ui/pages/OpNet/decoded/op20/TransferDecodedInfo';
-import {
+    InteractionMotoChef,
     InteractionMotoswap,
     InteractionOP20,
     InteractionTypeNativeSwap,
     isInteractionType
 } from '@/ui/pages/OpNet/decoded/InteractionType';
+import {
+    AddLiquidityDecoded,
+    AddLiquidityDecodedInfo
+} from '@/ui/pages/OpNet/decoded/motoswap/AddLiquidityDecodedInfo';
+import {
+    AddLiquidityDecodedInfoNative,
+    CancelListingDecodedInfo,
+    CreatePoolDecodedInfo,
+    CreatePoolWithSignatureDecodedInfo,
+    ListLiquidityDecodedInfo,
+    RemoveLiquidityDecodedInfo,
+    ReserveDecodedInfo,
+    SetFeesDecodedInfo,
+    SwapDecodedInfo
+} from '@/ui/pages/OpNet/decoded/native-swap/NativeSwapComponents';
+import { ApproveDecodedInfo } from '@/ui/pages/OpNet/decoded/op20/ApproveDecodedInfo';
+import { TransferDecodedInfo } from '@/ui/pages/OpNet/decoded/op20/TransferDecodedInfo';
 import {
     Decoded,
     DecodedAddLiquidityNative,
@@ -31,18 +45,11 @@ import {
     DecodedTransfer,
     DecodedTransferFrom
 } from './DecodedTypes';
-import {
-    AddLiquidityDecodedInfoNative,
-    CancelListingDecodedInfo,
-    CreatePoolDecodedInfo,
-    CreatePoolWithSignatureDecodedInfo,
-    ListLiquidityDecodedInfo,
-    RemoveLiquidityDecodedInfo,
-    ReserveDecodedInfo,
-    SetFeesDecodedInfo,
-    SwapDecodedInfo
-} from '@/ui/pages/OpNet/decoded/native-swap/NativeSwapComponents';
-import React from 'react';
+import { DepositDecoded, DepositDecodedInfo } from './motochef/DepositDecodedInfo';
+import { HarvestDecoded, HarvestDecodedInfo } from './motochef/HarvestDecodedInfo';
+import { StakeBTCDecoded, StakeBTCDecodedInfo } from './motochef/StakeBTCDecodedInfo';
+import { UnstakeBTCDecodedInfo } from './motochef/UnstakeBTCDecodedInfo';
+import { WithdrawDecoded, WithdrawDecodedInfo } from './motochef/WithdrawDecodedInfo';
 import {
     AirdropDecodedInfo,
     AirdropWithAmountDecodedInfo,
@@ -51,8 +58,6 @@ import {
     MintDecodedInfo,
     TransferFromDecodedInfo
 } from './op20/OP20';
-import { ChainType } from '@/shared/constant';
-import Web3API from '@/shared/web3/Web3API';
 
 interface DecodedProps {
     readonly decoded: Decoded;
@@ -242,12 +247,27 @@ export function DecodedCalldata(props: DecodedProps) {
         // -------------------------
         case InteractionMotoswap.AddLiquidity: {
             return (
-                <AddLiquidityDecodedInfo
-                    decoded={decoded as AddLiquidityDecoded}
-                    contractInfo={contractInfo}
-                    interactionType={interactionType}
-                />
+                <AddLiquidityDecodedInfo decoded={decoded as AddLiquidityDecoded} interactionType={interactionType} />
             );
+        }
+
+        // -------------------------
+        //        MotoChef
+        // -------------------------
+        case InteractionMotoChef.StakeBTC: {
+            return <StakeBTCDecodedInfo decoded={decoded as StakeBTCDecoded} interactionType={interactionType} />;
+        }
+        case InteractionMotoChef.UnstakeBTC: {
+            return <UnstakeBTCDecodedInfo interactionType={interactionType} />;
+        }
+        case InteractionMotoChef.Harvest: {
+            return <HarvestDecodedInfo decoded={decoded as HarvestDecoded} interactionType={interactionType} />;
+        }
+        case InteractionMotoChef.Deposit: {
+            return <DepositDecodedInfo decoded={decoded as DepositDecoded} interactionType={interactionType} />;
+        }
+        case InteractionMotoChef.Withdraw: {
+            return <WithdrawDecodedInfo decoded={decoded as WithdrawDecoded} interactionType={interactionType} />;
         }
 
         default: {

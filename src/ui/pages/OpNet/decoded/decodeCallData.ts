@@ -1,9 +1,16 @@
-import { Buffer } from 'buffer';
 import { BinaryReader } from '@btc-vision/transaction';
-import { InteractionMotoswap, InteractionOP20, InteractionTypeNativeSwap, isInteractionType } from './InteractionType';
+import { Buffer } from 'buffer';
 import { Decoded } from './DecodedTypes';
+import {
+    InteractionMotoChef,
+    InteractionMotoswap,
+    InteractionOP20,
+    InteractionTypeNativeSwap,
+    isInteractionType
+} from './InteractionType';
 
 // ---- Import all decode methods from the step above
+import { decodeAddLiquidityMotoswap } from '@/ui/pages/OpNet/decoded/motoswap/AddLiquidityDecodedInfo';
 import {
     decodeAddLiquidity,
     decodeAirdrop,
@@ -23,7 +30,10 @@ import {
     decodeTransfer,
     decodeTransferFrom
 } from './decodeMethods';
-import { decodeAddLiquidityMotoswap } from '@/ui/pages/OpNet/decoded/motoswap/AddLiquidityDecodedInfo';
+import { decodeDepositMotoChef } from './motochef/DepositDecodedInfo';
+import { decodeHarvestMotoChef } from './motochef/HarvestDecodedInfo';
+import { decodeStakeBTCMotoChef } from './motochef/StakeBTCDecodedInfo';
+import { decodeWithdrawMotoChef } from './motochef/WithdrawDecodedInfo';
 
 /**
  * Reads the first 4 bytes to get the selector, then dispatches to the correct decode method.
@@ -83,8 +93,28 @@ export function decodeCallData(calldata: string): Decoded | null {
         case InteractionTypeNativeSwap.Swap:
             return decodeSwap(selector, reader);
 
+        // MotoSwap
         case InteractionMotoswap.AddLiquidity: {
             return decodeAddLiquidityMotoswap(selector, reader);
+        }
+
+        // MotoChef
+        case InteractionMotoChef.StakeBTC: {
+            return decodeStakeBTCMotoChef(selector, reader);
+        }
+        case InteractionMotoChef.UnstakeBTC: {
+            return {
+                selector
+            };
+        }
+        case InteractionMotoChef.Harvest: {
+            return decodeHarvestMotoChef(selector, reader);
+        }
+        case InteractionMotoChef.Deposit: {
+            return decodeDepositMotoChef(selector, reader);
+        }
+        case InteractionMotoChef.Withdraw: {
+            return decodeWithdrawMotoChef(selector, reader);
         }
 
         default:

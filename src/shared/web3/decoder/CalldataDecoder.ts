@@ -1,4 +1,5 @@
 import {
+    InteractionMotoChef,
     InteractionMotoswap,
     InteractionOP20,
     InteractionTypeNativeSwap,
@@ -25,6 +26,7 @@ export function selectorToString(calldata: string): string {
             return 'approve(address,uint256)';
         case InteractionOP20.TransferFrom:
             return 'transferFrom(address,address,uint256)';
+
         // NativeSwap
         case InteractionTypeNativeSwap.AddLiquidity:
             return 'addLiquidity(address,string)';
@@ -44,9 +46,23 @@ export function selectorToString(calldata: string): string {
             return 'removeLiquidity(address,uint256)';
         case InteractionTypeNativeSwap.Swap:
             return 'swap(address)';
+
         // Motoswap
         case InteractionMotoswap.AddLiquidity:
-            return 'addLiquidity(address,address,bigint,bigint,bigint,bigint,address,bigint)';
+            return 'addLiquidity(address,address,uint256,uint256,uint256,uint256,address,uint64)';
+
+        // MotoCHef
+        case InteractionMotoChef.StakeBTC:
+            return 'stakeBTC(uint256)';
+        case InteractionMotoChef.UnstakeBTC:
+            return 'unstakeBTC()';
+        case InteractionMotoChef.Harvest:
+            return 'harvest(uint64,address)';
+        case InteractionMotoChef.Deposit:
+            return 'deposit(uint64,uint256,address)';
+        case InteractionMotoChef.Withdraw:
+            return 'withdraw(uint64,uint256,address)';
+
         default:
             return `Unknown Interaction : 0x${selector}`;
     }
