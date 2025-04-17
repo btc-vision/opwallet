@@ -34,6 +34,7 @@ import { decodeDepositMotoChef } from './motochef/DepositDecodedInfo';
 import { decodeHarvestMotoChef } from './motochef/HarvestDecodedInfo';
 import { decodeStakeBTCMotoChef } from './motochef/StakeBTCDecodedInfo';
 import { decodeWithdrawMotoChef } from './motochef/WithdrawDecodedInfo';
+import { decodeStakeMotoswap } from './motoswap/StakeDecodedInfo';
 
 /**
  * Reads the first 4 bytes to get the selector, then dispatches to the correct decode method.
@@ -93,9 +94,24 @@ export function decodeCallData(calldata: string): Decoded | null {
         case InteractionTypeNativeSwap.Swap:
             return decodeSwap(selector, reader);
 
-        // MotoSwap
+        // MotoSwap - OP_20
         case InteractionMotoswap.AddLiquidity: {
             return decodeAddLiquidityMotoswap(selector, reader);
+        }
+
+        // MotoSwap - Staking
+        case InteractionMotoswap.Stake: {
+            return decodeStakeMotoswap(selector, reader);
+        }
+        case InteractionMotoswap.Unstake: {
+            return {
+                selector
+            };
+        }
+        case InteractionMotoswap.ClaimRewards: {
+            return {
+                selector
+            };
         }
 
         // MotoChef

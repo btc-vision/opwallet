@@ -50,6 +50,9 @@ import { HarvestDecoded, HarvestDecodedInfo } from './motochef/HarvestDecodedInf
 import { StakeBTCDecoded, StakeBTCDecodedInfo } from './motochef/StakeBTCDecodedInfo';
 import { UnstakeBTCDecodedInfo } from './motochef/UnstakeBTCDecodedInfo';
 import { WithdrawDecoded, WithdrawDecodedInfo } from './motochef/WithdrawDecodedInfo';
+import { ClaimRewardsDecodedInfo } from './motoswap/ClaimRewardsDecodedInfo';
+import { StakeDecoded, StakeDecodedInfo } from './motoswap/StakeDecodedInfo';
+import { UnstakeDecodedInfo } from './motoswap/UnstakeDecodedInfo';
 import {
     AirdropDecodedInfo,
     AirdropWithAmountDecodedInfo,
@@ -243,12 +246,25 @@ export function DecodedCalldata(props: DecodedProps) {
         }
 
         // -------------------------
-        //        Motoswap
+        //     Motoswap - OP_20
         // -------------------------
         case InteractionMotoswap.AddLiquidity: {
             return (
                 <AddLiquidityDecodedInfo decoded={decoded as AddLiquidityDecoded} interactionType={interactionType} />
             );
+        }
+
+        // -------------------------
+        //    Motoswap - Staking
+        // -------------------------
+        case InteractionMotoswap.Stake: {
+            return <StakeDecodedInfo decoded={decoded as StakeDecoded} interactionType={interactionType} />;
+        }
+        case InteractionMotoswap.Unstake: {
+            return <UnstakeDecodedInfo interactionType={interactionType} />;
+        }
+        case InteractionMotoswap.ClaimRewards: {
+            return <ClaimRewardsDecodedInfo interactionType={interactionType} />;
         }
 
         // -------------------------

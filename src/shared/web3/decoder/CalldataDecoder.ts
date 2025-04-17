@@ -47,11 +47,19 @@ export function selectorToString(calldata: string): string {
         case InteractionTypeNativeSwap.Swap:
             return 'swap(address)';
 
-        // Motoswap
+        // Motoswap - OP_20
         case InteractionMotoswap.AddLiquidity:
             return 'addLiquidity(address,address,uint256,uint256,uint256,uint256,address,uint64)';
 
-        // MotoCHef
+        // Motoswap - Staking
+        case InteractionMotoswap.Stake:
+            return 'stake(uint256)';
+        case InteractionMotoswap.Unstake:
+            return 'unstake()';
+        case InteractionMotoswap.ClaimRewards:
+            return 'claimRewards()';
+
+        // MotoChef
         case InteractionMotoChef.StakeBTC:
             return 'stakeBTC(uint256)';
         case InteractionMotoChef.UnstakeBTC:
