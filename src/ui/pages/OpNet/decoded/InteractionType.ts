@@ -12,6 +12,7 @@ export enum InteractionOP20 {
 export enum InteractionMotoswap {
     // OP_20
     AddLiquidity = '4c2a940b', // addLiquidity(address,address,uint256,uint256,uint256,uint256,address,uint64)
+    RemoveLiquidity = 'b82480d3', // removeLiquidity(address,address,uint256,uint256,uint256,address,uint64)
 
     // Staking
     Stake = '0ccd8b3d', // stake(uint256)

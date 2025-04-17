@@ -34,6 +34,7 @@ import { decodeDepositMotoChef } from './motochef/DepositDecodedInfo';
 import { decodeHarvestMotoChef } from './motochef/HarvestDecodedInfo';
 import { decodeStakeBTCMotoChef } from './motochef/StakeBTCDecodedInfo';
 import { decodeWithdrawMotoChef } from './motochef/WithdrawDecodedInfo';
+import { decodeRemoveLiquidityMotoswap } from './motoswap/RemoveLiquidityMotoSwapDecodedInfo';
 import { decodeStakeMotoswap } from './motoswap/StakeDecodedInfo';
 
 /**
@@ -97,6 +98,9 @@ export function decodeCallData(calldata: string): Decoded | null {
         // MotoSwap - OP_20
         case InteractionMotoswap.AddLiquidity: {
             return decodeAddLiquidityMotoswap(selector, reader);
+        }
+        case InteractionMotoswap.RemoveLiquidity: {
+            return decodeRemoveLiquidityMotoswap(selector, reader);
         }
 
         // MotoSwap - Staking

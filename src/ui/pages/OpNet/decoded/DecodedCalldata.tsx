@@ -51,6 +51,10 @@ import { StakeBTCDecoded, StakeBTCDecodedInfo } from './motochef/StakeBTCDecoded
 import { UnstakeBTCDecodedInfo } from './motochef/UnstakeBTCDecodedInfo';
 import { WithdrawDecoded, WithdrawDecodedInfo } from './motochef/WithdrawDecodedInfo';
 import { ClaimRewardsDecodedInfo } from './motoswap/ClaimRewardsDecodedInfo';
+import {
+    RemoveLiquidityMotoswapDecoded,
+    RemoveLiquidityMotoswapDecodedInfo
+} from './motoswap/RemoveLiquidityMotoSwapDecodedInfo';
 import { StakeDecoded, StakeDecodedInfo } from './motoswap/StakeDecodedInfo';
 import { UnstakeDecodedInfo } from './motoswap/UnstakeDecodedInfo';
 import {
@@ -251,6 +255,14 @@ export function DecodedCalldata(props: DecodedProps) {
         case InteractionMotoswap.AddLiquidity: {
             return (
                 <AddLiquidityDecodedInfo decoded={decoded as AddLiquidityDecoded} interactionType={interactionType} />
+            );
+        }
+        case InteractionMotoswap.RemoveLiquidity: {
+            return (
+                <RemoveLiquidityMotoswapDecodedInfo
+                    decoded={decoded as RemoveLiquidityMotoswapDecoded}
+                    interactionType={interactionType}
+                />
             );
         }
 

@@ -50,6 +50,8 @@ export function selectorToString(calldata: string): string {
         // Motoswap - OP_20
         case InteractionMotoswap.AddLiquidity:
             return 'addLiquidity(address,address,uint256,uint256,uint256,uint256,address,uint64)';
+        case InteractionMotoswap.RemoveLiquidity:
+            return 'removeLiquidity(address,address,uint256,uint256,uint256,address,uint64)';
 
         // Motoswap - Staking
         case InteractionMotoswap.Stake:
