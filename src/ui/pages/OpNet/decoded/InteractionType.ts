@@ -10,7 +10,14 @@ export enum InteractionOP20 {
 }
 
 export enum InteractionMotoswap {
-    AddLiquidity = '4c2a940b' // addLiquidity(address,address,uint256,uint256,uint256,uint256,address,uint64)
+    // OP_20
+    AddLiquidity = '4c2a940b', // addLiquidity(address,address,uint256,uint256,uint256,uint256,address,uint64)
+    RemoveLiquidity = 'b82480d3', // removeLiquidity(address,address,uint256,uint256,uint256,address,uint64)
+
+    // Staking
+    Stake = '0ccd8b3d', // stake(uint256)
+    Unstake = '453c505b', // unstake()
+    ClaimRewards = 'c76d0d0a' // claimRewards()
 }
 
 export enum InteractionMotoChef {
