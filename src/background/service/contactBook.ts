@@ -1,5 +1,3 @@
-import { createPersistStore } from '@/background/utils';
-
 export interface ContactBookItem {
     name: string;
     address: string;
@@ -18,10 +16,18 @@ class ContactBook {
     store!: ContactBookStore;
 
     init = async () => {
-        this.store = await createPersistStore<ContactBookStore>({
-            name: 'contactBook',
-            template: {}
-        });
+        const data = await chrome.storage.local.get('contactBook');
+        const saved = data.contactBook as ContactBookStore | undefined;
+
+        this.store = saved ? saved : ({} as ContactBookStore);
+
+        if (!saved) {
+            this.persist();
+        }
+    };
+
+    private persist = () => {
+        chrome.storage.local.set({ contactBook: this.store });
     };
 
     getContactByAddress = (address: string) => {
@@ -40,6 +46,7 @@ class ContactBook {
             // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
             delete this.store[key];
         }
+        this.persist();
     };
 
     updateContact = (data: ContactBookItem) => {
@@ -57,6 +64,7 @@ class ContactBook {
                 isAlias: false
             };
         }
+        this.persist();
     };
 
     addContact = this.updateContact;
@@ -88,6 +96,7 @@ class ContactBook {
                 isContact: false
             };
         }
+        this.persist();
     };
 
     addAlias = this.updateAlias;
@@ -104,10 +113,11 @@ class ContactBook {
             // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
             delete this.store[key];
         }
+        this.persist();
     };
 
     getContactsByMap = () => {
-        Object.values(this.store)
+        const res = Object.values(this.store)
             .filter((item): item is ContactBookItem => item?.isContact === true)
             .reduce(
                 (res, item) => ({
@@ -116,7 +126,7 @@ class ContactBook {
                 }),
                 {}
             );
-        return this.store;
+        return res;
     };
 }
 

@@ -1,18 +1,3 @@
-import BigNumber from 'bignumber.js';
-import {
-    Airdrop,
-    BitcoinAbiTypes,
-    BitcoinInterfaceAbi,
-    getContract,
-    IMotoswapRouterContract,
-    IOP_20Contract,
-    MOTOSWAP_ROUTER_ABI,
-    OP_20_ABI,
-    TransactionParameters
-} from 'opnet';
-import { AddressesInfo } from 'opnet/src/providers/interfaces/PublicKeyInfo';
-import React, { Dispatch, SetStateAction, useCallback, useEffect, useState } from 'react';
-
 import {
     Action,
     AirdropParameters,
@@ -23,7 +8,6 @@ import {
     SwapParameters,
     TransferParameters
 } from '@/shared/interfaces/RawTxParameters';
-import { expandToDecimals } from '@/shared/utils';
 import Web3API from '@/shared/web3/Web3API';
 import { Button, Card, Column, Content, Footer, Header, Layout, Row, Text } from '@/ui/components';
 import { ContextType, useTools } from '@/ui/components/ActionComponent';
@@ -41,17 +25,27 @@ import {
     UTXO,
     Wallet
 } from '@btc-vision/transaction';
-
+import BigNumber from 'bignumber.js';
+import {
+    Airdrop,
+    BitcoinAbiTypes,
+    BitcoinInterfaceAbi,
+    BitcoinUtils,
+    getContract,
+    IMotoswapRouterContract,
+    IOP_20Contract,
+    MOTOSWAP_ROUTER_ABI,
+    OP_20_ABI,
+    TransactionParameters
+} from 'opnet';
+import { AddressesInfo } from 'opnet/src/providers/interfaces/PublicKeyInfo';
+import React, { Dispatch, SetStateAction, useCallback, useEffect, useState } from 'react';
 import { RouteTypes, useNavigate } from '../MainRoute';
 
 BigNumber.config({ EXPONENTIAL_AT: 256 });
 
 interface LocationState {
     rawTxInfo: RawTxInfo;
-}
-
-function absBigInt(value: bigint): bigint {
-    return value < 0n ? -value : value;
 }
 
 export const AIRDROP_ABI: BitcoinInterfaceAbi = [
@@ -170,12 +164,9 @@ export default function TxOpnetConfirmScreen() {
             userWallet.address
         );
 
-        const result = 10 ** parameters.tokens[0].divisibility;
-        const amountToSend = BigInt(parameters.inputAmount * result); // Amount to send
-
         try {
             const address = await getPubKey(parameters.to);
-            const transferSimulation = await contract.transfer(address, amountToSend);
+            const transferSimulation = await contract.transfer(address, parameters.inputAmount);
 
             const interactionParameters: TransactionParameters = {
                 signer: userWallet.keypair, // The keypair that will sign the transaction
@@ -189,7 +180,10 @@ export default function TxOpnetConfirmScreen() {
             const symbol = await contract.symbol();
             const sendTransaction = await transferSimulation.sendTransaction(interactionParameters);
             tools.toastSuccess(
-                `You have successfully transferred ${parameters.inputAmount} ${symbol.properties.symbol}`
+                `You have successfully transferred ${BitcoinUtils.formatUnits(
+                    parameters.inputAmount,
+                    parameters.tokens[0].divisibility
+                )} ${symbol.properties.symbol}`
             );
 
             // Store the next UTXO in localStorage
@@ -264,9 +258,12 @@ export default function TxOpnetConfirmScreen() {
             userWallet.address
         );
 
-        const inputAmountBigInt = expandToDecimals(swapParameters.amountIn, swapParameters.tokens[0].divisibility);
+        const inputAmountBigInt = BitcoinUtils.expandToDecimals(
+            swapParameters.amountIn,
+            swapParameters.tokens[0].divisibility
+        );
         const slippageAmount = Number(swapParameters.amountOut) * Number(swapParameters.slippageTolerance / 100);
-        const outPutAmountBigInt = expandToDecimals(
+        const outPutAmountBigInt = BitcoinUtils.expandToDecimals(
             swapParameters.amountOut - slippageAmount,
             swapParameters.tokens[1].divisibility
         );
@@ -363,11 +360,11 @@ export default function TxOpnetConfirmScreen() {
 
             const utxos: UTXO[] = await Web3API.getUTXOs(
                 [currentWalletAddress.address],
-                expandToDecimals(parameters.inputAmount, 8) * 2n
+                BitcoinUtils.expandToDecimals(parameters.inputAmount, 8) * 2n
             );
 
             const IFundingTransactionParameters: IFundingTransactionParameters = {
-                amount: expandToDecimals(parameters.inputAmount, 8),
+                amount: BitcoinUtils.expandToDecimals(parameters.inputAmount, 8),
                 utxos: utxos,
                 signer: userWallet.keypair,
                 network: Web3API.network,
@@ -487,7 +484,7 @@ export default function TxOpnetConfirmScreen() {
                 userWallet.address
             );
 
-            const value = expandToDecimals(parameters.inputAmount, parameters.tokens[0].divisibility);
+            const value = BitcoinUtils.expandToDecimals(parameters.inputAmount, parameters.tokens[0].divisibility);
             const mintData = await contract.mint(Address.fromString(parameters.to), BigInt(value));
 
             const interactionParameters: TransactionParameters = {

@@ -1,8 +1,6 @@
+import { CHAINS_ENUM, INTERNAL_REQUEST_ORIGIN } from '@/shared/constant';
 import { max } from 'lodash';
 import LRUCache from 'lru-cache';
-
-import { createPersistStore } from '@/background/utils';
-import { CHAINS_ENUM, INTERNAL_REQUEST_ORIGIN } from '@/shared/constant';
 
 export interface ConnectedSite {
     origin: string;
@@ -22,17 +20,15 @@ export interface PermissionStore {
 }
 
 class PermissionService {
-    store: PermissionStore = {
-        dumpCache: []
-    };
+    store!: PermissionStore;
 
     lruCache: LRUCache<string, ConnectedSite> | undefined;
 
     init = async () => {
-        const storage = await createPersistStore<PermissionStore>({
-            name: 'permission'
-        });
-        this.store = storage || this.store;
+        const data = await chrome.storage.local.get('permission');
+        const saved = data.permission as PermissionStore | undefined;
+
+        this.store = saved ? saved : ({ dumpCache: [] } as PermissionStore);
 
         // Provide at least one of `max`, `ttl`, or `maxSize` to be safe.
         this.lruCache = new LRUCache<string, ConnectedSite>({
@@ -44,6 +40,14 @@ class PermissionService {
         for (const entry of this.store.dumpCache || []) {
             this.lruCache.set(entry.k, entry.v);
         }
+
+        if (!saved) {
+            this.persist();
+        }
+    };
+
+    private persist = () => {
+        chrome.storage.local.set({ permission: this.store });
     };
 
     sync = () => {
@@ -55,6 +59,7 @@ class PermissionService {
             k,
             v
         }));
+        this.persist();
     };
 
     getWithoutUpdate = (key: string) => {
@@ -75,13 +80,7 @@ class PermissionService {
         this.sync();
     };
 
-    addConnectedSite = (
-        origin: string,
-        name: string,
-        icon: string,
-        defaultChain: CHAINS_ENUM,
-        isSigned = false
-    ) => {
+    addConnectedSite = (origin: string, name: string, icon: string, defaultChain: CHAINS_ENUM, isSigned = false) => {
         if (!this.lruCache) return;
 
         this.lruCache.set(origin, {
@@ -104,11 +103,7 @@ class PermissionService {
         this.sync();
     };
 
-    updateConnectSite = (
-        origin: string,
-        value: Partial<ConnectedSite>,
-        partialUpdate?: boolean
-    ) => {
+    updateConnectSite = (origin: string, value: Partial<ConnectedSite>, partialUpdate?: boolean) => {
         if (!this.lruCache?.has(origin)) return;
         if (origin === INTERNAL_REQUEST_ORIGIN) return;
 
@@ -172,9 +167,7 @@ class PermissionService {
     getRecentConnectedSites = () => {
         if (!this.lruCache) return [];
         const sites = [...this.lruCache.values()].filter((item) => item.isConnected);
-        const pinnedSites = sites
-            .filter((item) => item.isTop)
-            .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+        const pinnedSites = sites.filter((item) => item.isTop).sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
         const recentSites = sites.filter((item) => !item.isTop);
         return [...pinnedSites, ...recentSites];
     };
@@ -194,9 +187,7 @@ class PermissionService {
     topConnectedSite = (origin: string, order?: number) => {
         const site = this.getConnectedSite(origin);
         if (!site || !this.lruCache) return;
-        order =
-            order ??
-            (max(this.getRecentConnectedSites().map((item) => item.order)) ?? 0) + 1;
+        order = order ?? (max(this.getRecentConnectedSites().map((item) => item.order)) ?? 0) + 1;
 
         this.updateConnectSite(origin, { ...site, order, isTop: true });
     };

@@ -52,6 +52,8 @@ export function selectorToString(calldata: string): string {
             return 'addLiquidity(address,address,uint256,uint256,uint256,uint256,address,uint64)';
         case InteractionMotoswap.RemoveLiquidity:
             return 'removeLiquidity(address,address,uint256,uint256,uint256,address,uint64)';
+        case InteractionMotoswap.swapExactTokensForTokensSupportingFeeOnTransferTokens:
+            return 'swapExactTokensForTokensSupportingFeeOnTransferTokens(uint256,uint256,address[],address,uint64)';
 
         // Motoswap - Staking
         case InteractionMotoswap.Stake:

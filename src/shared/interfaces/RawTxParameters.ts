@@ -33,7 +33,7 @@ export interface BaseRawTxInfo<T extends Action> {
 export interface TransferParameters extends BaseRawTxInfo<Action.Transfer> {
     readonly contractAddress: string;
     readonly to: string;
-    readonly inputAmount: number;
+    readonly inputAmount: bigint;
 }
 
 export interface AirdropParameters extends BaseRawTxInfo<Action.Airdrop> {

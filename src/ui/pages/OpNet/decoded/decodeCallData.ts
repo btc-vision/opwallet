@@ -36,6 +36,7 @@ import { decodeStakeBTCMotoChef } from './motochef/StakeBTCDecodedInfo';
 import { decodeWithdrawMotoChef } from './motochef/WithdrawDecodedInfo';
 import { decodeRemoveLiquidityMotoswap } from './motoswap/RemoveLiquidityMotoSwapDecodedInfo';
 import { decodeStakeMotoswap } from './motoswap/StakeDecodedInfo';
+import { decodeSwapTokensMotoswap } from './motoswap/SwapTokensDecodedInfo';
 
 /**
  * Reads the first 4 bytes to get the selector, then dispatches to the correct decode method.
@@ -101,6 +102,9 @@ export function decodeCallData(calldata: string): Decoded | null {
         }
         case InteractionMotoswap.RemoveLiquidity: {
             return decodeRemoveLiquidityMotoswap(selector, reader);
+        }
+        case InteractionMotoswap.swapExactTokensForTokensSupportingFeeOnTransferTokens: {
+            return decodeSwapTokensMotoswap(selector, reader);
         }
 
         // MotoSwap - Staking

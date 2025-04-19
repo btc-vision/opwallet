@@ -1,6 +1,3 @@
-import randomstring from 'randomstring';
-
-import { createPersistStore } from '@/background/utils';
 import { CHAINS_MAP, CHANNEL, VERSION } from '@/shared/constant';
 import {
     AddressRecentHistory,
@@ -17,6 +14,7 @@ import {
     WalletConfig
 } from '@/shared/types';
 import Web3API from '@/shared/web3/Web3API';
+import randomstring from 'randomstring';
 
 import { preferenceService } from '.';
 
@@ -49,12 +47,14 @@ export class OpenApiService {
     };
 
     init = async () => {
-        this.store = await createPersistStore({
-            name: 'openapi',
-            template: {
-                deviceId: randomstring.generate(12)
-            }
-        });
+        const data = await chrome.storage.local.get('openapi');
+        const saved = data.openapi as OpenApiStore | undefined;
+
+        this.store = saved
+            ? saved
+            : ({
+                  deviceId: randomstring.generate(12)
+              } as OpenApiStore);
 
         const chainType = preferenceService.getChainType();
         Web3API.setNetwork(chainType);
@@ -75,6 +75,14 @@ export class OpenApiService {
         } catch (e) {
             console.error(e);
         }
+
+        if (!saved) {
+            this.persist();
+        }
+    };
+
+    private persist = () => {
+        chrome.storage.local.set({ openapi: this.store });
     };
 
     setClientAddress = (token: string, flag: number) => {
