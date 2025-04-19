@@ -1,26 +1,23 @@
-import BigNumber from 'bignumber.js';
-import { useEffect, useState } from 'react';
-
 import { Action, TransferParameters } from '@/shared/interfaces/RawTxParameters';
 import { OPTokenInfo } from '@/shared/types';
-import { bigIntToDecimal } from '@/shared/web3/Web3API';
 import { Button, Column, Content, Header, Image, Input, Layout, Row, Text } from '@/ui/components';
-import { useTools } from '@/ui/components/ActionComponent';
 import { FeeRateBar } from '@/ui/components/FeeRateBar';
 import { RBFBar } from '@/ui/components/RBFBar';
 import { colors } from '@/ui/theme/colors';
 import { fontSizes } from '@/ui/theme/font';
-
 import { useLocationState } from '@/ui/utils';
-import { RouteTypes, useNavigate } from '../MainRoute';
+import BigNumber from 'bignumber.js';
 import { BitcoinUtils } from 'opnet';
+import { useEffect, useState } from 'react';
+import { RouteTypes, useNavigate } from '../MainRoute';
 
 BigNumber.config({ EXPONENTIAL_AT: 256 });
 
 export default function SendOpNetScreen() {
-    const props = useLocationState<OPTokenInfo>();
-
     const navigate = useNavigate();
+    const { amount: balanceBigInt, address, divisibility, name, symbol, logo } = useLocationState<OPTokenInfo>();
+
+    const [error, setError] = useState('');
     const [inputAmount, setInputAmount] = useState('');
     const [disabled, setDisabled] = useState(true);
     const [OpnetRateInputVal, adjustFeeRateInput] = useState('0');
@@ -31,18 +28,6 @@ export default function SendOpNetScreen() {
         address: '',
         domain: ''
     });
-
-    const [error, setError] = useState('');
-    const [availableBalance, setAvailableBalance] = useState('');
-
-    const tools = useTools();
-    useEffect(() => {
-        const balance = bigIntToDecimal(props.amount, props.divisibility);
-        setAvailableBalance(balance.toString());
-
-        tools.showLoading(false);
-    }, []);
-
     const [feeRate, setFeeRate] = useState(5);
     const [enableRBF, setEnableRBF] = useState(false);
 
@@ -50,24 +35,31 @@ export default function SendOpNetScreen() {
         setError('');
         setDisabled(true);
 
-        const amount = parseFloat(inputAmount);
-        if (!amount || amount <= 0) {
-            setError('Invalid amount');
-            return;
-        }
-
-        if (amount > parseFloat(availableBalance)) {
-            setError('Insufficient balance');
-            return;
-        }
-
         if (!toInfo.address) {
             setError('Invalid recipient');
             return;
         }
 
+        if (!inputAmount.trim()) {
+            setError('Please enter an amount');
+            return;
+        }
+
+        const inputAmountToNumber = new BigNumber(BitcoinUtils.expandToDecimals(inputAmount, divisibility).toString());
+        const availableBalance = new BigNumber(balanceBigInt.toString());
+
+        if (inputAmountToNumber.isLessThanOrEqualTo(0)) {
+            setError('Invalid amount');
+            return;
+        }
+
+        if (inputAmountToNumber.isGreaterThan(availableBalance)) {
+            setError('Insufficient balance');
+            return;
+        }
+
         setDisabled(false);
-    }, [toInfo, inputAmount, feeRate, enableRBF]);
+    }, [toInfo, inputAmount, feeRate, enableRBF, balanceBigInt, divisibility]);
 
     return (
         <Layout>
@@ -75,15 +67,15 @@ export default function SendOpNetScreen() {
                 onBack={() => {
                     window.history.go(-1);
                 }}
-                title={'Send ' + props.name}
+                title={'Send ' + name}
             />
             <Content>
                 <Row itemsCenter fullX justifyCenter>
-                    {props.logo && <Image src={props.logo} size={fontSizes.tiny} />}
+                    {logo && <Image src={logo} size={fontSizes.tiny} />}
                     <Text
-                        text={`${
-                            new BigNumber(BitcoinUtils.formatUnits(props.amount, props.divisibility)).toFixed(8)
-                        } ${props.symbol} `}
+                        text={`${new BigNumber(BitcoinUtils.formatUnits(balanceBigInt, divisibility)).toFixed(
+                            divisibility
+                        )} ${symbol} `}
                         preset="bold"
                         textCenter
                         size="xxl"
@@ -109,13 +101,11 @@ export default function SendOpNetScreen() {
                         <Row
                             itemsCenter
                             onClick={() => {
-                                setInputAmount(BitcoinUtils.formatUnits(props.amount, props.divisibility));
+                                setInputAmount(BitcoinUtils.formatUnits(balanceBigInt, divisibility));
                             }}>
                             <Text text="MAX" preset="sub" style={{ color: colors.white_muted }} />
                             <Text
-                                text={`${
-                                    new BigNumber(BitcoinUtils.formatUnits(props.amount, props.divisibility)).toFixed(8)
-                                } ${props.symbol} `}
+                                text={`${new BigNumber(BitcoinUtils.formatUnits(balanceBigInt, divisibility)).toFixed(8)} ${symbol} `}
                                 preset="bold"
                                 size="sm"
                                 wrap
@@ -129,7 +119,7 @@ export default function SendOpNetScreen() {
                         onAmountInputChange={(amount) => {
                             setInputAmount(amount);
                         }}
-                        runesDecimal={props.divisibility}
+                        runesDecimal={divisibility}
                     />
                 </Column>
 
@@ -169,13 +159,22 @@ export default function SendOpNetScreen() {
                     onClick={() => {
                         const sendTransfer: TransferParameters = {
                             action: Action.Transfer,
-                            contractAddress: props.address,
+                            contractAddress: address,
                             to: toInfo.address,
-                            inputAmount: parseFloat(inputAmount),
+                            inputAmount: BigInt(BitcoinUtils.expandToDecimals(inputAmount, divisibility)),
                             feeRate: feeRate,
                             priorityFee: BigInt(OpnetRateInputVal),
-                            tokens: [props],
-                            header: `Send ${props.symbol}`,
+                            tokens: [
+                                {
+                                    address,
+                                    amount: balanceBigInt,
+                                    divisibility,
+                                    name,
+                                    symbol,
+                                    logo
+                                } as OPTokenInfo
+                            ],
+                            header: `Send ${symbol}`,
                             features: {
                                 rbf: enableRBF
                             }

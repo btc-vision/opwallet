@@ -1,12 +1,9 @@
-import { compareVersions } from 'compare-versions';
-import cloneDeep from 'lodash/cloneDeep';
-
-import { createPersistStore } from '@/background/utils';
 import { AddressFlagType, CHAINS, ChainType, DEFAULT_LOCKTIME_ID, EVENTS } from '@/shared/constant';
 import eventBus from '@/shared/eventBus';
 import { SessionEvent } from '@/shared/interfaces/SessionEvent';
 import { Account, AddressType, AppSummary, BitcoinBalance, NetworkType, TxHistoryItem } from '@/shared/types';
-
+import { compareVersions } from 'compare-versions';
+import cloneDeep from 'lodash/cloneDeep';
 import browser from '../webapi/browser';
 import { i18n, sessionService } from './index';
 
@@ -48,49 +45,53 @@ export interface PreferenceStore {
 }
 
 const SUPPORT_LOCALES = ['en'];
+const defaultLang = 'en';
+const DEFAULTS = {
+    name: 'preference',
+    template: {
+        currentKeyringIndex: 0,
+        currentAccount: undefined,
+        editingKeyringIndex: 0,
+        editingAccount: undefined,
+        externalLinkAck: false,
+        balanceMap: {},
+        historyMap: {},
+        locale: defaultLang,
+        watchAddressPreference: {},
+        walletSavedList: [] as WalletSaveList,
+        alianNames: {},
+        initAlianNames: false,
+        currentVersion: '0',
+        firstOpen: false,
+        currency: 'USD',
+        addressType: AddressType.P2WPKH,
+        networkType: NetworkType.REGTEST, // TODO: To change to mainnet when mainnet is ready
+        chainType: ChainType.BITCOIN_REGTEST, // TODO: To change to mainnet when mainnet is ready
+        keyringAlianNames: {},
+        accountAlianNames: {},
+        skippedVersion: '',
+        appTab: {
+            summary: { apps: [] },
+            readAppTime: {},
+            readTabTime: 1
+        },
+        showSafeNotice: true,
+        addressFlags: {},
+        // enableSignData: false,
+        autoLockTimeId: DEFAULT_LOCKTIME_ID
+    } as PreferenceStore
+};
 
 class PreferenceService {
     store!: PreferenceStore;
     popupOpen = false;
-    hasOtherProvider = false;
 
     init = async () => {
-        const defaultLang = 'en';
-        this.store = await createPersistStore<PreferenceStore>({
-            name: 'preference',
-            template: {
-                currentKeyringIndex: 0,
-                currentAccount: undefined,
-                editingKeyringIndex: 0,
-                editingAccount: undefined,
-                externalLinkAck: false,
-                balanceMap: {},
-                historyMap: {},
-                locale: defaultLang,
-                watchAddressPreference: {},
-                walletSavedList: [],
-                alianNames: {},
-                initAlianNames: false,
-                currentVersion: '0',
-                firstOpen: false,
-                currency: 'USD',
-                addressType: AddressType.P2WPKH,
-                networkType: NetworkType.REGTEST, // TODO: To change to mainnet when mainnet is ready
-                chainType: ChainType.BITCOIN_REGTEST, // TODO: To change to mainnet when mainnet is ready
-                keyringAlianNames: {},
-                accountAlianNames: {},
-                skippedVersion: '',
-                appTab: {
-                    summary: { apps: [] },
-                    readAppTime: {},
-                    readTabTime: 1
-                },
-                showSafeNotice: true,
-                addressFlags: {},
-                // enableSignData: false,
-                autoLockTimeId: DEFAULT_LOCKTIME_ID
-            }
-        });
+        const data = await chrome.storage.local.get('preference');
+        const saved = data.preference as PreferenceStore | undefined;
+
+        this.store = saved ? saved : ({ ...DEFAULTS.template } as PreferenceStore);
+
         if (!this.store.locale || this.store.locale !== defaultLang) {
             this.store.locale = defaultLang;
         }
@@ -172,6 +173,14 @@ class PreferenceService {
         if (typeof this.store.autoLockTimeId !== 'number') {
             this.store.autoLockTimeId = DEFAULT_LOCKTIME_ID;
         }
+
+        if (!saved) {
+            this.persist();
+        }
+    };
+
+    private persist = () => {
+        chrome.storage.local.set({ preference: this.store });
     };
 
     getAcceptLanguages = async () => {
@@ -195,6 +204,18 @@ class PreferenceService {
                 params: account
             });
         }
+        this.persist();
+    };
+
+    getWatchAddressPreference = () => {
+        return this.store.watchAddressPreference;
+    };
+
+    setWatchAddressPreference = (address: string, preference: number) => {
+        this.store.watchAddressPreference = Object.assign({}, this.store.watchAddressPreference, {
+            [address]: preference
+        });
+        this.persist();
     };
 
     // popupOpen
@@ -213,6 +234,7 @@ class PreferenceService {
             ...balanceMap,
             [address]: data
         };
+        this.persist();
     };
 
     removeAddressBalance = (address: string) => {
@@ -224,6 +246,7 @@ class PreferenceService {
             delete map[key];
             this.store.balanceMap = map;
         }
+        this.persist();
     };
 
     getAddressBalance = (address: string): BitcoinBalance | null => {
@@ -238,6 +261,7 @@ class PreferenceService {
             ...historyMap,
             [address]: data
         };
+        this.persist();
     };
 
     removeAddressHistory = (address: string) => {
@@ -249,6 +273,7 @@ class PreferenceService {
             delete map[key];
             this.store.historyMap = map;
         }
+        this.persist();
     };
 
     getAddressHistory = (address: string): TxHistoryItem[] => {
@@ -263,6 +288,7 @@ class PreferenceService {
 
     setExternalLinkAck = (ack = false) => {
         this.store.externalLinkAck = ack;
+        this.persist();
     };
 
     // locale
@@ -273,6 +299,7 @@ class PreferenceService {
     setLocale = async (locale: string) => {
         this.store.locale = locale;
         await i18n.changeLanguage(locale);
+        this.persist();
     };
 
     // currency
@@ -282,6 +309,7 @@ class PreferenceService {
 
     setCurrency = (currency: string) => {
         this.store.currency = currency;
+        this.persist();
     };
 
     // walletSavedList
@@ -291,6 +319,7 @@ class PreferenceService {
 
     updateWalletSavedList = (list: []) => {
         this.store.walletSavedList = list;
+        this.persist();
     };
 
     // alianNames
@@ -300,6 +329,7 @@ class PreferenceService {
 
     changeInitAlianNameStatus = () => {
         this.store.initAlianNames = true;
+        this.persist();
     };
 
     // isFirstOpen
@@ -308,11 +338,13 @@ class PreferenceService {
             this.store.currentVersion = version;
             this.store.firstOpen = true;
         }
+        this.persist();
         return this.store.firstOpen;
     };
 
     updateIsFirstOpen = () => {
         this.store.firstOpen = false;
+        this.persist();
     };
 
     // deprecate
@@ -327,6 +359,7 @@ class PreferenceService {
 
     // setNetworkType = (networkType: NetworkType) => {
     //   this.store.networkType = networkType;
+    //   this.persist();
     // };
 
     // chain type
@@ -344,6 +377,7 @@ class PreferenceService {
 
     setChainType = (chainType: ChainType) => {
         this.store.chainType = chainType;
+        this.persist();
     };
 
     // currentKeyringIndex
@@ -353,11 +387,13 @@ class PreferenceService {
 
     setCurrentKeyringIndex = (keyringIndex: number) => {
         this.store.currentKeyringIndex = keyringIndex;
+        this.persist();
     };
 
     // keyringAlianNames
     setKeyringAlianName = (keyringKey: string, name: string) => {
         this.store.keyringAlianNames = Object.assign({}, this.store.keyringAlianNames, { [keyringKey]: name });
+        this.persist();
     };
 
     getKeyringAlianName = (keyringKey: string, defaultName?: string) => {
@@ -365,12 +401,14 @@ class PreferenceService {
         if (!name && defaultName) {
             this.store.keyringAlianNames[keyringKey] = defaultName;
         }
+        this.persist();
         return this.store.keyringAlianNames[keyringKey];
     };
 
     // accountAlianNames
     setAccountAlianName = (accountKey: string, name: string) => {
         this.store.accountAlianNames = Object.assign({}, this.store.accountAlianNames, { [accountKey]: name });
+        this.persist();
     };
 
     getAccountAlianName = (accountKey: string, defaultName?: string) => {
@@ -378,6 +416,7 @@ class PreferenceService {
         if (!name && defaultName) {
             this.store.accountAlianNames[accountKey] = defaultName;
         }
+        this.persist();
         return this.store.accountAlianNames[accountKey];
     };
 
@@ -387,12 +426,14 @@ class PreferenceService {
     };
     setAddressFlag = (address: string, flag: number) => {
         this.store.addressFlags = Object.assign({}, this.store.addressFlags, { [address]: flag });
+        this.persist();
     };
 
     // Add address flag
     addAddressFlag = (address: string, flag: AddressFlagType) => {
         const finalFlag = (this.store.addressFlags[address] || 0) | flag;
         this.store.addressFlags = Object.assign({}, this.store.addressFlags, { [address]: finalFlag });
+        this.persist();
         return finalFlag;
     };
 
@@ -400,6 +441,7 @@ class PreferenceService {
     removeAddressFlag = (address: string, flag: AddressFlagType) => {
         const finalFlag = (this.store.addressFlags[address] || 0) & ~flag;
         this.store.addressFlags = Object.assign({}, this.store.addressFlags, { [address]: finalFlag });
+        this.persist();
         return finalFlag;
     };
 
@@ -410,6 +452,7 @@ class PreferenceService {
 
     setEditingKeyringIndex = (keyringIndex: number) => {
         this.store.editingKeyringIndex = keyringIndex;
+        this.persist();
     };
 
     // editingAccount
@@ -419,6 +462,7 @@ class PreferenceService {
 
     setEditingAccount = (account?: Account | null) => {
         this.store.editingAccount = account;
+        this.persist();
     };
 
     getSkippedVersion = () => {
@@ -427,6 +471,7 @@ class PreferenceService {
 
     setSkippedVersion = (version: string) => {
         this.store.skippedVersion = version;
+        this.persist();
     };
 
     getAppTab = () => {
@@ -435,14 +480,17 @@ class PreferenceService {
 
     setAppSummary = (appSummary: AppSummary) => {
         this.store.appTab.summary = appSummary;
+        this.persist();
     };
 
     setReadTabTime = (timestamp: number) => {
         this.store.appTab.readTabTime = timestamp;
+        this.persist();
     };
 
     setReadAppTime = (appid: number, timestamp: number) => {
         this.store.appTab.readAppTime[appid] = timestamp;
+        this.persist();
     };
 
     getShowSafeNotice = () => {
@@ -450,6 +498,7 @@ class PreferenceService {
     };
     setShowSafeNotice = (showSafeNotice: boolean) => {
         this.store.showSafeNotice = showSafeNotice;
+        this.persist();
     };
 
     // getEnableSignData = () => {
@@ -458,6 +507,7 @@ class PreferenceService {
 
     // setEnableSignData = (enableSignData: boolean) => {
     //     this.store.enableSignData = enableSignData;
+    //     this.persist();
     // };
 
     getAutoLockTimeId = () => {
@@ -466,6 +516,7 @@ class PreferenceService {
 
     setAutoLockTimeId = (id: number) => {
         this.store.autoLockTimeId = id;
+        this.persist();
     };
 }
 

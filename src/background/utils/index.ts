@@ -1,4 +1,3 @@
-export { default as createPersistStore } from './persisitStore';
 export { default as PromiseFlow } from './promiseFlow';
 
 export const underline2Camelcase = (str: string) => {
