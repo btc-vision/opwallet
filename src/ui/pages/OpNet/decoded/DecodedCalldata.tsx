@@ -56,6 +56,7 @@ import {
     RemoveLiquidityMotoswapDecodedInfo
 } from './motoswap/RemoveLiquidityMotoSwapDecodedInfo';
 import { StakeDecoded, StakeDecodedInfo } from './motoswap/StakeDecodedInfo';
+import { SwapTokensDecoded, SwapTokensDecodedInfo } from './motoswap/SwapTokensDecodedInfo';
 import { UnstakeDecodedInfo } from './motoswap/UnstakeDecodedInfo';
 import {
     AirdropDecodedInfo,
@@ -264,6 +265,9 @@ export function DecodedCalldata(props: DecodedProps) {
                     interactionType={interactionType}
                 />
             );
+        }
+        case InteractionMotoswap.swapExactTokensForTokensSupportingFeeOnTransferTokens: {
+            return <SwapTokensDecodedInfo decoded={decoded as SwapTokensDecoded} interactionType={interactionType} />;
         }
 
         // -------------------------
