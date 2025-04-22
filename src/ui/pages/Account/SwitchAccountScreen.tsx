@@ -130,7 +130,7 @@ export function MyItem({ account, autoNav }: MyItemProps) {
                     <div className="switch_options">
                         <div className="switch_option" onClick={(e) => {
                             e.stopPropagation();
-                            handleSelectAccount();
+                            handleEditName();
                         }}>
                             <EditOutlined />
                             <Text text="Edit Name" size="sm" />
