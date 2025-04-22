@@ -38,7 +38,7 @@ export function Header(props: HeaderProps) {
     }, [title]);
 
     return (
-        <div style={{ display: 'block', backgroundColor: '#212121' }}>
+        <div className="op_header">
             {/*<img
                 src={'./images/artifacts/top-linear-gradient.png'}
                 alt=""
