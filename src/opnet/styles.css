@@ -26,7 +26,7 @@ body{
 /* Header */
 
 .op_header{
-    background: rgba(33, 33, 33, 0.7);
+    background: rgba(33, 33, 33, 0.5);
     display:block;
     backdrop-filter: blur(5px);
 }

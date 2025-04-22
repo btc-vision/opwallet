@@ -80,8 +80,10 @@ const $viewPresets = {
 
     primary: Object.assign({}, $baseViewStyle, {
         // Use specific properties instead of 'background'
-        backgroundImage: 'linear-gradient(103.92deg, #EBB94C 0%, #E97E00 100%)',
-        height: '48px'
+        backgroundColor: '#ee771b',
+        transition: 'background 0.2s ease-in-out',
+        color: colors.white,
+        height: '46px'
     } as CSSProperties),
 
     danger: Object.assign({}, $baseViewStyle, {
@@ -145,7 +147,7 @@ const $hoverViewPresets: Record<Presets, CSSProperties> = {
         backgroundColor: '#383535'
     },
     primary: {
-        backgroundColor: colors.yellow_dark
+        backgroundColor: 'rgba(238,119,27,0.85)',
     },
     approval: {
         backgroundColor: colors.orange_dark
