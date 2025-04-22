@@ -23,7 +23,7 @@ const AccountSelect = () => {
     const addressExplorerUrl = useAddressExplorerUrl(address);
 
     return (
-        <div className="op_account_bar" onClick={() => {
+        <div className="op_account_bar op_address" onClick={() => {
             navigate(RouteTypes.SwitchAccountScreen);
         }}>
             <div className="op_account_col_1">

@@ -49,6 +49,10 @@ body{
     transition:background 0.3s;
 }
 
+.op_account_bar.op_address .op_account_wallet{
+    font-size:11px;
+}
+
 .op_account_bar:hover{
     background-color: var(--opnet-button-background-color);
 }
