@@ -12,7 +12,7 @@ export interface ContentProps extends BaseViewProps {
 }
 
 const $contentStyle = {
-    backgroundColor: '#070606',
+    backgroundColor: '#212121',
     display: 'flex',
     flex: 1,
     flexDirection: 'column',

@@ -82,22 +82,8 @@ export function MyItem({ account, autoNav }: MyItemProps) {
     };
 
     return (
-        <Card justifyBetween mt="md">
-            <Row>
-                <Column style={{ width: 20 }} selfItemsCenter>
-                    {selected && (
-                        <Icon>
-                            <CheckCircleFilled />
-                        </Icon>
-                    )}
-                </Column>
-                <Column onClick={handleSelectAccount}>
-                    <Text text={account.alianName} />
-                    <Text text={`${shortAddress(account.address)}${path}`} preset="sub" />
-                </Column>
-            </Row>
-            <Column relative>
-                {/* Click-away area for closing the options */}
+        <>
+            <div className="op_account_bar" onClick={handleSelectAccount}>
                 {optionsVisible && (
                     <div
                         style={{
@@ -112,41 +98,63 @@ export function MyItem({ account, autoNav }: MyItemProps) {
                         onMouseDown={() => setOptionsVisible(false)}
                     />
                 )}
-
-                <Icon onClick={() => setOptionsVisible((v) => !v)}>
-                    <EllipsisOutlined />
-                </Icon>
-
+                <div className="op_account_col_1">
+                    <div className="op_account_icon_holder">
+                        {selected && (
+                            <Icon>
+                                <CheckCircleFilled />
+                            </Icon>
+                        )}
+                    </div>
+                    <div className="op_account_details">
+                        <div className="op_account_name">
+                            {account.alianName}
+                        </div>
+                        <div className="op_account_wallet">
+                            {shortAddress(account.address)}
+                            <span>${path}</span>
+                        </div>
+                    </div>
+                </div>
+                <div className="op_account_col_2">
+                    <div className="op_account_icon_holder" onClick={(e) => {
+                        e.stopPropagation();
+                        setOptionsVisible((v) => !v);
+                    }}>
+                        <Icon>
+                            <EllipsisOutlined />
+                        </Icon>
+                    </div>
+                </div>
                 {optionsVisible && (
-                    <Column
-                        style={{
-                            backgroundColor: colors.black,
-                            width: 160,
-                            position: 'absolute',
-                            right: 0,
-                            padding: 5,
-                            zIndex: 10
+                    <div className="switch_options">
+                        <div className="switch_option" onClick={(e) => {
+                            e.stopPropagation();
+                            handleSelectAccount();
                         }}>
-                        <Row onClick={handleEditName}>
                             <EditOutlined />
                             <Text text="Edit Name" size="sm" />
-                        </Row>
-
-                        <Row onClick={handleCopyAddress}>
+                        </div>
+                        <div className="switch_option" onClick={(e) => {
+                            e.stopPropagation();
+                            handleCopyAddress();
+                        }}>
                             <CopyOutlined />
                             <Text text="Copy address" size="sm" />
-                        </Row>
-
+                        </div>
                         {account.type !== KEYRING_TYPE.KeystoneKeyring && (
-                            <Row onClick={handleExportPrivateKey}>
+                            <div className="switch_option" onClick={(e) => {
+                                e.stopPropagation();
+                                handleExportPrivateKey();
+                            }}>
                                 <KeyOutlined />
                                 <Text text="Export Private Key" size="sm" />
-                            </Row>
+                            </div>
                         )}
-                    </Column>
+                    </div>
                 )}
-            </Column>
-        </Card>
+            </div>
+        </>
     );
 }
 

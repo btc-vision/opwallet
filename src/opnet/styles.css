@@ -1,0 +1,479 @@
+:root {
+    /* Main colors */
+    --opnet-main-color: #f37413;
+    --opnet-background-color: #212121;
+
+
+    /* Text colors */
+    --opnet-text-color: #dbdbdb;
+    --opnet-text-color-faded: rgba(219, 219, 219, 0.7);
+
+    /* Button colors */
+    --opnet-button-background-color: #434343;
+    --opnet-button-hover-background-color: rgba(85, 85, 85, 0.3);
+    --opnet-button-text-color: #dbdbdb;
+
+    --opnet-button-icon-background-color: #dbdbdb;
+    --opnet-button-icon-color: #111111;
+    --opnet-button-radius: 17px;
+    --opnet-button-icon-radius: 10px;
+}
+
+body{
+    background:var(--opnet-background-color) !important;
+}
+
+
+/* User account */
+
+.rc-virtual-list-holder-inner{
+    gap:5px;
+}
+
+.op_account_bar{
+    display:flex;
+    align-items:center;
+    height:56px;
+    border-radius:var(--opnet-button-radius);
+    background-color: var(--opnet-button-hover-background-color);
+    cursor:pointer;
+    position:relative;
+    transition:background 0.3s;
+}
+
+.op_account_bar:hover{
+    background-color: var(--opnet-button-background-color);
+}
+
+.op_account_col_1{
+    flex: 1;
+    display:flex;
+    align-items: center;
+}
+
+.op_account_col_2{
+    flex: 0 0 auto;
+    display:flex;
+    align-items: center;
+}
+
+.op_account_name{
+    font-size: 14px;
+    line-height: normal;
+    font-family: Inter-Regular, serif;
+    color: var(--opnet-text-color);
+}
+
+.op_account_wallet{
+    display:flex;
+    align-items:center;
+    gap:5px;
+    font-size: 14px;
+    line-height: normal;
+    font-family: Inter-Regular, serif;
+    color: var(--opnet-text-color-faded);
+}
+
+.op_account_wallet > span{
+    font-size:11px;
+}
+
+.op_account_icon_holder{
+    width:56px;
+    height:56px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+}
+
+.op_account_icon_holder:first-child{
+    border-top-left-radius:var(--opnet-button-radius);
+    border-bottom-left-radius:var(--opnet-button-radius);
+}
+
+.op_account_icon_holder:last-child{
+    border-top-right-radius:var(--opnet-button-radius);
+    border-bottom-right-radius:var(--opnet-button-radius);
+}
+
+/* Switch Account */
+
+.switch_options{
+    background-color: var(--opnet-background-color);
+    color: var(--opnet-text-color);
+    border-radius: 10px;
+    border: 1px solid var(--opnet-button-background-color);
+    width:200px;
+    position: absolute;
+    right: 0;
+    top:30%;
+    z-index: 10;
+}
+
+.switch_option{
+    display:flex;
+    align-items:center;
+    padding:7px;
+    gap:5px;
+    font-size:14px;
+    transition: background 0.3s;
+}
+
+.switch_option:hover{
+    background-color: var(--opnet-button-hover-background-color);
+}
+
+/* Action Buttons */
+
+.op_action_button {
+    background: var(--opnet-button-background-color);
+    color: var(--opnet-button-text-color);
+    border-radius: 17px;
+    border: 2px solid var(--opnet-button-background-color);
+    font-size: 12px;
+    font-weight: bold;
+    flex: 0 0 calc(25% - 6px);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 60px;
+    transition: background 0.3s, transform 0.3s, border 0.3s;
+    cursor:pointer;
+}
+
+.op_action_button:hover {
+    border: 2px solid var(--opnet-button-icon-background-color);
+    background: var(--opnet-button-hover-background-color);
+}
+
+.op_icon_wrapper {
+    margin-top: -20px;
+    background: var(--opnet-button-icon-background-color);
+    border-radius: 12px;
+    height: 48px;
+    width: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #222121;
+    position:relative;
+    top:0;
+    transition: background 0.3s, top 0.1s;
+}
+
+.op_action_button:hover .op_icon_wrapper {
+    top:3px;
+}
+
+/* Tokens View */
+
+.op_token_container{
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background-color: transparent;
+    color: var(--opnet-button-text-color);
+    border-radius:17px;
+    cursor:pointer;
+    transition: background 0.3s, color 0.3s;
+}
+
+.op_token_container:hover{
+    background-color: #2d2c2c;
+}
+
+.op_token_col_1{
+    flex: 1;
+    display: flex;
+    align-items: center;
+}
+
+.op_token_image{
+    height:42px;
+    width:42px;
+    display:flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.op_token_title{
+    font-size:13px;
+    font-weight: 500;
+    color: var(--opnet-button-text-color);
+}
+
+.op_token_remove{
+    height:42px;
+    width:42px;
+    display:flex;
+    color:var(--opnet-button-background-color);
+    align-items: center;
+    justify-content: center;
+    transition: background 0.3s, color 0.3s;
+}
+
+.op_token_remove:hover{
+    color:white;
+}
+
+.op_token_col_2{
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+}
+
+.op_token_balance{
+    font-size:12px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-weight: 550;
+    color: var(--opnet-main-color);
+    cursor:pointer;
+}
+
+/* Pagination */
+
+.op_pagination_controls{
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    margin-top: 10px;
+}
+
+.op_pagination_controls > button{
+    background: var(--opnet-button-background-color);
+    color: var(--opnet-button-text-color);
+    border-radius: 17px;
+    padding: 0 12px;
+    font-size: 12px;
+    font-weight: 500;
+    border: 2px solid var(--opnet-button-background-color);
+    transition: background 0.3s, color 0.3s, border 0.3s;
+    cursor:pointer;
+}
+
+.op_pagination_controls > button:hover{
+    background: var(--opnet-button-hover-background-color);
+    border: 2px solid var(--opnet-button-text-color);
+}
+
+.op_pagination_controls > button:disabled{
+    background: var(--opnet-background-color);
+    color: var(--opnet-text-color-faded);
+    border: 2px solid var(--opnet-button-background-color);
+    cursor:not-allowed;
+}
+
+/* Pubkey */
+
+.pubkey_row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.pubkey_col_1 {
+    background-color: #262525;
+    color: var(--opnet-button-text-color);
+    border-radius: 17px;
+    padding: 5px 12px;
+}
+
+.pubkey_holder {
+    flex: 1 1;
+    display: flex
+;
+    align-items: center;
+    gap: 7px;
+}
+
+.pubkey_title {
+    text-wrap: nowrap;
+    font-size: 13px;
+    font-weight: 500;
+}
+
+.pubkey_value {
+    font-size: 14px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-weight: 550;
+    color: var(--opnet-main-color);
+    cursor: pointer;
+    display:flex;
+    align-items:center;
+    gap:3px;
+}
+
+/* Tooltip */
+
+.op_tooltip{
+    background: rgba(33, 33, 33, 0.6);
+    backdrop-filter: blur(10px);
+    color: var(--opnet-button-text-color);
+    border-radius: 17px;
+    padding: 5px 12px;
+    font-size: 13px;
+    font-weight: 500;
+    line-height: normal;
+    font-family: Inter-Regular, serif;
+}
+
+/* OPNet Tokens Panel */
+
+.op_tokens_action_buttons_container{
+    display:flex;
+    align-items: center;
+    justify-content: space-between;
+    gap:10px;
+    cursor:default;
+}
+
+.op_tokens_action_buttons{
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 10px;
+    cursor:default;
+}
+
+button.op_tokens_action_button{
+    flex:0 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap:6px;
+    height:32px;
+    background: var(--opnet-button-background-color);
+    color: var(--opnet-button-text-color);
+    border-radius: 17px;
+    padding: 0 15px;
+    font-size: 12px;
+    font-weight: 500;
+    border: 2px solid var(--opnet-button-background-color);
+    transition: background 0.3s, color 0.3s, border 0.3s;
+    cursor: pointer;
+}
+
+button.op_tokens_action_button.icon{
+    width: 32px;
+    height: 32px;
+    flex:0 0 32px;
+    justify-content: center;
+}
+
+button.op_tokens_action_button:hover{
+    background: #2d2c2c;
+    border: 2px solid var(--opnet-button-text-color);
+}
+
+/* Ant Tabs Nav Bar */
+
+.ant-tabs-nav-list{
+    position:relative;
+    top:2px;
+}
+
+.ant-tabs.ant-tabs-top.ant-tabs-small{
+    margin: 0 -24px;
+}
+
+.ant-tabs-small > .ant-tabs-nav .ant-tabs-tab{
+    padding: 8px 12px;
+}
+
+.ant-tabs > .ant-tabs-nav .ant-tabs-nav-wrap, .ant-tabs > div > .ant-tabs-nav .ant-tabs-nav-wrap{
+    overflow:visible;
+}
+
+.ant-tabs-nav-wrap{
+    padding: 0 24px;
+    border-bottom:2px solid var(--opnet-button-background-color);
+    background: var(--opnet-background-color);
+    background: linear-gradient(180deg, rgba(34, 33, 33, 1) 0%, rgba(67, 67, 67, 0.5) 100%);
+}
+
+.ant-tabs-tab.ant-tabs-tab-active{
+    color: var(--opnet-main-color);
+    cursor:default;
+    background: linear-gradient(180deg, rgba(34, 33, 33, 0) 70%, rgba(238, 119, 27, 0.4) 100%);
+}
+
+.ant-tabs-tab.ant-tabs-tab-active .ant-tabs-tab-btn {
+    color: var(--opnet-main-color);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: default;
+}
+
+.ant-tabs-ink-bar.ant-tabs-ink-bar-animated{
+    background: var(--opnet-main-color);
+    z-index:5;
+}
+
+.ant-tabs-content-holder{
+    padding: 0 24px;
+}
+
+/* Fade In Up Animation */
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(50px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes fadeOutDown {
+    from {
+        opacity: 1;
+        transform: translateY(0);
+    }
+    to {
+        opacity: 0;
+        transform: translateY(50px);
+    }
+}
+
+@keyframes fadeBackdropIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes fadeBackdropOut {
+    from {
+        opacity: 1;
+    }
+    to {
+        opacity: 0;
+    }
+}
+
+.fade-in-up {
+    animation: fadeInUp 0.3s ease-out forwards;
+}
+
+.fade-out-down {
+    animation: fadeOutDown 0.3s ease-in forwards;
+}
+
+.backdrop-fade-in {
+    animation: fadeBackdropIn 0.3s ease-out forwards;
+}
+
+.backdrop-fade-out {
+    animation: fadeBackdropOut 0.3s ease-in forwards;
+}
