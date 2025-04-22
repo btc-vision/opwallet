@@ -108,14 +108,15 @@ body{
     right: 0;
     top:30%;
     z-index: 10;
+    overflow:clip;
 }
 
 .switch_option{
     display:flex;
     align-items:center;
-    padding:7px;
+    padding:9px;
     gap:5px;
-    font-size:14px;
+    font-size:13px;
     transition: background 0.3s;
 }
 
