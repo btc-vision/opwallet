@@ -23,7 +23,55 @@ const AccountSelect = () => {
     const addressExplorerUrl = useAddressExplorerUrl(address);
 
     return (
-        <Row justifyBetween px="md" py="md" bg="card" rounded itemsCenter>
+
+        <div className="address_profile_container" onClick={() => {
+            navigate(RouteTypes.SwitchAccountScreen);
+        }}>
+            <div className="address_profile_col_1">
+                <div className="address_profile_icon">
+                    <Icon icon="user" size={20} />
+                </div>
+                <div className="address_profile_address">
+                    <div className="address_profile_account">
+                        <Text
+                            text={shortAddress(currentAccount?.alianName, 8)}
+                        />
+                    </div>
+                    <div className="address_profile_p2tr">
+                        <Text
+                            text={shortAddress(address)}
+                            color="textDim"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                copyToClipboard(address).then(() => {
+                                    tools.toastSuccess('Copied');
+                                });
+                            }}
+                        />
+                        <CopyOutlined style={{ color: '#888', fontSize: 14 }} onClick={(e) => {
+                            e.stopPropagation();
+                            copyToClipboard(address).then(() => {
+                                tools.toastSuccess('Copied');
+                            });
+                        }} />
+                    </div>
+                </div>
+            </div>
+            <div className="address_profile_col_2">
+                <div className="address_profile_arrow">
+                    <Icon
+                        icon="right"
+                        size={20}
+                        onClick={() => {
+                            navigate(RouteTypes.SwitchAccountScreen);
+                        }}
+                    />
+                </div>
+            </div>
+        </div>
+
+        /*
+        <Row justifyBetween px="md" py="md" classname="address_profile_container" rounded itemsCenter>
             <Row style={{ flex: 1 }}>
                 <Icon icon="user" />
             </Row>
@@ -70,6 +118,8 @@ const AccountSelect = () => {
                 <Icon icon="right" />
             </Row>
         </Row>
+
+         */
     );
 };
 

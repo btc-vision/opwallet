@@ -4,6 +4,7 @@ const palette = {
     white: '#ffffff',
     white_muted: 'rgba(255, 255, 255, 0.5)',
     black: '#000000',
+
     black_muted: 'rgba(0, 0, 0, 0.5)',
     black_muted2: 'rgba(0, 0, 0, 0.)',
 
@@ -44,7 +45,7 @@ export const colors = Object.assign({}, palette, {
 
     textDim: palette.white_muted,
 
-    background: '#070606',
+    background: '#222121',
 
     error: '#e52937',
 
@@ -70,7 +71,12 @@ export const colors = Object.assign({}, palette, {
     value_up_color: '#4DA474',
     value_down_color: '#BF3F4D',
 
-    ticker_color: '#eac249'
+    ticker_color: '#eac249',
+
+
+    OP_BUTTON_BACKGROUND_COLOR: '#434343',
+    OP_BUTTON_TEXT_COLOR: '#dbdbdb',
+
 });
 
 export type ColorTypes = keyof typeof colors;

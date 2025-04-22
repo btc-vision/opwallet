@@ -1,7 +1,7 @@
 import { CloseOutlined, LoadingOutlined } from '@ant-design/icons';
 import { Modal } from 'antd';
 import BigNumber from 'bignumber.js';
-import { CSSProperties, useCallback, useEffect, useRef, useState } from 'react';
+import React, { CSSProperties, useCallback, useEffect, useRef, useState } from 'react';
 import browser from 'webextension-polyfill';
 
 import Web3API, { getOPNetChainType, getOPNetNetwork } from '@/shared/web3/Web3API';
@@ -22,6 +22,10 @@ import { useWallet } from '@/ui/utils';
 
 import { RouteTypes, useNavigate } from '../../MainRoute';
 import { AddOpNetToken } from '../../Wallet/AddOpNetToken';
+import { Icon } from '../../../../ui/components/Icon';
+import { faRefresh, faTrashCan } from '@fortawesome/free-solid-svg-icons';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+
 
 BigNumber.config({ EXPONENTIAL_AT: 256 });
 
@@ -434,9 +438,7 @@ export function OPNetList() {
         display: 'block',
         minHeight: 20,
         paddingBottom: 10,
-        fontSize: 12,
-        cursor: 'pointer',
-        marginBottom: 10
+        fontSize: 12
     };
 
     const $opnet: CSSProperties = {
@@ -453,7 +455,58 @@ export function OPNetList() {
         <div>
             {/* Top Buttons */}
             <BaseView style={$footerBaseStyle}>
-                <Row>
+                <div className="op_action_buttons_container">
+                    <div className="op_action_buttons">
+                        <button
+                            className="op_action_button"
+                            onClick={() => setImportTokenBool(true)}
+                        >
+                            <div className="op_action_icon">
+                                <Icon
+                                    icon="eye"
+                                    size={12}
+                                />
+                            </div>
+                            <span>
+                            Import Token
+                        </span>
+                        </button>
+                        <button className="op_action_button"
+                                onClick={async () => {
+                                    await browser.tabs.create({
+                                        url: browser.runtime.getURL('/index.html#/opnet/deploy-contract')
+                                    });
+                                }}
+                        >
+                            <div className="op_action_icon">
+                                <Icon
+                                    icon="pencil"
+                                    size={12}
+                                />
+                            </div>
+                            <span>
+                            Deploy
+                        </span>
+                        </button>
+                    </div>
+                    <div className="op_action_buttons">
+                        <button
+                            className="op_action_button icon"
+                            onClick={() => {
+                                fetchTokenBalances().catch((err: unknown) => console.error(err));
+                            }}
+                        >
+                            <div className="op_action_icon">
+                                <FontAwesomeIcon
+                                    icon={faRefresh}
+                                    style={{ height: '0.7rem', cursor: 'pointer' }}
+                                />
+                            </div>
+                        </button>
+                    </div>
+                </div>
+
+                {/*<Row>
                     <Button
                         style={$btnStyle}
                         text="Import Token"
@@ -483,21 +536,15 @@ export function OPNetList() {
                         }}
                     />
                 </Row>
+                */}
             </BaseView>
 
             {/* Token List & Pagination */}
             {total > 0 && (
                 <BaseView style={$opnet}>
                     {tokenBalances.map((data) => (
-                        <Row
-                            key={data.address}
-                            style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'space-between',
-                                gap: '10px'
-                            }}>
                             <OpNetBalanceCard
+                                key={data.address}
                                 tokenInfo={data}
                                 onClick={() => {
                                     navigate(RouteTypes.OpNetTokenScreen, {
@@ -506,7 +553,6 @@ export function OPNetList() {
                                 }}
                                 handleRemoveToken={handleRemoveToken}
                             />
-                        </Row>
                     ))}
 
                     {/* Pagination Controls */}

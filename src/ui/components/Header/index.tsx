@@ -38,12 +38,7 @@ export function Header(props: HeaderProps) {
     }, [title]);
 
     return (
-        <div style={{ display: 'block', backgroundColor: '#070606' }}>
-            <img
-                src={'./images/artifacts/top-linear-gradient.png'}
-                alt=""
-                style={{ width: '100%', height: 182, position: 'absolute', left: 0, top: 0, pointerEvents: 'none' }}
-            />
+        <div style={{ display: 'block', backgroundColor: '#222121' }}>
             <Row
                 justifyBetween
                 itemsCenter
@@ -77,45 +72,4 @@ export function Header(props: HeaderProps) {
             </Row>
         </div>
     );
-
-    /*return (
-      <div style={{ display: 'block', backgroundColor: '#070606' }}>
-        <img
-          src={'./images/artifacts/top-linear-gradient.png'}
-          alt=""
-          style={{ width: '100%', height: 182, position: 'absolute', left: 0, top: 0, pointerEvents: 'none' }}
-        />
-        <Row
-          justifyBetween
-          itemsCenter
-          style={{
-            height: '67.5px',
-            padding: 15
-          }}>
-          <Row full>
-            <Column selfItemsCenter>
-              {LeftComponent}
-              {onBack && (
-                <Row
-                  onClick={(e) => {
-                    onBack();
-                  }}>
-                  <Icon>
-                    <FontAwesomeIcon icon={faArrowLeft} />
-                  </Icon>
-
-                                  <Text text="Back" preset="regular-bold" />
-                              </Row>
-                          )}
-                      </Column>
-                  </Row>
-
-                  <Row itemsCenter>{CenterComponent}</Row>
-
-                  <Row full justifyEnd>
-                      <Column selfItemsCenter>{RightComponent}</Column>
-                  </Row>
-              </Row>
-          </div>
-      );*/
 }

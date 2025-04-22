@@ -1,11 +1,13 @@
 import { Tabs, Tooltip } from 'antd';
 import BigNumber from 'bignumber.js';
-import { CSSProperties, ReactElement, useEffect, useMemo, useState } from 'react';
+import React, { CSSProperties, ReactElement, useEffect, useMemo, useState } from 'react';
+
+import '@/opnet/styling/opnet.css';
 
 import { AddressFlagType } from '@/shared/constant';
 import { checkAddressFlag } from '@/shared/utils';
 import Web3API, { bigIntToDecimal } from '@/shared/web3/Web3API';
-import { AddressBar, Card, Column, Content, Footer, Header, Image, Layout, Row, Text } from '@/ui/components';
+import { AddressBar, Card, Column, Content, Footer, Header, Icon, Image, Layout, Row, Text } from '@/ui/components';
 import AccountSelect from '@/ui/components/AccountSelect';
 import { BtcUsd } from '@/ui/components/BtcUsd';
 import { Button } from '@/ui/components/Button';
@@ -34,6 +36,10 @@ import { RouteTypes, useNavigate } from '../../MainRoute';
 import { SwitchChainModal } from '../../Settings/SwitchChainModal';
 import { OPNetList } from './OPNetList';
 import { BitcoinUtils } from 'opnet';
+import { Link } from 'react-router-dom';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { spacing } from '@/ui/theme/spacing';
+import { colors } from '@/ui/theme/colors';
 
 const $noBreakStyle: CSSProperties = {
     whiteSpace: 'nowrap',
@@ -192,6 +198,8 @@ export default function WalletTabScreen() {
                         </Column>
                     )}
 
+                    <AddressBar />
+
                     <Tooltip
                         placement={'bottom'}
                         title={
@@ -228,10 +236,93 @@ export default function WalletTabScreen() {
                         }}
                     />
 
-                    <AddressBar />
-
                     <Row justifyCenter mt="md">
-                        <Button
+
+                        <button
+                            onClick={() => {
+                                navigate(RouteTypes.ReceiveScreen);
+                            }}
+                            className={"action-button"}
+                        >
+                            <div
+                                className={"icon-wrapper"}
+                            >
+                                <Icon
+                                    icon="receive"
+                                    color={'background'}
+                                    style={{
+                                        width: 20,
+                                        height: 20
+                                    }}
+                                />
+                            </div>
+                            Receive
+                        </button>
+
+                        <button
+                            onClick={() => {
+                                navigate(RouteTypes.TxCreateScreen);
+                            }}
+                            className={"action-button"}
+                        >
+                            <div
+                                className={"icon-wrapper"}
+                            >
+                                <Icon
+                                    icon="send"
+                                    color={'background'}
+                                    style={{
+                                        width: 20,
+                                        height: 20
+                                    }}
+                                />
+                            </div>
+                            Send
+                        </button>
+
+                        <button
+                            onClick={() => {
+                                navigate(RouteTypes.Swap);
+                            }}
+                            className={"action-button"}
+                        >
+                            <div
+                                className={"icon-wrapper"}
+                            >
+                                <Icon
+                                    icon="swap"
+                                    color={'background'}
+                                    style={{
+                                        width: 20,
+                                        height: 20
+                                    }}
+                                />
+                            </div>
+                            Swap
+                        </button>
+
+                        <button
+                            onClick={() => {
+                                window.open(faucetUrl, '_blank');
+                            }}
+                            className={"action-button"}
+                        >
+                            <div
+                                className={"icon-wrapper"}
+                            >
+                                <Icon
+                                    icon="faucet"
+                                    color={'background'}
+                                    style={{
+                                        width: 20,
+                                        height: 20
+                                    }}
+                                />
+                            </div>
+                            Faucet
+                        </button>
+
+                        {/*<Button
                             text="Receive"
                             preset="home"
                             icon="receive"
@@ -257,19 +348,10 @@ export default function WalletTabScreen() {
                             onClick={() => {
                                 navigate(RouteTypes.Swap);
                             }}
-                        />
+                        />*/}
 
-                        {faucetUrl && (
+                        {/*faucetUrl && (
                             <>
-                                {' '}
-                                {/*<Button
-                                    text="Split Utxo"
-                                    preset="home"
-                                    icon="receive"
-                                    onClick={() => {
-                                        navigate('SplitUtxoScreen');
-                                    }}
-                                />*/}
                                 <Button
                                     text="Faucet"
                                     preset="home"
@@ -279,7 +361,7 @@ export default function WalletTabScreen() {
                                     }}
                                 />
                             </>
-                        )}
+                        )*/}
                     </Row>
 
                     <Tabs

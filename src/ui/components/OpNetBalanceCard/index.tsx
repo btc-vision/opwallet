@@ -57,11 +57,44 @@ export default function OpNetBalanceCard(props: OpNetBalanceCardProps) {
     const finalBal = formatBalance(balance, 3);
 
     return (
+        <div className="op_token_container"
+             onClick={(e) => {
+                 onClick?.();
+             }}
+        >
+            <div className="op_token_col_1">
+                <div className="op_token_image">
+                    {tokenInfo.logo && <Image src={tokenInfo.logo} size={fontSizes.tiny} />}
+                </div>
+                <div className="op_token_title">
+                    {tokenInfo.name}
+                </div>
+            </div>
+            <div className="op_token_col_2">
+                <div className="op_token_balance">
+                    {finalBal} {tokenInfo.symbol}
+                </div>
+                <div className="op_token_remove">
+                    <FontAwesomeIcon
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            handleRemoveToken(tokenInfo.address);
+                        }}
+                        icon={faTrashCan}
+                        style={{ height: '0.7rem', cursor: 'pointer' }}
+                    />
+                </div>
+            </div>
+        </div>
+    );
+
+    {/*
         <Card
             style={{
-                backgroundColor: '#141414',
-                borderColor: 'rgba(255,255,255,0.1)',
-                borderWidth: 1,
+                backgroundColor: '#404040',
+                borderColor: 'rgba(255,255,255,0)',
+                borderWidth: 0,
+                borderRadius: 17,
                 marginBottom: 10
             }}
             fullX
@@ -93,5 +126,5 @@ export default function OpNetBalanceCard(props: OpNetBalanceCardProps) {
                 style={{ height: '1rem', cursor: 'pointer' }}
             />
         </Card>
-    );
+        */}
 }
