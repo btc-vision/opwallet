@@ -11,6 +11,7 @@ import { Image } from '../Image';
 import { Row } from '../Row';
 import { RunesTicker } from '../RunesTicker';
 import { Text } from '../Text';
+import { SizeProp } from '@fortawesome/fontawesome-svg-core';
 
 export interface OpNetBalanceCardProps {
     tokenInfo: OPTokenInfo;
@@ -57,41 +58,24 @@ export default function OpNetBalanceCard(props: OpNetBalanceCardProps) {
     const finalBal = formatBalance(balance, 3);
 
     return (
-        <Card
-            style={{
-                backgroundColor: '#141414',
-                borderColor: 'rgba(255,255,255,0.1)',
-                borderWidth: 1,
-                marginBottom: 10
-            }}
-            fullX
-            onClick={(e) => {
-                onClick?.();
-            }}>
-            <Column full py="zero" gap="zero">
-                <Row itemsCenter fullX justifyBetween>
-                    <Row itemsCenter fullX>
-                        {tokenInfo.logo && <Image src={tokenInfo.logo} size={fontSizes.tiny} />}
-                        <Column fullY justifyCenter style={{ flex: '0 0 auto' }}>
-                            <RunesTicker tick={tokenInfo.name} />
-                        </Column>
-                    </Row>
-
-                    <Row itemsCenter fullY gap="zero">
-                        <Text text={finalBal} size="xs" />
-                        <Text text={tokenInfo.symbol} size="xs" mx="sm" />
-                    </Row>
-                </Row>
-            </Column>
-
-            <FontAwesomeIcon
-                onClick={(e) => {
+        <div className="op_token_container" onClick={() => {
+            onClick?.();
+        }}>
+            <div className="op_token_col_1">
+                <div className="op_token_image">
+                    {tokenInfo.logo && <Image src={tokenInfo.logo} size={fontSizes.iconMiddle} />}
+                </div>
+                <div className="op_token_title">{tokenInfo.symbol}</div>
+            </div>
+            <div className="op_token_col_2">
+                <div className="op_token_balance">{finalBal} {tokenInfo.symbol}</div>
+                <div className="op_token_remove" onClick={(e) => {
                     e.stopPropagation();
                     handleRemoveToken(tokenInfo.address);
-                }}
-                icon={faTrashCan}
-                style={{ height: '1rem', cursor: 'pointer' }}
-            />
-        </Card>
+                }}>
+                    <FontAwesomeIcon icon={faTrashCan} size="xs"/>
+                </div>
+            </div>
+        </div>
     );
 }

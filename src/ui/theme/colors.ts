@@ -3,7 +3,7 @@
 const palette = {
     white: '#ffffff',
     white_muted: 'rgba(255, 255, 255, 0.5)',
-    black: '#000000',
+    black: '#212121',
     black_muted: 'rgba(0, 0, 0, 0.5)',
     black_muted2: 'rgba(0, 0, 0, 0.)',
 
@@ -11,7 +11,7 @@ const palette = {
     grey: '#495361',
     light: '#A2A4AA',
 
-    black_dark: '#2a2626',
+    black_dark: '#212121',
 
     green_dark2: '#2D7E24',
     green_dark: '#379a29',
@@ -31,7 +31,7 @@ const palette = {
     blue_light: '#c6dcfd',
 
     orange_dark: '#d9691c',
-    orange: '#FF7B21',
+    orange: '#f37413',
     orange_light: '#ff8f42',
 
     gold: '#eac249'
@@ -44,7 +44,7 @@ export const colors = Object.assign({}, palette, {
 
     textDim: palette.white_muted,
 
-    background: '#070606',
+    background: '#212121',
 
     error: '#e52937',
 

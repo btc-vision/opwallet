@@ -22,6 +22,8 @@ import { useWallet } from '@/ui/utils';
 
 import { RouteTypes, useNavigate } from '../../MainRoute';
 import { AddOpNetToken } from '../../Wallet/AddOpNetToken';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faPencil, faRefresh, faUpload } from '@fortawesome/free-solid-svg-icons';
 
 BigNumber.config({ EXPONENTIAL_AT: 256 });
 
@@ -455,8 +457,7 @@ export function OPNetList() {
         minHeight: 20,
         paddingBottom: 10,
         fontSize: 12,
-        cursor: 'pointer',
-        marginBottom: 10
+        cursor: 'pointer'
     };
 
     const $opnet: CSSProperties = {
@@ -464,101 +465,81 @@ export function OPNetList() {
         marginBottom: 10
     };
 
-    const $btnStyle: CSSProperties = {
-        width: '33%',
-        fontSize: '10px'
-    };
-
     return (
         <div>
             {/* Top Buttons */}
             <BaseView style={$footerBaseStyle}>
-                <Row>
-                    <Button
-                        style={$btnStyle}
-                        text="Import Token"
-                        preset="fontsmall"
-                        icon="eye"
-                        onClick={() => setImportTokenBool(true)}
-                    />
-                    <Button
-                        style={$btnStyle}
-                        text="Refresh List"
-                        preset="fontsmall"
-                        icon="history"
-                        // ----- IMPORTANT CHANGE: ONLY REFRESH BALANCES -----
-                        onClick={() => {
-                            fetchTokenBalances().catch((err: unknown) => console.error(err));
-                        }}
-                    />
-                    <Button
-                        style={$btnStyle}
-                        text="Deploy"
-                        icon="pencil"
-                        preset="fontsmall"
-                        onClick={async () => {
+                <div className="op_tokens_action_buttons_container">
+                    <div className="op_tokens_action_buttons">
+                        <button className="op_tokens_action_button" onClick={() => setImportTokenBool(true)}>
+                            <div className="op_token_action_icon">
+                                <FontAwesomeIcon icon={faUpload}/>
+                            </div>
+                            <span>Import Token</span>
+                        </button>
+                        <button className="op_tokens_action_button" onClick={async () => {
                             await browser.tabs.create({
                                 url: browser.runtime.getURL('/index.html#/opnet/deploy-contract')
                             });
-                        }}
-                    />
-                </Row>
+                        }}>
+                            <div className="op_tokens_action_icon">
+                                <FontAwesomeIcon icon={faPencil}/>
+                            </div>
+                            <span>Deploy</span>
+                        </button>
+                    </div>
+                    <div className="op_tokens_action_buttons">
+                        <button className="op_tokens_action_button icon" onClick={() => {
+                            fetchTokenBalances().catch((err: unknown) => console.error(err));
+                        }}>
+                            <div className="op_tokens_action_icon">
+                                <FontAwesomeIcon icon={faRefresh}/>
+                            </div>
+                        </button>
+                    </div>
+                </div>
             </BaseView>
 
             {/* Token List & Pagination */}
             {total > 0 && (
                 <BaseView style={$opnet}>
                     {tokenBalances.map((data) => (
-                        <Row
+                        <OpNetBalanceCard
                             key={data.address}
-                            style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'space-between',
-                                gap: '10px'
-                            }}>
-                            <OpNetBalanceCard
-                                tokenInfo={data}
-                                onClick={() => {
-                                    navigate(RouteTypes.OpNetTokenScreen, {
-                                        address: data.address
-                                    });
-                                }}
-                                handleRemoveToken={handleRemoveToken}
-                            />
-                        </Row>
+                            tokenInfo={data}
+                            onClick={() => {
+                                navigate(RouteTypes.OpNetTokenScreen, {
+                                    address: data.address
+                                });
+                            }}
+                            handleRemoveToken={handleRemoveToken}
+                        />
                     ))}
 
                     {/* Pagination Controls */}
-                    <Row
-                        style={{
-                            display: 'flex',
-                            justifyContent: 'center',
-                            alignItems: 'center',
-                            gap: '10px',
-                            marginTop: '20px'
-                        }}>
-                        <Button text="Prev" onClick={() => handlePageChange('prev')} disabled={currentPage === 1} />
+
+                    <div className="op_pagination_controls">
+                        <button className="op_pagination_next" onClick={() => handlePageChange('prev')} disabled={currentPage === 1}>
+                            Prev
+                        </button>
                         {Array.from({ length: totalPages }, (_, idx) => {
                             const pageNumber = idx + 1;
                             const shouldShow =
                                 pageNumber === 1 ||
                                 pageNumber === totalPages ||
                                 (pageNumber >= currentPage - 2 && pageNumber <= currentPage + 2);
-
                             if (shouldShow) {
                                 return (
-                                    <Button
-                                        key={pageNumber}
-                                        text={pageNumber.toString()}
-                                        style={{
-                                            backgroundColor: currentPage === pageNumber ? '#383535' : '#000000',
-                                            fontWeight: currentPage === pageNumber ? 'bold' : 'normal',
-                                            padding: '5px 10px',
-                                            cursor: 'pointer'
-                                        }}
-                                        onClick={() => setCurrentPage(pageNumber)}
-                                    />
+                                    <button onClick={() => setCurrentPage(pageNumber)} className="op_pagination_button" key={pageNumber}>
+                                        {pageNumber.toString()}
+                                    </button>
+                                );
+                            }
+                            if (pageNumber === currentPage - 3 || pageNumber === currentPage + 3) {
+                                return (
+                                    <span key={pageNumber} style={{ padding: '5px' }}>
+                                        ...
+                                    </span>
                                 );
                             }
                             if (pageNumber === currentPage - 3 || pageNumber === currentPage + 3) {
@@ -570,12 +551,10 @@ export function OPNetList() {
                             }
                             return null;
                         })}
-                        <Button
-                            text="Next"
-                            onClick={() => handlePageChange('next')}
-                            disabled={currentPage === totalPages}
-                        />
-                    </Row>
+                        <button className="op_pagination_next" onClick={() => handlePageChange('next')} disabled={currentPage === totalPages}>
+                            Next
+                        </button>
+                    </div>
                 </BaseView>
             )}
 

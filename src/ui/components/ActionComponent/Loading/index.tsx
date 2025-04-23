@@ -16,7 +16,7 @@ export interface LoadingProps {
 const $baseViewStyle: CSSProperties = {
     width: '100vw',
     height: '100vh',
-    backgroundColor: 'rgba(0,0,0,0.8)',
+    backgroundColor: 'rgba(33,33,33,0.74)',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',

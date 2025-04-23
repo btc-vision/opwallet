@@ -38,12 +38,12 @@ export function Header(props: HeaderProps) {
     }, [title]);
 
     return (
-        <div style={{ display: 'block', backgroundColor: '#070606' }}>
-            <img
+        <div className="op_header">
+            {/*<img
                 src={'./images/artifacts/top-linear-gradient.png'}
                 alt=""
                 style={{ width: '100%', height: 182, position: 'absolute', left: 0, top: 0, pointerEvents: 'none' }}
-            />
+            />*/}
             <Row
                 justifyBetween
                 itemsCenter

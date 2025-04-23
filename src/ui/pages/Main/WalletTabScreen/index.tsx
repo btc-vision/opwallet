@@ -5,7 +5,7 @@ import { CSSProperties, ReactElement, useEffect, useMemo, useState } from 'react
 import { AddressFlagType } from '@/shared/constant';
 import { checkAddressFlag } from '@/shared/utils';
 import Web3API, { bigIntToDecimal } from '@/shared/web3/Web3API';
-import { AddressBar, Card, Column, Content, Footer, Header, Image, Layout, Row, Text } from '@/ui/components';
+import { AddressBar, Card, Column, Content, Footer, Header, Icon, Image, Layout, Row, Text } from '@/ui/components';
 import AccountSelect from '@/ui/components/AccountSelect';
 import { BtcUsd } from '@/ui/components/BtcUsd';
 import { Button } from '@/ui/components/Button';
@@ -33,7 +33,6 @@ import { amountToSatoshis, satoshisToAmount, useWallet } from '@/ui/utils';
 import { RouteTypes, useNavigate } from '../../MainRoute';
 import { SwitchChainModal } from '../../Settings/SwitchChainModal';
 import { OPNetList } from './OPNetList';
-import { BitcoinUtils } from 'opnet';
 
 const $noBreakStyle: CSSProperties = {
     whiteSpace: 'nowrap',
@@ -192,7 +191,10 @@ export default function WalletTabScreen() {
                         </Column>
                     )}
 
+                    <AddressBar />
+
                     <Tooltip
+                        className="op_tooltip"
                         placement={'bottom'}
                         title={
                             <>
@@ -228,58 +230,78 @@ export default function WalletTabScreen() {
                         }}
                     />
 
-                    <AddressBar />
-
                     <Row justifyCenter mt="md">
-                        <Button
-                            text="Receive"
-                            preset="home"
-                            icon="receive"
+                        <button
                             onClick={() => {
                                 navigate(RouteTypes.ReceiveScreen);
                             }}
-                        />
+                            className="op_action_button"
+                        >
+                            <div
+                                className="op_icon_wrapper"
+                            >
+                                <Icon
+                                    icon="receive"
+                                    color={'background'}
+                                    size={20}
+                                />
+                            </div>
+                            Receive
+                        </button>
 
-                        <Button
-                            text="Send"
-                            preset="home"
-                            icon="send"
+                        <button
                             onClick={() => {
-                                resetUiTxCreateScreen();
                                 navigate(RouteTypes.TxCreateScreen);
                             }}
-                        />
+                            className="op_action_button"
+                        >
+                            <div
+                                className="op_icon_wrapper"
+                            >
+                                <Icon
+                                    icon="send"
+                                    color={'background'}
+                                    size={20}
+                                />
+                            </div>
+                            Send
+                        </button>
 
-                        <Button
-                            text="Swap"
-                            preset="home"
-                            icon="swap"
+                        <button
                             onClick={() => {
                                 navigate(RouteTypes.Swap);
                             }}
-                        />
-
-                        {faucetUrl && (
-                            <>
-                                {' '}
-                                {/*<Button
-                                    text="Split Utxo"
-                                    preset="home"
-                                    icon="receive"
-                                    onClick={() => {
-                                        navigate('SplitUtxoScreen');
-                                    }}
-                                />*/}
-                                <Button
-                                    text="Faucet"
-                                    preset="home"
-                                    icon="faucet"
-                                    onClick={() => {
-                                        window.open(faucetUrl, '_blank');
-                                    }}
+                            className="op_action_button"
+                        >
+                            <div
+                                className="op_icon_wrapper"
+                            >
+                                <Icon
+                                    icon="swap"
+                                    color={'background'}
+                                    size={20}
                                 />
-                            </>
-                        )}
+                            </div>
+                            Swap
+                        </button>
+
+                        <button
+                            onClick={() => {
+                                window.open(faucetUrl, '_blank');
+                            }}
+                            className="op_action_button"
+                        >
+                            <div
+                                className="op_icon_wrapper"
+                            >
+                                <Icon
+                                    icon="faucet"
+                                    color={'background'}
+                                    size={20}
+                                />
+                            </div>
+                            Faucet
+                        </button>
                     </Row>
 
                     <Tabs
