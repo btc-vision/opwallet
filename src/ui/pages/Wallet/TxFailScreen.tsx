@@ -14,7 +14,7 @@ export default function TxFailScreen() {
             <Content>
                 <Column justifyCenter mt="xxl" gap="xl">
                     <Row justifyCenter>
-                        <Icon icon="delete" size={50} />
+                        <Icon icon="warning" size={50} />
                     </Row>
 
                     <Text preset="title" text="Payment Failed" textCenter />
@@ -32,6 +32,21 @@ export default function TxFailScreen() {
                                             borderRadius: 7
                                         }}
                                         text="The recipient's public key was not found. Please provide their public key directly to proceed with the transaction."
+                                        textCenter
+                                    />
+                                );
+                            case 'Legacy not support at this time. Reserved for future use.':
+                                return (
+                                    <Text
+                                        key={index}
+                                        preset="regular-bold"
+                                        style={{
+                                            color: colors.red,
+                                            backgroundColor: 'rgba(225, 45, 53, 0.1)',
+                                            padding: 5,
+                                            borderRadius: 7
+                                        }}
+                                        text="Please re-import the token, this token was previously imported using an old version of the wallet."
                                         textCenter
                                     />
                                 );
