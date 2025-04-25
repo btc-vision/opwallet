@@ -162,6 +162,19 @@ export default function OpNetTokenScreen() {
             {tokenSummary && (
                 <Content>
                     <Column py="xl" style={{ borderBottomWidth: 1, borderColor: colors.white_muted }}>
+                        <div className="op_token_image">
+                            {tokenSummary.logo && <Image src={tokenSummary.logo} size={22} />}
+                        </div>
+                        <div className="op_token_address">
+                            <Text
+                                text={addressShortner(tokenSummary.address)}
+                                color="textDim"
+                                style={{
+                                    overflowWrap: 'anywhere'
+                                }}
+                            />
+                        </div>
+
                         <Row itemsCenter fullX justifyCenter>
                             <Image src={tokenSummary.logo} size={fontSizes.tiny} />
                             <Text

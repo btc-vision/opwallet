@@ -20,7 +20,7 @@ export default {
             colors: {
                 primary: 'rgb(234,202,68)',
                 'primary-active': '#383535',
-                'hard-black': '#070606',
+                'hard-black': '#222121',
                 'soft-black': '#2A2626',
                 'soft-white': '#AAAAAA',
                 'custom-green': '#4BB21A',
