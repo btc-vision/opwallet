@@ -16,5 +16,5 @@ type Presets = keyof typeof $tickerPresets;
 
 export function RunesTicker({ tick, preset }: { tick: string | undefined; preset?: Presets }) {
     const style = $tickerPresets[preset ?? 'md'];
-    return <Text text={tick} size={style.textSize} color="gold" wrap />;
+    return <Text text={tick} size={style.textSize} color="white" wrap />;
 }

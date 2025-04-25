@@ -50,7 +50,8 @@ const $modalStyle = {
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    backgroundColor: 'rgba(33,33,33,0.69)',
+    backdropFilter: 'blur(5px)',
     display: 'flex',
     justifyContent: 'center',
     alignItems: 'center',
@@ -58,7 +59,7 @@ const $modalStyle = {
 } as CSSProperties;
 
 const $modalContentStyle = {
-    backgroundColor: '#1c1919',
+    backgroundColor: '#212121',
     padding: 20,
     borderRadius: 4,
     maxWidth: 300,
@@ -77,10 +78,13 @@ const $optionStyle = {
 } as CSSProperties;
 
 const $searchInputStyle = {
-    backgroundColor: '#1c1919',
+    backgroundColor: '#212121',
+    borderColor: '#292828',
+    borderWidth: 1,
     width: '100%',
     padding: 8,
     marginBottom: 10,
+    borderRadius: 4,
     fontSize: fontSizes.xs,
     border: 'none',
     color: colors.text
@@ -194,47 +198,55 @@ export function Select(props: SelectProps) {
 
     return (
         <>
-            <Column>
-                <BaseView style={$style} onClick={() => setIsOpen(true)} {...rest}>
-                    <div>{selectedOption ? <Image src={selectedOption.logo} size={fontSizes.tiny} /> : <></>}</div>
+                <div className="op_swap_token_selector" onClick={() => setIsOpen(true)} {...rest}>
+                    {selectedOption ? <Image src={selectedOption.logo} width={22} height={22}/> : <></>}
                     {selectedOption ? (
                         <>
                             <Row fullY justifyBetween justifyCenter>
-                                <Column fullY justifyCenter>
-                                    <RunesTicker tick={selectedOption.symbol} />
-                                </Column>
+                                <div className="op_swap_token_selector_inner">
+                                    {selectedOption.symbol}
+                                    <svg
+                                        xmlns="http://www.w3.org/2000/svg"
+                                        width="18"
+                                        height="18"
+                                        viewBox="0 0 24 24"
+                                        fill="
+                            none"
+                                        stroke="currentColor"
+                                        strokeWidth="2"
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                        className="lucide lucide-chevron-down-icon lucide-chevron-down">
+                                        <path d="m6 9 6 6 6-6" />
+                                    </svg>
+                                </div>
                             </Row>
                         </>
                     ) : (
-                        <RunesTicker tick={placeholder} />
-                    )}
-                </BaseView>
-                <div {...rest}>
-                    {selectedOption ? (
-                        <Row justifyBetween full>
-                            <Row itemsCenter fullY gap="zero">
-                                <Text text={'Balance:'} size="xs" />
-                                <Text
-                                    text={new BigNumber(BitcoinUtils.formatUnits(calculateBalance(
-                                        selectedOption?.amount || 0n,
-                                        selectedOption?.divisibility || 0
-                                    ))).toFixed(8)}
-                                    size="xs"
-                                />
-                            </Row>
-                            {selectIndex == 0 && (
-                                <Text onClick={setMax} text="MAX" preset="sub" style={{ color: colors.icon_yellow }} />
-                            )}{' '}
-                        </Row>
-                    ) : (
-                        <Text text={'Balance:0'} size="xs" />
+                        <>
+                            <span className="op_select_token_placeholder">
+                                {placeholder}
+                            </span>
+                            <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                width="18"
+                                height="18"
+                                viewBox="0 0 24 24"
+                                fill="
+                            none"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                className="lucide lucide-chevron-down-icon lucide-chevron-down">
+                                <path d="m6 9 6 6 6-6" />
+                            </svg>
+                        </>
                     )}
                 </div>
-            </Column>
             {isOpen && (
                 <div style={$modalStyle} onClick={() => setIsOpen(false)}>
                     <div style={$modalContentStyle} onClick={(e) => e.stopPropagation()}>
-                        {' '}
                         <input
                             type="text"
                             placeholder="Search..."
@@ -251,9 +263,15 @@ export function Select(props: SelectProps) {
                         ) : (
                             <>
                                 {filteredOptions.map((option, index) => (
-                                    <div key={index} style={$optionStyle} onClick={() => handleSelect(option)}>
-                                        <Image src={option.logo} size={fontSizes.tiny} />
-                                        {option.name}
+                                    <div key={index} className="op_token_container" onClick={() => handleSelect(option)}>
+                                        <div className="op_token_col_1">
+                                            <div className="op_token_image">
+                                                <Image src={option.logo} />
+                                            </div>
+                                            <div className="op_token_title">
+                                                {option.name}
+                                            </div>
+                                        </div>
                                     </div>
                                 ))}
                                 {filteredOptions.length === 0 && (

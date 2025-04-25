@@ -19,7 +19,7 @@ const palette = {
     green_light: '#5ec04f',
 
     yellow_dark: '#d5ac00',
-    yellow: '#e3bb5f',
+    yellow: '#ee771b',
     yellow_light: '#fcd226',
 
     red_dark: '#c92b40',
@@ -34,7 +34,7 @@ const palette = {
     orange: '#f37413',
     orange_light: '#ff8f42',
 
-    gold: '#eac249'
+    gold: '#ee771b'
 };
 
 export const colors = Object.assign({}, palette, {
@@ -50,7 +50,7 @@ export const colors = Object.assign({}, palette, {
 
     danger: 'rgba(245, 84, 84, 0.90)',
 
-    card: '#262222',
+    card: '#212121',
     warning: palette.orange,
     primary: palette.yellow,
 
@@ -70,7 +70,7 @@ export const colors = Object.assign({}, palette, {
     value_up_color: '#4DA474',
     value_down_color: '#BF3F4D',
 
-    ticker_color: '#eac249'
+    ticker_color: '#ee771b'
 });
 
 export type ColorTypes = keyof typeof colors;

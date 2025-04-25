@@ -12,11 +12,31 @@
     --opnet-button-background-color: #434343;
     --opnet-button-hover-background-color: rgba(85, 85, 85, 0.3);
     --opnet-button-text-color: #dbdbdb;
+    --opnet-button-hover-text-color: rgba(219, 219, 219, 0.6);
 
+    /* Button icon colors */
     --opnet-button-icon-background-color: #dbdbdb;
     --opnet-button-icon-color: #111111;
     --opnet-button-radius: 17px;
     --opnet-button-icon-radius: 10px;
+
+
+    /* Input colors */
+    --opnet-input-background-color: #292828;
+
+    --opnet-input-border-color: #292828;
+    --opnet-input-border-hover-color: #434343;
+    --opnet-input-border-active-color: #595959;
+
+    /* Containers */
+
+    --opnet-container-border-radius: 17px;
+    --opnet-container-background-color: #434343;
+    --opnet-container-background-color-faded: #292929;
+    --opnet-container-background-color-hover: rgba(85, 85, 85, 0.3);
+    --opnet-container-border-color: #303030;
+
+
 }
 
 body{
@@ -210,6 +230,12 @@ body{
     justify-content: center;
 }
 
+.op_token_image > img{
+    border-radius: 50%;
+    width: 100%;
+    aspect-ratio: 1/1;
+}
+
 .op_token_title{
     font-size:13px;
     font-weight: 500;
@@ -383,6 +409,329 @@ button.op_tokens_action_button.icon{
 button.op_tokens_action_button:hover{
     background: #2d2c2c;
     border: 2px solid var(--opnet-button-text-color);
+}
+
+/* OPNet Token Panel Buttons */
+
+.op_token_action_buttons_container{
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    cursor: default;
+}
+
+button.op_token_action_button{
+    background: var(--opnet-button-background-color);
+    color: var(--opnet-button-text-color);
+    border-radius: 17px;
+    padding: 0 12px;
+    font-size: 12px;
+    font-weight: 500;
+    line-height: normal;
+    font-family: Inter-Regular, serif;
+    border: 2px solid var(--opnet-button-background-color);
+    transition: background 0.3s, color 0.3s, border 0.3s;
+    cursor:pointer;
+}
+
+/* Fees */
+
+.op_fee_rates{
+    display:flex;
+    align-items: stretch;
+    gap: 10px;
+    cursor:default;
+    margin-top:10px;
+}
+
+.op_fee_rate{
+    flex: 0 0 calc(25% - 7px);
+    width:calc(25% - 7px);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: var(--opnet-button-background-color);
+    border: 2px solid var(--opnet-button-background-color);
+    color: var(--opnet-button-text-color);
+    border-radius: 17px;
+    font-size: 12px;
+    font-weight: 500;
+    cursor:pointer;
+    transition: background 0.3s, color 0.3s, border 0.3s;
+    user-select: none;
+}
+
+.op_fee_rate:hover{
+    border: 2px solid var(--opnet-button-icon-background-color);
+    color: var(--opnet-background-color);
+}
+
+.op_fee_rate.op_fee_selected{
+    cursor:default;
+    border: 2px solid var(--opnet-button-icon-background-color);
+    color: var(--opnet-background-color);
+}
+
+.op_fee_rate_rate{
+    display:flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+}
+
+.op_fee_rate.op_fee_selected .op_fee_rate_rate{
+    color: var(--opnet-background-color);
+}
+
+.op_fee_rate_title{
+    background-color: var(--opnet-button-icon-background-color);
+    font-size: 10px;
+    padding:1px 3px;
+    font-weight:bold;
+    margin-top:-10px;
+    border-radius: 12px;
+    text-align:center;
+    font-weight:bold;
+    width:calc(100% - 12px);
+    color: var(--opnet-background-color);
+    position:relative;
+    transition:top 0.2s;
+    top:0;
+}
+
+.op_fee_rate:hover .op_fee_rate_title{
+    top:-3px;
+}
+
+
+.op_fee_rate_amount{
+    font-size: 14px;
+    line-height:normal;
+    font-weight: 700;
+    color: var(--opnet-button-text-color);
+}
+
+.op_fee_rate_units{
+    font-size: 12px;
+    line-height:normal;
+    font-weight: 500;
+    color: var(--opnet-text-color-faded);
+    margin-bottom:5px;
+}
+
+
+
+/* OPNet Tokens Panel - Token List */
+
+/* Inputs */
+
+.op_input_amount_container{
+    height: 54px;
+    display:flex;
+    align-items: center;
+    position:relative;
+    margin:10px 0;
+}
+
+.op_input_address{
+    font-size: 14px;
+    line-height: normal;
+    font-family: Inter-Regular;
+    height: 54px;
+    width:100%;
+    display:block;
+    background: var(--opnet-input-background-color);
+    border: 2px solid var(--opnet-input-background-color);
+    color: var(--opnet-button-text-color);
+    border-radius: 6px;
+    padding: 0 16px 0 16px;
+    transition: background 0.3s, color 0.3s, border 0.3s;
+}
+
+.op_input_amount_container.with_max{
+    padding-right: 70px;
+}
+
+.op_input_address:hover{
+    outline: none;
+    border: 2px solid var(--opnet-input-border-hover-color);
+}
+
+.op_input_address:focus{
+    outline: none;
+    border: 2px solid var(--opnet-input-border-active-color);
+}
+
+/** Max Button **/
+
+.op_input_amount_container > div{
+    position:absolute;
+    right:0;
+    top:0;
+    height: 54px;
+    padding: 0 14px 0 0;
+    display:flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.op_input_amount_container > div > button{
+    background: var(--opnet-input-background-color);
+    color: var(--opnet-button-text-color);
+    border-radius: 17px;
+    padding: 4px 10px;
+    font-size: 12px;
+    font-weight: 500;
+    line-height: normal;
+    font-family: Inter-Regular, serif;
+    border: 2px solid var(--opnet-input-background-color);
+    transition: background 0.3s, color 0.3s, border 0.3s;
+    cursor:pointer;
+}
+
+.op_input_amount_container > div > button:hover{
+    background: var(--opnet-button-background-color);
+    border: 2px solid var(--opnet-button-background-color);
+}
+
+/* OPNet Token Swap */
+
+.op_swap_container{
+    border:1px solid var(--opnet-container-border-color);
+    border-radius: 17px;
+    padding:7px;
+}
+
+.op_swap_token_inner_label{
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--opnet-text-color-faded);
+    padding:0 5px;
+    user-select: none;
+    pointer-events: none;
+}
+
+.op_swap_token_details{
+    display:flex;
+    width:100%;
+    flex:0 0 100%;
+    padding-right:8px;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.op_swap_token_inner{
+    display:flex;
+    align-items: center;
+    gap:4px;
+    width:100%;
+    justify-content: space-between;
+}
+
+.op_swap_token_balance{
+    display:flex;
+    align-items: center;
+    gap:4px;
+    color: var(--opnet-text-color-faded);
+    font-size: 12px;
+}
+
+.op_swap_token_selector{
+    display:flex;
+    flex:0 0 auto;
+    align-items: center;
+    background-color: var(--opnet-button-icon-background-color);
+    border:1px solid var(--opnet-button-icon-background-color);
+    border-radius: 25px;
+    padding:5px 6px;
+    gap:4px;
+    line-height:normal;
+    font-size:12px;
+    font-weight: 500;
+    transition:background 0.3s, color 0.3s, border 0.3s;
+    color: var(--opnet-background-color);
+    cursor:pointer;
+    height:34px;
+}
+
+.op_swap_token_selector_inner{
+    display:flex;
+    align-items: center;
+    gap:4px;
+    font-weight:bold;
+}
+
+.op_select_token_placeholder{
+    font-weight:bold;
+    padding-left:5px;
+}
+
+.op_swap_token_selector:hover{
+    background-color: var(--opnet-button-background-color);
+    border:1px solid var(--opnet-button-background-color);
+    color: var(--opnet-button-text-color);
+}
+
+.op_swap_token_selector > img{
+    display:block;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+}
+
+.op_swap_amount{
+    display:flex;
+    border:1px solid var(--opnet-container-border-color);
+    background-color: var(--opnet-container-background-color-faded);
+    width:100%;
+    height: 60px;
+    align-items:stretch;
+}
+
+.op_swap_amount_in{
+    margin-top:4px;
+    border-top-left-radius: 10px;
+    border-top-right-radius: 10px;
+    margin-bottom:4px;
+}
+
+.op_swap_amount_out{
+    border-bottom-left-radius: 10px;
+    border-bottom-right-radius: 10px;
+    margin-bottom:4px;
+}
+
+.op_swap_input{
+    display:flex;
+    align-items: center;
+    width:100%;
+    padding: 0 10px;
+}
+
+.op_swap_text_input{
+    width:100%;
+    height: 60px;
+    background-color: transparent;
+    color: var(--opnet-button-text-color);
+    border:0;
+    padding: 0 10px;
+    outline:none;
+    font-size:14px;
+    font-weight: 500;
+}
+
+.op_swap_amount:hover{
+    border:1px solid var(--opnet-input-border-hover-color);
+}
+
+.op_swap_amount_in .op_swap_text_input{
+    border-top-left-radius: 10px;
+}
+
+.op_swap_amount_out .op_swap_text_input{
+    border-bottom-left-radius: 10px;
 }
 
 /* Ant Tabs Nav Bar */
