@@ -12,9 +12,9 @@ import { useWallet } from '@/ui/utils';
 import { LoadingOutlined } from '@ant-design/icons';
 import { Address } from '@btc-vision/transaction';
 
+import BigNumber from 'bignumber.js';
 import { BaseView, BaseViewProps } from '../BaseView';
 import { RunesTicker } from '../RunesTicker';
-import BigNumber from 'bignumber.js';
 
 export interface SelectOption {
     value: string;
@@ -212,13 +212,15 @@ export function Select(props: SelectProps) {
                 <div {...rest}>
                     {selectedOption ? (
                         <Row justifyBetween full>
-                            <Row itemsCenter fullY gap="zero">
+                            <Row itemsCenter fullY gap="xs">
                                 <Text text={'Balance:'} size="xs" />
                                 <Text
-                                    text={new BigNumber(BitcoinUtils.formatUnits(calculateBalance(
-                                        selectedOption?.amount || 0n,
-                                        selectedOption?.divisibility || 0
-                                    ))).toFixed(8)}
+                                    text={new BigNumber(
+                                        calculateBalance(
+                                            selectedOption?.amount || 0n,
+                                            selectedOption?.divisibility || 0
+                                        )
+                                    ).toFixed(8)}
                                     size="xs"
                                 />
                             </Row>
@@ -227,7 +229,7 @@ export function Select(props: SelectProps) {
                             )}{' '}
                         </Row>
                     ) : (
-                        <Text text={'Balance:0'} size="xs" />
+                        <Text text={'Balance: 0'} size="xs" />
                     )}
                 </div>
             </Column>

@@ -55,20 +55,29 @@ export default function Swap() {
     // Handlers
     // -------------
     const handleSelect = async (option: OPTokenInfo) => {
-        // Prevent selecting the same token for input and output
         if (option.address === selectedOptionOutput?.address) {
-            tools.toastError("Token In and Token Out can't be the same");
+            const temp = selectedOptionOutput;
+            setSelectedOptioOutput(selectedOption);
+            setSelectedOption(temp);
+            setInputAmount('0');
+            setOutPutAmount('0');
             return;
         }
+
         await handleInputChange(inputAmount);
         setSelectedOption(option);
     };
 
     const handleSelectOutput = async (option: OPTokenInfo) => {
         if (option.address === selectedOption?.address) {
-            tools.toastError("Token In and Token Out can't be the same");
+            const temp = selectedOption;
+            setSelectedOption(selectedOptionOutput);
+            setSelectedOptioOutput(temp);
+            setInputAmount('0');
+            setOutPutAmount('0');
             return;
         }
+
         await handleInputChange(inputAmount);
         setSelectedOptioOutput(option);
     };
