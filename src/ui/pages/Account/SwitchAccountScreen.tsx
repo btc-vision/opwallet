@@ -1,15 +1,14 @@
 import VirtualList from 'rc-virtual-list';
-import React, { forwardRef, useMemo, useState } from 'react';
+import { forwardRef, useMemo, useState } from 'react';
 
 import { KEYRING_CLASS, KEYRING_TYPE } from '@/shared/constant';
 import { Account } from '@/shared/types';
-import { Card, Column, Content, Header, Icon, Layout, Row, Text } from '@/ui/components';
+import { Content, Header, Icon, Layout, Text } from '@/ui/components';
 import { useTools } from '@/ui/components/ActionComponent';
 import { useCurrentAccount } from '@/ui/state/accounts/hooks';
 import { accountActions } from '@/ui/state/accounts/reducer';
 import { useAppDispatch } from '@/ui/state/hooks';
 import { useCurrentKeyring } from '@/ui/state/keyrings/hooks';
-import { colors } from '@/ui/theme/colors';
 import { copyToClipboard, shortAddress, useWallet } from '@/ui/utils';
 import {
     CheckCircleFilled,
@@ -107,20 +106,20 @@ export function MyItem({ account, autoNav }: MyItemProps) {
                         )}
                     </div>
                     <div className="op_account_details">
-                        <div className="op_account_name">
-                            {account.alianName}
-                        </div>
+                        <div className="op_account_name">{account.alianName}</div>
                         <div className="op_account_wallet">
                             {shortAddress(account.address)}
-                            <span>${path}</span>
+                            <span>{path}</span>
                         </div>
                     </div>
                 </div>
                 <div className="op_account_col_2">
-                    <div className="op_account_icon_holder" onClick={(e) => {
-                        e.stopPropagation();
-                        setOptionsVisible((v) => !v);
-                    }}>
+                    <div
+                        className="op_account_icon_holder"
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            setOptionsVisible((v) => !v);
+                        }}>
                         <Icon>
                             <EllipsisOutlined />
                         </Icon>
@@ -128,25 +127,31 @@ export function MyItem({ account, autoNav }: MyItemProps) {
                 </div>
                 {optionsVisible && (
                     <div className="switch_options">
-                        <div className="switch_option" onClick={(e) => {
-                            e.stopPropagation();
-                            handleEditName();
-                        }}>
+                        <div
+                            className="switch_option"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                handleEditName();
+                            }}>
                             <EditOutlined />
                             <Text text="Edit Name" size="sm" />
                         </div>
-                        <div className="switch_option" onClick={(e) => {
-                            e.stopPropagation();
-                            handleCopyAddress();
-                        }}>
+                        <div
+                            className="switch_option"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                handleCopyAddress();
+                            }}>
                             <CopyOutlined />
                             <Text text="Copy address" size="sm" />
                         </div>
                         {account.type !== KEYRING_TYPE.KeystoneKeyring && (
-                            <div className="switch_option" onClick={(e) => {
-                                e.stopPropagation();
-                                handleExportPrivateKey();
-                            }}>
+                            <div
+                                className="switch_option"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleExportPrivateKey();
+                                }}>
                                 <KeyOutlined />
                                 <Text text="Export Private Key" size="sm" />
                             </div>
