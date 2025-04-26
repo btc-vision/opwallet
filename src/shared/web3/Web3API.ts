@@ -103,9 +103,21 @@ class Web3API {
     }
 
     public get ROUTER_ADDRESS(): Address | null {
-        if (!this.metadata) return null;
+        const network = this.getOPNetNetwork();
 
-        return new Address(Buffer.from('mo0ejly2iijjlgVSA22IAJiavTT6Zd760g5myg6KW9k=', 'base64')); //this.metadata.router;
+        switch (network) {
+            case OPNetNetwork.Mainnet: {
+                return null; // TODO: To be changed if needed
+            }
+            case OPNetNetwork.Testnet: {
+                return null; // TODO: To be changed if needed
+            }
+            case OPNetNetwork.Regtest: {
+                return Address.fromString('0xc9eed2f3cba2d8ced9a277d989954a0052280fcca7e840d1d970e48e9b64de16'); // TODO: To be changed if needed
+            }
+            default:
+                throw new Error('Invalid network');
+        }
     }
 
     public get chain(): ChainType {

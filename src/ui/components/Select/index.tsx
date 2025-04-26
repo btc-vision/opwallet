@@ -4,7 +4,7 @@ import { CSSProperties, useEffect, useState } from 'react';
 import { OPTokenInfo } from '@/shared/types';
 import Web3API from '@/shared/web3/Web3API';
 import { ContractInformation } from '@/shared/web3/interfaces/ContractInformation';
-import { Column, Icon, Image, Row, Text } from '@/ui/components';
+import { Icon, Image, Row } from '@/ui/components';
 import { useCurrentAccount } from '@/ui/state/accounts/hooks';
 import { colors } from '@/ui/theme/colors';
 import { fontSizes } from '@/ui/theme/font';
@@ -12,9 +12,7 @@ import { useWallet } from '@/ui/utils';
 import { LoadingOutlined } from '@ant-design/icons';
 import { Address } from '@btc-vision/transaction';
 
-import { BaseView, BaseViewProps } from '../BaseView';
-import { RunesTicker } from '../RunesTicker';
-import BigNumber from 'bignumber.js';
+import { BaseViewProps } from '../BaseView';
 
 export interface SelectOption {
     value: string;
@@ -198,52 +196,50 @@ export function Select(props: SelectProps) {
 
     return (
         <>
-                <div className="op_swap_token_selector" onClick={() => setIsOpen(true)} {...rest}>
-                    {selectedOption ? <Image src={selectedOption.logo} width={22} height={22}/> : <></>}
-                    {selectedOption ? (
-                        <>
-                            <Row fullY justifyBetween justifyCenter>
-                                <div className="op_swap_token_selector_inner">
-                                    {selectedOption.symbol}
-                                    <svg
-                                        xmlns="http://www.w3.org/2000/svg"
-                                        width="18"
-                                        height="18"
-                                        viewBox="0 0 24 24"
-                                        fill="
+            <div className="op_swap_token_selector" onClick={() => setIsOpen(true)} {...rest}>
+                {selectedOption ? <Image src={selectedOption.logo} width={22} height={22} /> : <></>}
+                {selectedOption ? (
+                    <>
+                        <Row fullY justifyBetween justifyCenter>
+                            <div className="op_swap_token_selector_inner">
+                                {selectedOption.symbol}
+                                <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    width="18"
+                                    height="18"
+                                    viewBox="0 0 24 24"
+                                    fill="
                             none"
-                                        stroke="currentColor"
-                                        strokeWidth="2"
-                                        strokeLinecap="round"
-                                        strokeLinejoin="round"
-                                        className="lucide lucide-chevron-down-icon lucide-chevron-down">
-                                        <path d="m6 9 6 6 6-6" />
-                                    </svg>
-                                </div>
-                            </Row>
-                        </>
-                    ) : (
-                        <>
-                            <span className="op_select_token_placeholder">
-                                {placeholder}
-                            </span>
-                            <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                width="18"
-                                height="18"
-                                viewBox="0 0 24 24"
-                                fill="
+                                    stroke="currentColor"
+                                    strokeWidth="2"
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    className="lucide lucide-chevron-down-icon lucide-chevron-down">
+                                    <path d="m6 9 6 6 6-6" />
+                                </svg>
+                            </div>
+                        </Row>
+                    </>
+                ) : (
+                    <>
+                        <span className="op_select_token_placeholder">{placeholder}</span>
+                        <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            width="18"
+                            height="18"
+                            viewBox="0 0 24 24"
+                            fill="
                             none"
-                                stroke="currentColor"
-                                strokeWidth="2"
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                className="lucide lucide-chevron-down-icon lucide-chevron-down">
-                                <path d="m6 9 6 6 6-6" />
-                            </svg>
-                        </>
-                    )}
-                </div>
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            className="lucide lucide-chevron-down-icon lucide-chevron-down">
+                            <path d="m6 9 6 6 6-6" />
+                        </svg>
+                    </>
+                )}
+            </div>
             {isOpen && (
                 <div style={$modalStyle} onClick={() => setIsOpen(false)}>
                     <div style={$modalContentStyle} onClick={(e) => e.stopPropagation()}>
@@ -263,14 +259,15 @@ export function Select(props: SelectProps) {
                         ) : (
                             <>
                                 {filteredOptions.map((option, index) => (
-                                    <div key={index} className="op_token_container" onClick={() => handleSelect(option)}>
+                                    <div
+                                        key={index}
+                                        className="op_token_container"
+                                        onClick={() => handleSelect(option)}>
                                         <div className="op_token_col_1">
                                             <div className="op_token_image">
                                                 <Image src={option.logo} />
                                             </div>
-                                            <div className="op_token_title">
-                                                {option.name}
-                                            </div>
+                                            <div className="op_token_title">{option.name}</div>
                                         </div>
                                     </div>
                                 ))}

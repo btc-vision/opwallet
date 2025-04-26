@@ -83,6 +83,7 @@ export function OPNetList() {
     const [importTokenBool, setImportTokenBool] = useState(false);
 
     // For the normal "Remove/Hide" token modal
+    const [isTokenHidden, setIsTokenHidden] = useState(false);
     const [showModal, setShowModal] = useState(false);
     const [modalToken, setModalToken] = useState<string | null>(null);
 
@@ -413,6 +414,25 @@ export function OPNetList() {
         }
     };
 
+    useEffect(() => {
+        async function getHiddensToken() {
+            const chain = await wallet.getChainType();
+            const accountAddr = currentAccount.pubkey;
+            const storageKey = `opnetTokens_${chain}_${accountAddr}`;
+
+            const storedTokens = JSON.parse(localStorage.getItem(storageKey) || '[]') as (StoredToken | string)[];
+
+            const previouslyHidden = storedTokens.filter((t) => typeof t === 'object' && t.hidden) as StoredToken[];
+            if (previouslyHidden.length) {
+                setIsTokenHidden(true);
+            } else {
+                setIsTokenHidden(false);
+            }
+        }
+
+        getHiddensToken().catch((err: unknown) => console.error(err));
+    }, [currentAccount.pubkey, wallet, tokens]);
+
     const totalPages = Math.ceil(total / TOKENS_PER_PAGE);
     const handlePageChange = (direction: 'next' | 'prev') => {
         setCurrentPage((prev) => {
@@ -538,17 +558,18 @@ export function OPNetList() {
                 </BaseView>
             )}
 
-            <BaseView style={$opnet}>
-                {/* Show Hidden Tokens */}
-                <Row style={{ marginTop: '12px' }}>
-                    <Button
-                        style={{ width: '100%', fontSize: '10px' }}
-                        text="Show Hidden Tokens"
-                        preset="fontsmall"
-                        onClick={showHiddenTokens}
-                    />
-                </Row>
-            </BaseView>
+            {isTokenHidden && (
+                <BaseView style={$opnet}>
+                    <Row style={{ marginTop: '12px' }}>
+                        <Button
+                            style={{ width: '100%', fontSize: '10px' }}
+                            text="Show Hidden Tokens"
+                            preset="fontsmall"
+                            onClick={showHiddenTokens}
+                        />
+                    </Row>
+                </BaseView>
+            )}
 
             {/* Import Token Modal */}
             {importTokenBool && (
