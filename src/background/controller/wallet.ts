@@ -73,10 +73,10 @@ import { AbstractWallet } from '@btc-vision/wallet-sdk/lib/wallet';
 
 import { address as bitcoinAddress, Psbt } from '@btc-vision/bitcoin';
 import { InteractionResponse } from '@btc-vision/transaction/src/transaction/TransactionFactory';
+import { Buffer } from 'buffer';
 import { ContactBookItem, ContactBookStore } from '../service/contactBook';
 import { OpenApiService } from '../service/openapi';
 import { ConnectedSite } from '../service/permission';
-import { Buffer } from 'buffer';
 
 export interface AccountAsset {
     name: string;
@@ -979,10 +979,28 @@ export class WalletController {
 
         try {
             const walletGet: Wallet = Wallet.fromWif(wifWallet.wif, Web3API.network);
-            const utxos = interactionParameters.utxos.map((utxo) => ({
-                ...utxo,
-                value: typeof utxo.value === 'bigint' ? utxo.value : BigInt(utxo.value as unknown as string)
-            }));
+            const utxos = interactionParameters.utxos.map((utxo) => {
+                const nonWitnessUtxo = Buffer.isBuffer(utxo.nonWitnessUtxo)
+                    ? utxo.nonWitnessUtxo
+                    : (() => {
+                          const obj = utxo.nonWitnessUtxo as Record<string, number> | undefined;
+                          if (!obj) return undefined;
+
+                          // find the highest index key to size the buffer
+                          const len = Math.max(...Object.keys(obj).map((k) => +k)) + 1;
+                          const buf = Buffer.alloc(len);
+                          for (const [k, v] of Object.entries(obj)) {
+                              buf[+k] = v;
+                          }
+                          return buf;
+                      })();
+
+                return {
+                    ...utxo,
+                    value: typeof utxo.value === 'bigint' ? utxo.value : BigInt(utxo.value as unknown as string),
+                    nonWitnessUtxo
+                };
+            });
 
             const preimage = await Web3API.provider.getPreimage();
             const interactionParametersSubmit: IInteractionParameters = {
@@ -1053,16 +1071,52 @@ export class WalletController {
         if (!wifWallet) throw new WalletControllerError('Could not retrieve internal private key');
 
         try {
-            const utxos = params.utxos.map((utxo) => ({
-                ...utxo,
-                value: typeof utxo.value === 'bigint' ? utxo.value : BigInt(utxo.value as unknown as string)
-            }));
+            const utxos = params.utxos.map((utxo) => {
+                const nonWitnessUtxo = Buffer.isBuffer(utxo.nonWitnessUtxo)
+                    ? utxo.nonWitnessUtxo
+                    : (() => {
+                          const obj = utxo.nonWitnessUtxo as Record<string, number> | undefined;
+                          if (!obj) return undefined;
+
+                          // find the highest index key to size the buffer
+                          const len = Math.max(...Object.keys(obj).map((k) => +k)) + 1;
+                          const buf = Buffer.alloc(len);
+                          for (const [k, v] of Object.entries(obj)) {
+                              buf[+k] = v;
+                          }
+                          return buf;
+                      })();
+
+                return {
+                    ...utxo,
+                    value: typeof utxo.value === 'bigint' ? utxo.value : BigInt(utxo.value as unknown as string),
+                    nonWitnessUtxo
+                };
+            });
 
             const optionalInputs =
-                params.optionalInputs?.map((utxo) => ({
-                    ...utxo,
-                    value: typeof utxo.value === 'bigint' ? utxo.value : BigInt(utxo.value as unknown as string)
-                })) || [];
+                params.optionalInputs?.map((utxo) => {
+                    const nonWitnessUtxo = Buffer.isBuffer(utxo.nonWitnessUtxo)
+                        ? utxo.nonWitnessUtxo
+                        : (() => {
+                              const obj = utxo.nonWitnessUtxo as Record<string, number> | undefined;
+                              if (!obj) return undefined;
+
+                              // find the highest index key to size the buffer
+                              const len = Math.max(...Object.keys(obj).map((k) => +k)) + 1;
+                              const buf = Buffer.alloc(len);
+                              for (const [k, v] of Object.entries(obj)) {
+                                  buf[+k] = v;
+                              }
+                              return buf;
+                          })();
+
+                    return {
+                        ...utxo,
+                        value: typeof utxo.value === 'bigint' ? utxo.value : BigInt(utxo.value as unknown as string),
+                        nonWitnessUtxo
+                    };
+                }) || [];
 
             const preimage = await Web3API.provider.getPreimage();
             const walletGet: Wallet = Wallet.fromWif(wifWallet.wif, Web3API.network);
@@ -1115,16 +1169,50 @@ export class WalletController {
             const walletGet: Wallet = Wallet.fromWif(wifWallet.wif, Web3API.network);
             const preimage = await Web3API.provider.getPreimage();
 
-            const utxos = interactionParameters.utxos.map((utxo) => ({
-                ...utxo,
-                value: typeof utxo.value === 'bigint' ? utxo.value : BigInt(utxo.value as unknown as string)
-            }));
+            const utxos = interactionParameters.utxos.map((utxo) => {
+                const nonWitnessUtxo = Buffer.isBuffer(utxo.nonWitnessUtxo)
+                    ? utxo.nonWitnessUtxo
+                    : (() => {
+                          const obj = utxo.nonWitnessUtxo as Record<string, number> | undefined;
+                          if (!obj) return undefined;
+
+                          // find the highest index key to size the buffer
+                          const len = Math.max(...Object.keys(obj).map((k) => +k)) + 1;
+                          const buf = Buffer.alloc(len);
+                          for (const [k, v] of Object.entries(obj)) {
+                              buf[+k] = v;
+                          }
+                          return buf;
+                      })();
+
+                return {
+                    ...utxo,
+                    value: typeof utxo.value === 'bigint' ? utxo.value : BigInt(utxo.value as unknown as string),
+                    nonWitnessUtxo
+                };
+            });
 
             const optionalInputs =
                 interactionParameters.optionalInputs?.map((utxo) => {
+                    const nonWitnessUtxo = Buffer.isBuffer(utxo.nonWitnessUtxo)
+                        ? utxo.nonWitnessUtxo
+                        : (() => {
+                              const obj = utxo.nonWitnessUtxo as Record<string, number> | undefined;
+                              if (!obj) return undefined;
+
+                              // find the highest index key to size the buffer
+                              const len = Math.max(...Object.keys(obj).map((k) => +k)) + 1;
+                              const buf = Buffer.alloc(len);
+                              for (const [k, v] of Object.entries(obj)) {
+                                  buf[+k] = v;
+                              }
+                              return buf;
+                          })();
+
                     return {
                         ...utxo,
-                        value: typeof utxo.value === 'bigint' ? utxo.value : BigInt(utxo.value as unknown as string)
+                        value: typeof utxo.value === 'bigint' ? utxo.value : BigInt(utxo.value as unknown as string),
+                        nonWitnessUtxo
                     };
                 }) || [];
 
