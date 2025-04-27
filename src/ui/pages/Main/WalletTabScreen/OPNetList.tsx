@@ -20,10 +20,10 @@ import { useCurrentAccount } from '@/ui/state/accounts/hooks';
 import { useChainType } from '@/ui/state/settings/hooks';
 import { useWallet } from '@/ui/utils';
 
+import { faPencil, faRefresh, faUpload } from '@fortawesome/free-solid-svg-icons';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { RouteTypes, useNavigate } from '../../MainRoute';
 import { AddOpNetToken } from '../../Wallet/AddOpNetToken';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faPencil, faRefresh, faUpload } from '@fortawesome/free-solid-svg-icons';
 
 BigNumber.config({ EXPONENTIAL_AT: 256 });
 
@@ -473,27 +473,31 @@ export function OPNetList() {
                     <div className="op_tokens_action_buttons">
                         <button className="op_tokens_action_button" onClick={() => setImportTokenBool(true)}>
                             <div className="op_token_action_icon">
-                                <FontAwesomeIcon icon={faUpload}/>
+                                <FontAwesomeIcon icon={faUpload} />
                             </div>
                             <span>Import Token</span>
                         </button>
-                        <button className="op_tokens_action_button" onClick={async () => {
-                            await browser.tabs.create({
-                                url: browser.runtime.getURL('/index.html#/opnet/deploy-contract')
-                            });
-                        }}>
+                        <button
+                            className="op_tokens_action_button"
+                            onClick={async () => {
+                                await browser.tabs.create({
+                                    url: browser.runtime.getURL('/index.html#/opnet/deploy-contract')
+                                });
+                            }}>
                             <div className="op_tokens_action_icon">
-                                <FontAwesomeIcon icon={faPencil}/>
+                                <FontAwesomeIcon icon={faPencil} />
                             </div>
                             <span>Deploy</span>
                         </button>
                     </div>
                     <div className="op_tokens_action_buttons">
-                        <button className="op_tokens_action_button icon" onClick={() => {
-                            fetchTokenBalances().catch((err: unknown) => console.error(err));
-                        }}>
+                        <button
+                            className="op_tokens_action_button icon"
+                            onClick={() => {
+                                fetchTokenBalances().catch((err: unknown) => console.error(err));
+                            }}>
                             <div className="op_tokens_action_icon">
-                                <FontAwesomeIcon icon={faRefresh}/>
+                                <FontAwesomeIcon icon={faRefresh} />
                             </div>
                         </button>
                     </div>
@@ -517,44 +521,54 @@ export function OPNetList() {
                     ))}
 
                     {/* Pagination Controls */}
-
-                    <div className="op_pagination_controls">
-                        <button className="op_pagination_next" onClick={() => handlePageChange('prev')} disabled={currentPage === 1}>
-                            Prev
-                        </button>
-                        {Array.from({ length: totalPages }, (_, idx) => {
-                            const pageNumber = idx + 1;
-                            const shouldShow =
-                                pageNumber === 1 ||
-                                pageNumber === totalPages ||
-                                (pageNumber >= currentPage - 2 && pageNumber <= currentPage + 2);
-                            if (shouldShow) {
-                                return (
-                                    <button onClick={() => setCurrentPage(pageNumber)} className="op_pagination_button" key={pageNumber}>
-                                        {pageNumber.toString()}
-                                    </button>
-                                );
-                            }
-                            if (pageNumber === currentPage - 3 || pageNumber === currentPage + 3) {
-                                return (
-                                    <span key={pageNumber} style={{ padding: '5px' }}>
-                                        ...
-                                    </span>
-                                );
-                            }
-                            if (pageNumber === currentPage - 3 || pageNumber === currentPage + 3) {
-                                return (
-                                    <span key={pageNumber} style={{ padding: '5px' }}>
-                                        ...
-                                    </span>
-                                );
-                            }
-                            return null;
-                        })}
-                        <button className="op_pagination_next" onClick={() => handlePageChange('next')} disabled={currentPage === totalPages}>
-                            Next
-                        </button>
-                    </div>
+                    {totalPages > 1 && (
+                        <div className="op_pagination_controls">
+                            <button
+                                className="op_pagination_next"
+                                onClick={() => handlePageChange('prev')}
+                                disabled={currentPage === 1}>
+                                Prev
+                            </button>
+                            {Array.from({ length: totalPages }, (_, idx) => {
+                                const pageNumber = idx + 1;
+                                const shouldShow =
+                                    pageNumber === 1 ||
+                                    pageNumber === totalPages ||
+                                    (pageNumber >= currentPage - 2 && pageNumber <= currentPage + 2);
+                                if (shouldShow) {
+                                    return (
+                                        <button
+                                            onClick={() => setCurrentPage(pageNumber)}
+                                            className="op_pagination_button"
+                                            key={pageNumber}>
+                                            {pageNumber.toString()}
+                                        </button>
+                                    );
+                                }
+                                if (pageNumber === currentPage - 3 || pageNumber === currentPage + 3) {
+                                    return (
+                                        <span key={pageNumber} style={{ padding: '5px' }}>
+                                            ...
+                                        </span>
+                                    );
+                                }
+                                if (pageNumber === currentPage - 3 || pageNumber === currentPage + 3) {
+                                    return (
+                                        <span key={pageNumber} style={{ padding: '5px' }}>
+                                            ...
+                                        </span>
+                                    );
+                                }
+                                return null;
+                            })}
+                            <button
+                                className="op_pagination_next"
+                                onClick={() => handlePageChange('next')}
+                                disabled={currentPage === totalPages}>
+                                Next
+                            </button>
+                        </div>
+                    )}
                 </BaseView>
             )}
 

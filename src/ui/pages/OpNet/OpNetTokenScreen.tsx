@@ -162,28 +162,22 @@ export default function OpNetTokenScreen() {
             {tokenSummary && (
                 <Content>
                     <Column py="xl" style={{ borderBottomWidth: 1, borderColor: colors.white_muted }}>
-                        <div className="op_token_image">
-                            {tokenSummary.logo && <Image src={tokenSummary.logo} size={22} />}
-                        </div>
-                        <div className="op_token_address">
-                            <Text
-                                text={addressShortner(tokenSummary.address)}
-                                color="textDim"
-                                style={{
-                                    overflowWrap: 'anywhere'
-                                }}
-                            />
-                        </div>
-
-                        <Row itemsCenter fullX justifyCenter>
-                            <Image src={tokenSummary.logo} size={fontSizes.tiny} />
+                        <Row
+                            itemsCenter
+                            fullX
+                            justifyCenter
+                            style={{
+                                flexDirection: 'column',
+                                gap: 10
+                            }}>
+                            <Image src={tokenSummary.logo} size={fontSizes.xxl} />
                             <Text
                                 text={`${new BigNumber(
                                     BitcoinUtils.formatUnits(tokenSummary.amount, tokenSummary.divisibility)
                                 ).toFixed(tokenSummary.divisibility)} ${tokenSummary.symbol}`}
                                 preset="bold"
                                 textCenter
-                                size="xxl"
+                                size="lg"
                                 wrap
                             />
                         </Row>
@@ -253,18 +247,6 @@ export default function OpNetTokenScreen() {
                             disabled={!enableTransfer}
                             onClick={(e) => {
                                 navigate(RouteTypes.Swap, tokenSummary);
-                            }}
-                            full
-                        />
-                        <Button
-                            text="Delete"
-                            preset="primary"
-                            icon="close"
-                            style={!enableTransfer ? { backgroundColor: 'grey' } : {}}
-                            disabled={!enableTransfer}
-                            onClick={async () => {
-                                // Remove the token address from tokensImported in localStorage
-                                await deleteToken();
                             }}
                             full
                         />
