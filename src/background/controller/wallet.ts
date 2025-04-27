@@ -249,8 +249,6 @@ export class WalletController {
      */
     public getAddressBalance = async (address: string): Promise<BitcoinBalance> => {
         try {
-            console.log('getAddressBalance', address);
-
             const data: BitcoinBalance = await this.getOpNetBalance(address);
             preferenceService.updateAddressBalance(address, data);
             return data;
@@ -2011,8 +2009,6 @@ export class WalletController {
                 //Web3API.getBalance(address, true),
                 Web3API.getBalance(address, false)
             ]);
-
-            console.log('btcBalanceSpendableCurrent:', btcBalanceSpendable, confirmedBalance, address);
 
             const btcBalanceTotalStr: string = bigIntToDecimal(btcBalanceSpendable, 8);
             const confirmedBalanceStr: string = bigIntToDecimal(confirmedBalance, 8);
