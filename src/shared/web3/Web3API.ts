@@ -263,7 +263,6 @@ class Web3API {
                 logo
             };
         } catch (e) {
-            console.warn(e);
             if ((e as Error).message.includes('not found')) {
                 return false;
             }
@@ -272,20 +271,12 @@ class Web3API {
     }
 
     public async getUTXOs(addresses: string[], requiredAmount?: bigint): Promise<UTXO[]> {
-        const utxos: UTXO[] = await this.getUTXOsForAddresses(addresses, requiredAmount);
-        if (!utxos.length) {
-            throw new Error('Something went wrong while getting UTXOs.');
-        }
-
-        return utxos;
+        return await this.getUTXOsForAddresses(addresses, requiredAmount);
     }
 
     public async getUTXOTotal(address: string): Promise<bigint> {
         const utxos: UTXO[] = await this.getUTXOsForAddresses([address]);
-        if (!utxos.length) {
-            throw new Error('Something went wrong while getting UTXOs.');
-        }
-        
+
         return utxos.reduce((acc, utxo) => acc + utxo.value, 0n);
     }
 

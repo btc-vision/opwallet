@@ -386,6 +386,8 @@ export default function TxOpnetConfirmScreen() {
             const amountA = Number(parameters.inputAmount).toLocaleString();
             tools.toastSuccess(`You have successfully transferred ${amountA} ${btcUnit}`);
 
+            Web3API.provider.utxoManager.spentUTXO(currentWalletAddress.address, utxos, sendTransact.nextUTXOs);
+
             navigate(RouteTypes.TxSuccessScreen, { txid: firstTransaction.result });
         } catch (e) {
             tools.toastError(`Error: ${(e as Error).message}`);
@@ -436,6 +438,8 @@ export default function TxOpnetConfirmScreen() {
             // This transaction is partially signed. You can not submit it to the Bitcoin network. It must pass via the OPNet network.
             const secondTransaction = await Web3API.provider.sendRawTransaction(sendTransact.transaction[1], false);
             if (secondTransaction.result && !secondTransaction.error && secondTransaction.success) {
+                Web3API.provider.utxoManager.spentUTXO(currentWalletAddress.address, utxos, sendTransact.utxos);
+                
                 await waitForTransaction(secondTransaction.result, setOpenLoading, tools);
 
                 const getChain = await wallet.getChainType();

@@ -249,6 +249,8 @@ export class WalletController {
      */
     public getAddressBalance = async (address: string): Promise<BitcoinBalance> => {
         try {
+            console.log('getAddressBalance', address);
+
             const data: BitcoinBalance = await this.getOpNetBalance(address);
             preferenceService.updateAddressBalance(address, data);
             return data;
@@ -1009,6 +1011,7 @@ export class WalletController {
             if (!firstTransaction) {
                 throw new WalletControllerError('No result from funding transaction broadcast');
             }
+
             if (firstTransaction.error) {
                 throw new WalletControllerError(firstTransaction.error);
             }
@@ -1017,12 +1020,16 @@ export class WalletController {
                 sendTransaction.interactionTransaction,
                 false
             );
+
             if (!secondTransaction) {
                 throw new WalletControllerError('No result from interaction transaction broadcast');
             }
+
             if (secondTransaction.error) {
                 throw new WalletControllerError(secondTransaction.error);
             }
+
+            Web3API.provider.utxoManager.spentUTXO(account.address, utxos, sendTransaction.nextUTXOs);
 
             return [firstTransaction, secondTransaction, sendTransaction.nextUTXOs, sendTransaction.preimage];
         } catch (err) {
@@ -1158,12 +1165,15 @@ export class WalletController {
                     transaction.raw,
                     transaction.psbt
                 );
+
                 if (!broadcastedTransaction) {
                     throw new WalletControllerError('Error in broadcast: no response');
                 }
+
                 if (broadcastedTransaction.error) {
                     throw new WalletControllerError(broadcastedTransaction.error);
                 }
+
                 broadcastedTransactions.push(broadcastedTransaction);
             } catch (err) {
                 throw new WalletControllerError(`Broadcast failed: ${String(err)}`, transaction);
@@ -1291,10 +1301,7 @@ export class WalletController {
     public listChainAssets = async (pubkeyAddress: string): Promise<AccountAsset[]> => {
         try {
             const balance = await openapiService.getAddressBalance(pubkeyAddress);
-            const assets: AccountAsset[] = [
-                { name: COIN_NAME, symbol: COIN_SYMBOL, amount: balance.amount, value: balance.usd_value }
-            ];
-            return assets;
+            return [{ name: COIN_NAME, symbol: COIN_SYMBOL, amount: balance.amount, value: balance.usd_value }];
         } catch (err) {
             throw new WalletControllerError(`Failed to list chain assets: ${String(err)}`, {
                 pubkeyAddress
@@ -1998,29 +2005,28 @@ export class WalletController {
      */
     public getOpNetBalance = async (address: string): Promise<BitcoinBalance> => {
         try {
-            const [btcBalanceSpendable, btcBalanceSpendableCurrent, btcBalanceTotal] = await Promise.all([
+            const [btcBalanceSpendable, confirmedBalance] = await Promise.all([
+                //btcBalanceSpendableCurrent
                 Web3API.getUTXOTotal(address),
-                Web3API.getBalance(address, true),
+                //Web3API.getBalance(address, true),
                 Web3API.getBalance(address, false)
             ]);
 
-            const pendingAmount: bigint = btcBalanceSpendableCurrent - btcBalanceSpendable;
-            const btcBalanceTotalStr: string = bigIntToDecimal(btcBalanceSpendable, 8);
-            const pendingAmountStr: string = bigIntToDecimal(pendingAmount, 8);
+            console.log('btcBalanceSpendableCurrent:', btcBalanceSpendable, confirmedBalance, address);
 
-            const inscriptionAmount: bigint = btcBalanceTotal - btcBalanceSpendable;
-            const inscriptionAmountStr: string = bigIntToDecimal(inscriptionAmount, 8);
+            const btcBalanceTotalStr: string = bigIntToDecimal(btcBalanceSpendable, 8);
+            const confirmedBalanceStr: string = bigIntToDecimal(confirmedBalance, 8);
 
             return {
                 confirm_amount: btcBalanceTotalStr,
-                pending_amount: pendingAmountStr,
+                pending_amount: '0',
                 amount: btcBalanceTotalStr,
-                confirm_btc_amount: btcBalanceTotalStr,
-                pending_btc_amount: pendingAmountStr,
+                confirm_btc_amount: confirmedBalanceStr,
+                pending_btc_amount: '0',
                 btc_amount: btcBalanceTotalStr,
                 confirm_inscription_amount: '0',
                 pending_inscription_amount: '0',
-                inscription_amount: inscriptionAmountStr,
+                inscription_amount: '0',
                 usd_value: '0.00'
             };
         } catch (err) {

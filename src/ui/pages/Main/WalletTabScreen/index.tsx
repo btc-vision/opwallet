@@ -1,6 +1,6 @@
 import { Tabs, Tooltip } from 'antd';
 import BigNumber from 'bignumber.js';
-import { CSSProperties, ReactElement, useEffect, useMemo, useState } from 'react';
+import { CSSProperties, ReactElement, useEffect, useState } from 'react';
 
 import { AddressFlagType } from '@/shared/constant';
 import { checkAddressFlag } from '@/shared/utils';
@@ -8,7 +8,6 @@ import Web3API, { bigIntToDecimal } from '@/shared/web3/Web3API';
 import { AddressBar, Card, Column, Content, Footer, Header, Icon, Image, Layout, Row, Text } from '@/ui/components';
 import AccountSelect from '@/ui/components/AccountSelect';
 import { BtcUsd } from '@/ui/components/BtcUsd';
-import { Button } from '@/ui/components/Button';
 import { DisableUnconfirmedsPopover } from '@/ui/components/DisableUnconfirmedPopover';
 import { NavTabBar } from '@/ui/components/NavTabBar';
 import { UpgradePopover } from '@/ui/components/UpgradePopover';
@@ -47,10 +46,6 @@ export default function WalletTabScreen() {
 
     const currentKeyring = useCurrentKeyring();
     const currentAccount = useCurrentAccount();
-    const balanceValue = useMemo(() => {
-        return new BigNumber(accountBalance.amount).toString();
-    }, [accountBalance.amount]);
-
     const wallet = useWallet();
 
     const dispatch = useAppDispatch();
@@ -75,7 +70,7 @@ export default function WalletTabScreen() {
     const [totalAmount, setTotalAmount] = useState(totalAmountUse);
 
     const addressSummary = useAddressSummary();
-
+    
     useEffect(() => {
         const fetchBalance = async () => {
             if (accountBalance.amount === '0') {
@@ -94,7 +89,7 @@ export default function WalletTabScreen() {
         };
 
         void fetchBalance();
-    }, [accountBalance.amount, chain.enum, currentAccount.address]);
+    }, [accountBalance.amount, chain.enum, currentAccount.address, wallet]);
 
     useEffect(() => {
         void (async () => {
@@ -113,7 +108,7 @@ export default function WalletTabScreen() {
 
             setShowDisableUnconfirmedUtxoNotice(true);
         })();
-    }, [addressSummary, currentAccount]);
+    }, [addressSummary, currentAccount, dispatch, wallet]);
 
     const tabItems: { key: AssetTabKey; label: string; children: ReactElement }[] = [
         {
@@ -217,11 +212,11 @@ export default function WalletTabScreen() {
                         }}>
                         <div>
                             <Text text={'TOTAL BALANCE'} textCenter color="textDim" />
-                            <BtcDisplay balance={balanceValue} />
+                            <BtcDisplay balance={accountBalance.amount} />
                         </div>
                     </Tooltip>
                     <BtcUsd
-                        sats={amountToSatoshis(balanceValue)}
+                        sats={amountToSatoshis(accountBalance.amount)}
                         textCenter
                         size={'md'}
                         style={{
@@ -235,16 +230,9 @@ export default function WalletTabScreen() {
                             onClick={() => {
                                 navigate(RouteTypes.ReceiveScreen);
                             }}
-                            className="op_action_button"
-                        >
-                            <div
-                                className="op_icon_wrapper"
-                            >
-                                <Icon
-                                    icon="receive"
-                                    color={'background'}
-                                    size={20}
-                                />
+                            className="op_action_button">
+                            <div className="op_icon_wrapper">
+                                <Icon icon="receive" color={'background'} size={20} />
                             </div>
                             Receive
                         </button>
@@ -253,16 +241,9 @@ export default function WalletTabScreen() {
                             onClick={() => {
                                 navigate(RouteTypes.TxCreateScreen);
                             }}
-                            className="op_action_button"
-                        >
-                            <div
-                                className="op_icon_wrapper"
-                            >
-                                <Icon
-                                    icon="send"
-                                    color={'background'}
-                                    size={20}
-                                />
+                            className="op_action_button">
+                            <div className="op_icon_wrapper">
+                                <Icon icon="send" color={'background'} size={20} />
                             </div>
                             Send
                         </button>
@@ -271,16 +252,9 @@ export default function WalletTabScreen() {
                             onClick={() => {
                                 navigate(RouteTypes.Swap);
                             }}
-                            className="op_action_button"
-                        >
-                            <div
-                                className="op_icon_wrapper"
-                            >
-                                <Icon
-                                    icon="swap"
-                                    color={'background'}
-                                    size={20}
-                                />
+                            className="op_action_button">
+                            <div className="op_icon_wrapper">
+                                <Icon icon="swap" color={'background'} size={20} />
                             </div>
                             Swap
                         </button>
@@ -289,16 +263,9 @@ export default function WalletTabScreen() {
                             onClick={() => {
                                 window.open(faucetUrl, '_blank');
                             }}
-                            className="op_action_button"
-                        >
-                            <div
-                                className="op_icon_wrapper"
-                            >
-                                <Icon
-                                    icon="faucet"
-                                    color={'background'}
-                                    size={20}
-                                />
+                            className="op_action_button">
+                            <div className="op_icon_wrapper">
+                                <Icon icon="faucet" color={'background'} size={20} />
                             </div>
                             Faucet
                         </button>

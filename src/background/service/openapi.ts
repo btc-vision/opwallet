@@ -81,10 +81,6 @@ export class OpenApiService {
         }
     };
 
-    private persist = () => {
-        chrome.storage.local.set({ openapi: this.store });
-    };
-
     setClientAddress = (token: string, flag: number) => {
         this.clientAddress = token;
         this.addressFlag = flag;
@@ -178,27 +174,28 @@ export class OpenApiService {
     }
 
     async getAddressSummary(address: string): Promise<AddressSummary> {
-        return this.httpGet<AddressSummary>('/v5/address/summary', {
-            address
-        });
+        await Promise.resolve();
+
+        return {
+            address: address,
+            totalSatoshis: 0,
+            loading: false
+        };
     }
 
     async getAddressBalance(address: string): Promise<BitcoinBalance> {
-        return this.httpGet<BitcoinBalance>('/v5/address/balance', {
-            address
-        });
+        await Promise.resolve();
+        throw new Error('Method not implemented.');
     }
 
     async findGroupAssets(groups: { type: number; address_arr: string[] }[]): Promise<GroupAsset[]> {
-        return this.httpPost<GroupAsset[]>('/v5/address/find-group-assets', {
-            groups
-        });
+        await Promise.resolve();
+        throw new Error('Method not implemented.');
     }
 
     async getBTCUtxos(address: string): Promise<UTXO[]> {
-        return this.httpGet<UTXO[]>('/v5/address/btc-utxo', {
-            address
-        });
+        await Promise.resolve();
+        throw new Error('Method not implemented.');
     }
 
     async getAppSummary(): Promise<AppSummary> {
@@ -206,9 +203,8 @@ export class OpenApiService {
     }
 
     async pushTx(rawtx: string): Promise<string> {
-        return this.httpPost<string>('/v5/tx/broadcast', {
-            rawtx
-        });
+        await Promise.resolve();
+        throw new Error('Method not implemented.');
     }
 
     async getFeeSummary(): Promise<FeeSummary> {
@@ -278,6 +274,10 @@ export class OpenApiService {
     }): Promise<AddressRecentHistory> {
         return this.httpGet<AddressRecentHistory>('/v5/address/history', params);
     }
+
+    private persist = () => {
+        chrome.storage.local.set({ openapi: this.store });
+    };
 }
 
 export default new OpenApiService();
