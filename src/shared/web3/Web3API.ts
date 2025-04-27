@@ -280,6 +280,15 @@ class Web3API {
         return utxos;
     }
 
+    public async getUTXOTotal(address: string): Promise<bigint> {
+        const utxos: UTXO[] = await this.getUTXOsForAddresses([address]);
+        if (!utxos.length) {
+            throw new Error('Something went wrong while getting UTXOs.');
+        }
+        
+        return utxos.reduce((acc, utxo) => acc + utxo.value, 0n);
+    }
+
     private async getUTXOsForAddresses(addresses: string[], requiredAmount?: bigint): Promise<UTXO[]> {
         let finalUTXOs: UTXOs = [];
 
@@ -290,7 +299,7 @@ class Web3API {
                 if (!requiredAmount) {
                     utxos = await this.provider.utxoManager.getUTXOs({
                         address,
-                        optimize: false,
+                        optimize: true,
                         mergePendingUTXOs: true,
                         filterSpentUTXOs: true
                     });
@@ -298,7 +307,9 @@ class Web3API {
                     utxos = await this.provider.utxoManager.getUTXOsForAmount({
                         address,
                         amount: requiredAmount,
-                        optimize: false
+                        optimize: true,
+                        filterSpentUTXOs: true,
+                        mergePendingUTXOs: true
                     });
                 }
             } catch {

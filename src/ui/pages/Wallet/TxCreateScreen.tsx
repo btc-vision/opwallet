@@ -48,21 +48,21 @@ export default function TxCreateScreen() {
 
             setCurrentBalance(balance);
         });
-    }, []);
+    }, [_currentBalance, tools]);
 
     const toSatoshis = useMemo(() => {
         if (!inputAmount) return 0;
         return amountToSatoshis(inputAmount);
     }, [inputAmount]);
 
-    const dustAmount = useMemo(() => satoshisToAmount(COIN_DUST), [COIN_DUST]);
+    const dustAmount = useMemo(() => satoshisToAmount(COIN_DUST), []);
 
     const wallet = useWallet();
     const chain = useChain();
 
     useEffect(() => {
         const fetchBalance = async () => {
-            const btcBalanceGet = await Web3API.getBalance(account.address, true);
+            const btcBalanceGet = await Web3API.getUTXOTotal(account.address);
             setBalanceValue(new BigNumber(bigIntToDecimal(btcBalanceGet, 8)).toNumber());
         };
 
@@ -103,7 +103,7 @@ export default function TxCreateScreen() {
         }
 
         setDisabled(false);
-    }, [toInfo, inputAmount, feeRate, enableRBF]);
+    }, [toInfo, inputAmount, feeRate, enableRBF, toSatoshis, totalAvailableAmount, dustAmount, btcUnit]);
 
     return (
         <Layout>

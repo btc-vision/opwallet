@@ -1082,7 +1082,7 @@ export class WalletController {
                 optionalOutputs: params.optionalOutputs || [],
                 optionalInputs: optionalInputs
             };
-            
+
             return await Web3API.transactionFactory.signDeployment(deployContractParameters);
         } catch (err) {
             throw new WalletControllerError(`Failed to deploy contract: ${String(err)}`, { params });
@@ -1998,19 +1998,25 @@ export class WalletController {
      */
     public getOpNetBalance = async (address: string): Promise<BitcoinBalance> => {
         try {
-            const btcBalanceSpendable: bigint = await Web3API.getBalance(address, true);
-            const btcBalanceTotal: bigint = await Web3API.getBalance(address, false);
-            const btcBalanceTotalStr: string = bigIntToDecimal(btcBalanceTotal, 8);
+            const [btcBalanceSpendable, btcBalanceSpendableCurrent, btcBalanceTotal] = await Promise.all([
+                Web3API.getUTXOTotal(address),
+                Web3API.getBalance(address, true),
+                Web3API.getBalance(address, false)
+            ]);
+
+            const pendingAmount: bigint = btcBalanceSpendableCurrent - btcBalanceSpendable;
+            const btcBalanceTotalStr: string = bigIntToDecimal(btcBalanceSpendable, 8);
+            const pendingAmountStr: string = bigIntToDecimal(pendingAmount, 8);
 
             const inscriptionAmount: bigint = btcBalanceTotal - btcBalanceSpendable;
             const inscriptionAmountStr: string = bigIntToDecimal(inscriptionAmount, 8);
 
             return {
                 confirm_amount: btcBalanceTotalStr,
-                pending_amount: '0',
+                pending_amount: pendingAmountStr,
                 amount: btcBalanceTotalStr,
                 confirm_btc_amount: btcBalanceTotalStr,
-                pending_btc_amount: '0',
+                pending_btc_amount: pendingAmountStr,
                 btc_amount: btcBalanceTotalStr,
                 confirm_inscription_amount: '0',
                 pending_inscription_amount: '0',
