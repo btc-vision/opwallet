@@ -20,7 +20,7 @@ export function BtcDisplay({ balance }: { balance: string | number }) {
     if (chainType === ChainType.FRACTAL_BITCOIN_MAINNET || ChainType.FRACTAL_BITCOIN_TESTNET ) {
         //   show 3 decimal places for fractal bitcoin
         return (
-            <Row style={{ alignItems: 'flex-end' }} justifyCenter gap={'zero'} my="sm">
+            <Row style={{ alignItems: 'flex-end', marginBottom: "10px" }} justifyCenter gap={'zero'}>
                 <Text text={intPart} preset="title-bold" size="xxxl" />
                 {decPart && (
                     <Text

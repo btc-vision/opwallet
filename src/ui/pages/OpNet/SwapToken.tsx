@@ -26,6 +26,7 @@ import { Address } from '@btc-vision/transaction';
 
 import { Action, Features, SwapParameters } from '@/shared/interfaces/RawTxParameters';
 import { RouteTypes, useNavigate } from '../MainRoute';
+import { colors } from '@/ui/theme/colors';
 
 BigNumber.config({ EXPONENTIAL_AT: 256 });
 
@@ -162,27 +163,6 @@ export default function Swap() {
     // -------------
     // UI Styles
     // -------------
-    const $searchInputStyle = {
-        width: '40%',
-        padding: 8,
-        fontSize: fontSizes.md,
-        border: 'none',
-        borderRadius: 0,
-        outline: 'none',
-        height: '42px',
-        backgroundColor: '#2a2626'
-    } as CSSProperties;
-
-    const $styleBox = {
-        width: '100%',
-        maxWidth: '350px',
-        marginRight: 'auto',
-        marginLeft: 'auto',
-        backgroundColor: '#2a2626',
-        borderRadius: '10px',
-        border: 'solid 1px white',
-        padding: '20px'
-    } as CSSProperties;
 
     const $columnstyle = {
         padding: '20px'
@@ -194,8 +174,6 @@ export default function Swap() {
         marginRight: 'auto',
         marginLeft: 'auto'
     } as CSSProperties;
-
-    const $style = Object.assign({}, $styleBox);
 
     // -------------
     // Load tokens (account-specific)
@@ -298,7 +276,104 @@ export default function Swap() {
                 }}
             />
             <Column py="xl" style={$columnstyle}>
-                <BaseView style={$style}>
+                <div className="op_swap_container">
+                    <div className="op_swap_token_details">
+                            <div className="op_swap_token_inner">
+                                <div className="op_swap_token_inner_label">
+                                    Buy
+                                </div>
+                                <div className="op_swap_token_balance">
+                                    {selectedOption ? (
+                                        <>
+                                    <Text
+                                        text={new BigNumber(BitcoinUtils.formatUnits(selectedOption.amount, selectedOption.divisibility)).toFixed(8)}
+                                        size="xs"
+                                        style={{ color: colors.text }}
+                                    />
+                                    <Text onClick={setMax} text="MAX" preset="sub" style={{ color: colors.gold }} />
+                                        </>
+                                ) : (
+                                    <>
+                                        <Text
+                                            text={"0.00"}
+                                            size="xs"
+                                            style={{ color: colors.text }}
+                                        />
+                                        <Text onClick={setMax} text="MAX" preset="sub" style={{ color: colors.gold }} />
+                                        </>
+                                    )}
+                                </div>
+                            </div>
+                    </div>
+                    <div className="op_swap_amount_in op_swap_amount">
+                        <div className="op_swap_input">
+                            <input
+                                type="text"
+                                placeholder="0"
+                                value={inputAmount}
+                                onChange={(e) => handleInputChange(e.target.value)}
+                                className="op_swap_text_input"
+                            />
+                            <Select
+                                selectIndex={0}
+                                setMax={setMax}
+                                options={switchOptions}
+                                selectedoptionuse={selectedOption}
+                                placeholder="Select Token"
+                                onSelect={handleSelect}
+                            />
+                        </div>
+                        <div className="op_swap_max">
+
+                        </div>
+                    </div>
+                    <div className="op_swap_amount_out op_swap_amount">
+                        <div className="op_swap_input">
+                            <input
+                                disabled
+                                type="text"
+                                placeholder="0"
+                                value={Number(outputAmount)}
+                                onChange={(e) => handleInputChange(e.target.value)}
+                                className="op_swap_text_input"
+                            />
+                            <Select
+                                selectIndex={1}
+                                options={switchOptions}
+                                selectedoptionuse={selectedOptionOutput}
+                                placeholder="Select Token"
+                                onSelect={handleSelectOutput}
+                            />
+                        </div>
+                    </div>
+                    <div className="op_swap_token_details">
+                        <div className="op_swap_token_inner">
+                            <div className="op_swap_token_inner_label">
+                                Sell
+                            </div>
+                            <div className="op_swap_token_balance">
+                                {selectedOptionOutput ? (
+                                    <>
+                                        <Text
+                                            text={new BigNumber(BitcoinUtils.formatUnits(selectedOptionOutput.amount, selectedOptionOutput.divisibility)).toFixed(8)}
+                                            size="xs"
+                                            style={{ color: colors.text }}
+                                        />
+                                    </>
+                                ) : (
+                                    <Text
+                                        text={"0.00"}
+                                        size="xs"
+                                        style={{ color: colors.text }}
+                                    />
+                                    )}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+
+                {/*<BaseView style={$style}>
                     <Row itemsCenter fullX justifyBetween style={{ alignItems: 'baseline' }}>
                         <Select
                             selectIndex={0}
@@ -335,9 +410,8 @@ export default function Swap() {
                             style={$searchInputStyle}
                         />
                     </Row>
-                </BaseView>
+                </BaseView>*/}
                 <br />
-                <BaseView style={$style}>
                     <Text text="Slippage Tolerance" color="textDim" />
                     <Input
                         preset="amount"
@@ -369,7 +443,6 @@ export default function Swap() {
                             setFeeRate(val);
                         }}
                     />
-                </BaseView>
                 <br />
                 <Button
                     text="Swap "

@@ -84,7 +84,7 @@ export function FeeRateBar({ readonly, onChange }: { readonly?: boolean; onChang
 
     return (
         <Column>
-            <Row justifyCenter>
+            <div className="op_fee_rates">
                 {feeOptions.map((v, index) => {
                     let selected = index === feeOptionIndex as number;
                     if (readonly) {
@@ -92,52 +92,44 @@ export function FeeRateBar({ readonly, onChange }: { readonly?: boolean; onChang
                     }
 
                     return (
-                        <div
-                            key={v.title}
-                            onClick={() => {
-                                if (readonly) {
-                                    return;
-                                }
-                                setFeeOptionIndex(index);
-                            }}
-                            style={Object.assign(
-                                {},
-                                {
-                                    borderWidth: 1,
-                                    borderColor: 'rgba(255,255,255,0.3)',
-                                    height: 75,
-                                    width: 75,
-                                    textAlign: 'center',
-                                    padding: 4,
-                                    borderRadius: 5,
-                                    display: 'flex',
-                                    flexDirection: 'column',
-                                    justifyContent: 'center',
-                                    cursor: 'pointer'
-                                } as CSSProperties,
-                                selected ? { backgroundColor: colors.primary } : {}
-                            )}>
-                            <Text text={v.title} textCenter style={{ color: selected ? colors.black : colors.white }} />
-                            {v.title !== 'Custom' && (
-                                <Text
-                                    text={`${v.feeRate} sat/vB`}
-                                    size="xxs"
-                                    textCenter
-                                    style={{ color: selected ? colors.black : colors.white }}
-                                />
+                        <div key={v.title} className={`op_fee_rate ${selected ? 'op_fee_selected' : ''}`} onClick={() => {
+                            if (readonly) {
+                                return;
+                            }
+                            setFeeOptionIndex(index);
+                        }}>
+
+                            {v.title !== 'Custom' ? (
+                                <>
+                                    <div className="op_fee_rate_title">
+                                        {v.title}
+                                    </div>
+                                <div className="op_fee_rate_rate">
+                                    {v.title !== 'Custom' && (
+                                        <>
+                                            <div className="op_fee_rate_amount">
+                                                {v.feeRate}
+                                            </div>
+                                            <div className="op_fee_rate_units">
+                                                sat/vB
+                                            </div>
+                                        </>
+                                    )}
+                                </div>
+                                </>
+                            ) : (
+                                <>
+                                    <div className="op_fee_rate_amount">
+                                        {v.title}
+                                    </div>
+                                </>
                             )}
-                            {v.title !== 'Custom' && (
-                                <Text
-                                    text={`${v.desc}`}
-                                    size="xxs"
-                                    textCenter
-                                    style={{ color: selected ? colors.black : colors.white_muted }}
-                                />
-                            )}
+
+
                         </div>
                     );
                 })}
-            </Row>
+            </div>
             {feeOptionIndex === FeeRateType.CUSTOM && (
                 <Input
                     preset="amount"

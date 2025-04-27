@@ -147,25 +147,24 @@ function AmountInput(props: InputProps) {
         }
     };
     return (
-        <div style={$baseContainerStyle}>
+        <div className="op_input_amount_container">
             <input
                 placeholder={placeholder ?? 'Amount'}
                 type={'text'}
                 value={inputValue}
                 onChange={handleInputAmount}
-                style={$style}
+                className={`op_input_address ${enableMax ? 'with_max' : ''}`}
                 disabled={disabled}
                 {...rest}
             />
             {enableMax ? (
-                <Text
-                    onClick={() => {
+                <div>
+                    <button onClick={() => {
                         if (onMaxClick) onMaxClick();
-                    }}
-                    text={'Max'}
-                    color={'yellow'}
-                    size="sm"
-                />
+                    }}>
+                        Max
+                    </button>
+                </div>
             ) : null}
         </div>
     );
@@ -231,11 +230,11 @@ export const AddressInput = (props: InputProps) => {
 
     return (
         <div style={{ alignSelf: 'stretch' }}>
-            <div style={Object.assign({}, $baseContainerStyle, { flexDirection: 'column', minHeight: '56.5px' })}>
+            <div className="op_input_amount_container">
                 <input
                     placeholder={'Address or name (sats, unisat, ...) '}
                     type={'text'}
-                    style={Object.assign({}, $baseInputStyle, $inputStyleOverride)}
+                    className="op_input_address"
                     onChange={(e) => {
                         handleInputAddress(e);
                     }}
