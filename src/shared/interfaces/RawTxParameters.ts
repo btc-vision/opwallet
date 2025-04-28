@@ -1,9 +1,35 @@
 import { OPTokenInfo } from '@/shared/types';
 
 export enum Features {
+    /** Replace-By-Fee — let the user bump the fee after broadcast */
     rbf = 'rbf',
+
+    /** Segregated Witness inputs (P2WPKH / P2WSH) */
+    segwit = 'segwit',
+
+    /** Taproot inputs / outputs (P2TR + Schnorr) */
     taproot = 'taproot',
-    segwit = 'segwit'
+
+    /** Child-Pays-For-Parent fee rescue */
+    cpfp = 'cpfp',
+
+    /** Pay-to-Script-Hash (legacy multisig, time-locks, etc.) */
+    p2sh = 'p2sh',
+
+    /** Native multisig (≥ n-of-m) detected */
+    multisig = 'multisig',
+
+    /** Transaction embeds an OP_RETURN payload */
+    opreturn = 'opreturn',
+
+    /** Absolute or relative lock-time is used */
+    locktime = 'locktime',
+
+    /** Built / exported as a PSBT (partially-signed tx) */
+    psbt = 'psbt',
+
+    /** PayJoin (BIP-78) privacy payment */
+    payjoin = 'payjoin'
 }
 
 export type PotentialFeatures = {
@@ -48,6 +74,7 @@ export interface SendBitcoinParameters extends BaseRawTxInfo<Action.SendBitcoin>
 
 export interface DeployContractParameters extends BaseRawTxInfo<Action.DeployContract> {
     readonly file: File;
+    readonly calldataHex: string;
 }
 
 export interface MintParameters extends BaseRawTxInfo<Action.Mint> {

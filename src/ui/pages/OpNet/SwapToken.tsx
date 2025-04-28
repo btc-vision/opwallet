@@ -13,9 +13,8 @@ import { CSSProperties, useEffect, useState } from 'react';
 import { OPTokenInfo } from '@/shared/types';
 import Web3API from '@/shared/web3/Web3API';
 import { ContractInformation } from '@/shared/web3/interfaces/ContractInformation';
-import { Button, Column, Content, Header, Icon, Input, Layout, Row, Select, Text } from '@/ui/components';
+import { Button, Column, Content, Header, Icon, Input, Layout, Select, Text } from '@/ui/components';
 import { useTools } from '@/ui/components/ActionComponent';
-import { BaseView } from '@/ui/components/BaseView';
 import { FeeRateBar } from '@/ui/components/FeeRateBar';
 import { useCurrentAccount } from '@/ui/state/accounts/hooks';
 import { fontSizes } from '@/ui/theme/font';
@@ -27,6 +26,7 @@ import { Address } from '@btc-vision/transaction';
 import { Action, Features, SwapParameters } from '@/shared/interfaces/RawTxParameters';
 import { RouteTypes, useNavigate } from '../MainRoute';
 import { colors } from '@/ui/theme/colors';
+import { PriorityFeeBar } from '@/ui/components/PriorityFeeBar';
 
 BigNumber.config({ EXPONENTIAL_AT: 256 });
 
@@ -41,8 +41,8 @@ export default function Swap() {
     const [selectedOption, setSelectedOption] = useState<OPTokenInfo | null>(null);
     const [selectedOptionOutput, setSelectedOptioOutput] = useState<OPTokenInfo | null>(null);
 
-    const [OpnetRateInputVal, adjustFeeRateInput] = useState<string>('8600');
-    const [slippageTolerance, setSlippageTolerance] = useState<string>('5');
+    const [priorityFee, adjustFeeRateInput] = useState<number>(0);
+    const [slippageTolerance, setSlippageTolerance] = useState<string>('25');
     const navigate = useNavigate();
     const [feeRate, setFeeRate] = useState(5);
     const [inputAmount, setInputAmount] = useState<string>('0');
@@ -278,32 +278,31 @@ export default function Swap() {
             <Column py="xl" style={$columnstyle}>
                 <div className="op_swap_container">
                     <div className="op_swap_token_details">
-                            <div className="op_swap_token_inner">
-                                <div className="op_swap_token_inner_label">
-                                    Buy
-                                </div>
-                                <div className="op_swap_token_balance">
-                                    {selectedOption ? (
-                                        <>
-                                    <Text
-                                        text={new BigNumber(BitcoinUtils.formatUnits(selectedOption.amount, selectedOption.divisibility)).toFixed(8)}
-                                        size="xs"
-                                        style={{ color: colors.text }}
-                                    />
-                                    <Text onClick={setMax} text="MAX" preset="sub" style={{ color: colors.gold }} />
-                                        </>
-                                ) : (
+                        <div className="op_swap_token_inner">
+                            <div className="op_swap_token_inner_label">Buy</div>
+                            <div className="op_swap_token_balance">
+                                {selectedOption ? (
                                     <>
                                         <Text
-                                            text={"0.00"}
+                                            text={new BigNumber(
+                                                BitcoinUtils.formatUnits(
+                                                    selectedOption.amount,
+                                                    selectedOption.divisibility
+                                                )
+                                            ).toFixed(8)}
                                             size="xs"
                                             style={{ color: colors.text }}
                                         />
                                         <Text onClick={setMax} text="MAX" preset="sub" style={{ color: colors.gold }} />
-                                        </>
-                                    )}
-                                </div>
+                                    </>
+                                ) : (
+                                    <>
+                                        <Text text={'0.00'} size="xs" style={{ color: colors.text }} />
+                                        <Text onClick={setMax} text="MAX" preset="sub" style={{ color: colors.gold }} />
+                                    </>
+                                )}
                             </div>
+                        </div>
                     </div>
                     <div className="op_swap_amount_in op_swap_amount">
                         <div className="op_swap_input">
@@ -323,9 +322,7 @@ export default function Swap() {
                                 onSelect={handleSelect}
                             />
                         </div>
-                        <div className="op_swap_max">
-
-                        </div>
+                        <div className="op_swap_max"></div>
                     </div>
                     <div className="op_swap_amount_out op_swap_amount">
                         <div className="op_swap_input">
@@ -348,30 +345,28 @@ export default function Swap() {
                     </div>
                     <div className="op_swap_token_details">
                         <div className="op_swap_token_inner">
-                            <div className="op_swap_token_inner_label">
-                                Sell
-                            </div>
+                            <div className="op_swap_token_inner_label">Sell</div>
                             <div className="op_swap_token_balance">
                                 {selectedOptionOutput ? (
                                     <>
                                         <Text
-                                            text={new BigNumber(BitcoinUtils.formatUnits(selectedOptionOutput.amount, selectedOptionOutput.divisibility)).toFixed(8)}
+                                            text={new BigNumber(
+                                                BitcoinUtils.formatUnits(
+                                                    selectedOptionOutput.amount,
+                                                    selectedOptionOutput.divisibility
+                                                )
+                                            ).toFixed(8)}
                                             size="xs"
                                             style={{ color: colors.text }}
                                         />
                                     </>
                                 ) : (
-                                    <Text
-                                        text={"0.00"}
-                                        size="xs"
-                                        style={{ color: colors.text }}
-                                    />
-                                    )}
+                                    <Text text={'0.00'} size="xs" style={{ color: colors.text }} />
+                                )}
                             </div>
                         </div>
                     </div>
                 </div>
-
 
                 {/*<BaseView style={$style}>
                     <Row itemsCenter fullX justifyBetween style={{ alignItems: 'baseline' }}>
@@ -412,37 +407,34 @@ export default function Swap() {
                     </Row>
                 </BaseView>*/}
                 <br />
-                    <Text text="Slippage Tolerance" color="textDim" />
-                    <Input
-                        preset="amount"
-                        placeholder="5%"
-                        value={slippageTolerance}
-                        onAmountInputChange={(value) => {
-                            const numValue = Number(value);
-                            if (!isNaN(numValue) && numValue >= 0 && numValue <= 100) {
-                                setSlippageTolerance(value);
-                            }
-                        }}
-                        autoFocus
-                    />
+                <Text text="Slippage Tolerance" color="textDim" />
+                <Input
+                    preset="amount"
+                    placeholder="5%"
+                    value={slippageTolerance}
+                    onAmountInputChange={(value) => {
+                        const numValue = Number(value);
+                        if (!isNaN(numValue) && numValue >= 0 && numValue <= 100) {
+                            setSlippageTolerance(value);
+                        }
+                    }}
+                    autoFocus
+                />
 
-                    <Text text="Priority Fee" color="textDim" />
-                    <Input
-                        preset="amount"
-                        placeholder="sat/vB"
-                        value={OpnetRateInputVal}
-                        onAmountInputChange={(amount) => {
-                            adjustFeeRateInput(amount);
-                        }}
-                        autoFocus
-                    />
-                    <Text text="Fee" color="textDim" />
+                <Text text="Priority Fee" color="textDim" />
+                <PriorityFeeBar
+                    onChange={(val) => {
+                        adjustFeeRateInput(val);
+                    }}
+                />
 
-                    <FeeRateBar
-                        onChange={(val) => {
-                            setFeeRate(val);
-                        }}
-                    />
+                <Text text="Fee" color="textDim" />
+
+                <FeeRateBar
+                    onChange={(val) => {
+                        setFeeRate(val);
+                    }}
+                />
                 <br />
                 <Button
                     text="Swap "
@@ -465,9 +457,11 @@ export default function Swap() {
                             tokens: [selectedOption, selectedOptionOutput],
                             feeRate: feeRate,
                             features: {
-                                [Features.rbf]: true
+                                [Features.rbf]: true,
+                                [Features.taproot]: true,
+                                [Features.cpfp]: true
                             },
-                            priorityFee: 0n,
+                            priorityFee: BigInt(priorityFee),
                             header: `Swap ${selectedOption.symbol} for ${selectedOptionOutput.symbol}`,
                             action: Action.Swap
                         };

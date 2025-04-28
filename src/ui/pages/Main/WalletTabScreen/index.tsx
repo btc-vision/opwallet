@@ -70,7 +70,7 @@ export default function WalletTabScreen() {
     const [totalAmount, setTotalAmount] = useState(totalAmountUse);
 
     const addressSummary = useAddressSummary();
-    
+
     useEffect(() => {
         const fetchBalance = async () => {
             if (accountBalance.amount === '0') {
@@ -239,6 +239,8 @@ export default function WalletTabScreen() {
 
                         <button
                             onClick={() => {
+                                resetUiTxCreateScreen();
+
                                 navigate(RouteTypes.TxCreateScreen);
                             }}
                             className="op_action_button">

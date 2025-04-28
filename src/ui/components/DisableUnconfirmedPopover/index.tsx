@@ -1,46 +1,48 @@
-import { Image } from '@/ui/components';
-
-import { Button } from '../Button';
-import { Column } from '../Column';
+import { Button, Column, Image, Row, Text } from '@/ui/components';
 import { Popover } from '../Popover';
-import { Text } from '../Text';
 
-export const DisableUnconfirmedsPopover = ({ onClose }: { onClose: () => void }) => {
-    return (
-        <Popover>
-            <Column justifyCenter itemsCenter>
-                <Image src="./images/artifacts/security.png" size={80} />
-                <Text text="Security Notice" color="gold" textCenter size="lg" />
+export const DisableUnconfirmedsPopover = ({ onClose }: { onClose: () => void }) => (
+    <Popover
+        style={{
+            padding: 24,
+            borderRadius: 12,
+            background: 'rgba(255,140,0,0.07)',
+            border: '1px solid #FFA640',
+            maxWidth: 380
+        }}>
+        <Column gap="lg" itemsCenter>
+            {/* headline */}
+            <Row itemsCenter gap="sm">
+                <Image src="./images/artifacts/security.png" size={42} />
+                <Text text="Heads-Up!" color="gold" size="xl" preset="bold" />
+            </Row>
 
-                <Column gap="zero" mt="sm">
-                    <Text
-                        mt="md"
-                        preset="sub"
-                        size="sm"
-                        text="Please be aware that OP_NET will only spend UTXOs larger than 10,000 satoshis. UTXOs smaller than 10,000 satoshis will not be spendable by OP_NET. This ensures that your Ordinals, Runes, and BRC20 tokens are safe and unaffected."
-                    />
+            {/* body copy */}
+            <Text
+                text="For your safety, OP_WALLET will never touch UTXOs below 10 000 sats. Dust-sized
+              outputs—often holding Ordinals, Runes, or BRC-20 inscriptions—stay exactly where
+              they are."
+                size="sm"
+                textCenter
+                style={{ lineHeight: 1.4 }}
+            />
 
-                    <Text
-                        mt="md"
-                        preset="sub"
-                        size="sm"
-                        text="This is a security measure to protect the network and your assets."
-                    />
-                </Column>
+            <Text
+                text="Need those sats later? Simply consolidate them into a larger UTXO first."
+                size="xs"
+                color="textDim"
+                textCenter
+                style={{ marginTop: 4 }}
+            />
 
-                <Column full mt={'xl'}>
-                    <Button
-                        text="I understand"
-                        full
-                        preset="defaultV2"
-                        onClick={() => {
-                            if (onClose) {
-                                onClose();
-                            }
-                        }}
-                    />
-                </Column>
-            </Column>
-        </Popover>
-    );
-};
+            {/* action */}
+            <Button
+                text="Got it"
+                full
+                preset="defaultV2"
+                onClick={onClose}
+                style={{ marginTop: 12, background: '#FFA640', color: '#000' }}
+            />
+        </Column>
+    </Popover>
+);

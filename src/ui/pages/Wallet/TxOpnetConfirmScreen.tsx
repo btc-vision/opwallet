@@ -14,7 +14,7 @@ import { ContextType, useTools } from '@/ui/components/ActionComponent';
 import { BottomModal } from '@/ui/components/BottomModal';
 import { useBTCUnit } from '@/ui/state/settings/hooks';
 import { useLocationState, useWallet } from '@/ui/utils';
-import { LoadingOutlined } from '@ant-design/icons';
+import { CopyOutlined, LoadingOutlined } from '@ant-design/icons';
 import {
     ABIDataTypes,
     Address,
@@ -99,9 +99,14 @@ const waitForTransaction = async (
     tools.toastError('Transaction not confirmed after 10 minutes');
 };
 
+const defaultMessage = 'Awaiting confirmation...';
+
 export default function TxOpnetConfirmScreen() {
     const navigate = useNavigate();
     const [openLoading, setOpenLoading] = useState<boolean>(false);
+    const [loadingMessage, setLoadingMessage] = useState<string>(defaultMessage);
+    const [deploymentContract, setDeploymentContract] = useState<DeploymentResult | null>(null);
+
     const [disabled, setDisabled] = useState<boolean>(false);
     const { rawTxInfo } = useLocationState<LocationState>();
 
@@ -407,6 +412,7 @@ export default function TxOpnetConfirmScreen() {
             const uint8Array = new Uint8Array(arrayBuffer);
 
             const preimage = await Web3API.provider.getPreimage();
+            const calldata = parameters.calldataHex ? Buffer.from(parameters.calldataHex, 'hex') : Buffer.from([]);
 
             // TODO: Add calldata support
             const deploymentParameters: IDeploymentParameters = {
@@ -415,11 +421,11 @@ export default function TxOpnetConfirmScreen() {
                 signer: userWallet.keypair,
                 network: Web3API.network,
                 feeRate: parameters.feeRate,
-                priorityFee: 0n,
-                gasSatFee: parameters.priorityFee,
+                priorityFee: parameters.priorityFee ?? 0n,
+                gasSatFee: parameters.gasSatFee ?? 10_000n,
                 from: currentWalletAddress.address,
                 bytecode: Buffer.from(uint8Array),
-                calldata: Buffer.from([]),
+                calldata: calldata,
                 optionalInputs: [],
                 optionalOutputs: []
             };
@@ -435,11 +441,14 @@ export default function TxOpnetConfirmScreen() {
                 return;
             }
 
+            setLoadingMessage(`Deployment in progress.. This might take a while.`);
+            setDeploymentContract(sendTransact);
+
             // This transaction is partially signed. You can not submit it to the Bitcoin network. It must pass via the OPNet network.
             const secondTransaction = await Web3API.provider.sendRawTransaction(sendTransact.transaction[1], false);
             if (secondTransaction.result && !secondTransaction.error && secondTransaction.success) {
                 Web3API.provider.utxoManager.spentUTXO(currentWalletAddress.address, utxos, sendTransact.utxos);
-                
+
                 await waitForTransaction(secondTransaction.result, setOpenLoading, tools);
 
                 const getChain = await wallet.getChainType();
@@ -471,7 +480,8 @@ export default function TxOpnetConfirmScreen() {
             console.log(e);
             tools.toastError(`Error: ${e}`);
             setDisabled(false);
-            setDisabled(false);
+        } finally {
+            setLoadingMessage(defaultMessage);
         }
     };
 
@@ -654,8 +664,52 @@ export default function TxOpnetConfirmScreen() {
                         setDisabled(false);
                         setOpenLoading(false);
                     }}>
-                    <Column style={{ minHeight: 150 }} itemsCenter justifyCenter>
-                        <LoadingOutlined />
+                    <Column
+                        fullX
+                        itemsCenter
+                        style={{
+                            padding: '24px 16px',
+                            gap: 16
+                        }}>
+                        {/* loading message */}
+                        <Text text={loadingMessage} textCenter size="lg" />
+
+                        {/* deployment contract */}
+
+                        {deploymentContract && (
+                            <Row itemsCenter gap={'sm'}>
+                                <Text
+                                    text={`Contract Address: ${deploymentContract.contractAddress}`}
+                                    size="xs"
+                                    style={{ wordBreak: 'break-all' }}
+                                />
+
+                                {/* copy icon button */}
+                                <CopyOutlined
+                                    onClick={async () => {
+                                        await navigator.clipboard.writeText(
+                                            deploymentContract.contractAddress.toString()
+                                        );
+                                        tools.toastSuccess('Contract address copied to clipboard');
+                                    }}
+                                    style={{
+                                        fontSize: 14,
+                                        cursor: 'pointer',
+                                        color: '#ffa640'
+                                    }}
+                                />
+                            </Row>
+                        )}
+
+                        {/* spinner */}
+                        <LoadingOutlined
+                            spin
+                            style={{
+                                fontSize: 28,
+                                color: '#ffa640',
+                                filter: 'drop-shadow(0 0 4px rgba(255, 165, 64, 0.75))'
+                            }}
+                        />
                     </Column>
                 </BottomModal>
             )}

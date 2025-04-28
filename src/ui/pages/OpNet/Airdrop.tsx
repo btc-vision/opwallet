@@ -1,17 +1,12 @@
 import { useEffect, useState } from 'react';
 
 import { Action, AirdropParameters, Features } from '@/shared/interfaces/RawTxParameters';
-import { Account, OPTokenInfo } from '@/shared/types';
+import { OPTokenInfo } from '@/shared/types';
 import { Button, Content, Header, Layout, Text } from '@/ui/components';
 import { useTools } from '@/ui/components/ActionComponent';
 
 import { useLocationState } from '@/ui/utils';
 import { RouteTypes, useNavigate } from '../MainRoute';
-
-interface ItemData {
-    key: string;
-    account?: Account;
-}
 
 export default function WrapBitcoinOpnet() {
     const OpNetBalance = useLocationState<OPTokenInfo>();
@@ -130,6 +125,7 @@ export default function WrapBitcoinOpnet() {
                         }}
                         id="fileInput"
                     />
+
                     <label htmlFor="fileInput" style={{ cursor: 'pointer' }}>
                         <Text text="Click to select or drag and drop a .wasm file here" />
                     </label>
@@ -151,11 +147,13 @@ export default function WrapBitcoinOpnet() {
                             contractAddress: OpNetBalance.address,
                             tokens: [OpNetBalance],
                             feeRate: feeRate,
-                            priorityFee: BigInt(5000),
+                            priorityFee: 0n,
                             amounts: amounts,
                             header: 'Airdrop ' + OpNetBalance.name,
                             features: {
-                                [Features.rbf]: true
+                                [Features.rbf]: true,
+                                [Features.taproot]: true,
+                                [Features.cpfp]: true
                             }
                         };
 

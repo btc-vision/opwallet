@@ -72,7 +72,7 @@ export function OPNetList() {
     const tools = useTools();
 
     // Main tokens + balances
-    const [tokens, setTokens] = useState<string[]>([]);
+    const [tokens, setTokens] = useState<string[] | null>(null);
     const [tokenBalances, setTokenBalances] = useState<OPTokenInfo[]>([]);
     const [total, setTotal] = useState(-1);
 
@@ -158,13 +158,28 @@ export function OPNetList() {
         }
     }, [tools, wallet, currentAccount]);
 
+    useEffect(() => {
+        if (!tokens) return;
+
+        const motoToken = Web3API.motoAddressP2TR;
+        if (!motoToken) return;
+        if (!tokens) return;
+
+        if (!tokens.includes(motoToken)) {
+            setTokens((prevTokens) => {
+                return [motoToken, ...(prevTokens || [])];
+            });
+            setTotal((prevTotal) => prevTotal + 1);
+        }
+    }, [tokens]);
+
     /**
      * Fetch the balances for the current page of tokens.
      * If forceRefresh = true, skip the cache for these tokens and re-fetch from chain.
      */
     const fetchTokenBalances = useCallback(async () => {
         if (skipBalancesRef.current) return;
-        if (!tokens.length) {
+        if (!tokens?.length) {
             setTokenBalances([]);
             return;
         }
@@ -173,8 +188,8 @@ export function OPNetList() {
             tools.showLoading(true);
 
             const startIndex = (currentPage - 1) * TOKENS_PER_PAGE;
-            const endIndex = Math.min(startIndex + TOKENS_PER_PAGE, tokens.length);
-            const currentTokens = tokens.slice(startIndex, endIndex);
+            const endIndex = Math.min(startIndex + TOKENS_PER_PAGE, tokens?.length || 0);
+            const currentTokens = (tokens || []).slice(startIndex, endIndex);
 
             const balances = await Promise.all(
                 currentTokens.map(async (tokenAddress) => {
@@ -236,7 +251,7 @@ export function OPNetList() {
 
     // Fetch balances whenever tokens or page changes, unless skipping
     useEffect(() => {
-        fetchTokenBalances();
+        void fetchTokenBalances();
     }, [fetchTokenBalances, tokens, currentPage, currentAccount]);
 
     // If new failures appear, display them one by one
@@ -276,7 +291,7 @@ export function OPNetList() {
 
                 // Also remove from our tokens array
                 setTokens((prev) => {
-                    const newArr = prev.filter((addr) => addr !== currentFailedToken);
+                    const newArr = (prev || []).filter((addr) => addr !== currentFailedToken);
                     setTotal(newArr.length);
                     return newArr;
                 });
@@ -343,13 +358,13 @@ export function OPNetList() {
 
             // Remove from our visible tokens
             setTokens((prev) => {
-                const newArr = prev.filter((addr) => addr !== modalToken);
+                const newArr = (prev || []).filter((addr) => addr !== modalToken);
                 setTotal(newArr.length);
                 return newArr;
             });
 
             // Fix pagination if needed
-            const totalItems = tokens.length - 1;
+            const totalItems = (tokens?.length || 0) - 1;
             const totalPages = Math.ceil(totalItems / TOKENS_PER_PAGE);
             if (currentPage > totalPages) {
                 setCurrentPage(totalPages > 0 ? totalPages : 1);
@@ -402,7 +417,7 @@ export function OPNetList() {
             // Re-add them into our tokens array
             const newlyVisibleAddresses = previouslyHidden.map((t) => t.address);
             setTokens((prev) => {
-                const combined = [...prev, ...newlyVisibleAddresses];
+                const combined = [...(prev || []), ...newlyVisibleAddresses];
                 setTotal(combined.length);
                 return combined;
             });

@@ -1,13 +1,10 @@
-import { CSSProperties, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 import { NetworkType } from '@/shared/types';
-import { colors } from '@/ui/theme/colors';
 import { useWallet } from '@/ui/utils';
 
 import { Column } from '../Column';
 import { Input } from '../Input';
-import { Row } from '../Row';
-import { Text } from '../Text';
 
 enum FeeRateType {
     SLOW,
@@ -20,41 +17,48 @@ export function FeeRateBar({ readonly, onChange }: { readonly?: boolean; onChang
     const wallet = useWallet();
     const [feeOptions, setFeeOptions] = useState<{ title: string; desc?: string; feeRate: number }[]>([]);
 
+    const getData = useCallback(async () => {
+        if ((await wallet.getNetworkType()) == NetworkType.REGTEST) {
+            const feeArray = [
+                { title: 'Slow', desc: 'Slow', feeRate: 2 },
+                { title: 'Medium', desc: 'Medium', feeRate: 3 },
+                { title: 'Fast', desc: 'Fast', feeRate: 5 }
+            ];
+            setFeeOptions([...feeArray, { title: 'Custom', feeRate: 0 }]);
+        } else if ((await wallet.getNetworkType()) == NetworkType.TESTNET) {
+            const feeArray = [
+                { title: 'Slow', desc: 'Slow', feeRate: 2 },
+                { title: 'Medium', desc: 'Medium', feeRate: 5 },
+                { title: 'Fast', desc: 'Fast', feeRate: 10 }
+            ];
+            setFeeOptions([...feeArray, { title: 'Custom', feeRate: 0 }]);
+        } else {
+            const v = await wallet.getFeeSummary();
+            const list = readonly ? v.list : [...v.list, { title: 'Custom', feeRate: 0 }];
+
+            list.forEach((v) => {
+                v.feeRate = v.feeRate < 5 ? (v.feeRate = 5) : v.feeRate;
+                v.feeRate += 10;
+
+                return v;
+            });
+
+            console.log('set fee', list);
+
+            setFeeOptions(list);
+        }
+    }, [readonly, wallet]);
+
     useEffect(() => {
-        const getData = async () => {
-            if ((await wallet.getNetworkType()) == NetworkType.REGTEST) {
-                const feeArray = [
-                    { title: 'Slow', desc: 'Slow', feeRate: 2 },
-                    { title: 'Medium', desc: 'Medium', feeRate: 3 },
-                    { title: 'Fast', desc: 'Fast', feeRate: 5 }
-                ];
-                setFeeOptions([...feeArray, { title: 'Custom', feeRate: 0 }]);
-            } else {
-                wallet.getFeeSummary().then((v) => {
-                    const list = readonly ? v.list : [...v.list, { title: 'Custom', feeRate: 0 }];
-
-                    list.forEach((v) => {
-                        v.feeRate = v.feeRate < 5 ? (v.feeRate = 5) : v.feeRate;
-                        v.feeRate += 10;
-
-                        return v;
-                    });
-
-                    console.log('set fee', list);
-
-                    setFeeOptions(list);
-                });
-            }
-        };
-        getData();
-    }, []);
+        void getData();
+    }, [getData]);
 
     const [feeOptionIndex, setFeeOptionIndex] = useState(FeeRateType.AVG);
     const [feeRateInputVal, setFeeRateInputVal] = useState('');
 
     useEffect(() => {
         const defaultOption = feeOptions[1];
-        let val = defaultOption ? defaultOption.feeRate : 15;
+        let val = defaultOption ? defaultOption.feeRate : 5;
         if (feeOptionIndex === FeeRateType.CUSTOM) {
             val = parseFloat(feeRateInputVal) || 0;
         } else if (feeOptions.length > 0) {
@@ -66,7 +70,7 @@ export function FeeRateBar({ readonly, onChange }: { readonly?: boolean; onChang
         }
 
         onChange?.(val);
-    }, [feeOptions, feeOptionIndex, feeRateInputVal]);
+    }, [feeOptions, feeOptionIndex, feeRateInputVal, onChange]);
 
     const adjustFeeRateInput = (inputVal: string) => {
         const val = parseFloat(inputVal);
@@ -86,46 +90,38 @@ export function FeeRateBar({ readonly, onChange }: { readonly?: boolean; onChang
         <Column>
             <div className="op_fee_rates">
                 {feeOptions.map((v, index) => {
-                    let selected = index === feeOptionIndex as number;
+                    let selected = index === (feeOptionIndex as number);
                     if (readonly) {
                         selected = false;
                     }
 
                     return (
-                        <div key={v.title} className={`op_fee_rate ${selected ? 'op_fee_selected' : ''}`} onClick={() => {
-                            if (readonly) {
-                                return;
-                            }
-                            setFeeOptionIndex(index);
-                        }}>
-
+                        <div
+                            key={v.title}
+                            className={`op_fee_rate ${selected ? 'op_fee_selected' : ''}`}
+                            onClick={() => {
+                                if (readonly) {
+                                    return;
+                                }
+                                setFeeOptionIndex(index);
+                            }}>
                             {v.title !== 'Custom' ? (
                                 <>
-                                    <div className="op_fee_rate_title">
-                                        {v.title}
+                                    <div className="op_fee_rate_title">{v.title}</div>
+                                    <div className="op_fee_rate_rate">
+                                        {v.title !== 'Custom' && (
+                                            <>
+                                                <div className="op_fee_rate_amount">{v.feeRate}</div>
+                                                <div className="op_fee_rate_units">sat/vB</div>
+                                            </>
+                                        )}
                                     </div>
-                                <div className="op_fee_rate_rate">
-                                    {v.title !== 'Custom' && (
-                                        <>
-                                            <div className="op_fee_rate_amount">
-                                                {v.feeRate}
-                                            </div>
-                                            <div className="op_fee_rate_units">
-                                                sat/vB
-                                            </div>
-                                        </>
-                                    )}
-                                </div>
                                 </>
                             ) : (
                                 <>
-                                    <div className="op_fee_rate_amount">
-                                        {v.title}
-                                    </div>
+                                    <div className="op_fee_rate_amount">{v.title}</div>
                                 </>
                             )}
-
-
                         </div>
                     );
                 })}
