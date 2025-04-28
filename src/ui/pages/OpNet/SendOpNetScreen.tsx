@@ -105,7 +105,7 @@ export default function SendOpNetScreen() {
                         background: 'rgba(255,255,255,0.025)'
                     }}>
                     {/* balance banner */}
-                    <Row justifyCenter itemsCenter gap={'sm'} style={{ marginBottom: 16 }}>
+                    <Row justifyCenter itemsCenter gap={'sm'} style={{ marginTop: '14vh' }}>
                         {logo && <Image src={logo} size={fontSizes.tiny} />}
                         <Text
                             text={`${formatBalance(balanceFormatted, 4)} ${symbol}`}
