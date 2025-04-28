@@ -314,7 +314,7 @@ class Web3API {
                 if (!requiredAmount) {
                     utxos = await this.provider.utxoManager.getUTXOs({
                         address,
-                        optimize: true,
+                        optimize: false,
                         mergePendingUTXOs: true,
                         filterSpentUTXOs: true
                     });
@@ -322,7 +322,7 @@ class Web3API {
                     utxos = await this.provider.utxoManager.getUTXOsForAmount({
                         address,
                         amount: requiredAmount,
-                        optimize: true,
+                        optimize: false,
                         filterSpentUTXOs: true,
                         mergePendingUTXOs: true
                     });
