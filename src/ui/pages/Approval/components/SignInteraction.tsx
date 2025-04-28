@@ -7,6 +7,7 @@ import InteractionHeader from '@/ui/pages/Approval/components/Headers/Interactio
 import { decodeCallData } from '@/ui/pages/OpNet/decoded/decodeCallData';
 import { DecodedCalldata } from '@/ui/pages/OpNet/decoded/DecodedCalldata';
 import { useApproval } from '@/ui/utils/hooks';
+import { useEffect } from 'react';
 import { Decoded } from '../../OpNet/decoded/DecodedTypes';
 
 export interface Props {
@@ -38,6 +39,13 @@ export default function SignInteraction(props: Props) {
 
     const gasSatFee = data.interactionParameters.gasSatFee;
     const optionalOutputs = data.interactionParameters.optionalOutputs;
+
+    useEffect(() => {
+        if (interactionType === 'approve(address,uint256)' && data.interactionParameters.priorityFee) {
+            // @ts-expect-error
+            data.interactionParameters.priorityFee = data.interactionParameters.priorityFee + 100n;
+        }
+    }, [interactionType, data.interactionParameters]);
 
     return (
         <Layout>
