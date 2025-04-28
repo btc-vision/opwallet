@@ -253,7 +253,7 @@ export default function WalletTabScreen() {
                         <button
                             onClick={() => {
                                 // navigate(RouteTypes.Swap);
-                                window.open('https://motoswap.org', '_blank');
+                                window.open('https://motoswap.org', '_blank', 'noopener noreferrer');
                             }}
                             className="op_action_button">
                             <div className="op_icon_wrapper">
@@ -264,7 +264,7 @@ export default function WalletTabScreen() {
 
                         <button
                             onClick={() => {
-                                window.open(faucetUrl, '_blank');
+                                window.open(faucetUrl, '_blank', 'noopener noreferrer');
                             }}
                             className="op_action_button">
                             <div className="op_icon_wrapper">
