@@ -107,17 +107,41 @@ class Web3API {
 
         switch (network) {
             case OPNetNetwork.Mainnet: {
-                return null; // TODO: To be changed if needed
+                return null;
             }
             case OPNetNetwork.Testnet: {
-                return Address.fromString('0x44d2468a6ab8a1eeb200f0570526f6cca0ceaf42d6cd2859d7a8d9fb715a5e0c'); // TODO: To be changed if needed
+                return Address.fromString('0x4f8dfedea771db2dfaac4bba5d07e6a96846648e231a73b3769aac2e521b6e8b');
             }
             case OPNetNetwork.Regtest: {
-                return Address.fromString('0xc9eed2f3cba2d8ced9a277d989954a0052280fcca7e840d1d970e48e9b64de16'); // TODO: To be changed if needed
+                return Address.fromString('0xc9eed2f3cba2d8ced9a277d989954a0052280fcca7e840d1d970e48e9b64de16');
             }
             default:
                 throw new Error('Invalid network');
         }
+    }
+
+    public get motoAddress(): Address | null {
+        const network = this.getOPNetNetwork();
+
+        switch (network) {
+            case OPNetNetwork.Mainnet: {
+                return null; // TODO: To be changed if needed
+            }
+            case OPNetNetwork.Testnet: {
+                return Address.fromString('0x44d2468a6ab8a1eeb200f0570526f6cca0ceaf42d6cd2859d7a8d9fb715a5e0c');
+            }
+            case OPNetNetwork.Regtest: {
+                return Address.fromString('0x212b61110385080c1a3a983b5d0c353c4fc5e314aa55b85213c01ea3dea15361');
+            }
+            default:
+                throw new Error('Invalid network');
+        }
+    }
+
+    public get motoAddressP2TR(): string | null {
+        const addy = this.motoAddress;
+
+        return addy ? addy.p2tr(this.network) : null;
     }
 
     public get chain(): ChainType {

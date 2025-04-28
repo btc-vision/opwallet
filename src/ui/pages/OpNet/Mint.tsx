@@ -7,27 +7,26 @@ import Web3API, { bigIntToDecimal } from '@/shared/web3/Web3API';
 import { Button, Column, Content, Header, Input, Layout, Row, Text } from '@/ui/components';
 import { useTools } from '@/ui/components/ActionComponent';
 import { FeeRateBar } from '@/ui/components/FeeRateBar';
-import { RBFBar } from '@/ui/components/RBFBar';
 import { colors } from '@/ui/theme/colors';
 import { fontSizes } from '@/ui/theme/font';
 import { useLocationState, useWallet } from '@/ui/utils';
 import { Wallet } from '@btc-vision/transaction';
 
 import { RouteTypes, useNavigate } from '../MainRoute';
+import { PriorityFeeBar } from '@/ui/components/PriorityFeeBar';
 
 export default function Mint() {
-    const props = useLocationState<OPTokenInfo>();
+    const prop = useLocationState<OPTokenInfo>();
 
     const navigate = useNavigate();
     const [inputAmount, setInputAmount] = useState('');
     const [disabled, setDisabled] = useState(true);
-    const [OpnetRateInputVal, adjustFeeRateInput] = useState('0');
+    const [priorityFee, adjustFeeRateInput] = useState(0);
 
     const [error, setError] = useState('');
     const tools = useTools();
 
     const [feeRate, setFeeRate] = useState(5);
-    const [enableRBF, setEnableRBF] = useState(false);
     const wallet = useWallet();
     const [maxSupply, setMaxSupply] = useState<bigint>(0n);
 
@@ -62,14 +61,14 @@ export default function Mint() {
             return;
         }
 
-        cb();
+        void cb();
     }, [inputAmount, cb]);
 
     useEffect(() => {
         const setWallet = async () => {
             Web3API.setNetwork(await wallet.getChainType());
             const contract: IOP_20Contract = getContract<IOP_20Contract>(
-                props.address,
+                prop.address,
                 OP_20_ABI,
                 Web3API.provider,
                 Web3API.network
@@ -89,7 +88,7 @@ export default function Mint() {
         };
 
         void setWallet();
-    }, [props.address, tools, wallet]);
+    }, [prop.address, tools, wallet]);
 
     return (
         <Layout>
@@ -97,14 +96,16 @@ export default function Mint() {
                 onBack={() => {
                     window.history.go(-1);
                 }}
-                title={'Mint ' + props.name}
+                title={'Mint ' + prop.name}
             />
             <Content>
                 <Row itemsCenter fullX justifyCenter>
-                    {props.logo && <img src={props.logo} style={{ width: fontSizes.tiny, height: fontSizes.tiny }} />}
+                    {prop.logo && (
+                        <img src={prop.logo} style={{ width: fontSizes.tiny, height: fontSizes.tiny }} alt={'Token'} />
+                    )}
                     <Text
-                        text={`${BitcoinUtils.expandToDecimals(props.amount.toString(), props.divisibility)} ${
-                            props.symbol
+                        text={`${BitcoinUtils.expandToDecimals(prop.amount.toString(), prop.divisibility)} ${
+                            prop.symbol
                         } `}
                         preset="bold"
                         textCenter
@@ -119,11 +120,11 @@ export default function Mint() {
                         <Row
                             itemsCenter
                             onClick={() => {
-                                setInputAmount(BitcoinUtils.formatUnits(maxSupply.toString(), props.divisibility));
+                                setInputAmount(BitcoinUtils.formatUnits(maxSupply.toString(), prop.divisibility));
                             }}>
                             <Text text="MAX" preset="sub" style={{ color: colors.white_muted }} />
                             <Text
-                                text={`${BitcoinUtils.formatUnits(maxSupply.toString(), props.divisibility)} `}
+                                text={`${BitcoinUtils.formatUnits(maxSupply.toString(), prop.divisibility)} `}
                                 preset="bold"
                                 size="sm"
                                 wrap
@@ -136,15 +137,15 @@ export default function Mint() {
                         value={inputAmount.toString()}
                         onAmountInputChange={(amount) => {
                             const numAmount = Number(amount);
-                            const maxSupplyParsed = bigIntToDecimal(maxSupply, props.divisibility);
+                            const maxSupplyParsed = bigIntToDecimal(maxSupply, prop.divisibility);
 
                             if (numAmount <= Number(maxSupplyParsed)) {
                                 setInputAmount(amount);
                             } else {
-                                setInputAmount(BitcoinUtils.formatUnits(maxSupply.toString(), props.divisibility));
+                                setInputAmount(BitcoinUtils.formatUnits(maxSupply.toString(), prop.divisibility));
                             }
                         }}
-                        runesDecimal={props.divisibility}
+                        runesDecimal={prop.divisibility}
                     />
                 </Column>
 
@@ -158,22 +159,11 @@ export default function Mint() {
                     />
                 </Column>
                 <Text text="Priority Fee" color="textDim" />
-                <Input
-                    preset="amount"
-                    placeholder={'sat/vB'}
-                    value={OpnetRateInputVal}
-                    onAmountInputChange={(amount) => {
-                        adjustFeeRateInput(amount);
+                <PriorityFeeBar
+                    onChange={(val) => {
+                        adjustFeeRateInput(val);
                     }}
-                    autoFocus={true}
                 />
-                <Column mt="lg">
-                    <RBFBar
-                        onChange={(val) => {
-                            setEnableRBF(val);
-                        }}
-                    />
-                </Column>
 
                 {error && <Text text={error} color="error" />}
 
@@ -187,16 +177,18 @@ export default function Mint() {
                         }
 
                         const txInfo: MintParameters = {
-                            contractAddress: props.address,
+                            contractAddress: prop.address,
                             to: address,
                             inputAmount: Number(inputAmount),
                             header: 'Mint Token',
                             features: {
-                                [Features.rbf]: true
+                                [Features.rbf]: true,
+                                [Features.taproot]: true,
+                                [Features.cpfp]: true
                             },
-                            tokens: [props],
+                            tokens: [prop],
                             feeRate: feeRate,
-                            priorityFee: BigInt(OpnetRateInputVal),
+                            priorityFee: BigInt(priorityFee),
                             action: Action.Mint
                         };
 

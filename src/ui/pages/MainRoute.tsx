@@ -32,7 +32,6 @@ import DeployContract from './OpNet/DeployContract';
 import Mint from './OpNet/Mint';
 import OpNetTokenScreen from './OpNet/OpNetTokenScreen';
 import SendOpNetScreen from './OpNet/SendOpNetScreen';
-import SplitUtxoScreen from './OpNet/SplitUtxoScreen';
 import Swap from './OpNet/SwapToken';
 import AddressTypeScreen from './Settings/AddressTypeScreen';
 import AdvancedScreen from './Settings/AdvancedScreen';
@@ -89,8 +88,7 @@ export enum RouteTypes {
     Swap = 'Swap',
     DeployContract = 'DeployContract',
     Mint = 'Mint',
-    Airdrop = 'Airdrop',
-    SplitUtxoScreen = 'SplitUtxoScreen'
+    Airdrop = 'Airdrop'
 }
 
 type Routes = {
@@ -252,15 +250,11 @@ export const routes: Routes = {
     Airdrop: {
         path: '/opnet/airdrop',
         element: <Airdrop />
-    },
-    SplitUtxoScreen: {
-        path: '/opnet/split-utxo',
-        element: <SplitUtxoScreen />
     }
 };
 
-// TODO (typing): Check again but it looks like that we need to have a map between 
-// RouteTypes and their data while calling navigate function 
+// TODO (typing): Check again but it looks like that we need to have a map between
+// RouteTypes and their data while calling navigate function
 export type UseNavigate<T extends RouteTypes> = (routKey: T, state?: unknown) => void;
 
 export function useNavigate<T extends RouteTypes>(): UseNavigate<T> {
@@ -385,9 +379,7 @@ const Main = () => {
 
     return (
         <HashRouter>
-            <Routes>
-                {renderedRoutes}
-            </Routes>
+            <Routes>{renderedRoutes}</Routes>
         </HashRouter>
     );
 };
