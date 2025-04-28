@@ -7,8 +7,7 @@ export const DisableUnconfirmedsPopover = ({ onClose }: { onClose: () => void })
             padding: 24,
             borderRadius: 12,
             background: 'rgba(255,140,0,0.07)',
-            border: '1px solid #FFA640',
-            maxWidth: 380
+            border: '1px solid #FFA640'
         }}>
         <Column gap="lg" itemsCenter>
             {/* headline */}
