@@ -89,7 +89,7 @@ export function Step2({
 
     const [pathText, setPathText] = useState(contextData.customHdPath);
 
-    const [recommendedTypeIndex, setRecommendedTypeIndex] = useState(ADDRESS_TYPES[AddressType.P2TR].displayIndex);
+    const [recommendedTypeIndex, setRecommendedTypeIndex] = useState(0);
 
     useEffect(() => {
         if (scannedGroups.length > 0) {
@@ -169,15 +169,31 @@ export function Step2({
             setLoading(false);
 
             if (maxSatoshis > 0) {
-                setRecommendedTypeIndex(recommended);
+                // setRecommendedTypeIndex(recommended);
             }
 
             setAddressAssets(addressAssets);
         } catch (e) {}
     };
 
+    const selectP2TRAddress = () => {
+        setLoading(true);
+
+        for (let i = 0; i < hdPathOptions.length; i++) {
+            if (hdPathOptions[i].addressType === AddressType.P2TR) {
+                setRecommendedTypeIndex(i);
+                break;
+            }
+        }
+
+        setLoading(false);
+
+        setAddressAssets(addressAssets);
+    };
+
     useEffect(() => {
         void fetchAddressesBalance();
+        selectP2TRAddress();
     }, [previewAddresses]);
 
     const submitCustomHdPath = (text: string) => {
