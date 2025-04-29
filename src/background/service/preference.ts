@@ -64,9 +64,9 @@ const DEFAULTS = {
         currentVersion: '0',
         firstOpen: false,
         currency: 'USD',
-        addressType: AddressType.P2WPKH,
-        networkType: NetworkType.REGTEST, // TODO: To change to mainnet when mainnet is ready
-        chainType: ChainType.BITCOIN_REGTEST, // TODO: To change to mainnet when mainnet is ready
+        addressType: AddressType.P2TR,
+        networkType: NetworkType.TESTNET, // TODO: To change to mainnet when mainnet is ready
+        chainType: ChainType.BITCOIN_TESTNET, // TODO: To change to mainnet when mainnet is ready
         keyringAlianNames: {},
         accountAlianNames: {},
         skippedVersion: '',
@@ -177,10 +177,6 @@ class PreferenceService {
         if (!saved) {
             this.persist();
         }
-    };
-
-    private persist = () => {
-        chrome.storage.local.set({ preference: this.store });
     };
 
     getAcceptLanguages = async () => {
@@ -352,16 +348,6 @@ class PreferenceService {
         return this.store.addressType;
     };
 
-    // // network type
-    // getNetworkType = () => {
-    //   return this.store.networkType;
-    // };
-
-    // setNetworkType = (networkType: NetworkType) => {
-    //   this.store.networkType = networkType;
-    //   this.persist();
-    // };
-
     // chain type
     getChainType = (): ChainType => {
         if (!this.store) {
@@ -374,6 +360,16 @@ class PreferenceService {
 
         return this.store.chainType;
     };
+
+    // // network type
+    // getNetworkType = () => {
+    //   return this.store.networkType;
+    // };
+
+    // setNetworkType = (networkType: NetworkType) => {
+    //   this.store.networkType = networkType;
+    //   this.persist();
+    // };
 
     setChainType = (chainType: ChainType) => {
         this.store.chainType = chainType;
@@ -424,6 +420,7 @@ class PreferenceService {
     getAddressFlag = (address: string) => {
         return this.store.addressFlags[address] || 0;
     };
+
     setAddressFlag = (address: string, flag: number) => {
         this.store.addressFlags = Object.assign({}, this.store.addressFlags, { [address]: flag });
         this.persist();
@@ -496,9 +493,14 @@ class PreferenceService {
     getShowSafeNotice = () => {
         return this.store.showSafeNotice;
     };
+
     setShowSafeNotice = (showSafeNotice: boolean) => {
         this.store.showSafeNotice = showSafeNotice;
         this.persist();
+    };
+
+    getAutoLockTimeId = () => {
+        return this.store.autoLockTimeId;
     };
 
     // getEnableSignData = () => {
@@ -510,13 +512,13 @@ class PreferenceService {
     //     this.persist();
     // };
 
-    getAutoLockTimeId = () => {
-        return this.store.autoLockTimeId;
-    };
-
     setAutoLockTimeId = (id: number) => {
         this.store.autoLockTimeId = id;
         this.persist();
+    };
+
+    private persist = () => {
+        chrome.storage.local.set({ preference: this.store });
     };
 }
 
