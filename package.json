@@ -1,6 +1,6 @@
 {
     "name": "opwallet",
-    "version": "1.3.3",
+    "version": "1.3.4",
     "private": true,
     "type": "module",
     "homepage": "https://github.com/unisat-wallet/extension#readme",
@@ -14,9 +14,13 @@
     "scripts": {
         "clean": "mkdir -p dist && rm -rf dist/*",
         "build:firefox": "gulp build --browser=firefox --manifest=mv2",
+        "build:firefox:dev": "webpack --progress --env browser=firefox manifest=mv2 config=dev version=0.0.0",
         "build:brave": "gulp build --browser=brave --manifest=mv3",
+        "build:brave:dev": "webpack --progress --env browser=brave manifest=mv3 config=dev version=0.0.0",
         "build:edge": "gulp build --browser=edge --manifest=mv3",
+        "build:edge:dev": "webpack --progress --env browser=edge manifest=mv3 config=dev version=0.0.0",
         "build:opera": "gulp build --browser=opera --manifest=mv3",
+        "build:opera:dev": "webpack --progress --env browser=opera manifest=mv3 config=dev version=0.0.0",
         "build:chrome": "gulp build --browser=chrome --manifest=mv3",
         "build:chrome:dev": "webpack --progress --env browser=chrome manifest=mv3 config=dev version=0.0.0",
         "translate": "node build/pull_translation",

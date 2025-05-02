@@ -15,6 +15,7 @@ import {
 } from '@/shared/types';
 import Web3API from '@/shared/web3/Web3API';
 import randomstring from 'randomstring';
+import browser from '../webapi/browser';
 
 import { preferenceService } from '.';
 
@@ -47,7 +48,7 @@ export class OpenApiService {
     };
 
     init = async () => {
-        const data = await chrome.storage.local.get('openapi');
+        const data = await browser.storage.local.get('openapi');
         const saved = data.openapi as OpenApiStore | undefined;
 
         this.store = saved
@@ -276,7 +277,7 @@ export class OpenApiService {
     }
 
     private persist = () => {
-        chrome.storage.local.set({ openapi: this.store });
+        browser.storage.local.set({ openapi: this.store });
     };
 }
 

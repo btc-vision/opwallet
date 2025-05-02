@@ -87,7 +87,7 @@ class PreferenceService {
     popupOpen = false;
 
     init = async () => {
-        const data = await chrome.storage.local.get('preference');
+        const data = await browser.storage.local.get('preference');
         const saved = data.preference as PreferenceStore | undefined;
 
         this.store = saved ? saved : ({ ...DEFAULTS.template } as PreferenceStore);
@@ -518,7 +518,7 @@ class PreferenceService {
     };
 
     private persist = () => {
-        chrome.storage.local.set({ preference: this.store });
+        browser.storage.local.set({ preference: this.store });
     };
 }
 

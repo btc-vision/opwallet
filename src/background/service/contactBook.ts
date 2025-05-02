@@ -1,3 +1,5 @@
+import browser from '../webapi/browser';
+
 export interface ContactBookItem {
     name: string;
     address: string;
@@ -16,7 +18,7 @@ class ContactBook {
     store!: ContactBookStore;
 
     init = async () => {
-        const data = await chrome.storage.local.get('contactBook');
+        const data = await browser.storage.local.get('contactBook');
         const saved = data.contactBook as ContactBookStore | undefined;
 
         this.store = saved ? saved : ({} as ContactBookStore);
@@ -27,7 +29,7 @@ class ContactBook {
     };
 
     private persist = () => {
-        chrome.storage.local.set({ contactBook: this.store });
+        browser.storage.local.set({ contactBook: this.store });
     };
 
     getContactByAddress = (address: string) => {
