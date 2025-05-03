@@ -1,6 +1,7 @@
 import { CHAINS_ENUM, INTERNAL_REQUEST_ORIGIN } from '@/shared/constant';
 import { max } from 'lodash';
 import LRUCache from 'lru-cache';
+import browser from '../webapi/browser';
 
 export interface ConnectedSite {
     origin: string;
@@ -25,7 +26,7 @@ class PermissionService {
     lruCache: LRUCache<string, ConnectedSite> | undefined;
 
     init = async () => {
-        const data = await chrome.storage.local.get('permission');
+        const data = await browser.storage.local.get('permission');
         const saved = data.permission as PermissionStore | undefined;
 
         this.store = saved ? saved : ({ dumpCache: [] } as PermissionStore);
@@ -47,7 +48,7 @@ class PermissionService {
     };
 
     private persist = () => {
-        chrome.storage.local.set({ permission: this.store });
+        browser.storage.local.set({ permission: this.store });
     };
 
     sync = () => {
