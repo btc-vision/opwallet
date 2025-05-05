@@ -32,15 +32,15 @@ export default function SignInteraction(props: Props) {
     const [isPriorityFeeModalOpen, setIsPriorityFeeModalOpen] = useState(false);
 
     const contractInfo = data.contractInfo;
-    const to: string = data.interactionParameters.to;
-    const interactionType = selectorToString(data.interactionParameters.calldata as unknown as string);
-    const decoded: Decoded | null = decodeCallData(data.interactionParameters.calldata as unknown as string);
+    const to: string = interactionParameters.to;
+    const interactionType = selectorToString(interactionParameters.calldata as unknown as string);
+    const decoded: Decoded | null = decodeCallData(interactionParameters.calldata as unknown as string);
     const chain = data.network;
-    const inputs = data.interactionParameters.utxos;
-    const gasSatFee = data.interactionParameters.gasSatFee;
-    const optionalOutputs = data.interactionParameters.optionalOutputs;
-    const feeRate = data.interactionParameters.feeRate;
-    const priorityFee = data.interactionParameters.priorityFee;
+    const inputs = interactionParameters.utxos;
+    const gasSatFee = interactionParameters.gasSatFee;
+    const optionalOutputs = interactionParameters.optionalOutputs;
+    const feeRate = interactionParameters.feeRate;
+    const priorityFee = interactionParameters.priorityFee;
 
     const handleCancel = async () => {
         await rejectApproval('User rejected the request.');
@@ -133,7 +133,7 @@ export default function SignInteraction(props: Props) {
                                         flexWrap: 'wrap',
                                         fontSize: 12
                                     }}>
-                                    {`0x${data.interactionParameters.calldata}`}
+                                    {`0x${interactionParameters.calldata}`}
                                 </div>
                             </Card>
                         </>
