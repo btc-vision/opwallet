@@ -48,6 +48,10 @@ export default function SignInteraction(props: Props) {
 
     const handleConfirm = async () => {
         await resolveApproval(undefined, isInteractionParametersChanged ? interactionParameters : undefined);
+        if (isInteractionParametersChanged) {
+            setInteractionParameters(data.interactionParameters);
+            setIsInteractionParametersChanged(false);
+        }
     };
 
     const setFeeRate = (newFeeRate: number) => {
