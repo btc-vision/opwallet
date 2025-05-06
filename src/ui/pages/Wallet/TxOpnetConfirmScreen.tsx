@@ -315,49 +315,6 @@ export default function TxOpnetConfirmScreen() {
         navigate(RouteTypes.TxSuccessScreen, { txid: sendTransaction.transactionId });
     };
 
-    /*const approveToken = async (inputAmountBigInt: bigint, walletGet: Wallet, tokenAddress: string, utxos: UTXO[]) => {
-        try {
-            const walletAddressPub = new Address(walletGet.keypair.publicKey);
-            if (!routerAddress) {
-                tools.toastError('Router address not found');
-                return utxos;
-            }
-
-            const contract = getContract<IOP_20Contract>(
-                tokenAddress,
-                OP_20_ABI,
-                Web3API.provider,
-                Web3API.network,
-                walletAddressPub
-            );
-            const getRemaining = await contract.allowance(walletAddressPub, routerAddress);
-            if (getRemaining.properties.allowance > inputAmountBigInt) {
-                return utxos;
-            }
-            const maxUint256 = BigInt('0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff');
-            const contractApprove = await contract.approve(routerAddress, maxUint256);
-
-            const interactionParameters: TransactionParameters = {
-                signer: walletGet.keypair, // The keypair that will sign the transaction
-                refundTo: walletGet.p2tr, // Refund the rest of the funds to this address
-                maximumAllowedSatToSpend: rawTxInfo.priorityFee, // The maximum we want to allocate to this transaction in satoshis
-                feeRate: rawTxInfo.feeRate, // We need to provide a fee rate
-                network: Web3API.network // The network we are operating on
-            };
-
-            const sendTransaction = await contractApprove.sendTransaction(interactionParameters);
-            if (!sendTransaction?.transactionId) {
-                console.log(sendTransaction);
-                tools.toastError('Could not broadcast transaction');
-            }
-
-            return sendTransaction.newUTXOs;
-        } catch (e) {
-            setDisabled(false);
-            return utxos;
-        }
-    };*/
-
     const sendBTC = async (parameters: SendBitcoinParameters) => {
         try {
             const currentWalletAddress = await wallet.getCurrentAccount();
@@ -381,10 +338,11 @@ export default function TxOpnetConfirmScreen() {
             };
 
             const sendTransact = await Web3API.transactionFactory.createBTCTransfer(IFundingTransactionParameters);
-            const firstTransaction = await Web3API.provider.sendRawTransaction(sendTransact.tx, false);
-            if (!firstTransaction?.success) {
+
+            const sendTransaction = await Web3API.provider.sendRawTransaction(sendTransact.tx, false);
+            if (!sendTransaction.success) {
                 setDisabled(false);
-                tools.toastError('Error: Could not broadcast first transaction');
+                tools.toastError(sendTransaction.error ?? 'Could not broadcast transaction');
                 return;
             }
 
@@ -393,7 +351,7 @@ export default function TxOpnetConfirmScreen() {
 
             Web3API.provider.utxoManager.spentUTXO(currentWalletAddress.address, utxos, sendTransact.nextUTXOs);
 
-            navigate(RouteTypes.TxSuccessScreen, { txid: firstTransaction.result });
+            navigate(RouteTypes.TxSuccessScreen, { txid: sendTransaction.result });
         } catch (e) {
             tools.toastError(`Error: ${(e as Error).message}`);
             setDisabled(false);
@@ -434,10 +392,9 @@ export default function TxOpnetConfirmScreen() {
                 await Web3API.transactionFactory.signDeployment(deploymentParameters);
 
             const firstTransaction = await Web3API.provider.sendRawTransaction(sendTransact.transaction[0], false);
-            if (!firstTransaction?.success || firstTransaction.error) {
+            if (!firstTransaction.success) {
                 setDisabled(false);
                 tools.toastError(firstTransaction.error ?? 'Could not broadcast first transaction');
-
                 return;
             }
 
@@ -471,7 +428,7 @@ export default function TxOpnetConfirmScreen() {
                     contractAddress: sendTransact.contractAddress
                 });
             } else {
-                tools.toastError(`Error: ${secondTransaction.error}`);
+                tools.toastError(secondTransaction.error ?? 'Could not broadcast second transaction');
 
                 setOpenLoading(false);
                 setDisabled(false);
@@ -511,10 +468,8 @@ export default function TxOpnetConfirmScreen() {
             };
 
             const sendTransaction = await mintData.sendTransaction(interactionParameters);
-
-            if (!sendTransaction?.transactionId) {
-                console.log(sendTransaction);
-                tools.toastError('Could not broadcast transaction');
+            if (!sendTransaction.transactionId) {
+                tools.toastError(`Could not send transaction`);
                 return;
             }
 

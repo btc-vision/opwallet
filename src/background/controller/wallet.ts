@@ -106,6 +106,8 @@ export class WalletController {
     public timer: string | number | null = null;
 
     public getApproval = notificationService.getApproval;
+    public getApprovalInteractionParametersToUse = notificationService.getApprovalInteractionParametersToUse;
+    public clearApprovalInteractionParametersToUse = notificationService.clearApprovalInteractionParametersToUse;
     public resolveApproval = notificationService.resolveApproval;
     public rejectApproval = notificationService.rejectApproval;
     public getConnectedSite = permissionService.getConnectedSite;
