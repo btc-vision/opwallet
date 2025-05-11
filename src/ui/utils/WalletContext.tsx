@@ -24,6 +24,7 @@ import {
     WalletKeyring
 } from '@/shared/types';
 import { ApprovalData, ApprovalResponse } from '@/shared/types/Approval';
+import { InteractionParametersWithoutSigner } from '@btc-vision/transaction';
 import { AddressType, UnspentOutput } from '@btc-vision/wallet-sdk';
 import { bitcoin } from '@btc-vision/wallet-sdk/lib/bitcoin-core';
 import { SavedVault } from '../../background/service/keyring';
@@ -49,7 +50,11 @@ export interface WalletController {
 
     getApproval(): Promise<ApprovalData | undefined>;
 
-    resolveApproval(data?: ApprovalResponse, forceReject?: boolean): Promise<void>;
+    resolveApproval(
+        data?: ApprovalResponse,
+        interactionParametersToUse?: InteractionParametersWithoutSigner,
+        forceReject?: boolean
+    ): Promise<void>;
 
     rejectApproval(err?: string, stay?: boolean, isInternal?: boolean): Promise<void>;
 
@@ -87,7 +92,10 @@ export interface WalletController {
 
     clearKeyrings(): Promise<void>;
 
-    getPrivateKey(password: string, account: { address: string; type: string }): Promise<{ hex: string; wif: string } | null>;
+    getPrivateKey(
+        password: string,
+        account: { address: string; type: string }
+    ): Promise<{ hex: string; wif: string } | null>;
 
     getInternalPrivateKey(account: { pubkey: string; type: string }): Promise<{ hex: string; wif: string }>;
 

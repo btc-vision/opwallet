@@ -4,12 +4,14 @@ import { winMgr } from '@/background/webapi';
 import { IS_CHROME, IS_LINUX } from '@/shared/constant';
 import { providerErrors, rpcErrors } from '@/shared/lib/bitcoin-rpc-errors/errors';
 import { Approval, ApprovalData, ApprovalResponse } from '@/shared/types/Approval';
+import { InteractionParametersWithoutSigner } from '@btc-vision/transaction';
 import browser, { WindowProps } from '../webapi/browser';
 
 // something need user approval in window
 // should only open one window, unfocus will close the current notification
 class NotificationService extends Events {
     approval: Approval | null = null;
+    interactionParametersToUse: InteractionParametersWithoutSigner | undefined = undefined;
     notifiWindowId = 0;
     isLocked = false;
 
@@ -36,10 +38,21 @@ class NotificationService extends Events {
 
     getApproval = () => this.approval?.data;
 
-    resolveApproval = (data?: ApprovalResponse, forceReject = false) => {
+    getApprovalInteractionParametersToUse = () => this.interactionParametersToUse;
+
+    clearApprovalInteractionParametersToUse = () => {
+        this.interactionParametersToUse = undefined;
+    };
+
+    resolveApproval = (
+        data?: ApprovalResponse,
+        interactionParametersToUse?: InteractionParametersWithoutSigner,
+        forceReject = false
+    ) => {
         if (forceReject) {
             this.approval?.reject(providerErrors.userRejectedRequest());
         } else {
+            this.interactionParametersToUse = interactionParametersToUse;
             this.approval?.resolve(data);
         }
         this.approval = null;

@@ -274,7 +274,14 @@ export class ProviderController {
         }
     ])
     signInteraction = async (request: { approvalRes: boolean; data: { params: DetailedInteractionParameters } }) => {
-        return wallet.signInteraction(request.data.params.interactionParameters);
+        const approvalInteractionParametersToUse = wallet.getApprovalInteractionParametersToUse();
+        const interactionParameters = approvalInteractionParametersToUse ?? request.data.params.interactionParameters;
+
+        const result = wallet.signInteraction(interactionParameters);
+
+        if (approvalInteractionParametersToUse) wallet.clearApprovalInteractionParametersToUse(); // clear to avoid using them again
+
+        return result;
     };
 
     @Reflect.metadata('APPROVAL', [

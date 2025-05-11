@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { ApprovalResponse } from '@/shared/types/Approval';
 import { WalletError } from '@/shared/types/Error';
 import { isWalletError } from '@/shared/utils/errors';
+import { InteractionParametersWithoutSigner } from '@btc-vision/transaction';
 import { getUiType } from '.';
 import { useWallet } from './WalletContext';
 
@@ -13,11 +14,16 @@ export const useApproval = () => {
     const getApproval = wallet.getApproval.bind(wallet);
 
     const resolveApproval = useCallback(
-        async (data?: ApprovalResponse, stay = false, forceReject = false) => {
+        async (
+            data?: ApprovalResponse,
+            interactionParametersToUse?: InteractionParametersWithoutSigner,
+            stay = false,
+            forceReject = false
+        ) => {
             const approval = await getApproval();
 
             if (approval) {
-                await wallet.resolveApproval(data, forceReject);
+                await wallet.resolveApproval(data, interactionParametersToUse, forceReject);
             }
 
             if (stay) {

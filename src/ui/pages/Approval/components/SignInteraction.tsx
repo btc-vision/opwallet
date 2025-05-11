@@ -6,8 +6,13 @@ import WebsiteBar from '@/ui/components/WebsiteBar';
 import InteractionHeader from '@/ui/pages/Approval/components/Headers/InteractionHeader';
 import { decodeCallData } from '@/ui/pages/OpNet/decoded/decodeCallData';
 import { DecodedCalldata } from '@/ui/pages/OpNet/decoded/DecodedCalldata';
+import { useBTCUnit } from '@/ui/state/settings/hooks';
 import { useApproval } from '@/ui/utils/hooks';
+import { EditOutlined } from '@ant-design/icons';
+import { useState } from 'react';
 import { Decoded } from '../../OpNet/decoded/DecodedTypes';
+import { ChangeFeeRate } from './SignInteraction/ChangeFeeRate';
+import { ChangePriorityFee } from './SignInteraction/ChangePriorityFee';
 
 export interface Props {
     params: SignInteractionApprovalParams;
@@ -18,38 +23,80 @@ export default function SignInteraction(props: Props) {
         params: { data, session }
     } = props;
 
-    const to: string = data.interactionParameters.to;
     const [_, resolveApproval, rejectApproval] = useApproval();
+    const unitBtc = useBTCUnit();
+
+    const [interactionParameters, setInteractionParameters] = useState(data.interactionParameters);
+    const [isInteractionParametersChanged, setIsInteractionParametersChanged] = useState(false);
+    const [isFeeRateModalOpen, setIsFeeRateModalOpen] = useState(false);
+    const [isPriorityFeeModalOpen, setIsPriorityFeeModalOpen] = useState(false);
+
+    const contractInfo = data.contractInfo;
+    const to: string = interactionParameters.to;
+    const interactionType = selectorToString(interactionParameters.calldata as unknown as string);
+    const decoded: Decoded | null = decodeCallData(interactionParameters.calldata as unknown as string);
+    const chain = data.network;
+    const inputs = interactionParameters.utxos;
+    const gasSatFee = interactionParameters.gasSatFee;
+    const optionalOutputs = interactionParameters.optionalOutputs;
+    const feeRate = interactionParameters.feeRate;
+    const priorityFee = interactionParameters.priorityFee;
 
     const handleCancel = async () => {
         await rejectApproval('User rejected the request.');
     };
 
     const handleConfirm = async () => {
-        await resolveApproval();
+        await resolveApproval(undefined, isInteractionParametersChanged ? interactionParameters : undefined);
+        if (isInteractionParametersChanged) {
+            setInteractionParameters(data.interactionParameters);
+            setIsInteractionParametersChanged(false);
+        }
     };
 
-    const contractInfo = data.contractInfo;
-    const interactionType = selectorToString(data.interactionParameters.calldata as unknown as string);
-    const decoded: Decoded | null = decodeCallData(data.interactionParameters.calldata as unknown as string);
-    const chain = data.network;
+    const setFeeRate = (newFeeRate: number) => {
+        setInteractionParameters((prev) => ({
+            ...prev,
+            feeRate: newFeeRate
+        }));
+        setIsInteractionParametersChanged(true);
+    };
 
-    const inputs = data.interactionParameters.utxos;
-
-    const gasSatFee = data.interactionParameters.gasSatFee;
-    const optionalOutputs = data.interactionParameters.optionalOutputs;
+    const setPriorityFee = (newPriorityFee: bigint) => {
+        setInteractionParameters((prev) => ({
+            ...prev,
+            priorityFee: newPriorityFee
+        }));
+        setIsInteractionParametersChanged(true);
+    };
 
     return (
         <Layout>
+            {isFeeRateModalOpen && (
+                <ChangeFeeRate
+                    onClose={() => setIsFeeRateModalOpen(false)}
+                    setSetting={setFeeRate}
+                    setting={feeRate.toString()}
+                />
+            )}
+
+            {isPriorityFeeModalOpen && (
+                <ChangePriorityFee
+                    onClose={() => setIsPriorityFeeModalOpen(false)}
+                    setSetting={setPriorityFee}
+                    setting={(Number(priorityFee) / 1e8).toFixed(8).replace(/\.?0+$/, '')}
+                />
+            )}
+
             <Content>
                 <Header padding={8} height={'140px'}>
                     <Column>
                         <WebsiteBar session={session} />
-                        <InteractionHeader session={session} contract={to} contractInfo={data.contractInfo} />
+                        <InteractionHeader session={session} contract={to} contractInfo={contractInfo} />
                     </Column>
                 </Header>
                 <Column>
-                    <Text text="Decoded:" textCenter mt="lg" preset={'sub-bold'} />
+                    <Text text="Interaction:" textCenter mt="lg" preset={'sub-bold'} />
                     {decoded ? (
                         <DecodedCalldata
                             decoded={decoded}
@@ -71,21 +118,106 @@ export default function SignInteraction(props: Props) {
                             />
                         </Card>
                     )}
-                    <Text text="Calldata:" textCenter mt="lg" preset={'sub-bold'} />
-                    <Card>
-                        <div
-                            style={{
-                                userSelect: 'text',
-                                maxHeight: 384,
-                                overflow: 'hidden',
-                                whiteSpace: 'pre-wrap',
-                                wordBreak: 'break-word',
-                                flexWrap: 'wrap',
-                                fontSize: 12
-                            }}>
-                            {`0x${data.interactionParameters.calldata}`}
-                        </div>
-                    </Card>
+
+                    {!decoded && (
+                        <>
+                            <Text text="Calldata:" textCenter mt="lg" preset={'sub-bold'} />
+                            <Card>
+                                <div
+                                    style={{
+                                        userSelect: 'text',
+                                        maxHeight: 384,
+                                        overflow: 'hidden',
+                                        whiteSpace: 'pre-wrap',
+                                        wordBreak: 'break-word',
+                                        flexWrap: 'wrap',
+                                        fontSize: 12
+                                    }}>
+                                    {`0x${interactionParameters.calldata}`}
+                                </div>
+                            </Card>
+                        </>
+                    )}
+
+                    <Column mt="lg">
+                        <Text text="Settings:" textCenter preset="sub-bold" />
+
+                        <Card style={{ justifyContent: 'start' }}>
+                            <Column style={{ gap: 20, width: '100%' }}>
+                                <Row
+                                    justifyBetween
+                                    style={{
+                                        alignItems: 'center'
+                                    }}>
+                                    <div
+                                        style={{
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: 5
+                                        }}>
+                                        <Text text="Priority fee" style={{ fontFamily: 'monospace', fontSize: 14 }} />
+                                        <div
+                                            style={{
+                                                cursor: 'pointer'
+                                            }}
+                                            onClick={() => setIsPriorityFeeModalOpen(true)}>
+                                            <EditOutlined />
+                                        </div>
+                                    </div>
+
+                                    <div
+                                        style={{
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: 3
+                                        }}>
+                                        <Text
+                                            text={(Number(priorityFee) / 1e8).toFixed(8).replace(/\.?0+$/, '')}
+                                            style={{ fontFamily: 'monospace', fontSize: 14 }}
+                                        />
+
+                                        <Image src={svgRegistry.btc} size={28} />
+                                    </div>
+                                </Row>
+
+                                <Row
+                                    justifyBetween
+                                    style={{
+                                        alignItems: 'center'
+                                    }}>
+                                    <div
+                                        style={{
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: 5
+                                        }}>
+                                        <Text text="Fee rate" style={{ fontFamily: 'monospace', fontSize: 14 }} />
+                                        <div
+                                            style={{
+                                                cursor: 'pointer'
+                                            }}
+                                            onClick={() => setIsFeeRateModalOpen(true)}>
+                                            <EditOutlined />
+                                        </div>
+                                    </div>
+
+                                    <div
+                                        style={{
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: 3
+                                        }}>
+                                        <Text
+                                            text={`${feeRate} sat/vB`}
+                                            style={{ fontFamily: 'monospace', fontSize: 14 }}
+                                        />
+
+                                        <Image src={svgRegistry.settings} size={18} />
+                                    </div>
+                                </Row>
+                            </Column>
+                        </Card>
+                    </Column>
 
                     {inputs && inputs.length > 0 && (
                         <Column mt="lg">
@@ -123,7 +255,7 @@ export default function SignInteraction(props: Props) {
                                     style={{
                                         alignItems: 'center'
                                     }}>
-                                    <Text text="Gas fee" style={{ fontFamily: 'monospace', fontSize: 14 }} />
+                                    <Text text="Execution gas fee" style={{ fontFamily: 'monospace', fontSize: 14 }} />
 
                                     <div
                                         style={{
@@ -192,11 +324,12 @@ export default function SignInteraction(props: Props) {
                     <Button
                         text={`Sign (${(
                             (Number(gasSatFee) +
+                                Number(priorityFee) +
                                 (optionalOutputs ?? []).reduce((sum, output) => sum + Number(output.value), 0)) /
                             1e8
                         )
                             .toFixed(8)
-                            .replace(/\.?0+$/, '')} BTC)`}
+                            .replace(/\.?0+$/, '')} ${unitBtc})`}
                         full
                         preset="primary"
                         onClick={handleConfirm}
