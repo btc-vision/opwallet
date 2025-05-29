@@ -287,6 +287,7 @@ class Web3API {
                 logo
             };
         } catch (e) {
+            console.error(`Error querying contract information for address ${address}:`, e);
             if ((e as Error).message.includes('not found')) {
                 return false;
             }
