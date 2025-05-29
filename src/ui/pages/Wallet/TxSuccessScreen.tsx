@@ -17,7 +17,7 @@ export default function TxSuccessScreen() {
     const txidUrl = txid ? useTxExplorerUrl(txid) : '';
     const addressUrl = contractAddress
         ? useAddressExplorerUrl(
-              typeof contractAddress === 'string' ? contractAddress : contractAddress.p2tr(Web3API.network)
+              typeof contractAddress === 'string' ? contractAddress : contractAddress.p2op(Web3API.network)
           )
         : '';
 

@@ -48,7 +48,7 @@ function pushDefaultTokens(tokens: (StoredToken | string)[], chain: ChainType, n
     const opnetNetwork = getOPNetNetwork(network);
 
     try {
-        const newTokenAddress = OPNetMetadata.getAddresses(opnetNetwork, chainId).moto.p2tr(Web3API.network);
+        const newTokenAddress = OPNetMetadata.getAddresses(opnetNetwork, chainId).moto.p2op(Web3API.network);
 
         const alreadyExists = tokens.some((token) => {
             if (typeof token === 'string') return token === newTokenAddress;
@@ -125,7 +125,7 @@ export function OPNetList() {
             }
 
             // Filter out "dead" address
-            const deadAddress = Address.dead().p2tr(Web3API.network);
+            const deadAddress = Address.dead().p2op(Web3API.network);
             const validTokens = parsedTokens.filter((token) => {
                 if (typeof token === 'string') return token !== deadAddress;
                 return token.address !== deadAddress;
@@ -161,7 +161,7 @@ export function OPNetList() {
     useEffect(() => {
         if (!tokens) return;
 
-        const motoToken = Web3API.motoAddressP2TR;
+        const motoToken = Web3API.motoAddressP2OP;
         if (!motoToken) return;
         if (!tokens) return;
 

@@ -138,10 +138,10 @@ class Web3API {
         }
     }
 
-    public get motoAddressP2TR(): string | null {
+    public get motoAddressP2OP(): string | null {
         const addy = this.motoAddress;
 
-        return addy ? addy.p2tr(this.network) : null;
+        return addy ? addy.p2op(this.network) : null;
     }
 
     public get chain(): ChainType {
@@ -255,7 +255,7 @@ class Web3API {
         try {
             let addy: string = address;
             if (address.startsWith('0x')) {
-                addy = Address.fromString(address).p2tr(this.network);
+                addy = Address.fromString(address).p2op(this.network);
             }
 
             const promises: [
