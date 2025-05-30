@@ -7,24 +7,26 @@ import { useBTCUnit, useChainType } from '@/ui/state/settings/hooks';
 export function BtcDisplay({ balance }: { balance: string | number }) {
     const chainType = useChainType();
     const btcUnit = useBTCUnit();
+
     const { intPart, decPart } = useMemo(() => {
-        //   split balance into integer and decimal parts
-        const [intPart, decPart] = balance.toString().split('.');
+        const [int, dec] = Number(balance).toFixed(8).split('.');
+
+        const trimmedDec = dec.replace(/0+$/, '');
 
         return {
-            intPart,
-            decPart: decPart || ''
+            intPart: int,
+            decPart: trimmedDec
         };
     }, [balance]);
 
-    if (chainType === ChainType.FRACTAL_BITCOIN_MAINNET || ChainType.FRACTAL_BITCOIN_TESTNET ) {
+    if (chainType === ChainType.FRACTAL_BITCOIN_MAINNET || ChainType.FRACTAL_BITCOIN_TESTNET) {
         //   show 3 decimal places for fractal bitcoin
         return (
-            <Row style={{ alignItems: 'flex-end', marginBottom: "10px" }} justifyCenter gap={'zero'}>
+            <Row style={{ alignItems: 'flex-end', marginBottom: '10px' }} justifyCenter gap={'zero'}>
                 <Text text={intPart} preset="title-bold" size="xxxl" />
                 {decPart && (
                     <Text
-                        text={'.' + decPart.slice(0, 3)}
+                        text={'.' + decPart}
                         preset="title-bold"
                         style={{
                             color: '#8a8a8a',
