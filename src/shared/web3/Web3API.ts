@@ -128,20 +128,20 @@ class Web3API {
                 return null; // TODO: To be changed if needed
             }
             case OPNetNetwork.Testnet: {
-                return Address.fromString('0x44d2468a6ab8a1eeb200f0570526f6cca0ceaf42d6cd2859d7a8d9fb715a5e0c');
+                return null;
             }
             case OPNetNetwork.Regtest: {
-                return Address.fromString('0x212b61110385080c1a3a983b5d0c353c4fc5e314aa55b85213c01ea3dea15361');
+                return Address.fromString('0x97493c8f728f484151a8d498d1f94108826dedadd0dc9c1845285a180b7a478f');
             }
             default:
                 throw new Error('Invalid network');
         }
     }
 
-    public get motoAddressP2TR(): string | null {
+    public get motoAddressP2OP(): string | null {
         const addy = this.motoAddress;
 
-        return addy ? addy.p2tr(this.network) : null;
+        return addy ? addy.p2op(this.network) : null;
     }
 
     public get chain(): ChainType {
@@ -255,7 +255,7 @@ class Web3API {
         try {
             let addy: string = address;
             if (address.startsWith('0x')) {
-                addy = Address.fromString(address).p2tr(this.network);
+                addy = Address.fromString(address).p2op(this.network);
             }
 
             const promises: [
@@ -287,6 +287,7 @@ class Web3API {
                 logo
             };
         } catch (e) {
+            console.error(`Error querying contract information for address ${address}:`, e);
             if ((e as Error).message.includes('not found')) {
                 return false;
             }

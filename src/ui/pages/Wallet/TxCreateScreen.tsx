@@ -12,8 +12,8 @@ import { useCurrentAccount } from '@/ui/state/accounts/hooks';
 import { useBTCUnit, useChain } from '@/ui/state/settings/hooks';
 import { useUiTxCreateScreen, useUpdateUiTxCreateScreen } from '@/ui/state/ui/hooks';
 import { amountToSatoshis, isValidAddress, satoshisToAmount, useWallet } from '@/ui/utils';
-import { BitcoinUtils } from 'opnet';
 import { AddressTypes, AddressVerificator } from '@btc-vision/transaction';
+import { BitcoinUtils } from 'opnet';
 
 BigNumber.config({ EXPONENTIAL_AT: 256 });
 
@@ -196,7 +196,7 @@ export default function TxCreateScreen() {
                         <Row justifyBetween style={{ marginTop: 6 }}>
                             <Text text="Available" color="gold" />
                             <Row gap={'sm'}>
-                                <Text text={totalAvailableAmount.toLocaleString()} size="sm" color="gold" />
+                                <Text text={totalAvailableAmount} size="sm" color="gold" />
                                 <Text text={btcUnit} size="sm" color="textDim" />
                                 {chain.enum !== ChainType.BITCOIN_REGTEST && (
                                     <>

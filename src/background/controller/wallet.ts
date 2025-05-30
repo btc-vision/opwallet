@@ -1017,7 +1017,8 @@ export class WalletController {
                 gasSatFee: BigInt(interactionParameters.gasSatFee || 330n),
                 calldata: Buffer.from(interactionParameters.calldata as unknown as string, 'hex'),
                 optionalOutputs: interactionParameters.optionalOutputs,
-                optionalInputs: interactionParameters.optionalInputs
+                optionalInputs: interactionParameters.optionalInputs,
+                contract: interactionParameters.contract
             };
 
             const sendTransaction = await Web3API.transactionFactory.signInteraction(interactionParametersSubmit);
@@ -1230,7 +1231,8 @@ export class WalletController {
                 gasSatFee: BigInt(interactionParameters.gasSatFee || 330n),
                 calldata: Buffer.from(interactionParameters.calldata as unknown as string, 'hex'),
                 optionalInputs: optionalInputs,
-                optionalOutputs: interactionParameters.optionalOutputs || []
+                optionalOutputs: interactionParameters.optionalOutputs || [],
+                contract: interactionParameters.contract
             };
 
             return await Web3API.transactionFactory.signInteraction(interactionParametersSubmit);

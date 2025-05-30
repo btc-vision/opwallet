@@ -47,10 +47,10 @@ export const AddOpNetToken = ({
                     return;
                 }
 
-                tokenAddress = pubKey.p2tr(network);
+                tokenAddress = pubKey.p2op(network);
 
                 if (!tokenAddress) {
-                    tools.toastError('The Taproot address was not generated.');
+                    tools.toastError('The P2OP address was not generated.');
                     return;
                 }
             }
