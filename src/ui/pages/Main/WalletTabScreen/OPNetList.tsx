@@ -4,13 +4,12 @@ import BigNumber from 'bignumber.js';
 import { CSSProperties, useCallback, useEffect, useRef, useState } from 'react';
 import browser from 'webextension-polyfill';
 
-import Web3API, { getOPNetChainType, getOPNetNetwork } from '@/shared/web3/Web3API';
+import Web3API from '@/shared/web3/Web3API';
 import { getContract, IOP_20Contract, OP_20_ABI } from 'opnet';
 
-import { ChainType } from '@/shared/constant';
-import { NetworkType, OPTokenInfo } from '@/shared/types';
+import { OPTokenInfo } from '@/shared/types';
 import { ContractInformation } from '@/shared/web3/interfaces/ContractInformation';
-import { Address, OPNetMetadata } from '@btc-vision/transaction';
+import { Address } from '@btc-vision/transaction';
 
 import { Button, Column, Row, Text } from '@/ui/components';
 import { useTools } from '@/ui/components/ActionComponent';
@@ -37,31 +36,6 @@ const balanceCache = new Map<string, OPTokenInfo>();
 interface StoredToken {
     address: string;
     hidden: boolean;
-}
-
-/**
- * Adds a default token (Moto contract) into the token list if it is missing.
- * Swallows any error that might occur.
- */
-function pushDefaultTokens(tokens: (StoredToken | string)[], chain: ChainType, network: NetworkType) {
-    const chainId = getOPNetChainType(chain);
-    const opnetNetwork = getOPNetNetwork(network);
-
-    try {
-        const newTokenAddress = OPNetMetadata.getAddresses(opnetNetwork, chainId).moto.p2op(Web3API.network);
-
-        const alreadyExists = tokens.some((token) => {
-            if (typeof token === 'string') return token === newTokenAddress;
-            return token.address === newTokenAddress;
-        });
-
-        // If Moto token is missing, add it at the front
-        if (!alreadyExists) {
-            tokens.unshift({ address: newTokenAddress, hidden: false });
-        }
-    } catch (err) {
-        console.error('Failed to add default token:', err);
-    }
 }
 
 export function OPNetList() {
@@ -115,9 +89,6 @@ export function OPNetList() {
             const parsedTokens: (StoredToken | string)[] = tokensImported
                 ? (JSON.parse(tokensImported) as (StoredToken | string)[])
                 : [];
-
-            const currentNetwork = await wallet.getNetworkType();
-            pushDefaultTokens(parsedTokens, chain, currentNetwork);
 
             // Re-save in case default tokens were added
             if (parsedTokens.length) {
