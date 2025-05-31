@@ -107,13 +107,13 @@ class Web3API {
 
         switch (network) {
             case OPNetNetwork.Mainnet: {
-                return null;
+                return null; // TODO: To be changed if needed
             }
             case OPNetNetwork.Testnet: {
-                return Address.fromString('0x4f8dfedea771db2dfaac4bba5d07e6a96846648e231a73b3769aac2e521b6e8b');
+                return null; // TODO: To be changed if needed
             }
             case OPNetNetwork.Regtest: {
-                return Address.fromString('0xc9eed2f3cba2d8ced9a277d989954a0052280fcca7e840d1d970e48e9b64de16');
+                return null; // TODO: To be changed if needed
             }
             default:
                 throw new Error('Invalid network');
@@ -128,7 +128,7 @@ class Web3API {
                 return null; // TODO: To be changed if needed
             }
             case OPNetNetwork.Testnet: {
-                return null;
+                return Address.fromString('0xdb944e78cada1d705af892bb0560a4a9c4b9896d64ef23dfd3870ffd5004f4f2');
             }
             case OPNetNetwork.Regtest: {
                 return Address.fromString('0x97493c8f728f484151a8d498d1f94108826dedadd0dc9c1845285a180b7a478f');
