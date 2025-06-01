@@ -7,24 +7,20 @@ import { useCurrentAccount } from '@/ui/state/accounts/hooks';
 import { Action, Features } from '@/shared/interfaces/RawTxParameters';
 
 export default function DeployContractOpnet() {
-    // hooks ------------------------------------------------------------------
     const account = useCurrentAccount();
     const navigate = useNavigate();
     const tools = useTools();
 
-    // state ------------------------------------------------------------------
     const [wasmFile, setWasmFile] = useState<File | null>(null);
-    const [feeRate, setFeeRate] = useState<number>(5);
-    const [priorityFee, setPriorityFee] = useState<string>('5000');
+    const [feeRate, setFeeRate] = useState<number>(2);
+    const [priorityFee, setPriorityFee] = useState<string>('0');
     const [calldataHex, setCalldataHex] = useState<string>('');
     const [disabled, setDisabled] = useState(true);
 
-    // side‑effects ----------------------------------------------------------
     useEffect(() => {
         setDisabled(!wasmFile);
     }, [wasmFile]);
 
-    // handlers --------------------------------------------------------------
     const handleFile = (file: File) => {
         if (!file.name.endsWith('.wasm')) {
             tools.toastError('Please select a .wasm file');
@@ -50,8 +46,8 @@ export default function DeployContractOpnet() {
                 account,
                 feeRate,
                 tokens: [],
-                priorityFee: 0n,
-                gasSatFee: BigInt(priorityFee),
+                priorityFee: BigInt(priorityFee),
+                gasSatFee: 5000n,
                 header: 'Deploy Contract',
                 networkFee: feeRate,
                 features: {
@@ -66,7 +62,6 @@ export default function DeployContractOpnet() {
         });
     };
 
-    // ui --------------------------------------------------------------------
     return (
         <Layout>
             <Header title="Deploy Contract" onBack={() => window.history.go(-1)} />

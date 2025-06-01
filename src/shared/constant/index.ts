@@ -238,7 +238,7 @@ export const CHAINS_MAP: { [key in ChainType]: TypeChain<key> } = {
         unit: 'tBTC',
         icon: './images/artifacts/bitcoin-testnet.svg',
         networkType: NetworkType.TESTNET,
-        opnetUrl: 'https://testnet.opnet.org',
+        opnetUrl: 'https://testnetnew.opnet.org',
         endpoints: ['https://wallet-api-fractal-testnet.unisat.io'], //['https://wallet-api-testnet.unisat.space'],
         mempoolSpaceUrl: 'https://mempool.space/testnet',
         unisatUrl: 'https://testnet.unisat.io',

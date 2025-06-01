@@ -339,7 +339,6 @@ class Web3API {
     }
 
     private getContractName(address: string): string | undefined {
-        console.log(address);
         return ContractNames[address] ?? 'Generic Contract';
     }
 

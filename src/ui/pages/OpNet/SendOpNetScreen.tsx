@@ -17,7 +17,6 @@ export default function SendOpNetScreen() {
     const navigate = useNavigate();
     const { amount: balance, address, divisibility, name, symbol, logo } = useLocationState<OPTokenInfo>();
 
-    /* --------------------------------------------------------------------- state */
     const [toInfo, setToInfo] = useState({ address: '', domain: '' });
     const [inputAmount, setInputAmount] = useState('');
     const [feeRate, setFeeRate] = useState(5);
@@ -25,10 +24,8 @@ export default function SendOpNetScreen() {
     const [error, setError] = useState('');
     const [disabled, setDisabled] = useState(true);
 
-    /* --------------------------------------------------------------------- helpers */
     const balanceFormatted = new BigNumber(BitcoinUtils.formatUnits(balance, divisibility));
 
-    /* --------------------------------------------------------------------- validation */
     useEffect(() => {
         setError('');
         setDisabled(true);
@@ -58,7 +55,6 @@ export default function SendOpNetScreen() {
         setDisabled(false);
     }, [toInfo, inputAmount, balance, divisibility]);
 
-    /* --------------------------------------------------------------------- submit */
     const handleNext = () => {
         const params: TransferParameters = {
             action: Action.Transfer,
@@ -87,7 +83,6 @@ export default function SendOpNetScreen() {
         navigate(RouteTypes.TxOpnetConfirmScreen, { rawTxInfo: params });
     };
 
-    /* --------------------------------------------------------------------- UI */
     return (
         <Layout>
             <Header title={`Send ${name}`} onBack={() => window.history.go(-1)} />

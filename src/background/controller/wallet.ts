@@ -77,6 +77,7 @@ import { Buffer } from 'buffer';
 import { ContactBookItem, ContactBookStore } from '../service/contactBook';
 import { OpenApiService } from '../service/openapi';
 import { ConnectedSite } from '../service/permission';
+import { UTXOs } from 'opnet/src/bitcoin/UTXOs';
 
 export interface AccountAsset {
     name: string;
@@ -338,8 +339,6 @@ export class WalletController {
         if (!address) return [];
         return preferenceService.getAddressHistory(address);
     };
-
-    // ---------------- Keyring & Preference Management ----------------
 
     public getExternalLinkAck = (): boolean => {
         return preferenceService.getExternalLinkAck();
@@ -766,8 +765,6 @@ export class WalletController {
         }
     };
 
-    // ---------------- Signing & Transaction Logic ----------------
-
     /**
      * Low-level convenience method for signing a transaction's PSBT.
      */
@@ -976,81 +973,60 @@ export class WalletController {
             pubkey: account.pubkey,
             type: account.type
         } as Account);
-
         if (!wifWallet) throw new WalletControllerError('Could not retrieve internal private key');
 
+        let requiredMinimum = 0;
+        let tries = 0;
+        let signed: { response: InteractionResponse; utxos: UTXOs } | undefined;
+
+        do {
+            if (tries === 2) {
+                throw new WalletControllerError(
+                    'Failed to sign interaction: not enough funds in UTXOs. Please consolidate your UTXOs.'
+                );
+            }
+            tries++;
+
+            try {
+                signed = await this.signInteractionInternal(account, wifWallet, interactionParameters, requiredMinimum);
+            } catch (err: unknown) {
+                const msg = err as Error;
+
+                if (!msg.message.includes('setFeeOutput: Insufficient funds')) {
+                    throw new WalletControllerError(`Failed to sign interaction: ${msg.message}`, {
+                        interactionParameters
+                    });
+                }
+
+                const m = /Fee:\s*(\d+)[^\d]+(?:Value|Total input):\s*(\d+)/i.exec(msg.message);
+                if (!m) {
+                    throw new WalletControllerError(`Failed to parse insufficient-funds error: ${msg.message}`, {
+                        interactionParameters
+                    });
+                }
+
+                const fee = BigInt(m[1]);
+                const available = BigInt(m[2]);
+                const missing = fee > available ? fee - available : 0n;
+
+                requiredMinimum = Number(missing + (missing * 20n) / 100n);
+            }
+        } while (!signed);
+
         try {
-            const walletGet: Wallet = Wallet.fromWif(wifWallet.wif, Web3API.network);
-            const utxos = interactionParameters.utxos.map((utxo) => {
-                const nonWitnessUtxo = Buffer.isBuffer(utxo.nonWitnessUtxo)
-                    ? utxo.nonWitnessUtxo
-                    : (() => {
-                          const obj = utxo.nonWitnessUtxo as Record<string, number> | undefined;
-                          if (!obj) return undefined;
+            const { response, utxos } = signed;
 
-                          // find the highest index key to size the buffer
-                          const len = Math.max(...Object.keys(obj).map((k) => +k)) + 1;
-                          const buf = Buffer.alloc(len);
-                          for (const [k, v] of Object.entries(obj)) {
-                              buf[+k] = v;
-                          }
-                          return buf;
-                      })();
+            const fundingTx = await Web3API.provider.sendRawTransaction(response.fundingTransaction, false);
+            if (!fundingTx) throw new WalletControllerError('No result from funding transaction broadcast');
+            if (fundingTx.error) throw new WalletControllerError(fundingTx.error);
 
-                return {
-                    ...utxo,
-                    value: typeof utxo.value === 'bigint' ? utxo.value : BigInt(utxo.value as unknown as string),
-                    nonWitnessUtxo
-                };
-            });
+            const interTx = await Web3API.provider.sendRawTransaction(response.interactionTransaction, false);
+            if (!interTx) throw new WalletControllerError('No result from interaction transaction broadcast');
+            if (interTx.error) throw new WalletControllerError(interTx.error);
 
-            const preimage = await Web3API.provider.getPreimage();
-            const interactionParametersSubmit: IInteractionParameters = {
-                preimage: preimage,
-                from: interactionParameters.from,
-                to: interactionParameters.to,
-                utxos,
-                signer: walletGet.keypair,
-                network: Web3API.network,
-                feeRate: interactionParameters.feeRate,
-                priorityFee: BigInt(interactionParameters.priorityFee || 0n),
-                gasSatFee: BigInt(interactionParameters.gasSatFee || 330n),
-                calldata: Buffer.from(interactionParameters.calldata as unknown as string, 'hex'),
-                optionalOutputs: interactionParameters.optionalOutputs,
-                optionalInputs: interactionParameters.optionalInputs,
-                contract: interactionParameters.contract
-            };
+            Web3API.provider.utxoManager.spentUTXO(account.address, utxos, response.nextUTXOs);
 
-            const sendTransaction = await Web3API.transactionFactory.signInteraction(interactionParametersSubmit);
-            const firstTransaction = await Web3API.provider.sendRawTransaction(
-                sendTransaction.fundingTransaction,
-                false
-            );
-
-            if (!firstTransaction) {
-                throw new WalletControllerError('No result from funding transaction broadcast');
-            }
-
-            if (firstTransaction.error) {
-                throw new WalletControllerError(firstTransaction.error);
-            }
-
-            const secondTransaction = await Web3API.provider.sendRawTransaction(
-                sendTransaction.interactionTransaction,
-                false
-            );
-
-            if (!secondTransaction) {
-                throw new WalletControllerError('No result from interaction transaction broadcast');
-            }
-
-            if (secondTransaction.error) {
-                throw new WalletControllerError(secondTransaction.error);
-            }
-
-            Web3API.provider.utxoManager.spentUTXO(account.address, utxos, sendTransaction.nextUTXOs);
-
-            return [firstTransaction, secondTransaction, sendTransaction.nextUTXOs, sendTransaction.preimage];
+            return [fundingTx, interTx, response.nextUTXOs, response.preimage];
         } catch (err) {
             throw new WalletControllerError(`signAndBroadcastInteraction failed: ${String(err)}`, {
                 interactionParameters
@@ -1165,82 +1141,53 @@ export class WalletController {
             pubkey: account.pubkey,
             type: account.type
         } as Account);
-
         if (!wifWallet) throw new WalletControllerError('Could not retrieve internal private key');
 
-        try {
-            const walletGet: Wallet = Wallet.fromWif(wifWallet.wif, Web3API.network);
-            const preimage = await Web3API.provider.getPreimage();
+        let interactionResponse: InteractionResponse | undefined;
+        let requiredMinimum = 0;
+        let tries = 0;
 
-            const utxos = interactionParameters.utxos.map((utxo) => {
-                const nonWitnessUtxo = Buffer.isBuffer(utxo.nonWitnessUtxo)
-                    ? utxo.nonWitnessUtxo
-                    : (() => {
-                          const obj = utxo.nonWitnessUtxo as Record<string, number> | undefined;
-                          if (!obj) return undefined;
+        do {
+            if (tries === 2) {
+                throw new WalletControllerError(
+                    'Failed to sign interaction: not enough funds in UTXOs. Please consolidate your UTXOs.'
+                );
+            }
+            tries++;
 
-                          // find the highest index key to size the buffer
-                          const len = Math.max(...Object.keys(obj).map((k) => +k)) + 1;
-                          const buf = Buffer.alloc(len);
-                          for (const [k, v] of Object.entries(obj)) {
-                              buf[+k] = v;
-                          }
-                          return buf;
-                      })();
+            try {
+                const { response } = await this.signInteractionInternal(
+                    account,
+                    wifWallet,
+                    interactionParameters,
+                    requiredMinimum
+                );
+                interactionResponse = response;
+            } catch (err: unknown) {
+                const msg = err as Error;
 
-                return {
-                    ...utxo,
-                    value: typeof utxo.value === 'bigint' ? utxo.value : BigInt(utxo.value as unknown as string),
-                    nonWitnessUtxo
-                };
-            });
+                if (!msg.message.includes('setFeeOutput: Insufficient funds')) {
+                    throw new WalletControllerError(`Failed to sign interaction: ${msg.message}`, {
+                        interactionParameters
+                    });
+                }
 
-            const optionalInputs =
-                interactionParameters.optionalInputs?.map((utxo) => {
-                    const nonWitnessUtxo = Buffer.isBuffer(utxo.nonWitnessUtxo)
-                        ? utxo.nonWitnessUtxo
-                        : (() => {
-                              const obj = utxo.nonWitnessUtxo as Record<string, number> | undefined;
-                              if (!obj) return undefined;
+                const matches = /Fee:\s*(\d+)[^\d]+(?:Value|Total input):\s*(\d+)/i.exec(msg.message);
+                if (!matches) {
+                    throw new WalletControllerError(`Failed to parse insufficient-funds error: ${msg.message}`, {
+                        interactionParameters
+                    });
+                }
 
-                              // find the highest index key to size the buffer
-                              const len = Math.max(...Object.keys(obj).map((k) => +k)) + 1;
-                              const buf = Buffer.alloc(len);
-                              for (const [k, v] of Object.entries(obj)) {
-                                  buf[+k] = v;
-                              }
-                              return buf;
-                          })();
+                const fee = BigInt(matches[1]);
+                const available = BigInt(matches[2]);
+                const missing = fee > available ? fee - available : 0n;
 
-                    return {
-                        ...utxo,
-                        value: typeof utxo.value === 'bigint' ? utxo.value : BigInt(utxo.value as unknown as string),
-                        nonWitnessUtxo
-                    };
-                }) || [];
+                requiredMinimum = Number(missing + (missing * 20n) / 100n);
+            }
+        } while (!interactionResponse);
 
-            const interactionParametersSubmit: IInteractionParameters = {
-                from: interactionParameters.from,
-                to: interactionParameters.to,
-                preimage,
-                utxos,
-                signer: walletGet.keypair,
-                network: Web3API.network,
-                feeRate: interactionParameters.feeRate,
-                priorityFee: BigInt(interactionParameters.priorityFee || 0n),
-                gasSatFee: BigInt(interactionParameters.gasSatFee || 330n),
-                calldata: Buffer.from(interactionParameters.calldata as unknown as string, 'hex'),
-                optionalInputs: optionalInputs,
-                optionalOutputs: interactionParameters.optionalOutputs || [],
-                contract: interactionParameters.contract
-            };
-
-            return await Web3API.transactionFactory.signInteraction(interactionParametersSubmit);
-        } catch (err) {
-            throw new WalletControllerError(`Failed to sign interaction: ${String(err)}`, {
-                interactionParameters
-            });
-        }
+        return interactionResponse;
     };
 
     /**
@@ -1306,8 +1253,6 @@ export class WalletController {
         return keyringService.signData(account.pubkey, data, type);
     };
 
-    // ---------------- Contact Management ----------------
-
     public addContact = (data: ContactBookItem): void => {
         contactBookService.addContact(data);
     };
@@ -1341,8 +1286,6 @@ export class WalletController {
         return this._generateAlianName(keyring.type, keyring.accounts.length + 1);
     };
 
-    // ---------------- Highlighted Wallet List ----------------
-
     public getHighlightWalletList = (): WalletSaveList => {
         return preferenceService.getWalletSavedList();
     };
@@ -1350,8 +1293,6 @@ export class WalletController {
     public updateHighlightWalletList = (list: WalletSaveList): void => {
         preferenceService.updateWalletSavedList(list);
     };
-
-    // ---------------- Alias Names ----------------
 
     public getAlianName = (pubkey: string): string | undefined => {
         return contactBookService.getContactByAddress(pubkey)?.name;
@@ -1405,8 +1346,6 @@ export class WalletController {
     public reportErrors = (error: string): void => {
         console.error('report not implemented:', error);
     };
-
-    // ---------------- Network & Chain Management ----------------
 
     public getNetworkType = (): NetworkType => {
         const chainType = this.getChainType();
@@ -2045,6 +1984,10 @@ export class WalletController {
         }
     };
 
+    public getBuyBtcChannelList = async (): Promise<BuyBtcChannel[]> => {
+        return openapiService.getBuyBtcChannelList();
+    };
+
     // public getEnableSignData = (): boolean => {
     //     return preferenceService.getEnableSignData();
     // };
@@ -2052,10 +1995,6 @@ export class WalletController {
     // public setEnableSignData = (enable: boolean): void => {
     //     preferenceService.setEnableSignData(enable);
     // };
-
-    public getBuyBtcChannelList = async (): Promise<BuyBtcChannel[]> => {
-        return openapiService.getBuyBtcChannelList();
-    };
 
     public getAutoLockTimeId = (): number => {
         return preferenceService.getAutoLockTimeId();
@@ -2120,6 +2059,97 @@ export class WalletController {
         } catch (err) {
             throw new WalletControllerError(`Failed to get OPNET balance: ${String(err)}`, { address });
         }
+    };
+
+    private signInteractionInternal = async (
+        account: Account,
+        wifWallet: { hex: string; wif: string },
+        interactionParameters: InteractionParametersWithoutSigner,
+        requiredMinimum = 0
+    ): Promise<{ response: InteractionResponse; utxos: UTXOs }> => {
+        const wallet = Wallet.fromWif(wifWallet.wif, Web3API.network);
+        const preimage = await Web3API.provider.getPreimage();
+
+        const utxos: UTXOs = interactionParameters.utxos.map((u) => {
+            const nonWitnessUtxo = Buffer.isBuffer(u.nonWitnessUtxo)
+                ? u.nonWitnessUtxo
+                : u.nonWitnessUtxo
+                  ? (() => {
+                        const raw = u.nonWitnessUtxo as unknown as Record<string, number>;
+                        const len = Math.max(...Object.keys(raw).map((k) => +k)) + 1;
+                        const buf = Buffer.alloc(len);
+                        for (const [k, v] of Object.entries(raw)) buf[+k] = v;
+                        return buf;
+                    })()
+                  : undefined;
+
+            return {
+                ...u,
+                value: typeof u.value === 'bigint' ? u.value : BigInt(u.value as unknown as string),
+                nonWitnessUtxo
+            };
+        });
+
+        if (requiredMinimum !== 0) {
+            const currentTotal = utxos.reduce<bigint>((s, u) => s + u.value, 0n);
+
+            if (currentTotal < BigInt(requiredMinimum)) {
+                const stillNeeded = BigInt(requiredMinimum) - currentTotal;
+
+                const fetched: UTXOs = await Web3API.getUTXOs([account.address], stillNeeded);
+                const alreadyUsed = new Set<string>(utxos.map((u) => `${u.transactionId}:${u.outputIndex}`));
+
+                fetched
+                    .sort((a, b) => Number(b.value - a.value))
+                    .forEach((f) => {
+                        if (alreadyUsed.has(`${f.transactionId}:${f.outputIndex}`)) return;
+
+                        utxos.push(f);
+
+                        if (utxos.reduce<bigint>((s, u) => s + u.value, 0n) >= BigInt(requiredMinimum)) return;
+                    });
+            }
+        }
+
+        const optionalInputs =
+            interactionParameters.optionalInputs?.map((u) => {
+                const nonWitnessUtxo = Buffer.isBuffer(u.nonWitnessUtxo)
+                    ? u.nonWitnessUtxo
+                    : u.nonWitnessUtxo
+                      ? (() => {
+                            const raw = u.nonWitnessUtxo as unknown as Record<string, number>;
+                            const len = Math.max(...Object.keys(raw).map((k) => +k)) + 1;
+                            const buf = Buffer.alloc(len);
+                            for (const [k, v] of Object.entries(raw)) buf[+k] = v;
+                            return buf;
+                        })()
+                      : undefined;
+
+                return {
+                    ...u,
+                    value: typeof u.value === 'bigint' ? u.value : BigInt(u.value as unknown as string),
+                    nonWitnessUtxo
+                };
+            }) || [];
+
+        const submit: IInteractionParameters = {
+            from: interactionParameters.from,
+            to: interactionParameters.to,
+            preimage,
+            utxos,
+            signer: wallet.keypair,
+            network: Web3API.network,
+            feeRate: interactionParameters.feeRate,
+            priorityFee: BigInt(interactionParameters.priorityFee || 0n),
+            gasSatFee: BigInt(interactionParameters.gasSatFee || 330n),
+            calldata: Buffer.from(interactionParameters.calldata as unknown as string, 'hex'),
+            optionalInputs,
+            optionalOutputs: interactionParameters.optionalOutputs || [],
+            contract: interactionParameters.contract
+        };
+
+        const response = await Web3API.transactionFactory.signInteraction(submit);
+        return { response, utxos };
     };
 
     /**

@@ -20,7 +20,6 @@ export function PriorityFeeBar({
     readonly?: boolean;
     onChange?: (val: number) => void;
 }) {
-    /* ------------------------------------------------------------------ state */
     const [feeOptions] = useState<Option[]>([
         { title: 'None', feeRate: 0 },
         { title: 'Low', feeRate: 1_000 },
@@ -28,10 +27,9 @@ export function PriorityFeeBar({
         { title: 'Custom', feeRate: 0 }
     ]);
 
-    const [optionIdx, setOptionIdx] = useState<FeeRateType>(FeeRateType.LOW);
+    const [optionIdx, setOptionIdx] = useState<FeeRateType>(FeeRateType.NONE);
     const [customVal, setCustomVal] = useState('');
 
-    /* ------------------------------------------------------------------ effect: emit value */
     useEffect(() => {
         const chosen = feeOptions[optionIdx].feeRate;
         const val = optionIdx === FeeRateType.CUSTOM ? Math.max(Number(customVal) || 0, 0) : chosen < 1 ? 1 : chosen;
@@ -39,7 +37,6 @@ export function PriorityFeeBar({
         onChange?.(val);
     }, [optionIdx, customVal, feeOptions, onChange]);
 
-    /* ------------------------------------------------------------------ helpers */
     const pick = useCallback(
         (idx: number) => {
             if (!readonly) setOptionIdx(idx as FeeRateType);
@@ -47,7 +44,6 @@ export function PriorityFeeBar({
         [readonly]
     );
 
-    /* ------------------------------------------------------------------ render */
     return (
         <Column gap="sm">
             <Row classname="op_fee_rates" gap="sm">
