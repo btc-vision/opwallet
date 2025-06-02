@@ -110,7 +110,7 @@ class Web3API {
                 return null; // TODO: To be changed if needed
             }
             case OPNetNetwork.Testnet: {
-                return null; // TODO: To be changed if needed
+                return Address.fromString('0x9e14fc4c4cfca73a89e25e1216ae3a22302a12a7c6e1e3a568e05e8cb824112b');
             }
             case OPNetNetwork.Regtest: {
                 return null; // TODO: To be changed if needed
