@@ -15,7 +15,6 @@ jobs:
             - uses: actions/setup-node@v4
               with:
                   node-version: latest
-                  registry-url: https://registry.npmjs.org
 
             - uses: actions/cache@v3
               id: install-cache
