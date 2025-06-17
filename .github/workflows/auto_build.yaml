@@ -1,4 +1,4 @@
-name: CI for OP_WALLET
+name: Create Release
 
 on:
     push:
@@ -6,24 +6,26 @@ on:
             - v*
 
 jobs:
-    build_and_publish:
+    build:
         runs-on: ubuntu-latest
-
-        permissions:
-            contents: write
-            id-token: write
-
         steps:
             - name: Checkout the code
               uses: actions/checkout@v4
 
-            - name: Setup Node.js
-              uses: actions/setup-node@v4
+            - uses: actions/setup-node@v4
               with:
-                  node-version: '22.x'
+                  node-version: latest
+                  registry-url: https://registry.npmjs.org
 
-            - name: Install Dependencies
-              run: npm install --force
+            - uses: actions/cache@v3
+              id: install-cache
+              with:
+                  path: node_modules/
+                  key: ${{ runner.os }}-install-${{ hashFiles('**/package-lock.json') }}
+
+            - if: steps.install-cache.outputs.cache-hit != 'true'
+              run: npm ci --force
+              shell: bash
 
             - uses: gradle/gradle-build-action@v2
 
