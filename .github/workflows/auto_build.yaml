@@ -12,11 +12,9 @@ jobs:
             - name: Checkout the code
               uses: actions/checkout@v4
 
-            - name: Kill rogue .npmrc and config
+            - name: Set blank auth just in case
               run: |
-                  rm -f ~/.npmrc
-                  npm config delete always-auth || true
-                  npm config delete '//registry.npmjs.org/:_authToken' || true
+                  echo "//registry.npmjs.org/:_authToken=" >> ~/.npmrc
 
             - uses: actions/setup-node@v4
               with:
