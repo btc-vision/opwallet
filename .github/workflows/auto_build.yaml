@@ -8,6 +8,8 @@ on:
 jobs:
     build:
         runs-on: ubuntu-latest
+        env:
+            NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         steps:
             - name: Checkout the code
               uses: actions/checkout@v4
@@ -26,8 +28,6 @@ jobs:
             - if: steps.install-cache.outputs.cache-hit != 'true'
               run: npm ci --force
               shell: bash
-              env:
-                  NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
             - uses: gradle/gradle-build-action@v2
 
