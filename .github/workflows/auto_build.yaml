@@ -12,6 +12,12 @@ jobs:
             - name: Checkout the code
               uses: actions/checkout@v4
 
+            - name: Kill rogue .npmrc and config
+              run: |
+                  rm -f ~/.npmrc
+                  npm config delete always-auth || true
+                  npm config delete '//registry.npmjs.org/:_authToken' || true
+
             - uses: actions/setup-node@v4
               with:
                   node-version: latest
