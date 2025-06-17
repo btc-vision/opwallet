@@ -9,7 +9,16 @@ import { AddressType } from '@/shared/types';
 import { networks } from '@btc-vision/bitcoin';
 import { Network } from '@btc-vision/bitcoin/src/networks.js';
 import * as encryptor from '@btc-vision/passworder';
-import { DeserializeOption, DeserializeOptionKeystone, HdKeyring, IKeyringBase, KeyringOptions, KeystoneKeyring, SimpleKeyring, SimpleKeyringOptions } from '@btc-vision/wallet-sdk';
+import {
+    DeserializeOption,
+    DeserializeOptionKeystone,
+    HdKeyring,
+    IKeyringBase,
+    KeyringOptions,
+    KeystoneKeyring,
+    SimpleKeyring,
+    SimpleKeyringOptions
+} from '@btc-vision/wallet-sdk';
 import { bitcoin } from '@btc-vision/wallet-sdk/lib/bitcoin-core';
 import { ObservableStore } from '@metamask/obs-store';
 
@@ -519,9 +528,8 @@ class KeyringService extends EventEmitter {
             throw new Error(i18n.t('Cannot unlock without a previous vault'));
         }
 
-
         if (encryptedBooted.includes('keyMetadata')) {
-            const resp = await this.encryptor.decrypt(password, encryptedBooted) as string;
+            const resp = (await this.encryptor.decrypt(password, encryptedBooted)) as string;
 
             return resp == 'true';
         }
@@ -622,7 +630,13 @@ class KeyringService extends EventEmitter {
      */
     exportAccount = (address: string): string => {
         const keyring = this.getKeyringForAccount(address);
-        return keyring.exportAccount(address);
+
+        const exportedAccount = keyring.exportAccount(address);
+        if (!exportedAccount) {
+            throw new Error('Account not found');
+        }
+
+        return exportedAccount;
     };
 
     /**
@@ -766,14 +780,13 @@ class KeyringService extends EventEmitter {
         for (const key of vault) {
             try {
                 const { keyring, addressType } = this._restoreKeyring(key);
-        
+
                 this.keyrings.push(keyring);
                 this.addressTypes.push(addressType);
             } catch (e) {
                 // can not load.
             }
         }
-            
 
         await this._updateMemStoreKeyrings();
 
@@ -879,7 +892,7 @@ class KeyringService extends EventEmitter {
         for (const keyring of keyrings) {
             const accounts = keyring.getAccounts();
             addrs = addrs.concat(accounts);
-        }        
+        }
         return addrs;
     };
 
@@ -926,7 +939,7 @@ class KeyringService extends EventEmitter {
                 pubkey,
                 brandName: keyring.type
             });
-        }        
+        }
         return {
             type: keyring.type,
             accounts: all_accounts,
@@ -979,7 +992,6 @@ class KeyringService extends EventEmitter {
         return !!addresses.find((item) => item.pubkey === pubkey);
     };
 
-     
     clearKeyrings = (): void => {
         // clear keyrings from memory
         this.keyrings = [];

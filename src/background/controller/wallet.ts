@@ -74,10 +74,10 @@ import { AbstractWallet } from '@btc-vision/wallet-sdk/lib/wallet';
 import { address as bitcoinAddress, Psbt } from '@btc-vision/bitcoin';
 import { InteractionResponse } from '@btc-vision/transaction/src/transaction/TransactionFactory';
 import { Buffer } from 'buffer';
+import { UTXOs } from 'opnet/src/bitcoin/UTXOs';
 import { ContactBookItem, ContactBookStore } from '../service/contactBook';
 import { OpenApiService } from '../service/openapi';
 import { ConnectedSite } from '../service/permission';
-import { UTXOs } from 'opnet/src/bitcoin/UTXOs';
 
 export interface AccountAsset {
     name: string;
@@ -384,6 +384,10 @@ export class WalletController {
         if (!keyring) return null;
 
         const privateKey = keyring.exportAccount(pubkey);
+        if (!privateKey) {
+            throw new WalletControllerError('No private key found for the given pubkey');
+        }
+
         const networkType = this.getNetworkType();
         const network = toPsbtNetwork(networkType);
 
@@ -412,11 +416,18 @@ export class WalletController {
         if (!keyring) return null;
 
         const privateKey = keyring.exportAccount(pubkey);
+        if (!privateKey) {
+            throw new WalletControllerError('No private key found for the given pubkey');
+        }
+
         const networkType = this.getNetworkType();
         const network = toPsbtNetwork(networkType);
-        const hex = privateKey;
+
         const wif = ECPair.fromPrivateKey(Buffer.from(privateKey, 'hex'), { network }).toWIF();
-        return { hex, wif };
+        return {
+            hex: privateKey,
+            wif
+        };
     };
 
     /**
@@ -436,8 +447,14 @@ export class WalletController {
         const originKeyring = keyringService.keyrings[keyring.index];
         const serialized = originKeyring.serialize();
 
-        if (!('mnemonic' in serialized)) {
+        if (!('mnemonic' in serialized) || serialized.mnemonic === undefined || serialized.mnemonic === null) {
             throw new WalletControllerError('No mnemonic found in keyring');
+        }
+        if (!('hdPath' in serialized) || serialized.hdPath === undefined || serialized.hdPath === null) {
+            throw new WalletControllerError('No hdPath found in keyring');
+        }
+        if (!('passphrase' in serialized) || serialized.passphrase === undefined || serialized.passphrase === null) {
+            throw new WalletControllerError('No passphrase found in keyring');
         }
 
         return {
