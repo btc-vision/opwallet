@@ -12,18 +12,10 @@ jobs:
             - name: Checkout the code
               uses: actions/checkout@v4
 
-            - name: Fully nuke npm auth configs
-              run: |
-                  rm -f ~/.npmrc
-                  rm -f .npmrc
-                  rm -rf $NPM_CONFIG_USERCONFIG
-                  npm config delete always-auth || true
-                  npm config delete '//registry.npmjs.org/:_authToken' || true
-                  echo "registry=https://registry.npmjs.org/" > .npmrc
-
             - uses: actions/setup-node@v4
               with:
                   node-version: latest
+                  registry-url: https://registry.npmjs.org
 
             - uses: actions/cache@v3
               id: install-cache
