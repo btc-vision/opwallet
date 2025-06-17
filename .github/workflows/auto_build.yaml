@@ -27,7 +27,7 @@ jobs:
               run: npm ci --force
               shell: bash
               env:
-                  NODE_AUTH_TOKEN: ${{ secrets.NODE_AUTH_TOKEN }}
+                  NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
             - uses: gradle/gradle-build-action@v2
 
