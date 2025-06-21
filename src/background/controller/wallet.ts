@@ -967,12 +967,12 @@ export class WalletController {
      * ECDSA or Schnorr message signing for the current account.
      * @throws WalletControllerError
      */
-    public signMessage = async (text: string): Promise<string> => {
+    public signMessage = async (message: string | Buffer): Promise<string> => {
         const account = await this.getCurrentAccount();
         if (!account) {
             throw new WalletControllerError('No current account');
         }
-        return keyringService.signMessage(account.pubkey, account.type, text);
+        return keyringService.signMessage(account.pubkey, account.type, message);
     };
 
     /**
@@ -1240,20 +1240,20 @@ export class WalletController {
      * Sign a BIP322 message in "simple" mode (via a BIP322 PSBT).
      * @throws WalletControllerError
      */
-    public signBIP322Simple = async (text: string): Promise<string> => {
+    public signBIP322Simple = async (message: string | Buffer): Promise<string> => {
         const account = await this.getCurrentAccount();
         if (!account) throw new WalletControllerError('No current account');
         const networkType = this.getNetworkType();
         try {
             return await signMessageOfBIP322Simple({
-                message: text,
+                message,
                 address: account.address,
                 networkType,
                 wallet: this as unknown as AbstractWallet
             });
         } catch (err) {
             throw new WalletControllerError(`Failed to sign BIP322 message: ${String(err)}`, {
-                text,
+                message,
                 networkType
             });
         }

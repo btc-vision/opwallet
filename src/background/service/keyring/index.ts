@@ -98,7 +98,7 @@ export type Keyring =
 
     signAndBroadcastInteraction(interactionParameters: InteractionParametersWithoutSigner): Promise<any>;
 
-    signMessage(address: string, message: string): Promise<string>;
+    signMessage(address: string, message: string | Buffer): Promise<string>;
 
     signData(address: string, data: string, type: string): Promise<string>;
 
@@ -161,7 +161,7 @@ class EmptyKeyring extends IKeyringBase<{ network: Network }> {
         throw new Error('Method not implemented.');
     }
 
-    signMessage(address: string, message: string): string {
+    signMessage(address: string, message: string | Buffer): string {
         throw new Error('Method not implemented.');
     }
 
@@ -694,9 +694,9 @@ class KeyringService extends EventEmitter {
      *
      * Attempts to sign the provided message parameters.
      */
-    signMessage = (address: string, keyringType: string, data: string) => {
+    signMessage = (address: string, keyringType: string, message: string | Buffer) => {
         const keyring = this.getKeyringForAccount(address, keyringType);
-        return keyring.signMessage(address, data);
+        return keyring.signMessage(address, message);
     };
 
     /**

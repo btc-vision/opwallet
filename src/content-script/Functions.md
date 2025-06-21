@@ -9,69 +9,70 @@ For full documentation, visit [docs.opnet.org](https://docs.opnet.org).
 ## **General Methods**
 
 ### **`requestAccounts()`**
+
 Requests the user's wallet accounts.
 
 - **Parameters:**  
   None.
-  
 - **Returns:**  
   A `Promise<string[]>` resolving to an array of account addresses.
 
 ---
 
 ### **`disconnect()`**
+
 Disconnects the wallet from the current dApp session.
 
 - **Parameters:**  
   None.
-  
 - **Returns:**  
   A `Promise<void>` indicating the operation's completion.
 
 ---
 
 ### **`getNetwork()`**
+
 Retrieves the current network details.
 
 - **Parameters:**  
   None.
-  
 - **Returns:**  
   A `Promise<string>` resolving to the network name (e.g., `"mainnet"`, `"testnet"`, `"regtest"`).
 
 ---
 
 ### **`switchNetwork(network: string)`**
+
 Switches the wallet to a different network.
 
-- **Parameters:**  
-  - `network`: A string representing the target network name.
-  
+- **Parameters:**
+    - `network`: A string representing the target network name.
 - **Returns:**  
   A `Promise<void>` indicating the operation's completion.
 
 ---
 
 ### **`getChain()`**
+
 Retrieves detailed information about the current blockchain chain.
 
 - **Parameters:**  
   None.
 
 - **Returns:**  
-  A `Promise<{ enum: string, name: string, network: string }>` resolving to an object containing:  
-  - `enum`: The chain type as a string.  
-  - `name`: The label of the chain.  
-  - `network`: The network name associated with the chain.
+  A `Promise<{ enum: string, name: string, network: string }>` resolving to an object containing:
+    - `enum`: The chain type as a string.
+    - `name`: The label of the chain.
+    - `network`: The network name associated with the chain.
 
 ---
 
 ### **`switchChain(chain: string)`**
+
 Switches the wallet to a different blockchain chain.
 
-- **Parameters:**  
-  - `chain`: A string representing the target chain name.
-  
+- **Parameters:**
+    - `chain`: A string representing the target chain name.
 - **Returns:**  
   A `Promise<void>` indicating the operation's completion.
 
@@ -80,45 +81,45 @@ Switches the wallet to a different blockchain chain.
 ## **Account and Wallet Information**
 
 ### **`getAccounts()`**
+
 Returns the accounts available in the wallet.
 
 - **Parameters:**  
   None.
-  
 - **Returns:**  
   A `Promise<string[]>` resolving to an array of account addresses.
 
 ---
 
 ### **`getPublicKey()`**
+
 Retrieves the public key of the selected account.
 
 - **Parameters:**  
   None.
-  
 - **Returns:**  
   A `Promise<string>` resolving to the public key.
 
 ---
 
 ### **`getBalance()`**
+
 Retrieves the balance of the selected account.
 
 - **Parameters:**  
   None.
-  
 - **Returns:**  
   A `Promise<number>` resolving to the account balance in Satoshis.
 
 ---
 
 ### **`getInscriptions(cursor = 0, size = 20)`**
+
 Retrieves inscriptions associated with the wallet by offering pagination support.
 
-- **Parameters:**  
-  - `cursor`: *(optional)* A number indicating the starting index for pagination (default is `0`).
-  - `size`: *(optional)* A number indicating the number of inscriptions to fetch (default is `20`).
-  
+- **Parameters:**
+    - `cursor`: _(optional)_ A number indicating the starting index for pagination (default is `0`).
+    - `size`: _(optional)_ A number indicating the number of inscriptions to fetch (default is `20`).
 - **Returns:**  
   A `Promise<any[]>` resolving to an array of inscription objects.
 
@@ -126,39 +127,39 @@ Retrieves inscriptions associated with the wallet by offering pagination support
 
 ## **Signing and Verification**
 
-### **`signMessage(text: string, type: string)`**
+### **`signMessage(text: string | Buffer, type: string)`**
+
 Signs a given message with the selected account.
 
-- **Parameters:**  
-  - `text`: The message string to sign.
-  - `type`: The signature type (e.g., `"bip322-simple"`, `"ecdsa"`, `"schnorr"`).
-  
+- **Parameters:**
+    - `message`: The message string/buffer to sign.
+    - `type`: The signature type (e.g., `"bip322-simple"`, `"ecdsa"`, `"schnorr"`).
 - **Returns:**  
   A `Promise<string>` resolving to the signature.
 
 ---
 
 ### **`verifyMessageOfBIP322Simple(address: string, message: string, signature: string, network?: number)`**
+
 Verifies a message signature using BIP322 simple format.
 
-- **Parameters:**  
-  - `address`: The address to verify against.
-  - `message`: The signed message.
-  - `signature`: The signature to verify.
-  - `network`: *(optional)* The network identifier (e.g., `1` for mainnet).
-  
+- **Parameters:**
+    - `address`: The address to verify against.
+    - `message`: The signed message.
+    - `signature`: The signature to verify.
+    - `network`: _(optional)_ The network identifier (e.g., `1` for mainnet).
 - **Returns:**  
   A `Promise<boolean>` resolving to `true` if the signature is valid.
 
 ---
 
 ### **`signData(data: string, type: string)`**
+
 Signs raw data.
 
-- **Parameters:**  
-  - `data`: The raw data to sign.
-  - `type`: The signature type.
-  
+- **Parameters:**
+    - `data`: The raw data to sign.
+    - `type`: The signature type.
 - **Returns:**  
   A `Promise<string>` resolving to the signature.
 
@@ -167,15 +168,17 @@ Signs raw data.
 ## **Bitcoin Transactions**
 
 ### **`sendBitcoin(toAddress: string, satoshis: number, options?: { feeRate: number; memo?: string; memos?: string[] })`**
+
 Sends Bitcoin to a specified address.
 
-- **Parameters:**  
-  - `toAddress`: The recipient's Bitcoin address.
-  - `satoshis`: The amount to send in Satoshis.
-  - `options`: *(optional)* An object containing:  
-    - `feeRate`: Fee rate for the transaction (in Satoshis per byte).  
-    - `memo`: *(optional)* A memo string.  
-    - `memos`: *(optional)* An array of memo strings.
+- **Parameters:**
+
+    - `toAddress`: The recipient's Bitcoin address.
+    - `satoshis`: The amount to send in Satoshis.
+    - `options`: _(optional)_ An object containing:
+        - `feeRate`: Fee rate for the transaction (in Satoshis per byte).
+        - `memo`: _(optional)_ A memo string.
+        - `memos`: _(optional)_ An array of memo strings.
 
 - **Returns:**  
   A `Promise<string>` resolving to the transaction hash.
@@ -183,11 +186,13 @@ Sends Bitcoin to a specified address.
 ---
 
 ### **`getBitcoinUtxos(cursor = 0, size = 20)`**
+
 Retrieves Bitcoin UTXOs with pagination support.
 
-- **Parameters:**  
-  - `cursor`: *(optional)* A number indicating the starting index for pagination (default is `0`).
-  - `size`: *(optional)* A number indicating the number of UTXOs to fetch (default is `20`).
+- **Parameters:**
+
+    - `cursor`: _(optional)_ A number indicating the starting index for pagination (default is `0`).
+    - `size`: _(optional)_ A number indicating the number of UTXOs to fetch (default is `20`).
 
 - **Returns:**  
   A `Promise<UTXO[]>` resolving to an array of UTXO objects.
@@ -197,32 +202,34 @@ Retrieves Bitcoin UTXOs with pagination support.
 ## **Contract Interactions**
 
 ### **`deployContract(params: IDeploymentParametersWithoutSigner)`**
+
 Deploys a smart contract to the blockchain.
 
-- **Parameters:**  
-  - `params`: An object containing contract deployment parameters.
-  
+- **Parameters:**
+    - `params`: An object containing contract deployment parameters.
 - **Returns:**  
   A `Promise<DeploymentResult>` resolving to the deployment result.
 
 ---
 
 ### **`signInteraction(interactionParameters: InteractionParametersWithoutSigner)`**
+
 Signs an interaction with a contract.
 
-- **Parameters:**  
-  - `interactionParameters`: An object containing interaction details (e.g., calldata, contract address).
-  
+- **Parameters:**
+    - `interactionParameters`: An object containing interaction details (e.g., calldata, contract address).
 - **Returns:**  
   A `Promise<[string, string, UTXO[]]>` resolving to the interaction result.
 
 ---
 
 ### **`signAndBroadcastInteraction(interactionParameters: InteractionParametersWithoutSigner)`**
+
 Signs and broadcasts a contract interaction to the network.
 
-- **Parameters:**  
-  - `interactionParameters`: An object containing interaction details.
+- **Parameters:**
+
+    - `interactionParameters`: An object containing interaction details.
 
 - **Returns:**  
   A `Promise<[BroadcastedTransaction, BroadcastedTransaction, UTXO[]]>` resolving to the broadcast result.
@@ -230,12 +237,14 @@ Signs and broadcasts a contract interaction to the network.
 ---
 
 ### **`broadcast(transactions: BroadcastTransactionOptions[])`**
+
 Broadcasts raw transaction data to the network.
 
-- **Parameters:**  
-  - `transactions`: An array of transaction objects, each containing:  
-    - `raw`: The raw transaction string.  
-    - `psbt`: A boolean indicating whether the transaction is a PSBT.
+- **Parameters:**
+
+    - `transactions`: An array of transaction objects, each containing:
+        - `raw`: The raw transaction string.
+        - `psbt`: A boolean indicating whether the transaction is a PSBT.
 
 - **Returns:**  
   A `Promise<BroadcastedTransaction[]>` resolving to the broadcasted transactions.
@@ -245,11 +254,13 @@ Broadcasts raw transaction data to the network.
 ## **PSBT Operations**
 
 ### **`signPsbt(psbtHex: string, options?: SignPsbtOptions)`**
+
 Signs a PSBT.
 
-- **Parameters:**  
-  - `psbtHex`: The PSBT in hexadecimal format.
-  - `options`: *(optional)* Signing options.
+- **Parameters:**
+
+    - `psbtHex`: The PSBT in hexadecimal format.
+    - `options`: _(optional)_ Signing options.
 
 - **Returns:**  
   A `Promise<string>` resolving to the signed PSBT.
@@ -257,11 +268,13 @@ Signs a PSBT.
 ---
 
 ### **`signPsbts(psbtHexs: string[], options?: SignPsbtOptions[])`**
+
 Signs multiple PSBTs.
 
-- **Parameters:**  
-  - `psbtHexs`: An array of PSBTs in hexadecimal format.
-  - `options`: *(optional)* An array of signing options for each PSBT.
+- **Parameters:**
+
+    - `psbtHexs`: An array of PSBTs in hexadecimal format.
+    - `options`: _(optional)_ An array of signing options for each PSBT.
 
 - **Returns:**  
   A `Promise<string[]>` resolving to the signed PSBTs.
@@ -269,10 +282,12 @@ Signs multiple PSBTs.
 ---
 
 ### **`pushPsbt(psbtHex: string)`**
+
 Pushes a signed PSBT to the network.
 
-- **Parameters:**  
-  - `psbtHex`: The signed PSBT in hexadecimal format.
+- **Parameters:**
+
+    - `psbtHex`: The signed PSBT in hexadecimal format.
 
 - **Returns:**  
   A `Promise<string>` resolving to the transaction hash.
@@ -282,10 +297,12 @@ Pushes a signed PSBT to the network.
 ## **Others**
 
 ### **`pushTx(rawtx: string)`**
+
 Pushes a raw Bitcoin transaction to the network.
 
-- **Parameters:**  
-  - `rawtx`: The raw transaction string.
+- **Parameters:**
+
+    - `rawtx`: The raw transaction string.
 
 - **Returns:**  
   A `Promise<string>` resolving to the transaction hash.
@@ -293,18 +310,20 @@ Pushes a raw Bitcoin transaction to the network.
 ---
 
 ### **`getVersion()`**
+
 Retrieves the current version of the wallet extension.
 
 - **Parameters:**  
   None.
-  
 - **Returns:**  
   A `Promise<string>` resolving to the wallet version.
 
 ---
 
 ## **Event Handling**
+
 The following events are emitted by the provider:
+
 - **`connect`**: Triggered when the wallet connects to a dApp.
 - **`disconnect`**: Triggered when the wallet disconnects.
 - **`accountsChanged`**: Triggered when wallet accounts change.
