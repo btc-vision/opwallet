@@ -354,20 +354,23 @@ export class ProviderController {
     ])
     signMessage = async ({
         data: {
-            params: { text, type }
+            params: { message, type }
         },
         approvalRes
     }: {
-        data: { params: { text: string; type: 'bip322-simple' | 'ecdsa' | 'schnorr' } };
+        data: { params: { message: string | Buffer; type: 'bip322-simple' | 'ecdsa' | 'schnorr' } };
         approvalRes: { signature: string };
     }) => {
         if (approvalRes?.signature) {
             return approvalRes.signature;
         }
+        if (typeof message === 'object' && message !== null) {
+            message = Buffer.from(Object.values(message));
+        }
         if (type === 'bip322-simple') {
-            return wallet.signBIP322Simple(text);
+            return wallet.signBIP322Simple(message);
         } else {
-            return wallet.signMessage(text);
+            return wallet.signMessage(message);
         }
     };
 

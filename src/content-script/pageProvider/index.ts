@@ -254,11 +254,11 @@ export class OpnetProvider extends EventEmitter {
         });
     };
 
-    signMessage = async (text: string, type: string) => {
+    signMessage = async (message: string | Buffer, type: string) => {
         return this._request({
             method: 'signMessage',
             params: {
-                text,
+                message,
                 type
             }
         });
