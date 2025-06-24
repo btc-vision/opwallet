@@ -1,6 +1,6 @@
 {
     "name": "opwallet",
-    "version": "1.4.3",
+    "version": "1.4.4",
     "private": true,
     "type": "module",
     "homepage": "https://github.com/unisat-wallet/extension#readme",
@@ -36,7 +36,7 @@
         "@babel/core": "^7.27.4",
         "@btc-vision/bitcoin": "^6.4.6",
         "@btc-vision/passworder": "1.0.0",
-        "@btc-vision/transaction": "^1.5.3",
+        "@btc-vision/transaction": "^1.5.4",
         "@btc-vision/wallet-sdk": "^1.0.7",
         "@eslint/js": "^9.28.0",
         "@fortawesome/fontawesome-svg-core": "^6.7.2",
