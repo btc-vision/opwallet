@@ -1067,49 +1067,63 @@ export class WalletController {
         if (!wifWallet) throw new WalletControllerError('Could not retrieve internal private key');
 
         try {
-            const utxos = params.utxos.map((utxo) => {
-                const nonWitnessUtxo = Buffer.isBuffer(utxo.nonWitnessUtxo)
-                    ? utxo.nonWitnessUtxo
-                    : (() => {
-                          const obj = utxo.nonWitnessUtxo as Record<string, number> | undefined;
-                          if (!obj) return undefined;
+            const utxos = params.utxos.map((u) => {
+                let nonWitnessUtxo: Buffer | undefined;
 
-                          // find the highest index key to size the buffer
-                          const len = Math.max(...Object.keys(obj).map((k) => +k)) + 1;
-                          const buf = Buffer.alloc(len);
-                          for (const [k, v] of Object.entries(obj)) {
-                              buf[+k] = v;
-                          }
-                          return buf;
-                      })();
+                if (Buffer.isBuffer(u.nonWitnessUtxo)) {
+                    nonWitnessUtxo = u.nonWitnessUtxo;
+                } else if (typeof u.nonWitnessUtxo === 'string') {
+                    try {
+                        nonWitnessUtxo = Buffer.from(u.nonWitnessUtxo, 'base64');
+                    } catch {
+                        nonWitnessUtxo = undefined;
+                    }
+                } else if (u.nonWitnessUtxo && typeof u.nonWitnessUtxo === 'object') {
+                    try {
+                        const raw = u.nonWitnessUtxo as Record<string, number>;
+                        const len = Math.max(...Object.keys(raw).map((k) => +k)) + 1;
+                        const buf = Buffer.alloc(len);
+                        for (const [k, v] of Object.entries(raw)) buf[+k] = v;
+                        nonWitnessUtxo = buf;
+                    } catch {
+                        nonWitnessUtxo = undefined;
+                    }
+                }
 
                 return {
-                    ...utxo,
-                    value: typeof utxo.value === 'bigint' ? utxo.value : BigInt(utxo.value as unknown as string),
+                    ...u,
+                    value: typeof u.value === 'bigint' ? u.value : BigInt(u.value as unknown as string),
                     nonWitnessUtxo
                 };
             });
 
             const optionalInputs =
-                params.optionalInputs?.map((utxo) => {
-                    const nonWitnessUtxo = Buffer.isBuffer(utxo.nonWitnessUtxo)
-                        ? utxo.nonWitnessUtxo
-                        : (() => {
-                              const obj = utxo.nonWitnessUtxo as Record<string, number> | undefined;
-                              if (!obj) return undefined;
+                params.optionalInputs?.map((u) => {
+                    let nonWitnessUtxo: Buffer | undefined;
 
-                              // find the highest index key to size the buffer
-                              const len = Math.max(...Object.keys(obj).map((k) => +k)) + 1;
-                              const buf = Buffer.alloc(len);
-                              for (const [k, v] of Object.entries(obj)) {
-                                  buf[+k] = v;
-                              }
-                              return buf;
-                          })();
+                    if (Buffer.isBuffer(u.nonWitnessUtxo)) {
+                        nonWitnessUtxo = u.nonWitnessUtxo;
+                    } else if (typeof u.nonWitnessUtxo === 'string') {
+                        try {
+                            nonWitnessUtxo = Buffer.from(u.nonWitnessUtxo, 'base64');
+                        } catch {
+                            nonWitnessUtxo = undefined;
+                        }
+                    } else if (u.nonWitnessUtxo && typeof u.nonWitnessUtxo === 'object') {
+                        try {
+                            const raw = u.nonWitnessUtxo as Record<string, number>;
+                            const len = Math.max(...Object.keys(raw).map((k) => +k)) + 1;
+                            const buf = Buffer.alloc(len);
+                            for (const [k, v] of Object.entries(raw)) buf[+k] = v;
+                            nonWitnessUtxo = buf;
+                        } catch {
+                            nonWitnessUtxo = undefined;
+                        }
+                    }
 
                     return {
-                        ...utxo,
-                        value: typeof utxo.value === 'bigint' ? utxo.value : BigInt(utxo.value as unknown as string),
+                        ...u,
+                        value: typeof u.value === 'bigint' ? u.value : BigInt(u.value as unknown as string),
                         nonWitnessUtxo
                     };
                 }) || [];
@@ -2088,17 +2102,27 @@ export class WalletController {
         const preimage = await Web3API.provider.getPreimage();
 
         const utxos: UTXOs = interactionParameters.utxos.map((u) => {
-            const nonWitnessUtxo = Buffer.isBuffer(u.nonWitnessUtxo)
-                ? u.nonWitnessUtxo
-                : u.nonWitnessUtxo
-                  ? (() => {
-                        const raw = u.nonWitnessUtxo as unknown as Record<string, number>;
-                        const len = Math.max(...Object.keys(raw).map((k) => +k)) + 1;
-                        const buf = Buffer.alloc(len);
-                        for (const [k, v] of Object.entries(raw)) buf[+k] = v;
-                        return buf;
-                    })()
-                  : undefined;
+            let nonWitnessUtxo: Buffer | undefined;
+
+            if (Buffer.isBuffer(u.nonWitnessUtxo)) {
+                nonWitnessUtxo = u.nonWitnessUtxo;
+            } else if (typeof u.nonWitnessUtxo === 'string') {
+                try {
+                    nonWitnessUtxo = Buffer.from(u.nonWitnessUtxo, 'base64');
+                } catch {
+                    nonWitnessUtxo = undefined;
+                }
+            } else if (u.nonWitnessUtxo && typeof u.nonWitnessUtxo === 'object') {
+                try {
+                    const raw = u.nonWitnessUtxo as Record<string, number>;
+                    const len = Math.max(...Object.keys(raw).map((k) => +k)) + 1;
+                    const buf = Buffer.alloc(len);
+                    for (const [k, v] of Object.entries(raw)) buf[+k] = v;
+                    nonWitnessUtxo = buf;
+                } catch {
+                    nonWitnessUtxo = undefined;
+                }
+            }
 
             return {
                 ...u,
@@ -2130,17 +2154,27 @@ export class WalletController {
 
         const optionalInputs =
             interactionParameters.optionalInputs?.map((u) => {
-                const nonWitnessUtxo = Buffer.isBuffer(u.nonWitnessUtxo)
-                    ? u.nonWitnessUtxo
-                    : u.nonWitnessUtxo
-                      ? (() => {
-                            const raw = u.nonWitnessUtxo as unknown as Record<string, number>;
-                            const len = Math.max(...Object.keys(raw).map((k) => +k)) + 1;
-                            const buf = Buffer.alloc(len);
-                            for (const [k, v] of Object.entries(raw)) buf[+k] = v;
-                            return buf;
-                        })()
-                      : undefined;
+                let nonWitnessUtxo: Buffer | undefined;
+
+                if (Buffer.isBuffer(u.nonWitnessUtxo)) {
+                    nonWitnessUtxo = u.nonWitnessUtxo;
+                } else if (typeof u.nonWitnessUtxo === 'string') {
+                    try {
+                        nonWitnessUtxo = Buffer.from(u.nonWitnessUtxo, 'base64');
+                    } catch {
+                        nonWitnessUtxo = undefined;
+                    }
+                } else if (u.nonWitnessUtxo && typeof u.nonWitnessUtxo === 'object') {
+                    try {
+                        const raw = u.nonWitnessUtxo as Record<string, number>;
+                        const len = Math.max(...Object.keys(raw).map((k) => +k)) + 1;
+                        const buf = Buffer.alloc(len);
+                        for (const [k, v] of Object.entries(raw)) buf[+k] = v;
+                        nonWitnessUtxo = buf;
+                    } catch {
+                        nonWitnessUtxo = undefined;
+                    }
+                }
 
                 return {
                     ...u,
