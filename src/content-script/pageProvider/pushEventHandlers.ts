@@ -1,4 +1,3 @@
-
 import Web3API from '@/shared/web3/Web3API';
 
 import { ChainType } from '@/shared/constant';
@@ -10,10 +9,7 @@ class PushEventHandlers {
 
     _unisatProviderPrivate: OpnetProviderPrivate;
 
-    constructor(
-        provider: OpnetProvider,
-        _opnetProviderPrivate: OpnetProviderPrivate
-    ) {
+    constructor(provider: OpnetProvider, _opnetProviderPrivate: OpnetProviderPrivate) {
         this.provider = provider;
         this._unisatProviderPrivate = _opnetProviderPrivate;
     }
@@ -63,15 +59,15 @@ class PushEventHandlers {
         this._emit('accountsChanged', accounts);
     };
 
-    networkChanged = ({ network, chain }: {network: string; chain: ChainType}) => {
+    networkChanged = ({ network, chainType }: { network: string; chainType: ChainType }) => {
         this.connect({});
 
         if (network !== this._unisatProviderPrivate._network) {
-            if (chain) Web3API.setNetwork(chain);
+            if (chainType) Web3API.setNetwork(chainType);
 
             this._unisatProviderPrivate._network = network;
             // TODO (typing): check if this event is listened in this format
-            this._emit('networkChanged', { network, chain });
+            this._emit('networkChanged', { network, chainType });
         }
     };
 }
