@@ -137,7 +137,7 @@ export class OpnetProvider extends EventEmitter {
             this.emit('connect', {});
             _opnetPrividerPrivate._pushEventHandlers?.networkChanged({
                 network,
-                chain
+                chainType: chain
             });
 
             _opnetPrividerPrivate._pushEventHandlers?.accountsChanged(accounts);
@@ -432,7 +432,10 @@ export class OpnetProvider extends EventEmitter {
         // TODO (typing): Ideally this is not the type-safe solution but in the _handleBackgroundMessage
         // function, we are directly passing the data as unknown and all of the pushEventHandler's methods
         // have either one argument or none. So, it should be safe to cast it as below.
-        if (_opnetPrividerPrivate._pushEventHandlers && isPushEventHandlerMethod(params.event)) {
+        if (
+            _opnetPrividerPrivate._pushEventHandlers &&
+            isPushEventHandlerMethod(_opnetPrividerPrivate._pushEventHandlers, params.event)
+        ) {
             return (_opnetPrividerPrivate._pushEventHandlers[params.event] as (data: unknown) => unknown)(params.data);
         }
 

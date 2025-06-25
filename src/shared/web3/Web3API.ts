@@ -245,18 +245,18 @@ class Web3API {
     }
 
     public async queryContractInformation(address: string): Promise<ContractInformation | undefined | false> {
-        const genericContract: IOP_20Contract = getContract<IOP_20Contract>(
-            address,
-            OP_20_ABI,
-            this.provider,
-            this.network
-        );
-
         try {
-            let addy: string = address;
+            let addressP2OP: string = address;
             if (address.startsWith('0x')) {
-                addy = Address.fromString(address).p2op(this.network);
+                addressP2OP = Address.fromString(address).p2op(this.network);
             }
+
+            const genericContract: IOP_20Contract = getContract<IOP_20Contract>(
+                addressP2OP,
+                OP_20_ABI,
+                this.provider,
+                this.network
+            );
 
             const promises: [
                 Promise<CallResult<{ name: string }>>,
@@ -271,11 +271,11 @@ class Web3API {
                 genericContract.name(),
                 genericContract.symbol(),
                 genericContract.decimals(),
-                contractLogoManager.getContractLogo(addy)
+                contractLogoManager.getContractLogo(addressP2OP)
             ];
 
             const results = await Promise.all(promises);
-            const name = results[0].properties.name ?? this.getContractName(address);
+            const name = results[0].properties.name ?? this.getContractName(addressP2OP);
             const symbol = results[1].properties.symbol;
             const decimals = results[2].properties.decimals;
 
@@ -287,7 +287,7 @@ class Web3API {
                 logo
             };
         } catch (e) {
-            console.error(`Error querying contract information for address ${address}:`, e);
+            console.warn(`Couldn't query name/symbol/decimals/logo for contract ${address}:`, e);
             if ((e as Error).message.includes('not found')) {
                 return false;
             }

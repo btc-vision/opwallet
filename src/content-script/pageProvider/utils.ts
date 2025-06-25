@@ -1,4 +1,4 @@
-import PushEventHandlers from "./pushEventHandlers";
+import PushEventHandlers from './pushEventHandlers';
 
 let tryCount = 0;
 const checkLoaded = (callback: () => void): boolean => {
@@ -36,8 +36,8 @@ const domReadyCall = (callback: () => void): void => {
 
 const $ = document.querySelector.bind(document);
 
-function isPushEventHandlerMethod(event: string): event is keyof PushEventHandlers {
-    return event in PushEventHandlers.prototype && typeof PushEventHandlers.prototype[event as keyof PushEventHandlers] === 'function';
+function isPushEventHandlerMethod(instance: PushEventHandlers, event: string): event is keyof PushEventHandlers {
+    return typeof instance[event as keyof PushEventHandlers] === 'function';
 }
 
 export { $, domReadyCall, isPushEventHandlerMethod };
