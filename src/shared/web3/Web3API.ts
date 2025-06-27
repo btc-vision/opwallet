@@ -139,9 +139,7 @@ class Web3API {
     }
 
     public get motoAddressP2OP(): string | null {
-        const addy = this.motoAddress;
-
-        return addy ? addy.p2op(this.network) : null;
+        return this.motoAddress?.p2op(this.network) || null;
     }
 
     public get chain(): ChainType {
