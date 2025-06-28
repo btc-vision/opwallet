@@ -5,7 +5,7 @@ import { CSSProperties, useCallback, useEffect, useRef, useState } from 'react';
 import browser from 'webextension-polyfill';
 
 import Web3API from '@/shared/web3/Web3API';
-import { getContract, IOP_20Contract, OP_20_ABI } from 'opnet';
+import { getContract, IOP20Contract, OP_20_ABI } from 'opnet';
 
 import { OPTokenInfo } from '@/shared/types';
 import { Address } from '@btc-vision/transaction';
@@ -119,7 +119,7 @@ export function OPNetList() {
                                 });
                                 return null;
                             }
-                            const c = getContract<IOP_20Contract>(addr, OP_20_ABI, Web3API.provider, Web3API.network);
+                            const c = getContract<IOP20Contract>(addr, OP_20_ABI, Web3API.provider, Web3API.network);
                             const bal = await c.balanceOf(Address.fromString(currentAccount.pubkey));
                             const ti: OPTokenInfo = {
                                 address: addr,
