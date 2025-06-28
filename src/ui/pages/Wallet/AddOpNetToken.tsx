@@ -16,13 +16,15 @@ interface StoredToken {
 }
 
 export const AddOpNetToken = ({
+    currentPage,
     onClose,
     setImportTokenBool,
     fetchData
 }: {
+    currentPage: number;
     onClose: () => void;
     setImportTokenBool: Dispatch<SetStateAction<boolean>>;
-    fetchData: () => Promise<void>;
+    fetchData: (page: number) => Promise<void>;
 }) => {
     const [tokenState, setTokenState] = useState<string>('');
     const wallet = useWallet();
@@ -80,7 +82,7 @@ export const AddOpNetToken = ({
             localStorage.setItem(storageKey, JSON.stringify(parsedTokens));
 
             // Refresh token list in parent
-            await fetchData();
+            await fetchData(currentPage);
 
             // Close modal
             setImportTokenBool(false);
