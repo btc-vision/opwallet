@@ -1,4 +1,4 @@
-import { BitcoinUtils, getContract, IOP_20Contract, OP_20_ABI } from 'opnet';
+import { BitcoinUtils, getContract, IOP20Contract, OP_20_ABI } from 'opnet';
 import { CSSProperties, useEffect, useState } from 'react';
 
 import { OPTokenInfo } from '@/shared/types';
@@ -139,7 +139,7 @@ export function Select(props: SelectProps) {
                     if (searchTerm.length > 20) {
                         setLoading(true);
                     }
-                    const contract: IOP_20Contract = getContract<IOP_20Contract>(
+                    const contract: IOP20Contract = getContract<IOP20Contract>(
                         searchTerm,
                         OP_20_ABI,
                         Web3API.provider,
