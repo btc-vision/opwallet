@@ -23,15 +23,18 @@ import {
     SetFeesDecodedInfo,
     SwapDecodedInfo
 } from '@/ui/pages/OpNet/decoded/native-swap/NativeSwapComponents';
-import { ApproveDecodedInfo } from '@/ui/pages/OpNet/decoded/op20/ApproveDecodedInfo';
+import { IncreaseAllowanceDecodedInfo } from '@/ui/pages/OpNet/decoded/op20/IncreaseAllowanceDecodedInfo';
+import { IncreaseAllowanceBySignatureDecodedInfo } from '@/ui/pages/OpNet/decoded/op20/OP20';
 import { TransferDecodedInfo } from '@/ui/pages/OpNet/decoded/op20/TransferDecodedInfo';
 import {
     Decoded,
     DecodedAddLiquidityNative,
     DecodedAirdrop,
     DecodedAirdropWithAmount,
-    DecodedApprove,
-    DecodedApproveFrom,
+    DecodedIncreaseAllowance,
+    DecodedDecreaseAllowance,
+    DecodedIncreaseAllowanceBySignature,
+    DecodedDecreaseAllowanceBySignature,
     DecodedBurn,
     DecodedCancelListing,
     DecodedCreatePool,
@@ -61,7 +64,7 @@ import { UnstakeDecodedInfo } from './motoswap/UnstakeDecodedInfo';
 import {
     AirdropDecodedInfo,
     AirdropWithAmountDecodedInfo,
-    ApproveFromDecodedInfo,
+    IncreaseAllowanceBySignatureDecodedInfo,
     BurnDecodedInfo,
     MintDecodedInfo,
     TransferFromDecodedInfo
@@ -92,7 +95,7 @@ export function DecodedCalldata(props: DecodedProps) {
         // -------------------------
         //          OP20
         // -------------------------
-        case InteractionOP20.Transfer: {
+        case InteractionOP20.SafeTransfer: {
             return (
                 <TransferDecodedInfo
                     decoded={decoded as DecodedTransfer}
@@ -101,7 +104,7 @@ export function DecodedCalldata(props: DecodedProps) {
                 />
             );
         }
-        case InteractionOP20.TransferFrom: {
+        case InteractionOP20.SafeTransferFrom: {
             return (
                 <TransferFromDecodedInfo
                     decoded={decoded as DecodedTransferFrom}
@@ -110,19 +113,37 @@ export function DecodedCalldata(props: DecodedProps) {
                 />
             );
         }
-        case InteractionOP20.Approve: {
+        case InteractionOP20.IncreaseAllowance: {
             return (
-                <ApproveDecodedInfo
-                    decoded={decoded as DecodedApprove}
+                <IncreaseAllowanceDecodedInfo
+                    decoded={decoded as DecodedIncreaseAllowance}
                     contractInfo={contractInfo}
                     interactionType={interactionType}
                 />
             );
         }
-        case InteractionOP20.ApproveFrom: {
+        case InteractionOP20.DecreaseAllowance: {
             return (
-                <ApproveFromDecodedInfo
-                    decoded={decoded as DecodedApproveFrom}
+                <IncreaseAllowanceDecodedInfo
+                    decoded={decoded as DecodedDecreaseAllowance}
+                    contractInfo={contractInfo}
+                    interactionType={interactionType}
+                />
+            );
+        }
+        case InteractionOP20.IncreaseAllowanceBySignature: {
+            return (
+                <IncreaseAllowanceBySignatureDecodedInfo
+                    decoded={decoded as DecodedIncreaseAllowanceBySignature}
+                    contractInfo={contractInfo}
+                    interactionType={interactionType}
+                />
+            );
+        }
+        case InteractionOP20.DecreaseAllowanceBySignature: {
+            return (
+                <IncreaseAllowanceBySignatureDecodedInfo
+                    decoded={decoded as DecodedDecreaseAllowanceBySignature}
                     contractInfo={contractInfo}
                     interactionType={interactionType}
                 />

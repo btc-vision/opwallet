@@ -2,19 +2,19 @@ import BigNumber from 'bignumber.js';
 
 import { ContractInformation } from '@/shared/web3/interfaces/ContractInformation';
 import { Card, Column, Image, Row, Text } from '@/ui/components';
-import { DecodedApprove } from '@/ui/pages/OpNet/decoded/DecodedTypes';
+import { DecodedIncreaseAllowance } from '@/ui/pages/OpNet/decoded/DecodedTypes';
 import { sliceAddress } from '@/ui/pages/OpNet/decoded/helpper';
 import { fontSizes } from '@/ui/theme/font';
 
 export const MAX_UINT256 = new BigNumber('0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff');
 
-interface DecodedApproveProps {
-    readonly decoded: DecodedApprove;
+interface DecodedIncreaseAllowanceProps {
+    readonly decoded: DecodedIncreaseAllowance;
     readonly contractInfo: Partial<ContractInformation>;
     readonly interactionType: string;
 }
 
-export function ApproveDecodedInfo(props: DecodedApproveProps) {
+export function IncreaseAllowanceDecodedInfo(props: DecodedIncreaseAllowanceProps) {
     const { contractInfo } = props;
     const interactionType = props.interactionType;
     const decoded = props.decoded;

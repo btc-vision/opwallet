@@ -1,5 +1,5 @@
 import BigNumber from 'bignumber.js';
-import { CallResult, getContract, IOP_20Contract, JSONRpcProvider, OP_20_ABI, UTXOs } from 'opnet';
+import { CallResult, getContract, IOP20Contract, JSONRpcProvider, OP20_ABI, UTXOs } from 'opnet';
 
 import { CHAINS_MAP, ChainType } from '@/shared/constant';
 import { NetworkType } from '@/shared/types';
@@ -227,9 +227,9 @@ class Web3API {
     }
 
     public async queryDecimal(address: string): Promise<number> {
-        const genericContract: IOP_20Contract = getContract<IOP_20Contract>(
+        const genericContract: IOP20Contract = getContract<IOP20Contract>(
             address,
-            OP_20_ABI,
+            OP20_ABI,
             this.provider,
             this.network
         );
@@ -249,9 +249,9 @@ class Web3API {
                 addressP2OP = Address.fromString(address).p2op(this.network);
             }
 
-            const genericContract: IOP_20Contract = getContract<IOP_20Contract>(
+            const genericContract: IOP20Contract = getContract<IOP20Contract>(
                 addressP2OP,
-                OP_20_ABI,
+                OP20_ABI,
                 this.provider,
                 this.network
             );

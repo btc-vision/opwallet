@@ -1,5 +1,5 @@
 import BigNumber from 'bignumber.js';
-import { BitcoinUtils, getContract, IOP_20Contract, OP_20_ABI } from 'opnet';
+import { BitcoinUtils, getContract, IOP20Contract, OP20_ABI } from 'opnet';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { OPTokenInfo } from '@/shared/types';
@@ -61,9 +61,9 @@ export default function OpNetTokenScreen() {
             Web3API.setNetwork(await wallet.getChainType());
 
             const myWallet = await getWallet();
-            const contract: IOP_20Contract = getContract<IOP_20Contract>(
+            const contract: IOP20Contract = getContract<IOP20Contract>(
                 params.address,
-                OP_20_ABI,
+                OP20_ABI,
                 Web3API.provider,
                 Web3API.network,
                 myWallet.address

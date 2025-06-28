@@ -13,22 +13,39 @@ export interface Decoded {
 export interface DecodedTransfer extends Decoded {
     recipient: string; // or Address
     amount: bigint;
+    data: Uint8Array;
 }
 
 export interface DecodedTransferFrom extends Decoded {
     sender: string;
     recipient: string;
     amount: bigint;
+    data: Uint8Array;
 }
 
-export interface DecodedApprove extends Decoded {
+export interface DecodedIncreaseAllowance extends Decoded {
     spender: string;
     amount: bigint;
 }
 
-export interface DecodedApproveFrom extends Decoded {
+export interface DecodedDecreaseAllowance extends Decoded {
     spender: string;
     amount: bigint;
+}
+
+export interface DecodedIncreaseAllowanceBySignature extends Decoded {
+    owner: string;
+    spender: string;
+    amount: bigint;
+    deadline: bigint;
+    signature: Uint8Array; // or Buffer
+}
+
+export interface DecodedDecreaseAllowanceBySignature extends Decoded {
+    owner: string;
+    spender: string;
+    amount: bigint;
+    deadline: bigint;
     signature: Uint8Array; // or Buffer
 }
 

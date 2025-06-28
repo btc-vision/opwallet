@@ -1,8 +1,10 @@
 export enum InteractionOP20 {
-    Transfer = '3b88ef57', // transfer(address,uint256)
-    TransferFrom = '4b6685e7', // transferFrom(address,address,uint256)
-    Approve = '9f0bb8a9', // approve(address,uint256)
-    ApproveFrom = '8e72bde0', // approveFrom(address,uint256,bytes)
+    SafeTransfer = 'eb795549', // safeTransfer(address,uint256,bytes)
+    SafeTransferFrom = 'b88d4fde', // safeTransferFrom(address,address,uint256,bytes)
+    IncreaseAllowance = '39509351', // increaseAllowance(address,uint256)
+    DecreaseAllowance = 'a457c2d7', // decreaseAllowance(address,uint256)
+    IncreaseAllowanceBySignature = '10384180', // increaseAllowanceBySignature(address,address,uint256,uint64,bytes)
+    DecreaseAllowanceBySignature = '1b2144ec', // decreaseAllowanceBySignature(address,address,uint256,uint64,bytes)
     Burn = '308dce5f', // burn(uint256)
     Mint = '3950e061', // mint(address,uint256)
     Airdrop = '3a546b21',

@@ -4,8 +4,10 @@ import {
     DecodedAddLiquidityNative,
     DecodedAirdrop,
     DecodedAirdropWithAmount,
-    DecodedApprove,
-    DecodedApproveFrom,
+    DecodedIncreaseAllowance,
+    DecodedDecreaseAllowance,
+    DecodedIncreaseAllowanceBySignature,
+    DecodedDecreaseAllowanceBySignature,
     DecodedBurn,
     DecodedCancelListing,
     DecodedCreatePool,
@@ -48,30 +50,55 @@ function decodeAddress(reader: BinaryReader): string {
 /* ---------------------------------------------------------------------------
  *                   OP_20 (ERC-20 style) decode methods
  * -------------------------------------------------------------------------*/
-export function decodeTransfer(selector: InteractionType, reader: BinaryReader): DecodedTransfer {
+export function decodeSafeTransfer(selector: InteractionType, reader: BinaryReader): DecodedTransfer {
     const recipient = decodeAddress(reader);
     const amount = reader.readU256();
-    return { selector, recipient, amount };
+    const data = reader.readBytesWithLength();
+    return { selector, recipient, amount, data };
 }
 
-export function decodeTransferFrom(selector: InteractionType, reader: BinaryReader): DecodedTransferFrom {
+export function decodeSafeTransferFrom(selector: InteractionType, reader: BinaryReader): DecodedTransferFrom {
     const sender = decodeAddress(reader);
     const recipient = decodeAddress(reader);
     const amount = reader.readU256();
-    return { selector, sender, recipient, amount };
+    const data = reader.readBytesWithLength();
+    return { selector, sender, recipient, amount, data };
 }
 
-export function decodeApprove(selector: InteractionType, reader: BinaryReader): DecodedApprove {
+export function decodeIncreaseAllowance(selector: InteractionType, reader: BinaryReader): DecodedIncreaseAllowance {
     const spender = decodeAddress(reader);
     const amount = reader.readU256();
     return { selector, spender, amount };
 }
 
-export function decodeApproveFrom(selector: InteractionType, reader: BinaryReader): DecodedApproveFrom {
+export function decodeDecreaseAllowance(selector: InteractionType, reader: BinaryReader): DecodedDecreaseAllowance {
     const spender = decodeAddress(reader);
     const amount = reader.readU256();
+    return { selector, spender, amount };
+}
+
+export function decodeIncreaseAllowanceBySignature(
+    selector: InteractionType,
+    reader: BinaryReader
+): DecodedIncreaseAllowanceBySignature {
+    const owner = decodeAddress(reader);
+    const spender = decodeAddress(reader);
+    const amount = reader.readU256();
+    const deadline = reader.readU64();
     const signature = reader.readBytesWithLength();
-    return { selector, spender, amount, signature };
+    return { selector, owner, spender, amount, deadline, signature };
+}
+
+export function decodeDecreaseAllowanceBySignature(
+    selector: InteractionType,
+    reader: BinaryReader
+): DecodedDecreaseAllowanceBySignature {
+    const owner = decodeAddress(reader);
+    const spender = decodeAddress(reader);
+    const amount = reader.readU256();
+    const deadline = reader.readU64();
+    const signature = reader.readBytesWithLength();
+    return { selector, owner, spender, amount, deadline, signature };
 }
 
 export function decodeBurn(selector: InteractionType, reader: BinaryReader): DecodedBurn {
