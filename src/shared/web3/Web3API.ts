@@ -138,8 +138,30 @@ class Web3API {
         }
     }
 
+    public get pillAddress(): Address | null {
+        const network = this.getOPNetNetwork();
+
+        switch (network) {
+            case OPNetNetwork.Mainnet: {
+                return null; // TODO: To be changed if needed
+            }
+            case OPNetNetwork.Testnet: {
+                return Address.fromString('0x7a0b58be893a250638cb2c95bf993ebe00b60779a4597b7c1ef0e76552c823ce');
+            }
+            case OPNetNetwork.Regtest: {
+                return Address.fromString('0x88d3642a7a7cb1be7cc49455084d08101fcebe56e9ea3c3c3c0d109796c9537f');
+            }
+            default:
+                throw new Error('Invalid network');
+        }
+    }
+
     public get motoAddressP2OP(): string | null {
         return this.motoAddress?.p2op(this.network) || null;
+    }
+
+    public get pillAddressP2OP(): string | null {
+        return this.pillAddress?.p2op(this.network) || null;
     }
 
     public get chain(): ChainType {
