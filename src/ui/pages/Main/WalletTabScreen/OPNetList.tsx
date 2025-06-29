@@ -195,7 +195,7 @@ export function OPNetList() {
             }
         }
 
-        // always re-fetch the first page after a decision
+        setFailedTokens((prev) => prev.filter((t) => t !== currentFailedToken));
         setShowFailedModal(false);
         setCurrentFailedToken(null);
         fetchTokensBalances(1).catch(console.error);
