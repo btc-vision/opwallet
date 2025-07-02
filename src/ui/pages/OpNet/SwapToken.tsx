@@ -3,7 +3,7 @@ import {
     BitcoinUtils,
     getContract,
     IMotoswapRouterContract,
-    IOP_20Contract,
+    IOP20Contract,
     MOTOSWAP_ROUTER_ABI,
     OP_20_ABI
 } from 'opnet';
@@ -217,7 +217,7 @@ export default function Swap() {
                             await Web3API.queryContractInformation(addr);
                         if (!contractInfo) continue;
 
-                        const contract = getContract<IOP_20Contract>(
+                        const contract = getContract<IOP20Contract>(
                             addr,
                             OP_20_ABI,
                             Web3API.provider,

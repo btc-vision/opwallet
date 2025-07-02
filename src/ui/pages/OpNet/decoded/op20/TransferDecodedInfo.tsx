@@ -4,10 +4,10 @@ import { ContractInformation } from '@/shared/web3/interfaces/ContractInformatio
 import { Card, Column, Image, Row, Text } from '@/ui/components';
 import { fontSizes } from '@/ui/theme/font';
 import { sliceAddress } from '@/ui/pages/OpNet/decoded/helpper';
-import { DecodedTransfer, DecodedTransferFrom } from '../DecodedTypes';
+import { DecodedSafeTransfer, DecodedSafeTransferFrom } from '../DecodedTypes';
 
 interface DecodedTransferProps {
-    readonly decoded: DecodedTransfer | DecodedTransferFrom;
+    readonly decoded: DecodedSafeTransfer | DecodedSafeTransferFrom;
     readonly contractInfo: Partial<ContractInformation>;
     readonly interactionType: string;
 }
