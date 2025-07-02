@@ -34,6 +34,7 @@ export default function TxCreateScreen() {
     const [disabled, setDisabled] = useState(true);
     const [error, setError] = useState('');
     const [showP2PKWarning, setDisplayP2PKWarning] = useState(false);
+    const [showP2OPWarning, setDisplayP2OPWarning] = useState(false);
     const [totalAvailableAmount, setBalanceValue] = useState<number>(0);
     const [autoAdjust, setAutoAdjust] = useState(false);
     const [currentBalance, setCurrentBalance] = useState<bigint>(0n);
@@ -99,6 +100,7 @@ export default function TxCreateScreen() {
     const onSetAddress = useCallback(
         (val: { address: string; domain: string }) => {
             setDisplayP2PKWarning(false);
+            setDisplayP2OPWarning(false);
 
             const address = val.address;
             const type = AddressVerificator.detectAddressType(address, Web3API.network);
@@ -110,6 +112,11 @@ export default function TxCreateScreen() {
 
             if (type === AddressTypes.P2PK) {
                 setDisplayP2PKWarning(true);
+                return;
+            }
+
+            if (type === AddressTypes.P2OP) {
+                setDisplayP2OPWarning(true);
                 return;
             }
 
@@ -162,6 +169,25 @@ export default function TxCreateScreen() {
                                 }}>
                                 <Text
                                     text="⚠️ Wallets don't support P2PK addresses. Use only for tokens—don't send BTC here."
+                                    size="xs"
+                                    color="gold"
+                                    textCenter
+                                />
+                            </Row>
+                        )}
+
+                        {showP2OPWarning && (
+                            <Row
+                                fullX
+                                style={{
+                                    background: 'rgba(255,165,0,0.12)',
+                                    border: '1px solid #ffa640',
+                                    borderRadius: 6,
+                                    padding: 6,
+                                    marginTop: 6
+                                }}>
+                                <Text
+                                    text="⚠️ Sending BTC to P2OP addresses is not supported."
                                     size="xs"
                                     color="gold"
                                     textCenter
