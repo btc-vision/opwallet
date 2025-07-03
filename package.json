@@ -1,6 +1,6 @@
 {
     "name": "opwallet",
-    "version": "1.4.7",
+    "version": "1.4.8",
     "private": true,
     "type": "module",
     "homepage": "https://github.com/unisat-wallet/extension#readme",
@@ -102,7 +102,7 @@
         "loglevel": "^1.9.2",
         "lru-cache": "7.18.3",
         "mini-css-extract-plugin": "2.9.2",
-        "opnet": "^1.5.12",
+        "opnet": "^1.5.16",
         "postcss": "^8.5.4",
         "postcss-flexbugs-fixes": "^5.0.2",
         "postcss-loader": "^8.1.1",
