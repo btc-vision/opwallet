@@ -494,7 +494,7 @@ export class ProviderController {
         try {
             const account = await wallet.getCurrentAccount();
             if (!account) return [];
-            return await Web3API.getUTXOs([account.address]);
+            return await Web3API.getAllUTXOsForAddresses([account.address]);
         } catch (e) {
             console.error(e);
             return [];

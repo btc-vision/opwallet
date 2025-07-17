@@ -150,17 +150,17 @@ export function Step2({
             for (let i = 0; i < addresses.length; i++) {
                 try {
                     const address = addresses[i];
-                    const balance = await Web3API.getBalance(address, true);
-                    const balanceInSatoshi = Number(balance);
+                    const addressBalance = await wallet.getMultiAddressAssets(address);
+                    const totalSatoshis = addressBalance[0].totalSatoshis || 0;
 
-                    const final = satoshisToAmount(balanceInSatoshi);
+                    const final = satoshisToAmount(totalSatoshis);
                     addressAssets[address] = {
                         total_btc: final,
-                        satoshis: Number(balance)
+                        satoshis: totalSatoshis
                     };
 
-                    if (balanceInSatoshi > maxSatoshis) {
-                        maxSatoshis = balanceInSatoshi;
+                    if (totalSatoshis > maxSatoshis) {
+                        maxSatoshis = totalSatoshis;
                         recommended = i;
                     }
                 } catch {}
