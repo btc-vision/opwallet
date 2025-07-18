@@ -58,7 +58,9 @@ export const UpgradePopover = ({ onClose }: { onClose: () => void }) => {
                         full
                         preset="primary"
                         onClick={(e) => {
-                            window.open('https://opnet.org/wallet');
+                            window.open(
+                                'https://chromewebstore.google.com/detail/opwallet/pmbjpcmaaladnfpacpmhmnfmpklgbdjb?hl=en'
+                            );
                         }}
                     />
                 </Row>

@@ -272,10 +272,10 @@ export class WalletController {
             const addressList = addresses.split(',');
             const summaries: AddressSummary[] = [];
             for (const address of addressList) {
-                const balance = await Web3API.getBalance(address, true);
+                const addressBalance = await this.getAddressBalance(address);
                 const summary: AddressSummary = {
                     address: address,
-                    totalSatoshis: Number(balance),
+                    totalSatoshis: Number(addressBalance.confirm_amount) * 1e8,
                     loading: false
                 };
                 summaries.push(summary);
@@ -301,16 +301,19 @@ export class WalletController {
      */
     public getAddressCacheBalance = (address: string | undefined): BitcoinBalance => {
         const defaultBalance: BitcoinBalance = {
+            amount: '0',
             confirm_amount: '0',
             pending_amount: '0',
-            amount: '0',
-            usd_value: '0',
+
+            btc_amount: '0',
             confirm_btc_amount: '0',
             pending_btc_amount: '0',
-            btc_amount: '0',
+
+            inscription_amount: '0',
             confirm_inscription_amount: '0',
             pending_inscription_amount: '0',
-            inscription_amount: '0'
+
+            usd_value: '0.00'
         };
         if (!address) return defaultBalance;
         return preferenceService.getAddressBalance(address) ?? defaultBalance;
@@ -2060,31 +2063,35 @@ export class WalletController {
     };
 
     /**
-     * Retrieve OPNet "balance" by calling Web3API directly for both spendable and total UTXOs.
      * @throws WalletControllerError
      */
-    public getOpNetBalance = async (address: string): Promise<BitcoinBalance> => {
+    private getOpNetBalance = async (address: string): Promise<BitcoinBalance> => {
         try {
-            const [btcBalanceSpendable, confirmedBalance] = await Promise.all([
-                //btcBalanceSpendableCurrent
-                Web3API.getUTXOTotal(address),
-                //Web3API.getBalance(address, true),
-                Web3API.getBalance(address, false)
+            const [unspentUTXOs, allUTXOs] = await Promise.all([
+                Web3API.getUnspentUTXOsForAddresses([address]),
+                Web3API.getAllUTXOsForAddresses([address])
             ]);
 
-            const btcBalanceTotalStr: string = bigIntToDecimal(btcBalanceSpendable, 8);
-            const confirmedBalanceStr: string = bigIntToDecimal(confirmedBalance, 8);
+            const totalAll = allUTXOs.reduce((sum, u) => sum + u.value, 0n);
+            const totalUnspent = unspentUTXOs.reduce((sum, u) => sum + u.value, 0n);
+
+            const totalAmount = bigIntToDecimal(totalAll, 8);
+            const confirmAmount = bigIntToDecimal(totalUnspent, 8);
+            const pendingAmount = bigIntToDecimal(totalAll - totalUnspent, 8);
 
             return {
-                confirm_amount: btcBalanceTotalStr,
-                pending_amount: '0',
-                amount: btcBalanceTotalStr,
-                confirm_btc_amount: confirmedBalanceStr,
-                pending_btc_amount: '0',
-                btc_amount: btcBalanceTotalStr,
-                confirm_inscription_amount: '0',
-                pending_inscription_amount: '0',
-                inscription_amount: '0',
+                amount: totalAmount, // TODO: To change later when inscriptions are supported
+                confirm_amount: confirmAmount, // TODO: To change later when inscriptions are supported
+                pending_amount: pendingAmount, // TODO: To change later when inscriptions are supported
+
+                btc_amount: totalAmount,
+                confirm_btc_amount: confirmAmount,
+                pending_btc_amount: pendingAmount,
+
+                inscription_amount: '0', // TODO: Add support later
+                confirm_inscription_amount: '0', // TODO: Add support later
+                pending_inscription_amount: '0', // TODO: Add support later
+
                 usd_value: '0.00'
             };
         } catch (err) {
@@ -2137,7 +2144,7 @@ export class WalletController {
             if (currentTotal < BigInt(requiredMinimum)) {
                 const stillNeeded = BigInt(requiredMinimum) - currentTotal;
 
-                const fetched: UTXOs = await Web3API.getUTXOs([account.address], stillNeeded);
+                const fetched: UTXOs = await Web3API.getUnspentUTXOsForAddresses([account.address], stillNeeded);
                 const alreadyUsed = new Set<string>(utxos.map((u) => `${u.transactionId}:${u.outputIndex}`));
 
                 fetched

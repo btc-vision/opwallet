@@ -3,7 +3,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { ChainType, COIN_DUST } from '@/shared/constant';
 import { Action, Features, SendBitcoinParameters } from '@/shared/interfaces/RawTxParameters';
-import Web3API, { bigIntToDecimal } from '@/shared/web3/Web3API';
+import Web3API from '@/shared/web3/Web3API';
 import { Button, Column, Content, Header, Image, Input, Layout, Row, Text } from '@/ui/components';
 import { BtcUsd } from '@/ui/components/BtcUsd';
 import { FeeRateBar } from '@/ui/components/FeeRateBar';
@@ -35,9 +35,10 @@ export default function TxCreateScreen() {
     const [error, setError] = useState('');
     const [showP2PKWarning, setDisplayP2PKWarning] = useState(false);
     const [showP2OPWarning, setDisplayP2OPWarning] = useState(false);
-    const [totalAvailableAmount, setBalanceValue] = useState<number>(0);
     const [autoAdjust, setAutoAdjust] = useState(false);
-    const [currentBalance, setCurrentBalance] = useState<bigint>(0n);
+    const [totalBalanceValue, setTotalBalanceValue] = useState('0');
+    const [unspentBalanceValue, setUnspentBalanceValue] = useState('0');
+    const [unspentBalanceValueInSatoshis, setUnspentBalanceValueInSatoshis] = useState(0n);
 
     /* --------------------------------------------------------------------- */
     useEffect(() => {
@@ -45,17 +46,21 @@ export default function TxCreateScreen() {
     }, [wallet]);
 
     useEffect(() => {
-        const _currentBalance = Web3API.getBalance(account.address, true);
-        void _currentBalance.then(setCurrentBalance);
-    }, [account.address]);
+        const fetchTotalBalanceValue = async () => {
+            const addressBalance = await wallet.getAddressBalance(account.address);
+            setTotalBalanceValue(addressBalance.amount);
+        };
+        void fetchTotalBalanceValue();
+    }, [account.address, wallet]);
 
     useEffect(() => {
-        const fetchBalance = async () => {
-            const btcBalanceGet = await Web3API.getUTXOTotal(account.address);
-            setBalanceValue(new BigNumber(bigIntToDecimal(btcBalanceGet, 8)).toNumber());
+        const fetchUnspentBalanceValue = async () => {
+            const addressBalance = await wallet.getAddressBalance(account.address);
+            setUnspentBalanceValue(addressBalance.confirm_amount);
+            setUnspentBalanceValueInSatoshis(BigInt(amountToSatoshis(addressBalance.confirm_amount)));
         };
-        void fetchBalance();
-    }, [chain.enum, account.address]);
+        void fetchUnspentBalanceValue();
+    }, [chain.enum, account.address, wallet]);
 
     /* --------------------------------------------------------------------- */
     const toSatoshis = useMemo(() => (inputAmount ? amountToSatoshis(inputAmount) : 0), [inputAmount]);
@@ -72,14 +77,14 @@ export default function TxCreateScreen() {
             setError(`Amount must be at least ${dustAmount} ${btcUnit}`);
             return;
         }
-        if (toSatoshis / 10 ** 8 > totalAvailableAmount) {
+        if (toSatoshis > unspentBalanceValueInSatoshis) {
             setError('Amount exceeds your available balance');
             return;
         }
         if (feeRate <= 0) return;
 
         setDisabled(false);
-    }, [toInfo, inputAmount, feeRate, enableRBF, toSatoshis, totalAvailableAmount, dustAmount, btcUnit]);
+    }, [toInfo, inputAmount, feeRate, enableRBF, toSatoshis, unspentBalanceValueInSatoshis, dustAmount, btcUnit]);
 
     /* --------------------------------------------------------------------- */
     const handleNext = () => {
@@ -214,7 +219,7 @@ export default function TxCreateScreen() {
                             enableMax
                             onMaxClick={() => {
                                 setAutoAdjust(true);
-                                setUiState({ inputAmount: totalAvailableAmount.toString() });
+                                setUiState({ inputAmount: unspentBalanceValue });
                             }}
                         />
 
@@ -222,22 +227,19 @@ export default function TxCreateScreen() {
                         <Row justifyBetween style={{ marginTop: 6 }}>
                             <Text text="Available" color="gold" />
                             <Row gap={'sm'}>
-                                <Text text={totalAvailableAmount} size="sm" color="gold" />
+                                <Text text={unspentBalanceValue} size="sm" color="gold" />
                                 <Text text={btcUnit} size="sm" color="textDim" />
-                                {chain.enum !== ChainType.BITCOIN_REGTEST && (
-                                    <>
-                                        <Text text="(" size="sm" color="textDim" />
-                                        <Text
-                                            text={BitcoinUtils.formatUnits(currentBalance, 8)}
-                                            size="sm"
-                                            color="gold"
-                                        />
-                                        <Text text={btcUnit} size="sm" color="textDim" />
-                                        <Text text=")" size="sm" color="textDim" />
-                                    </>
-                                )}
                             </Row>
                         </Row>
+                        {chain.enum !== ChainType.BITCOIN_REGTEST && (
+                            <Row justifyBetween>
+                                <Text text="Total" color="textDim" />
+                                <Row gap={'sm'}>
+                                    <Text text={totalBalanceValue} size="sm" color="gold" />
+                                    <Text text={btcUnit} size="sm" color="textDim" />
+                                </Row>
+                            </Row>
+                        )}
 
                         {/* divider */}
                         <div style={{ height: 1, background: 'rgba(255,255,255,0.06)', margin: '14px 0' }} />

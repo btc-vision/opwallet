@@ -24,10 +24,18 @@ export function useAccountBalance() {
     return (
         accountsState.balanceMap[currentAccount.address] || {
             amount: '0',
-            expired: true,
+            confirm_amount: '0',
+            pending_amount: '0',
+
+            btc_amount: '0',
             confirm_btc_amount: '0',
             pending_btc_amount: '0',
-            inscription_amount: '0'
+
+            inscription_amount: '0',
+            confirm_inscription_amount: '0',
+            pending_inscription_amount: '0',
+
+            usd_value: '0.00'
         }
     );
 }
@@ -95,11 +103,20 @@ export function useFetchBalanceCallback() {
         dispatch(
             accountActions.setBalance({
                 address: currentAccount.address,
+
                 amount: _accountBalance.amount,
+                confirm_amount: _accountBalance.confirm_amount,
+                pending_amount: _accountBalance.pending_amount,
+
                 btc_amount: _accountBalance.btc_amount,
-                inscription_amount: _accountBalance.inscription_amount,
                 confirm_btc_amount: _accountBalance.confirm_btc_amount,
-                pending_btc_amount: _accountBalance.pending_btc_amount
+                pending_btc_amount: _accountBalance.pending_btc_amount,
+
+                inscription_amount: _accountBalance.inscription_amount,
+                confirm_inscription_amount: _accountBalance.confirm_inscription_amount,
+                pending_inscription_amount: _accountBalance.pending_inscription_amount,
+
+                usd_value: _accountBalance.usd_value
             })
         );
 

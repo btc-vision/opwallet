@@ -102,17 +102,6 @@ Retrieves the public key of the selected account.
 
 ---
 
-### **`getBalance()`**
-
-Retrieves the balance of the selected account.
-
-- **Parameters:**  
-  None.
-- **Returns:**  
-  A `Promise<number>` resolving to the account balance in Satoshis.
-
----
-
 ### **`getInscriptions(cursor = 0, size = 20)`**
 
 Retrieves inscriptions associated with the wallet by offering pagination support.
@@ -172,7 +161,6 @@ Signs raw data.
 Sends Bitcoin to a specified address.
 
 - **Parameters:**
-
     - `toAddress`: The recipient's Bitcoin address.
     - `satoshis`: The amount to send in Satoshis.
     - `options`: _(optional)_ An object containing:
@@ -190,7 +178,6 @@ Sends Bitcoin to a specified address.
 Retrieves Bitcoin UTXOs with pagination support.
 
 - **Parameters:**
-
     - `cursor`: _(optional)_ A number indicating the starting index for pagination (default is `0`).
     - `size`: _(optional)_ A number indicating the number of UTXOs to fetch (default is `20`).
 
@@ -228,7 +215,6 @@ Signs an interaction with a contract.
 Signs and broadcasts a contract interaction to the network.
 
 - **Parameters:**
-
     - `interactionParameters`: An object containing interaction details.
 
 - **Returns:**  
@@ -241,7 +227,6 @@ Signs and broadcasts a contract interaction to the network.
 Broadcasts raw transaction data to the network.
 
 - **Parameters:**
-
     - `transactions`: An array of transaction objects, each containing:
         - `raw`: The raw transaction string.
         - `psbt`: A boolean indicating whether the transaction is a PSBT.
@@ -258,7 +243,6 @@ Broadcasts raw transaction data to the network.
 Signs a PSBT.
 
 - **Parameters:**
-
     - `psbtHex`: The PSBT in hexadecimal format.
     - `options`: _(optional)_ Signing options.
 
@@ -272,7 +256,6 @@ Signs a PSBT.
 Signs multiple PSBTs.
 
 - **Parameters:**
-
     - `psbtHexs`: An array of PSBTs in hexadecimal format.
     - `options`: _(optional)_ An array of signing options for each PSBT.
 
@@ -286,7 +269,6 @@ Signs multiple PSBTs.
 Pushes a signed PSBT to the network.
 
 - **Parameters:**
-
     - `psbtHex`: The signed PSBT in hexadecimal format.
 
 - **Returns:**  
@@ -301,7 +283,6 @@ Pushes a signed PSBT to the network.
 Pushes a raw Bitcoin transaction to the network.
 
 - **Parameters:**
-
     - `rawtx`: The raw transaction string.
 
 - **Returns:**  

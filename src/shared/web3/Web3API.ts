@@ -236,10 +236,6 @@ class Web3API {
         this._limitedProvider = new OPNetLimitedProvider(url);
     }
 
-    public async getBalance(address: string, filterOrdinals: boolean): Promise<bigint> {
-        return await this.provider.getBalance(address, filterOrdinals);
-    }
-
     public isValidAddress(address: string): boolean {
         if (!this.network) {
             throw new Error('Network not set');
@@ -315,17 +311,40 @@ class Web3API {
         }
     }
 
-    public async getUTXOs(addresses: string[], requiredAmount?: bigint): Promise<UTXO[]> {
-        return await this.getUTXOsForAddresses(addresses, requiredAmount);
+    public async getUnspentUTXOsForAddresses(addresses: string[], requiredAmount?: bigint): Promise<UTXO[]> {
+        let finalUTXOs: UTXOs = [];
+
+        for (const address of addresses) {
+            let utxos: UTXOs = [];
+
+            try {
+                if (!requiredAmount) {
+                    utxos = await this.provider.utxoManager.getUTXOs({
+                        address,
+                        optimize: false,
+                        mergePendingUTXOs: false,
+                        filterSpentUTXOs: true
+                    });
+                } else {
+                    utxos = await this.provider.utxoManager.getUTXOsForAmount({
+                        address,
+                        amount: requiredAmount,
+                        optimize: false,
+                        mergePendingUTXOs: false,
+                        filterSpentUTXOs: true
+                    });
+                }
+            } catch {
+                //
+            }
+
+            finalUTXOs = finalUTXOs.concat(utxos);
+        }
+
+        return finalUTXOs;
     }
 
-    public async getUTXOTotal(address: string): Promise<bigint> {
-        const utxos: UTXO[] = await this.getUTXOsForAddresses([address]);
-
-        return utxos.reduce((acc, utxo) => acc + utxo.value, 0n);
-    }
-
-    private async getUTXOsForAddresses(addresses: string[], requiredAmount?: bigint): Promise<UTXO[]> {
+    public async getAllUTXOsForAddresses(addresses: string[], requiredAmount?: bigint): Promise<UTXO[]> {
         let finalUTXOs: UTXOs = [];
 
         for (const address of addresses) {
@@ -344,8 +363,8 @@ class Web3API {
                         address,
                         amount: requiredAmount,
                         optimize: false,
-                        filterSpentUTXOs: true,
-                        mergePendingUTXOs: true
+                        mergePendingUTXOs: true,
+                        filterSpentUTXOs: true
                     });
                 }
             } catch {

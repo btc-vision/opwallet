@@ -25,16 +25,21 @@ export enum RestoreWalletType {
 }
 
 export interface BitcoinBalance {
+    amount: string;
     confirm_amount: string;
     pending_amount: string;
-    amount: string;
+
+    btc_amount: string;
     confirm_btc_amount: string;
     pending_btc_amount: string;
-    btc_amount: string;
+
+    inscription_amount: string;
     confirm_inscription_amount: string;
     pending_inscription_amount: string;
-    inscription_amount: string;
+
     usd_value: string;
+
+    expired?: boolean; // Indicates if the balance is expired
 }
 
 export interface AddressAssets {
