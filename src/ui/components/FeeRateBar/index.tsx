@@ -1,7 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
 
-import { useWallet } from '@/ui/utils';
-
 import Web3API from '@/shared/web3/Web3API';
 import { Column } from '../Column';
 import { Input } from '../Input';
@@ -23,7 +21,6 @@ type BitcoinFees = {
 };
 
 export function FeeRateBar({ readonly, onChange }: { readonly?: boolean; onChange?: (val: number) => void }) {
-    const wallet = useWallet();
     const [feeOptions, setFeeOptions] = useState<{ title: string; desc?: string; feeRate: number }[]>([]);
 
     const getData = useCallback(async () => {
