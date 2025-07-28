@@ -188,11 +188,11 @@ export default function WalletTabScreen() {
                         }}>
                         <div>
                             <Text text={'AVAILABLE BALANCE'} textCenter color="textDim" />
-                            <BtcDisplay balance={accountBalance.confirm_amount} />
+                            <BtcDisplay balance={accountBalance.amount} />
                         </div>
                     </Tooltip>
                     <BtcUsd
-                        sats={amountToSatoshis(accountBalance.confirm_amount)}
+                        sats={amountToSatoshis(accountBalance.amount)}
                         textCenter
                         size={'md'}
                         style={{
