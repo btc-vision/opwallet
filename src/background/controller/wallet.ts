@@ -275,7 +275,7 @@ export class WalletController {
                 const addressBalance = await this.getAddressBalance(address);
                 const summary: AddressSummary = {
                     address: address,
-                    totalSatoshis: Number(addressBalance.confirm_amount) * 1e8,
+                    totalSatoshis: Number(addressBalance.amount) * 1e8,
                     loading: false
                 };
                 summaries.push(summary);

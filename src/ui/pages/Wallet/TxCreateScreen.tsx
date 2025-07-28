@@ -37,8 +37,8 @@ export default function TxCreateScreen() {
     const [showP2OPWarning, setDisplayP2OPWarning] = useState(false);
     const [autoAdjust, setAutoAdjust] = useState(false);
     const [totalBalanceValue, setTotalBalanceValue] = useState('0');
-    const [unspentBalanceValue, setUnspentBalanceValue] = useState('0');
-    const [unspentBalanceValueInSatoshis, setUnspentBalanceValueInSatoshis] = useState(0n);
+    const [balanceValue, setBalanceValue] = useState('0');
+    const [balanceValueInSatoshis, setBalanceValueInSatoshis] = useState(0n);
 
     /* --------------------------------------------------------------------- */
     useEffect(() => {
@@ -54,12 +54,12 @@ export default function TxCreateScreen() {
     }, [account.address, wallet]);
 
     useEffect(() => {
-        const fetchUnspentBalanceValue = async () => {
+        const fetchBalanceValue = async () => {
             const addressBalance = await wallet.getAddressBalance(account.address);
-            setUnspentBalanceValue(addressBalance.confirm_amount);
-            setUnspentBalanceValueInSatoshis(BigInt(amountToSatoshis(addressBalance.confirm_amount)));
+            setBalanceValue(addressBalance.amount);
+            setBalanceValueInSatoshis(BigInt(amountToSatoshis(addressBalance.amount)));
         };
-        void fetchUnspentBalanceValue();
+        void fetchBalanceValue();
     }, [chain.enum, account.address, wallet]);
 
     /* --------------------------------------------------------------------- */
@@ -77,14 +77,14 @@ export default function TxCreateScreen() {
             setError(`Amount must be at least ${dustAmount} ${btcUnit}`);
             return;
         }
-        if (toSatoshis > unspentBalanceValueInSatoshis) {
+        if (toSatoshis > balanceValueInSatoshis) {
             setError('Amount exceeds your available balance');
             return;
         }
         if (feeRate <= 0) return;
 
         setDisabled(false);
-    }, [toInfo, inputAmount, feeRate, enableRBF, toSatoshis, unspentBalanceValueInSatoshis, dustAmount, btcUnit]);
+    }, [toInfo, inputAmount, feeRate, enableRBF, toSatoshis, balanceValueInSatoshis, dustAmount, btcUnit]);
 
     /* --------------------------------------------------------------------- */
     const handleNext = () => {
@@ -219,7 +219,7 @@ export default function TxCreateScreen() {
                             enableMax
                             onMaxClick={() => {
                                 setAutoAdjust(true);
-                                setUiState({ inputAmount: unspentBalanceValue });
+                                setUiState({ inputAmount: balanceValue });
                             }}
                         />
 
@@ -227,7 +227,7 @@ export default function TxCreateScreen() {
                         <Row justifyBetween style={{ marginTop: 6 }}>
                             <Text text="Available" color="gold" />
                             <Row gap={'sm'}>
-                                <Text text={unspentBalanceValue} size="sm" color="gold" />
+                                <Text text={balanceValue} size="sm" color="gold" />
                                 <Text text={btcUnit} size="sm" color="textDim" />
                             </Row>
                         </Row>
