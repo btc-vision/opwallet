@@ -92,10 +92,16 @@ export function OPNetList() {
                     .reverse();
 
                 fullList = Array.from(new Set(fullList));
+
                 const moto = Web3API.motoAddressP2OP;
-                if (moto && !fullList.includes(moto)) fullList.unshift(moto);
+                if (moto && !fullList.includes(moto) && !failedTokens.includes(moto)) {
+                    fullList.unshift(moto);
+                }
+
                 const pill = Web3API.pillAddressP2OP;
-                if (pill && !fullList.includes(pill)) fullList.unshift(pill);
+                if (pill && !fullList.includes(pill) && !failedTokens.includes(pill)) {
+                    fullList.unshift(pill);
+                }
 
                 // 3) commit total & optionally reset to page 1
                 setTokens(fullList);
