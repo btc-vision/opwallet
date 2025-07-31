@@ -187,7 +187,7 @@ export default function WalletTabScreen() {
                             fontSize: fontSizes.xs
                         }}>
                         <div>
-                            <Text text={'AVAILABLE BALANCE'} textCenter color="textDim" />
+                            <Text text={'TOTAL BALANCE'} textCenter color="textDim" />
                             <BtcDisplay balance={accountBalance.amount} />
                         </div>
                     </Tooltip>

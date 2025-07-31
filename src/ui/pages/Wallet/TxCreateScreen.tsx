@@ -78,7 +78,7 @@ export default function TxCreateScreen() {
             return;
         }
         if (toSatoshis > balanceValueInSatoshis) {
-            setError('Amount exceeds your available balance');
+            setError('Amount exceeds your total balance');
             return;
         }
         if (feeRate <= 0) return;
