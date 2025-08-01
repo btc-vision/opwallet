@@ -7,16 +7,19 @@ import { RequestParams } from '@/shared/types/Request.js';
 import BroadcastChannelMessage from '@/shared/utils/message/broadcastChannelMessage';
 import Web3API from '@/shared/web3/Web3API';
 import { ContractInformation } from '@/shared/web3/interfaces/ContractInformation';
-import { DeploymentResult, InteractionResponse, Unisat, UTXO, WindowWithWallets } from '@btc-vision/transaction';
+import {
+    DeploymentResult,
+    IDeploymentParametersWithoutSigner,
+    InteractionParametersWithoutSigner,
+    InteractionResponse,
+    Unisat,
+    UTXO,
+    WindowWithWallets
+} from '@btc-vision/transaction';
 
 import { rpcErrors } from '@/shared/lib/bitcoin-rpc-errors/errors';
 import { ProviderState } from '@/shared/types/Provider';
-import {
-    BroadcastTransactionOptions,
-    IDeploymentParametersWithoutSigner,
-    InteractionParametersWithoutSigner,
-    Web3Provider
-} from './Web3Provider';
+import { BroadcastTransactionOptions, Web3Provider } from './Web3Provider';
 import PushEventHandlers from './pushEventHandlers';
 import ReadyPromise from './readyPromise';
 import { $, domReadyCall, isPushEventHandlerMethod } from './utils';

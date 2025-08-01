@@ -3,7 +3,6 @@ import { CHAINS, CHAINS_MAP, ChainType, NETWORK_TYPES, VERSION } from '@/shared/
 import 'reflect-metadata';
 
 import { Session } from '@/background/service/session';
-import { IDeploymentParametersWithoutSigner } from '@/content-script/pageProvider/Web3Provider';
 import { SessionEvent } from '@/shared/interfaces/SessionEvent';
 import { providerErrors } from '@/shared/lib/bitcoin-rpc-errors/errors';
 import { NetworkType } from '@/shared/types';
@@ -13,6 +12,7 @@ import { getChainInfo } from '@/shared/utils';
 import Web3API from '@/shared/web3/Web3API';
 import { DetailedInteractionParameters } from '@/shared/web3/interfaces/DetailedInteractionParameters';
 import { amountToSatoshis } from '@/ui/utils';
+import { IDeploymentParametersWithoutSigner } from '@btc-vision/transaction';
 import { bitcoin } from '@btc-vision/wallet-sdk/lib/bitcoin-core';
 import { verifyMessageOfBIP322Simple } from '@btc-vision/wallet-sdk/lib/message';
 import { toPsbtNetwork } from '@btc-vision/wallet-sdk/lib/network';

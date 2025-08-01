@@ -1,15 +1,15 @@
-import { useEffect, useState } from 'react';
-import BigNumber from 'bignumber.js';
+import { Action, Features, TransferParameters } from '@/shared/interfaces/RawTxParameters';
+import { OPTokenInfo } from '@/shared/types';
 import { Button, Column, Content, Header, Image, Input, Layout, Row, Text } from '@/ui/components';
 import { FeeRateBar } from '@/ui/components/FeeRateBar';
 import { PriorityFeeBar } from '@/ui/components/PriorityFeeBar';
+import { formatBalance } from '@/ui/pages/OpNet/BigintToString';
 import { fontSizes } from '@/ui/theme/font';
 import { useLocationState } from '@/ui/utils';
+import BigNumber from 'bignumber.js';
 import { BitcoinUtils } from 'opnet';
+import { useEffect, useState } from 'react';
 import { RouteTypes, useNavigate } from '../MainRoute';
-import { Action, Features, TransferParameters } from '@/shared/interfaces/RawTxParameters';
-import { OPTokenInfo } from '@/shared/types';
-import { formatBalance } from '@/ui/pages/OpNet/BigintToString';
 
 BigNumber.config({ EXPONENTIAL_AT: 256 });
 
@@ -23,6 +23,7 @@ export default function SendOpNetScreen() {
     const [priorityFee, setPriorityFee] = useState(0);
     const [error, setError] = useState('');
     const [disabled, setDisabled] = useState(true);
+    const [note, setNote] = useState<string>('');
 
     const balanceFormatted = new BigNumber(BitcoinUtils.formatUnits(balance, divisibility));
 
@@ -78,7 +79,8 @@ export default function SendOpNetScreen() {
                 [Features.rbf]: true,
                 [Features.taproot]: true,
                 [Features.cpfp]: true
-            }
+            },
+            note
         };
         navigate(RouteTypes.TxOpnetConfirmScreen, { rawTxInfo: params });
     };
@@ -100,7 +102,7 @@ export default function SendOpNetScreen() {
                         background: 'rgba(255,255,255,0.025)'
                     }}>
                     {/* balance banner */}
-                    <Row justifyCenter itemsCenter gap={'sm'} style={{ marginTop: '14vh' }}>
+                    <Row justifyCenter itemsCenter gap={'sm'} style={{ marginTop: '24vh' }}>
                         {logo && <Image src={logo} size={fontSizes.tiny} />}
                         <Text
                             text={`${formatBalance(balanceFormatted, 4)} ${symbol}`}
@@ -134,6 +136,16 @@ export default function SendOpNetScreen() {
                             value={inputAmount}
                             onAmountInputChange={setInputAmount}
                             runesDecimal={divisibility}
+                        />
+                    </Column>
+
+                    <Column mt="sm">
+                        <Text text="Note (optional)" color="textDim" />
+                        <Input
+                            preset="text"
+                            placeholder={'Note'}
+                            value={note}
+                            onChange={(e) => setNote(e.target.value)}
                         />
                     </Column>
 

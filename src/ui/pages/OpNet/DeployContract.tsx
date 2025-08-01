@@ -1,10 +1,10 @@
-import React, { useEffect, useState } from 'react';
+import { Action, Features } from '@/shared/interfaces/RawTxParameters';
 import { Button, Column, Content, Header, Layout, Text } from '@/ui/components';
 import { useTools } from '@/ui/components/ActionComponent';
 import { FeeRateBar } from '@/ui/components/FeeRateBar';
-import { RouteTypes, useNavigate } from '../MainRoute';
 import { useCurrentAccount } from '@/ui/state/accounts/hooks';
-import { Action, Features } from '@/shared/interfaces/RawTxParameters';
+import React, { useEffect, useState } from 'react';
+import { RouteTypes, useNavigate } from '../MainRoute';
 
 export default function DeployContractOpnet() {
     const account = useCurrentAccount();
@@ -16,6 +16,7 @@ export default function DeployContractOpnet() {
     const [priorityFee, setPriorityFee] = useState<string>('0');
     const [calldataHex, setCalldataHex] = useState<string>('');
     const [disabled, setDisabled] = useState(true);
+    const [note, setNote] = useState<string>('');
 
     useEffect(() => {
         setDisabled(!wasmFile);
@@ -57,7 +58,8 @@ export default function DeployContractOpnet() {
                 },
                 file: wasmFile,
                 calldataHex,
-                action: Action.DeployContract
+                action: Action.DeployContract,
+                note
             }
         });
     };
@@ -155,6 +157,28 @@ export default function DeployContractOpnet() {
                             padding: 4,
                             width: '100%',
                             fontFamily: 'monospace'
+                        }}
+                    />
+                </div>
+
+                {/* note */}
+                <div style={{ marginTop: 20 }}>
+                    <Text text="Note (optional)" color="textDim" />
+                    <input
+                        type="text"
+                        placeholder="Enter a note for the transaction"
+                        value={note}
+                        onChange={(e) => setNote(e.target.value)}
+                        style={{
+                            marginTop: 6,
+                            backgroundColor: 'transparent',
+                            borderRadius: 5,
+                            borderWidth: 1,
+                            borderColor: 'rgba(255,255,255,0.3)',
+                            padding: 4,
+                            width: '100%',
+                            fontFamily: 'monospace',
+                            fontSize: 14
                         }}
                     />
                 </div>
