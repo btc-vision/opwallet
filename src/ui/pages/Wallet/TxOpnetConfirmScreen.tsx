@@ -369,12 +369,12 @@ export default function TxOpnetConfirmScreen() {
             const arrayBuffer = await parameters.file.arrayBuffer();
             const uint8Array = new Uint8Array(arrayBuffer);
 
-            const preimage = await Web3API.provider.getPreimage();
+            const challenge = await Web3API.provider.getChallenge();
             const calldata = parameters.calldataHex ? Buffer.from(parameters.calldataHex, 'hex') : Buffer.from([]);
 
             // TODO: Add calldata support
             const deploymentParameters: IDeploymentParameters = {
-                preimage,
+                challenge,
                 utxos: utxos,
                 signer: userWallet.keypair,
                 network: Web3API.network,

@@ -11,11 +11,7 @@ import {
 } from '@/background/service';
 import { DisplayedKeyring, Keyring, SavedVault } from '@/background/service/keyring';
 import { WalletSaveList } from '@/background/service/preference';
-import {
-    BroadcastTransactionOptions,
-    IDeploymentParametersWithoutSigner,
-    InteractionParametersWithoutSigner
-} from '@/content-script/pageProvider/Web3Provider.js';
+import { BroadcastTransactionOptions } from '@/content-script/pageProvider/Web3Provider.js';
 import {
     ADDRESS_TYPES,
     AddressFlagType,
@@ -58,7 +54,15 @@ import {
 } from '@/shared/types';
 import { getChainInfo } from '@/shared/utils';
 import Web3API, { bigIntToDecimal, getBitcoinLibJSNetwork } from '@/shared/web3/Web3API';
-import { DeploymentResult, IDeploymentParameters, IInteractionParameters, Wallet } from '@btc-vision/transaction';
+import {
+    DeploymentResult,
+    IDeploymentParameters,
+    IDeploymentParametersWithoutSigner,
+    IInteractionParameters,
+    InteractionParametersWithoutSigner,
+    RawChallenge,
+    Wallet
+} from '@btc-vision/transaction';
 import { publicKeyToAddress, scriptPkToAddress } from '@btc-vision/wallet-sdk/lib/address';
 import { bitcoin, ECPair } from '@btc-vision/wallet-sdk/lib/bitcoin-core';
 import { KeystoneKeyring } from '@btc-vision/wallet-sdk/lib/keyring';
@@ -985,7 +989,9 @@ export class WalletController {
      */
     public signAndBroadcastInteraction = async (
         interactionParameters: InteractionParametersWithoutSigner
-    ): Promise<[BroadcastedTransaction, BroadcastedTransaction, import('@btc-vision/transaction').UTXO[], string]> => {
+    ): Promise<
+        [BroadcastedTransaction, BroadcastedTransaction, import('@btc-vision/transaction').UTXO[], RawChallenge]
+    > => {
         const account = await this.getCurrentAccount();
         if (!account) throw new WalletControllerError('No current account');
 
@@ -1046,7 +1052,7 @@ export class WalletController {
 
             Web3API.provider.utxoManager.spentUTXO(account.address, utxos, response.nextUTXOs);
 
-            return [fundingTx, interTx, response.nextUTXOs, response.preimage];
+            return [fundingTx, interTx, response.nextUTXOs, response.challenge];
         } catch (err) {
             throw new WalletControllerError(`signAndBroadcastInteraction failed: ${String(err)}`, {
                 interactionParameters
@@ -1131,12 +1137,12 @@ export class WalletController {
                     };
                 }) || [];
 
-            const preimage = await Web3API.provider.getPreimage();
+            const challenge = await Web3API.provider.getChallenge();
             const walletGet: Wallet = Wallet.fromWif(wifWallet.wif, Web3API.network);
             const deployContractParameters: IDeploymentParameters = {
                 ...params,
                 utxos,
-                preimage,
+                challenge,
                 signer: walletGet.keypair,
                 network: Web3API.network,
                 feeRate: Number(params.feeRate.toString()),
@@ -2106,7 +2112,7 @@ export class WalletController {
         requiredMinimum = 0
     ): Promise<{ response: InteractionResponse; utxos: UTXOs }> => {
         const wallet = Wallet.fromWif(wifWallet.wif, Web3API.network);
-        const preimage = await Web3API.provider.getPreimage();
+        const challenge = await Web3API.provider.getChallenge();
 
         const utxos: UTXOs = interactionParameters.utxos.map((u) => {
             let nonWitnessUtxo: Buffer | undefined;
@@ -2193,7 +2199,7 @@ export class WalletController {
         const submit: IInteractionParameters = {
             from: interactionParameters.from,
             to: interactionParameters.to,
-            preimage,
+            challenge,
             utxos,
             signer: wallet.keypair,
             network: Web3API.network,

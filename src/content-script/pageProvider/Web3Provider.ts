@@ -3,14 +3,11 @@ import { BroadcastedTransaction } from 'opnet';
 import { OpnetProvider } from '@/content-script/pageProvider/index.js';
 import {
     DeploymentResult,
-    IDeploymentParameters,
-    IInteractionParameters,
+    IDeploymentParametersWithoutSigner,
+    InteractionParametersWithoutSigner,
     InteractionResponse,
     UTXO
 } from '@btc-vision/transaction';
-
-export type InteractionParametersWithoutSigner = Omit<IInteractionParameters, 'signer' | 'preimage'>;
-export type IDeploymentParametersWithoutSigner = Omit<IDeploymentParameters, 'signer' | 'network' | 'preimage'>;
 
 export interface BroadcastTransactionOptions {
     raw: string;
