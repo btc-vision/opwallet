@@ -460,14 +460,14 @@ export class WalletController {
         if (!('hdPath' in serialized) || serialized.hdPath === undefined || serialized.hdPath === null) {
             throw new WalletControllerError('No hdPath found in keyring');
         }
-        if (!('passphrase' in serialized) || serialized.passphrase === undefined || serialized.passphrase === null) {
-            throw new WalletControllerError('No passphrase found in keyring');
-        }
+
+        const passphrase =
+            serialized.passphrase !== undefined && serialized.passphrase !== null ? serialized.passphrase : undefined;
 
         return {
             mnemonic: serialized.mnemonic,
             hdPath: serialized.hdPath,
-            passphrase: serialized.passphrase
+            passphrase
         };
     };
 
