@@ -1158,7 +1158,8 @@ export class WalletController {
                         : Buffer.from(params.calldata)
                     : undefined,
                 optionalOutputs: params.optionalOutputs || [],
-                optionalInputs: optionalInputs
+                optionalInputs: optionalInputs,
+                note: params.note
             };
 
             return await Web3API.transactionFactory.signDeployment(deployContractParameters);
@@ -2209,7 +2210,8 @@ export class WalletController {
             calldata: Buffer.from(interactionParameters.calldata as unknown as string, 'hex'),
             optionalInputs,
             optionalOutputs: interactionParameters.optionalOutputs || [],
-            contract: interactionParameters.contract
+            contract: interactionParameters.contract,
+            note: interactionParameters.note
         };
 
         const response = await Web3API.transactionFactory.signInteraction(submit);

@@ -334,7 +334,8 @@ export default function TxOpnetConfirmScreen() {
                 priorityFee: 0n,
                 gasSatFee: 0n,
                 to: parameters.to,
-                from: currentWalletAddress.address
+                from: currentWalletAddress.address,
+                note: parameters.note
             };
 
             const sendTransact = await Web3API.transactionFactory.createBTCTransfer(IFundingTransactionParameters);
@@ -385,7 +386,8 @@ export default function TxOpnetConfirmScreen() {
                 bytecode: Buffer.from(uint8Array),
                 calldata: calldata,
                 optionalInputs: [],
-                optionalOutputs: []
+                optionalOutputs: [],
+                note: parameters.note
             };
 
             const sendTransact: DeploymentResult =

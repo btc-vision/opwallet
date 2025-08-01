@@ -39,6 +39,7 @@ export default function TxCreateScreen() {
     const [totalBalanceValue, setTotalBalanceValue] = useState('0');
     const [balanceValue, setBalanceValue] = useState('0');
     const [balanceValueInSatoshis, setBalanceValueInSatoshis] = useState(0n);
+    const [note, setNote] = useState<string>('');
 
     /* --------------------------------------------------------------------- */
     useEffect(() => {
@@ -96,7 +97,8 @@ export default function TxCreateScreen() {
             priorityFee: 0n,
             header: `Send ${btcUnit}`,
             tokens: [],
-            action: Action.SendBitcoin
+            action: Action.SendBitcoin,
+            note
         };
 
         navigate(RouteTypes.TxOpnetConfirmScreen, { rawTxInfo: event });
@@ -148,7 +150,7 @@ export default function TxCreateScreen() {
                         background: 'rgba(255,255,255,0.02)'
                     }}>
                     {/* chain icon fixed spacing */}
-                    <Row justifyCenter style={{ marginTop: '14vh', marginBottom: 8 }}>
+                    <Row justifyCenter style={{ marginTop: '26vh', marginBottom: 8 }}>
                         <Image src={chain.icon} size={60} style={{ filter: 'drop-shadow(0 0 4px rgba(0,0,0,0.4))' }} />
                     </Row>
 
@@ -260,6 +262,28 @@ export default function TxCreateScreen() {
                         <Text text="Miner fee" color="textDim" />
                         <FeeRateBar onChange={(val) => setUiState({ feeRate: val })} />
                     </Column>
+
+                    {/* Note */}
+                    <div style={{ marginTop: 20 }}>
+                        <Text text="Note (optional)" color="textDim" />
+                        <input
+                            type="text"
+                            value={note}
+                            onChange={(e) => setNote(e.target.value)}
+                            placeholder="Enter a note for the transaction"
+                            style={{
+                                marginTop: 6,
+                                backgroundColor: 'transparent',
+                                borderRadius: 5,
+                                borderWidth: 1,
+                                borderColor: 'rgba(255,255,255,0.3)',
+                                padding: 4,
+                                width: '100%',
+                                fontFamily: 'monospace',
+                                fontSize: 14
+                            }}
+                        />
+                    </div>
                 </div>
             </Content>
 

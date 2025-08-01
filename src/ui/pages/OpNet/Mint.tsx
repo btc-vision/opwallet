@@ -12,8 +12,8 @@ import { fontSizes } from '@/ui/theme/font';
 import { useLocationState, useWallet } from '@/ui/utils';
 import { Wallet } from '@btc-vision/transaction';
 
-import { RouteTypes, useNavigate } from '../MainRoute';
 import { PriorityFeeBar } from '@/ui/components/PriorityFeeBar';
+import { RouteTypes, useNavigate } from '../MainRoute';
 
 export default function Mint() {
     const prop = useLocationState<OPTokenInfo>();
@@ -29,6 +29,7 @@ export default function Mint() {
     const [feeRate, setFeeRate] = useState(5);
     const wallet = useWallet();
     const [maxSupply, setMaxSupply] = useState<bigint>(0n);
+    const [note, setNote] = useState<string>('');
 
     const [address, setAddress] = useState<string | null>(null);
 
@@ -99,20 +100,18 @@ export default function Mint() {
                 title={'Mint ' + prop.name}
             />
             <Content>
-                <Row itemsCenter fullX justifyCenter>
+                <Column itemsCenter fullX justifyCenter>
                     {prop.logo && (
-                        <img src={prop.logo} style={{ width: fontSizes.tiny, height: fontSizes.tiny }} alt={'Token'} />
+                        <img src={prop.logo} style={{ width: fontSizes.xxl, height: fontSizes.xxl }} alt={'Token'} />
                     )}
                     <Text
-                        text={`${BitcoinUtils.expandToDecimals(prop.amount.toString(), prop.divisibility)} ${
-                            prop.symbol
-                        } `}
+                        text={`${BitcoinUtils.formatUnits(prop.amount.toString(), prop.divisibility)} ${prop.symbol} `}
                         preset="bold"
                         textCenter
-                        size="xxl"
+                        size="xl"
                         wrap
                     />
-                </Row>
+                </Column>
 
                 <Column mt="lg">
                     <Row justifyBetween>
@@ -147,6 +146,11 @@ export default function Mint() {
                         }}
                         runesDecimal={prop.divisibility}
                     />
+                </Column>
+
+                <Column mt="sm">
+                    <Text text="Note (optional)" color="textDim" />
+                    <Input preset="text" placeholder={'Note'} value={note} onChange={(e) => setNote(e.target.value)} />
                 </Column>
 
                 <Column mt="lg">
@@ -189,7 +193,8 @@ export default function Mint() {
                             tokens: [prop],
                             feeRate: feeRate,
                             priorityFee: BigInt(priorityFee),
-                            action: Action.Mint
+                            action: Action.Mint,
+                            note
                         };
 
                         navigate(RouteTypes.TxOpnetConfirmScreen, {
