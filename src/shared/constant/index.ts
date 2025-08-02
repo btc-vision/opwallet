@@ -387,37 +387,64 @@ Object.entries(DEFAULT_CHAINS_MAP).forEach(([key, value]) => {
     }
 });
 
-// Add disabled entries for all other chain types
+export const CHAIN_ICONS: { [key in ChainId]: string } = {
+    [ChainId.Bitcoin]: './images/artifacts/bitcoin-mainnet.png',
+    [ChainId.Fractal]: './images/artifacts/fractal-mainnet.svg',
+    [ChainId.Dogecoin]: './images/artifacts/doge.svg',
+    [ChainId.Litecoin]: './images/artifacts/btc.svg',
+    [ChainId.BitcoinCash]: './images/artifacts/bch.svg',
+    [ChainId.Dash]: './images/artifacts/dash.svg'
+};
+
 Object.values(ChainType).forEach((chainType) => {
     if (!CHAINS_MAP[chainType]) {
         // Determine network type and chain id from the enum name
         const isMainnet = chainType.includes('MAINNET');
         const isTestnet = chainType.includes('TESTNET');
         const isRegtest = chainType.includes('REGTEST');
+        const isSignet = chainType.includes('SIGNET');
 
         let networkType = NetworkType.MAINNET;
         if (isTestnet) networkType = NetworkType.TESTNET;
         else if (isRegtest) networkType = NetworkType.REGTEST;
 
-        let unit = 'BTC';
-        let icon = './images/artifacts/bitcoin-mainnet.png';
+        let unit: string;
+        let icon: string;
         const label = chainType
             .replace(/_/g, ' ')
             .toLowerCase()
             .replace(/\b\w/g, (l) => l.toUpperCase());
 
         if (chainType.includes('DOGECOIN')) {
-            unit = isMainnet ? 'DOGE' : 'tDOGE';
+            unit = isMainnet ? 'DOGE' : isRegtest ? 'rDOGE' : 'tDOGE';
             icon = CHAIN_ICONS[ChainId.Dogecoin];
         } else if (chainType.includes('LITECOIN')) {
-            unit = isMainnet ? 'LTC' : 'tLTC';
+            unit = isMainnet ? 'LTC' : isRegtest ? 'rLTC' : 'tLTC';
             icon = CHAIN_ICONS[ChainId.Litecoin];
         } else if (chainType.includes('BITCOINCASH')) {
-            unit = isMainnet ? 'BCH' : 'tBCH';
+            unit = isMainnet ? 'BCH' : isRegtest ? 'rBCH' : 'tBCH';
             icon = CHAIN_ICONS[ChainId.BitcoinCash];
         } else if (chainType.includes('DASH')) {
-            unit = isMainnet ? 'DASH' : 'tDASH';
+            unit = isMainnet ? 'DASH' : isRegtest ? 'rDASH' : 'tDASH';
             icon = CHAIN_ICONS[ChainId.Dash];
+        } else if (chainType.includes('FRACTAL')) {
+            unit = isMainnet ? 'FB' : isRegtest ? 'rFB' : 'tFB';
+            icon = isMainnet ? './images/artifacts/fractal-mainnet.svg' : './images/artifacts/fractal-testnet.svg';
+        } else {
+            // Handle Bitcoin networks
+            if (isRegtest) {
+                unit = 'rBTC';
+                icon = './images/artifacts/bitcoin-testnet.svg';
+            } else if (isSignet) {
+                unit = 'sBTC';
+                icon = './images/artifacts/bitcoin-signet.svg';
+            } else if (isTestnet) {
+                unit = 'tBTC';
+                icon = './images/artifacts/bitcoin-testnet.svg';
+            } else {
+                unit = 'BTC';
+                icon = './images/artifacts/bitcoin-mainnet.png';
+            }
         }
 
         CHAINS_MAP[chainType] = {
@@ -433,21 +460,13 @@ Object.values(ChainType).forEach((chainType) => {
             okxExplorerUrl: '',
             disable: true, // Disabled by default until custom RPC is added
             showPrice: isMainnet,
-            defaultExplorer: 'mempool-space'
+            defaultExplorer: 'mempool-space',
+            contractAddresses: {}
         } as TypeChain<ChainType>;
     }
 });
 
 export const CHAINS = Object.values(CHAINS_MAP).filter(Boolean);
-
-export const CHAIN_ICONS: { [key in ChainId]: string } = {
-    [ChainId.Bitcoin]: './images/artifacts/bitcoin-mainnet.png',
-    [ChainId.Fractal]: './images/artifacts/fractal-mainnet.svg',
-    [ChainId.Dogecoin]: './images/artifacts/dogecoin.png',
-    [ChainId.Litecoin]: './images/artifacts/litecoin.png',
-    [ChainId.BitcoinCash]: './images/artifacts/bitcoin-cash.png',
-    [ChainId.Dash]: './images/artifacts/dash.png'
-};
 
 export interface TypeChainGroup {
     type: 'single' | 'list';

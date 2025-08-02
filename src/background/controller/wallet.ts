@@ -270,7 +270,7 @@ export class WalletController {
     public getMultiAddressAssets = async (addresses: string): Promise<AddressSummary[]> => {
         try {
             const network = this.getChainType();
-            Web3API.setNetwork(network);
+            await Web3API.setNetwork(network);
 
             const addressList = addresses.split(',');
             const summaries: AddressSummary[] = [];
@@ -1464,7 +1464,7 @@ export class WalletController {
      */
     public setChainType = async (chainType: ChainType): Promise<void> => {
         try {
-            Web3API.setNetwork(chainType);
+            await Web3API.setNetwork(chainType);
             preferenceService.setChainType(chainType);
 
             const chain = CHAINS_MAP[chainType];

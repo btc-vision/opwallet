@@ -120,7 +120,7 @@ export default function TxOpnetConfirmScreen() {
 
     useEffect(() => {
         const setWallet = async () => {
-            Web3API.setNetwork(await wallet.getChainType());
+            await Web3API.setNetwork(await wallet.getChainType());
 
             setRouterAddress(Web3API.ROUTER_ADDRESS ? Web3API.ROUTER_ADDRESS : null);
         };

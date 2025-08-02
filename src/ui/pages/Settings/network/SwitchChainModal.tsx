@@ -147,39 +147,41 @@ function ChainGroup(props: { group: TypeChainGroup; onClose: () => void; onRefre
 export const SwitchChainModal = ({ onClose }: { onClose: () => void }) => {
     const [showAddNetwork, setShowAddNetwork] = useState(false);
     const [customNetworks, setCustomNetworks] = useState<TypeChain<ChainType>[]>([]);
+    const [chainGroups, setChainGroups] = useState<TypeChainGroup[]>([]);
     const [refreshKey, setRefreshKey] = useState(0);
     const tools = useTools();
 
-    const loadCustomNetworks = () => {
-        const networks = customNetworksManager.getAllCustomNetworks();
+    const loadData = async () => {
+        // Load custom networks
+        const networks = await customNetworksManager.getAllCustomNetworks();
         const chains = networks
             .map((network) => customNetworksManager.getChain(network.chainType))
             .filter(Boolean) as TypeChain<ChainType>[];
         setCustomNetworks(chains);
+
+        // Load chain groups
+        const groups = await customNetworksManager.getChainGroups();
+        setChainGroups(groups);
     };
 
     useEffect(() => {
-        loadCustomNetworks();
+        void loadData();
     }, [refreshKey]);
 
-    const handleDeleteCustomNetwork = (chainType: ChainType) => {
-        const customNetwork = customNetworksManager.getCustomNetworkByChainType(chainType);
+    const handleDeleteCustomNetwork = async (chainType: ChainType) => {
+        const customNetwork = await customNetworksManager.getCustomNetworkByChainType(chainType);
         if (!customNetwork) return;
 
         const confirmed = window.confirm(`Are you sure you want to delete "${customNetwork.name}"?`);
         if (!confirmed) return;
 
-        const deleted = customNetworksManager.deleteCustomNetwork(customNetwork.id);
+        const deleted = await customNetworksManager.deleteCustomNetwork(customNetwork.id);
         if (deleted) {
             tools.toastSuccess('Custom network deleted');
             setRefreshKey((prev) => prev + 1);
         } else {
             tools.toastError('Failed to delete custom network');
         }
-    };
-
-    const getChainGroups = (): TypeChainGroup[] => {
-        return customNetworksManager.getChainGroups();
     };
 
     if (showAddNetwork) {
@@ -210,7 +212,7 @@ export const SwitchChainModal = ({ onClose }: { onClose: () => void }) => {
                 <Row fullX style={{ borderTopWidth: 1, borderColor: colors.border }} mt="md" />
 
                 <Column gap="zero" mt="sm" mb="lg" fullX>
-                    {getChainGroups().map((v, index) => (
+                    {chainGroups.map((v, index) => (
                         <ChainGroup
                             key={`chain_group_${index}`}
                             group={v}

@@ -184,7 +184,7 @@ export default function Swap() {
                 setLoading(true);
                 // Use an account-specific storage key
                 const chain = await wallet.getChainType();
-                Web3API.setNetwork(chain);
+                await Web3API.setNetwork(chain);
 
                 const accountAddr = currentAccount.pubkey;
                 const storageKey = `opnetTokens_${chain}_${accountAddr}`;

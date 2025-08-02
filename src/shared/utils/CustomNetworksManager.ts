@@ -18,13 +18,19 @@ type ConcreteTypeChain = TypeChain<ChainType>;
 class CustomNetworksManager {
     private customNetworks: Map<string, CustomNetwork> = new Map();
     private chainsMap: Map<ChainType, ConcreteTypeChain> = new Map();
+    private readonly initialized: Promise<void>;
 
     constructor() {
-        this.loadFromStorage();
-        this.rebuildChainsMap();
+        this.initialized = this.init();
     }
 
-    public getChainGroups(): TypeChainGroup[] {
+    public async ensureInitialized(): Promise<void> {
+        await this.initialized;
+    }
+
+    public async getChainGroups(): Promise<TypeChainGroup[]> {
+        await this.ensureInitialized();
+
         const groups: TypeChainGroup[] = [
             {
                 type: 'single',
@@ -148,6 +154,8 @@ class CustomNetworksManager {
         faucetUrl?: string;
         showPrice?: boolean;
     }): Promise<CustomNetwork> {
+        await this.ensureInitialized();
+
         const isValid = await this.testRpcConnection(params.opnetUrl);
         if (!isValid) {
             throw new Error('Failed to connect to RPC endpoint');
@@ -182,13 +190,15 @@ class CustomNetworksManager {
         };
 
         this.customNetworks.set(id, network);
-        this.saveToStorage();
+        await this.saveToStorage();
         this.rebuildChainsMap();
 
         return network;
     }
 
-    public updateCustomNetwork(id: string, updates: Partial<CustomNetwork>): CustomNetwork | null {
+    public async updateCustomNetwork(id: string, updates: Partial<CustomNetwork>): Promise<CustomNetwork | null> {
+        await this.ensureInitialized();
+
         const network = this.customNetworks.get(id);
         if (!network) {
             return null;
@@ -196,13 +206,15 @@ class CustomNetworksManager {
 
         const updated = { ...network, ...updates };
         this.customNetworks.set(id, updated);
-        this.saveToStorage();
+        await this.saveToStorage();
         this.rebuildChainsMap();
 
         return updated;
     }
 
-    public deleteCustomNetwork(id: string): boolean {
+    public async deleteCustomNetwork(id: string): Promise<boolean> {
+        await this.ensureInitialized();
+
         const network = this.customNetworks.get(id);
         if (!network) {
             return false;
@@ -210,25 +222,29 @@ class CustomNetworksManager {
 
         const deleted = this.customNetworks.delete(id);
         if (deleted) {
-            this.saveToStorage();
+            await this.saveToStorage();
             this.rebuildChainsMap();
         }
         return deleted;
     }
 
-    public getCustomNetwork(id: string): CustomNetwork | undefined {
+    public async getCustomNetwork(id: string): Promise<CustomNetwork | undefined> {
+        await this.ensureInitialized();
         return this.customNetworks.get(id);
     }
 
-    public getCustomNetworkByChainType(chainType: ChainType): CustomNetwork | undefined {
+    public async getCustomNetworkByChainType(chainType: ChainType): Promise<CustomNetwork | undefined> {
+        await this.ensureInitialized();
         return Array.from(this.customNetworks.values()).find((network) => network.chainType === chainType);
     }
 
-    public getAllCustomNetworks(): CustomNetwork[] {
+    public async getAllCustomNetworks(): Promise<CustomNetwork[]> {
+        await this.ensureInitialized();
         return Array.from(this.customNetworks.values());
     }
 
-    public getChainsMap(): { [key in ChainType]?: ConcreteTypeChain } {
+    public async getChainsMap(): Promise<{ [key in ChainType]?: ConcreteTypeChain }> {
+        await this.ensureInitialized();
         const map: { [key in ChainType]?: ConcreteTypeChain } = {};
         this.chainsMap.forEach((value, key) => {
             map[key] = value;
@@ -240,12 +256,14 @@ class CustomNetworksManager {
         return this.chainsMap.get(chainType);
     }
 
-    public getAllChains(): ConcreteTypeChain[] {
+    public async getAllChains(): Promise<ConcreteTypeChain[]> {
+        await this.ensureInitialized();
         return Array.from(this.chainsMap.values());
     }
 
-    public isCustomChain(chainType: ChainType): boolean {
-        const customNetwork = this.getCustomNetworkByChainType(chainType);
+    public async isCustomChain(chainType: ChainType): Promise<boolean> {
+        await this.ensureInitialized();
+        const customNetwork = await this.getCustomNetworkByChainType(chainType);
         return !!customNetwork;
     }
 
@@ -253,25 +271,52 @@ class CustomNetworksManager {
         return !!DEFAULT_CHAINS_MAP[chainType];
     }
 
-    private loadFromStorage(): void {
-        try {
-            const stored = localStorage.getItem(CUSTOM_NETWORKS_STORAGE_KEY);
+    private async init(): Promise<void> {
+        await this.loadFromStorage();
+        this.rebuildChainsMap();
+    }
 
-            if (stored) {
-                const networks = JSON.parse(stored) as CustomNetwork[];
-                networks.forEach((network) => {
-                    this.customNetworks.set(network.id, network);
-                });
+    private async loadFromStorage(): Promise<void> {
+        try {
+            // Check if we're in a context where chrome.storage is available
+            if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+                const result = await chrome.storage.local.get(CUSTOM_NETWORKS_STORAGE_KEY);
+                const stored = result[CUSTOM_NETWORKS_STORAGE_KEY] as CustomNetwork[] | undefined;
+
+                if (stored && Array.isArray(stored)) {
+                    stored.forEach((network) => {
+                        this.customNetworks.set(network.id, network);
+                    });
+                }
+            } else if (typeof localStorage !== 'undefined') {
+                // Fallback to localStorage for testing or non-extension contexts
+                const stored = localStorage.getItem(CUSTOM_NETWORKS_STORAGE_KEY);
+
+                if (stored) {
+                    const networks = JSON.parse(stored) as CustomNetwork[];
+                    networks.forEach((network) => {
+                        this.customNetworks.set(network.id, network);
+                    });
+                }
             }
         } catch (error) {
             console.error('Failed to load custom networks:', error);
         }
     }
 
-    private saveToStorage(): void {
+    private async saveToStorage(): Promise<void> {
         try {
             const networks = Array.from(this.customNetworks.values());
-            localStorage.setItem(CUSTOM_NETWORKS_STORAGE_KEY, JSON.stringify(networks));
+
+            // Check if we're in a context where chrome.storage is available
+            if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+                await chrome.storage.local.set({
+                    [CUSTOM_NETWORKS_STORAGE_KEY]: networks
+                });
+            } else if (typeof localStorage !== 'undefined') {
+                // Fallback to localStorage for testing or non-extension contexts
+                localStorage.setItem(CUSTOM_NETWORKS_STORAGE_KEY, JSON.stringify(networks));
+            }
         } catch (error) {
             console.error('Failed to save custom networks:', error);
         }
@@ -305,7 +350,7 @@ class CustomNetworksManager {
                 showPrice: network.showPrice,
                 defaultExplorer: 'mempool-space',
                 isCustom: true,
-                contractAddresses: {}
+                contractAddresses: network.contractAddresses || {}
             };
             this.chainsMap.set(network.chainType, chain);
         });

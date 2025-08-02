@@ -56,7 +56,7 @@ export class OpenApiService {
               } as OpenApiStore);
 
         const chainType = preferenceService.getChainType();
-        Web3API.setNetwork(chainType);
+        await Web3API.setNetwork(chainType);
 
         const chain = CHAINS_MAP[chainType];
         if (!chain) {

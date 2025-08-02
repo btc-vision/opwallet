@@ -23,7 +23,7 @@ import { customNetworksManager } from '@/shared/utils/CustomNetworksManager';
 
 BigNumber.config({ EXPONENTIAL_AT: 256 });
 
-export function getOPNetChainType(chain: ChainType): ChainId {
+export async function getOPNetChainType(chain: ChainType): Promise<ChainId> {
     // Get the chain configuration
     const chainConfig = customNetworksManager.getChain(chain);
 
@@ -35,7 +35,7 @@ export function getOPNetChainType(chain: ChainType): ChainId {
 
         // For custom networks, try to determine from the chainId in the custom network data
         if (chainConfig.isCustom) {
-            const customNetwork = customNetworksManager.getCustomNetworkByChainType(chain);
+            const customNetwork = await customNetworksManager.getCustomNetworkByChainType(chain);
             if (customNetwork) {
                 // Map the ChainId enum from constants to the OPNet ChainId
                 switch (customNetwork.chainId) {
@@ -196,7 +196,7 @@ class Web3API {
         return this._metadata;
     }
 
-    public setNetwork(chainType: ChainType): void {
+    public async setNetwork(chainType: ChainType): Promise<void> {
         // Get chain configuration from customNetworksManager
         const chainConfig = customNetworksManager.getChain(chainType);
 
@@ -212,7 +212,7 @@ class Web3API {
         this.network = getBitcoinLibJSNetwork(chainConfig.networkType, chainType);
 
         if (chainType !== this.currentChain) {
-            const chainId = getOPNetChainType(chainType);
+            const chainId = await getOPNetChainType(chainType);
 
             this.currentChain = chainType;
             this.chainId = chainId;
