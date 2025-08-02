@@ -9,8 +9,7 @@ import {
     TypeChainGroup
 } from '@/shared/constant';
 import { NetworkType } from '@/shared/types';
-
-const CUSTOM_NETWORKS_STORAGE_KEY = 'custom_networks';
+import { preferenceService } from '@/background/service';
 
 // Remove the generic type parameter and use ChainType directly
 type ConcreteTypeChain = TypeChain<ChainType>;
@@ -278,26 +277,16 @@ class CustomNetworksManager {
 
     private async loadFromStorage(): Promise<void> {
         try {
-            // Check if we're in a context where chrome.storage is available
-            if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
-                const result = await chrome.storage.local.get(CUSTOM_NETWORKS_STORAGE_KEY);
-                const stored = result[CUSTOM_NETWORKS_STORAGE_KEY] as CustomNetwork[] | undefined;
+            // Wait for preference service to be initialized
+            if (!preferenceService.store) {
+                await preferenceService.init();
+            }
 
-                if (stored && Array.isArray(stored)) {
-                    stored.forEach((network) => {
-                        this.customNetworks.set(network.id, network);
-                    });
-                }
-            } else if (typeof localStorage !== 'undefined') {
-                // Fallback to localStorage for testing or non-extension contexts
-                const stored = localStorage.getItem(CUSTOM_NETWORKS_STORAGE_KEY);
-
-                if (stored) {
-                    const networks = JSON.parse(stored) as CustomNetwork[];
-                    networks.forEach((network) => {
-                        this.customNetworks.set(network.id, network);
-                    });
-                }
+            const stored = preferenceService.getCustomNetworks();
+            if (stored && typeof stored === 'object') {
+                Object.values(stored).forEach((network) => {
+                    this.customNetworks.set(network.id, network);
+                });
             }
         } catch (error) {
             console.error('Failed to load custom networks:', error);
@@ -306,17 +295,12 @@ class CustomNetworksManager {
 
     private async saveToStorage(): Promise<void> {
         try {
-            const networks = Array.from(this.customNetworks.values());
+            const networks: Record<string, CustomNetwork> = {};
+            this.customNetworks.forEach((network, id) => {
+                networks[id] = network;
+            });
 
-            // Check if we're in a context where chrome.storage is available
-            if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
-                await chrome.storage.local.set({
-                    [CUSTOM_NETWORKS_STORAGE_KEY]: networks
-                });
-            } else if (typeof localStorage !== 'undefined') {
-                // Fallback to localStorage for testing or non-extension contexts
-                localStorage.setItem(CUSTOM_NETWORKS_STORAGE_KEY, JSON.stringify(networks));
-            }
+            await preferenceService.setCustomNetworks(networks);
         } catch (error) {
             console.error('Failed to save custom networks:', error);
         }
