@@ -201,20 +201,35 @@ export const SwitchChainModal = ({ onClose }: { onClose: () => void }) => {
 
     return (
         <BottomModal onClose={onClose}>
-            <Column justifyCenter itemsCenter>
-                <Row justifyBetween itemsCenter style={{ height: 20 }} fullX>
-                    <Text text="Select Network" textCenter size="md" />
-                    <Row
-                        onClick={() => {
-                            onClose();
-                        }}>
-                        <CloseOutlined />
+            <Column style={{ height: '100%', maxHeight: '80vh' }}>
+                {/* Fixed Header */}
+                <Column justifyCenter itemsCenter style={{ flexShrink: 0 }}>
+                    <Row justifyBetween itemsCenter style={{ height: 20 }} fullX>
+                        <Text text="Select Network" textCenter size="md" />
+                        <Row
+                            onClick={() => {
+                                onClose();
+                            }}>
+                            <CloseOutlined />
+                        </Row>
                     </Row>
-                </Row>
+                    <Row fullX style={{ borderTopWidth: 1, borderColor: colors.border }} mt="md" />
+                </Column>
 
-                <Row fullX style={{ borderTopWidth: 1, borderColor: colors.border }} mt="md" />
-
-                <Column gap="zero" mt="sm" mb="lg" fullX>
+                {/* Scrollable Content */}
+                <Column
+                    gap="zero"
+                    mt="sm"
+                    mb="lg"
+                    fullX
+                    style={{
+                        flex: 1,
+                        overflowY: 'auto',
+                        overflowX: 'hidden',
+                        paddingRight: 8,
+                        paddingBottom: 20,
+                        minHeight: 0
+                    }}>
                     {chainGroups.map((v, index) => (
                         <ChainGroup
                             key={`chain_group_${index}`}

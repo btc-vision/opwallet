@@ -391,7 +391,7 @@ export const CHAIN_ICONS: { [key in ChainId]: string } = {
     [ChainId.Bitcoin]: './images/artifacts/bitcoin-mainnet.png',
     [ChainId.Fractal]: './images/artifacts/fractal-mainnet.svg',
     [ChainId.Dogecoin]: './images/artifacts/doge.svg',
-    [ChainId.Litecoin]: './images/artifacts/btc.svg',
+    [ChainId.Litecoin]: './images/artifacts/ltc.svg',
     [ChainId.BitcoinCash]: './images/artifacts/bch.svg',
     [ChainId.Dash]: './images/artifacts/dash.svg'
 };

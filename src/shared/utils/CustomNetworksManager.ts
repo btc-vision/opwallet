@@ -41,14 +41,15 @@ class CustomNetworksManager {
     public async getChainGroups(): Promise<TypeChainGroup[]> {
         await this.ensureInitialized();
 
-        const groups: TypeChainGroup[] = [
+        // Filter out groups that have no enabled items
+        return [
             {
                 type: 'single',
                 chain: this.getChain(ChainType.BITCOIN_MAINNET) as ConcreteTypeChain
             },
             {
                 type: 'list',
-                label: 'Bitcoin Testnet',
+                label: 'Bitcoin Testnets',
                 icon: './images/artifacts/bitcoin-testnet-all.svg',
                 items: [
                     this.getChain(ChainType.BITCOIN_REGTEST),
@@ -107,20 +108,11 @@ class CustomNetworksManager {
                 ].filter(Boolean) as ConcreteTypeChain[]
             }
         ];
-
-        // Filter out groups that have no enabled items
-        return groups.filter((group) => {
-            if (group.type === 'single') {
-                return group.chain && !group.chain.disable;
-            } else {
-                return group.items && group.items.some((item) => !item.disable);
-            }
-        });
     }
 
     public async testRpcConnection(url: string): Promise<boolean> {
         try {
-            const response = await fetch(url, {
+            const response = await fetch(`${url}/api/v1/json-rpc`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
@@ -203,6 +195,8 @@ class CustomNetworksManager {
         await this.saveToStorage();
         this.rebuildChainsMap();
 
+        await this.reload();
+
         return network;
     }
 
@@ -218,6 +212,8 @@ class CustomNetworksManager {
         this.customNetworks.set(id, updated);
         await this.saveToStorage();
         this.rebuildChainsMap();
+
+        await this.reload();
 
         return updated;
     }
@@ -235,6 +231,9 @@ class CustomNetworksManager {
             await this.saveToStorage();
             this.rebuildChainsMap();
         }
+
+        await this.reload();
+
         return deleted;
     }
 
@@ -341,7 +340,7 @@ class CustomNetworksManager {
                 faucetUrl: network.faucetUrl || '',
                 okxExplorerUrl: '',
                 isViewTxHistoryInternally: false,
-                disable: false, // Custom networks are enabled
+                disable: false,
                 showPrice: network.showPrice,
                 defaultExplorer: 'mempool-space',
                 isCustom: true,

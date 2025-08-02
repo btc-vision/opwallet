@@ -99,17 +99,32 @@ export const AddCustomNetworkModal = ({ onClose, onSuccess }: { onClose: () => v
 
     return (
         <BottomModal onClose={onClose}>
-            <Column>
-                <Row justifyBetween itemsCenter style={{ height: 20 }} fullX>
-                    <Text text="Add Custom Network" textCenter size="md" />
-                    <Row onClick={onClose}>
-                        <CloseOutlined />
+            <Column style={{ height: '100%', maxHeight: '80vh' }}>
+                {/* Fixed Header */}
+                <Column style={{ flexShrink: 0 }}>
+                    <Row justifyBetween itemsCenter style={{ height: 20 }} fullX>
+                        <Text text="Add Custom Network" textCenter size="md" />
+                        <Row onClick={onClose}>
+                            <CloseOutlined />
+                        </Row>
                     </Row>
-                </Row>
+                    <Row fullX style={{ borderTopWidth: 1, borderColor: colors.border }} mt="md" />
+                </Column>
 
-                <Row fullX style={{ borderTopWidth: 1, borderColor: colors.border }} mt="md" />
-
-                <Column gap="md" mt="lg" mb="lg" fullX>
+                {/* Scrollable Content */}
+                <Column
+                    gap="md"
+                    mt="lg"
+                    mb="lg"
+                    fullX
+                    style={{
+                        flex: 1,
+                        overflowY: 'auto',
+                        overflowX: 'hidden',
+                        paddingRight: 8,
+                        paddingBottom: 20,
+                        minHeight: 0
+                    }}>
                     <Column gap="sm">
                         <Text text="Network Name" size="sm" />
                         <Input
@@ -119,14 +134,13 @@ export const AddCustomNetworkModal = ({ onClose, onSuccess }: { onClose: () => v
                         />
                     </Column>
 
-                    <Column gap="sm">
+                    <Column gap="sm" style={{ position: 'relative' }}>
                         <Text text="Network Type" size="sm" />
                         <Card
                             style={{
                                 backgroundColor: 'rgba(255,255,255,0.1)',
                                 borderRadius: 8,
-                                cursor: 'pointer',
-                                position: 'relative'
+                                cursor: 'pointer'
                             }}
                             onClick={() => setShowNetworkDropdown(!showNetworkDropdown)}>
                             <Row justifyBetween itemsCenter>
@@ -141,11 +155,20 @@ export const AddCustomNetworkModal = ({ onClose, onSuccess }: { onClose: () => v
                                     borderRadius: 8,
                                     position: 'absolute',
                                     zIndex: 1000,
-                                    marginTop: 45,
-                                    width: '100%',
-                                    border: `1px solid ${colors.border}`
+                                    top: 70,
+                                    left: 0,
+                                    right: 0,
+                                    border: `1px solid ${colors.border}`,
+                                    maxHeight: 240, // Show max 5 items
+                                    overflow: 'hidden'
                                 }}>
-                                <Column gap="zero">
+                                <Column
+                                    gap="zero"
+                                    style={{
+                                        maxHeight: 240,
+                                        overflowY: 'auto',
+                                        overflowX: 'hidden'
+                                    }}>
                                     {NETWORK_OPTIONS.map((option, index) => (
                                         <Card
                                             key={option.value}
@@ -156,13 +179,16 @@ export const AddCustomNetworkModal = ({ onClose, onSuccess }: { onClose: () => v
                                                     index < NETWORK_OPTIONS.length - 1
                                                         ? `1px solid ${colors.border}`
                                                         : 'none',
-                                                cursor: 'pointer'
+                                                cursor: 'pointer',
+                                                minHeight: 48 // Consistent height
                                             }}
                                             onClick={() => {
                                                 setNetworkType(option.value);
                                                 setShowNetworkDropdown(false);
                                             }}>
-                                            <Text text={option.label} />
+                                            <Row itemsCenter style={{ height: '100%' }}>
+                                                <Text text={option.label} />
+                                            </Row>
                                         </Card>
                                     ))}
                                 </Column>
@@ -170,14 +196,13 @@ export const AddCustomNetworkModal = ({ onClose, onSuccess }: { onClose: () => v
                         )}
                     </Column>
 
-                    <Column gap="sm">
+                    <Column gap="sm" style={{ position: 'relative' }}>
                         <Text text="Chain Type" size="sm" />
                         <Card
                             style={{
                                 backgroundColor: 'rgba(255,255,255,0.1)',
                                 borderRadius: 8,
-                                cursor: 'pointer',
-                                position: 'relative'
+                                cursor: 'pointer'
                             }}
                             onClick={() => setShowChainDropdown(!showChainDropdown)}>
                             <Row justifyBetween itemsCenter>
@@ -195,11 +220,20 @@ export const AddCustomNetworkModal = ({ onClose, onSuccess }: { onClose: () => v
                                     borderRadius: 8,
                                     position: 'absolute',
                                     zIndex: 1000,
-                                    marginTop: 45,
-                                    width: '100%',
-                                    border: `1px solid ${colors.border}`
+                                    top: 70,
+                                    left: 0,
+                                    right: 0,
+                                    border: `1px solid ${colors.border}`,
+                                    maxHeight: 240, // Approximately 5 items * 48px per item
+                                    overflow: 'hidden'
                                 }}>
-                                <Column gap="zero">
+                                <Column
+                                    gap="zero"
+                                    style={{
+                                        maxHeight: 240,
+                                        overflowY: 'auto',
+                                        overflowX: 'hidden'
+                                    }}>
                                     {CHAIN_OPTIONS.map((option, index) => (
                                         <Card
                                             key={option.value}
@@ -210,13 +244,14 @@ export const AddCustomNetworkModal = ({ onClose, onSuccess }: { onClose: () => v
                                                     index < CHAIN_OPTIONS.length - 1
                                                         ? `1px solid ${colors.border}`
                                                         : 'none',
-                                                cursor: 'pointer'
+                                                cursor: 'pointer',
+                                                minHeight: 48 // Consistent height for each item
                                             }}
                                             onClick={() => {
                                                 setChainId(option.value);
                                                 setShowChainDropdown(false);
                                             }}>
-                                            <Row itemsCenter gap="sm">
+                                            <Row itemsCenter gap="sm" style={{ height: '100%' }}>
                                                 <Image src={option.icon} size={20} />
                                                 <Text text={option.label} />
                                             </Row>
@@ -239,7 +274,7 @@ export const AddCustomNetworkModal = ({ onClose, onSuccess }: { onClose: () => v
                     <Column gap="sm">
                         <Text text="RPC URL" size="sm" />
                         <Input
-                            placeholder="https://your-rpc-endpoint.com"
+                            placeholder="https://mainnet.opnet.org"
                             value={rpcUrl}
                             onChange={(e) => setRpcUrl(e.target.value)}
                         />
@@ -257,7 +292,7 @@ export const AddCustomNetworkModal = ({ onClose, onSuccess }: { onClose: () => v
                     <Column gap="sm">
                         <Text text="Faucet URL (Optional)" size="sm" />
                         <Input
-                            placeholder="https://faucet.example.com"
+                            placeholder="https://faucet.opnet.org"
                             value={faucetUrl}
                             onChange={(e) => setFaucetUrl(e.target.value)}
                         />
