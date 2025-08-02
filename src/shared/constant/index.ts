@@ -1,4 +1,3 @@
-/* constants pool */
 import { AddressType, NetworkType, RestoreWalletType } from '../types';
 
 export enum CHAINS_ENUM {
@@ -20,12 +19,6 @@ export const KEYRING_CLASS = {
     KEYSTONE: 'Keystone'
 };
 
-export const KEYRING_TYPE_TEXT = {
-    [KEYRING_TYPE.HdKeyring]: 'Created by Mnemonic',
-    [KEYRING_TYPE.SimpleKeyring]: 'Imported by Private Key',
-    [KEYRING_TYPE.WatchAddressKeyring]: 'Watch Mode',
-    [KEYRING_TYPE.KeystoneKeyring]: 'Import from Keystone'
-};
 export const BRAND_ALIAN_TYPE_TEXT = {
     [KEYRING_TYPE.HdKeyring]: 'Account',
     [KEYRING_TYPE.SimpleKeyring]: 'Private Key',
@@ -372,28 +365,7 @@ export const CHAIN_GROUPS: TypeChainGroup[] = [
     }
 ];
 
-export const MINIMUM_GAS_LIMIT = 21000;
-
-export enum WATCH_ADDRESS_CONNECT_TYPE {
-    WalletConnect = 'WalletConnect'
-}
-
-export const WALLETCONNECT_STATUS_MAP = {
-    PENDING: 1,
-    CONNECTED: 2,
-    WAITING: 3,
-    SIBMITTED: 4,
-    REJECTED: 5,
-    FAILD: 6
-};
-
-export const INTERNAL_REQUEST_ORIGIN = 'https://unisat.io';
-
-export const INTERNAL_REQUEST_SESSION = {
-    name: 'OP_WALLET',
-    origin: INTERNAL_REQUEST_ORIGIN,
-    icon: './images/logo/opwallet_logo_dark.svg'
-};
+export const INTERNAL_REQUEST_ORIGIN = 'https://opnet.org';
 
 export const EVENTS = {
     broadcastToUI: 'broadcastToUI',
@@ -406,27 +378,10 @@ export const EVENTS = {
     }
 };
 
-export const SORT_WEIGHT = {
-    [KEYRING_TYPE.HdKeyring]: 1,
-    [KEYRING_TYPE.SimpleKeyring]: 2,
-    [KEYRING_TYPE.WalletConnectKeyring]: 4,
-    [KEYRING_TYPE.WatchAddressKeyring]: 5
-};
-
-export const GASPRICE_RANGE = {
-    [CHAINS_ENUM.BTC]: [0, 10000]
-};
-
 export const COIN_NAME = 'BTC';
 export const COIN_SYMBOL = 'BTC';
 
 export const COIN_DUST = 1000;
-
-export const TO_LOCALE_STRING_CONFIG = {
-    minimumFractionDigits: 8
-};
-
-export const SAFE_DOMAIN_CONFIRMATION = 3;
 
 export const GITHUB_URL = 'https://github.com/btc-vision/opwallet';
 export const TWITTER_URL = 'https://x.com/opnetbtc';
@@ -437,34 +392,11 @@ export const VERSION = process.env.release ?? '0.0.0';
 export const MANIFEST_VERSION = process.env.manifest ?? 'mv3';
 
 export enum AddressFlagType {
-    Is_Enable_Atomicals = 0b1,
     CONFIRMED_UTXO_MODE = 0b10,
     DISABLE_AUTO_SWITCH_CONFIRMED = 0b100
 }
 
 export const UNCONFIRMED_HEIGHT = 4194303;
-
-export enum PaymentChannelType {
-    MoonPay = 'moonpay',
-    AlchemyPay = 'alchemypay',
-    Transak = 'transak'
-}
-
-export const PAYMENT_CHANNELS = {
-    moonpay: {
-        name: 'MoonPay',
-        img: './images/artifacts/moonpay.png'
-    },
-    alchemypay: {
-        name: 'Alchemy Pay',
-        img: './images/artifacts/alchemypay.png'
-    },
-
-    transak: {
-        name: 'Transak',
-        img: './images/artifacts/transak.png'
-    }
-};
 
 export enum HardwareWalletType {
     Keystone = 'keystone',
