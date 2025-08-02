@@ -150,25 +150,32 @@ export const SwitchChainModal = ({ onClose }: { onClose: () => void }) => {
     const [showAddNetwork, setShowAddNetwork] = useState(false);
     const [customNetworks, setCustomNetworks] = useState<TypeChain<ChainType>[]>([]);
     const [chainGroups, setChainGroups] = useState<TypeChainGroup[]>([]);
-    const [refreshKey, setRefreshKey] = useState(0);
     const tools = useTools();
 
     const loadData = async () => {
-        // Load custom networks
-        const networks = await customNetworksManager.getAllCustomNetworks();
-        const chains = networks
-            .map((network) => customNetworksManager.getChain(network.chainType))
-            .filter(Boolean) as TypeChain<ChainType>[];
-        setCustomNetworks(chains);
+        try {
+            // Ensure custom networks manager is initialized and reloaded
+            await customNetworksManager.reload();
 
-        // Load chain groups
-        const groups = await customNetworksManager.getChainGroups();
-        setChainGroups(groups);
+            // Load custom networks
+            const networks = await customNetworksManager.getAllCustomNetworks();
+            const chains = networks
+                .map((network) => customNetworksManager.getChain(network.chainType))
+                .filter(Boolean) as TypeChain<ChainType>[];
+            setCustomNetworks(chains);
+
+            // Load chain groups
+            const groups = await customNetworksManager.getChainGroups();
+            setChainGroups(groups);
+        } catch (error) {
+            console.error('Error loading chain data:', error);
+            tools.toastError('Failed to load network data');
+        }
     };
 
     useEffect(() => {
         void loadData();
-    }, [refreshKey]);
+    }, []);
 
     const handleDeleteCustomNetwork = async (chainType: ChainType) => {
         const customNetwork = await customNetworksManager.getCustomNetworkByChainType(chainType);
@@ -177,26 +184,30 @@ export const SwitchChainModal = ({ onClose }: { onClose: () => void }) => {
         const confirmed = window.confirm(`Are you sure you want to delete "${customNetwork.name}"?`);
         if (!confirmed) return;
 
-        // Use wallet controller for deletion
-        const deleted = await wallet.deleteCustomNetwork(customNetwork.id);
-        if (deleted) {
-            tools.toastSuccess('Custom network deleted');
-            setRefreshKey((prev) => prev + 1);
-        } else {
+        try {
+            // Use wallet controller for deletion
+            const deleted = await wallet.deleteCustomNetwork(customNetwork.id);
+            if (deleted) {
+                tools.toastSuccess('Custom network deleted');
+                // Reload data after deletion
+                await loadData();
+            } else {
+                tools.toastError('Failed to delete custom network');
+            }
+        } catch (error) {
+            console.error('Error deleting network:', error);
             tools.toastError('Failed to delete custom network');
         }
     };
 
+    const handleAddNetworkSuccess = async () => {
+        setShowAddNetwork(false);
+        // Reload data after adding a new network
+        await loadData();
+    };
+
     if (showAddNetwork) {
-        return (
-            <AddCustomNetworkModal
-                onClose={() => setShowAddNetwork(false)}
-                onSuccess={() => {
-                    setShowAddNetwork(false);
-                    setRefreshKey((prev) => prev + 1);
-                }}
-            />
-        );
+        return <AddCustomNetworkModal onClose={() => setShowAddNetwork(false)} onSuccess={handleAddNetworkSuccess} />;
     }
 
     return (
@@ -231,12 +242,7 @@ export const SwitchChainModal = ({ onClose }: { onClose: () => void }) => {
                         minHeight: 0
                     }}>
                     {chainGroups.map((v, index) => (
-                        <ChainGroup
-                            key={`chain_group_${index}`}
-                            group={v}
-                            onClose={onClose}
-                            onRefresh={() => setRefreshKey((prev) => prev + 1)}
-                        />
+                        <ChainGroup key={`chain_group_${index}`} group={v} onClose={onClose} onRefresh={loadData} />
                     ))}
 
                     {customNetworks.length > 0 && (

@@ -539,7 +539,11 @@ export const AUTO_LOCKTIMES = [
     { id: 5, time: 1800000, label: '30 Minutes' },
     { id: 6, time: 3600000, label: '1 Hour' },
     { id: 7, time: 7200000, label: '2 Hours' },
-    { id: 8, time: 14400000, label: '4 Hours' }
+    { id: 8, time: 14400000, label: '4 Hours' },
+    { id: 9, time: 21600000, label: '6 Hours' },
+    { id: 10, time: 43200000, label: '12 Hours' },
+    { id: 11, time: 86400000, label: '1 Day' },
+    { id: 12, time: 604800000, label: '1 Week' }
 ];
 
-export const DEFAULT_LOCKTIME_ID = 7;
+export const DEFAULT_LOCKTIME_ID = 10;
