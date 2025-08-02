@@ -1479,8 +1479,13 @@ export class WalletController {
      */
     public setChainType = async (chainType: ChainType): Promise<void> => {
         try {
+            // Ensure custom networks are loaded
+            await customNetworksManager.reload();
+
+            // This will use the updated CHAINS_MAP
             await Web3API.setNetwork(chainType);
-            preferenceService.setChainType(chainType);
+
+            await preferenceService.setChainType(chainType);
 
             const chain = CHAINS_MAP[chainType];
             if (!chain) {
@@ -1528,7 +1533,7 @@ export class WalletController {
             const network = await customNetworksManager.addCustomNetwork(params);
 
             // Force reload of chains to ensure background service is aware
-            await customNetworksManager.ensureInitialized();
+            await customNetworksManager.reload();
 
             return network;
         } catch (err) {
@@ -1541,7 +1546,7 @@ export class WalletController {
             const success = await customNetworksManager.deleteCustomNetwork(id);
             if (success) {
                 // Force reload of chains
-                await customNetworksManager.ensureInitialized();
+                await customNetworksManager.reload();
             }
             return success;
         } catch (err) {

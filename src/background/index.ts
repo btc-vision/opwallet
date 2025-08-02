@@ -38,7 +38,15 @@ async function restoreAppState() {
 
     await contactBookService.init();
 
-    await customNetworksManager.ensureInitialized();
+    await customNetworksManager.reload();
+
+    chrome.storage.onChanged.addListener(async (changes, areaName) => {
+        if (areaName === 'local' && changes['custom_networks']) {
+            console.log('Custom networks updated from UI, reinitializing...');
+            // Force reload of custom networks and rebuild CHAINS_MAP
+            await customNetworksManager.reload();
+        }
+    });
 
     appStoreLoaded = true;
 }
