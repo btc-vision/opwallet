@@ -2,7 +2,7 @@ import { createContext, ReactNode, useContext } from 'react';
 
 import { AccountAsset } from '@/background/controller/wallet';
 import { ContactBookItem, ContactBookStore } from '@/background/service/contactBook';
-import { ToSignInput } from '@/background/service/keyring';
+import { SavedVault, ToSignInput } from '@/background/service/keyring';
 import { ConnectedSite } from '@/background/service/permission';
 import { AddressFlagType, ChainType } from '@/shared/constant';
 import {
@@ -10,7 +10,6 @@ import {
     AddressSummary,
     AppSummary,
     BitcoinBalance,
-    BtcChannelItem,
     DecodedPsbt,
     FeeSummary,
     NetworkType,
@@ -27,7 +26,6 @@ import { ApprovalData, ApprovalResponse } from '@/shared/types/Approval';
 import { InteractionParametersWithoutSigner } from '@btc-vision/transaction';
 import { AddressType, UnspentOutput } from '@btc-vision/wallet-sdk';
 import { bitcoin } from '@btc-vision/wallet-sdk/lib/bitcoin-core';
-import { SavedVault } from '../../background/service/keyring';
 
 export interface WalletController {
     changePassword: (password: string, newPassword: string) => Promise<void>;
@@ -265,12 +263,6 @@ export interface WalletController {
     genSignMsgUr(text: string, msgType?: string): Promise<{ type: string; cbor: string; requestId: string }>;
 
     parseSignMsgUr(type: string, cbor: string, msgType?: string): Promise<ParsedSignMsgUr>;
-
-    // getEnableSignData(): Promise<boolean>;
-
-    // setEnableSignData(enable: boolean): Promise<void>;
-
-    getBuyBtcChannelList(): Promise<BtcChannelItem[]>;
 
     setAutoLockTimeId(timeId: number): Promise<void>;
 

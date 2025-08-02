@@ -1,5 +1,3 @@
-import { PaymentChannelType } from './constant';
-
 export enum AddressType {
     P2PKH,
     P2WPKH,
@@ -106,14 +104,6 @@ export interface UTXO {
     addressType: AddressType;
 }
 
-export interface UTXO_Detail {
-    txId: string;
-    outputIndex: number;
-    satoshis: number;
-    scriptPk: string;
-    addressType: AddressType;
-}
-
 export enum TxType {
     SIGN_TX,
     SEND_BITCOIN
@@ -167,42 +157,6 @@ export interface Account {
     balance?: number;
     key: string;
     flag: number;
-}
-
-export interface TokenBalance {
-    availableBalance: string;
-    overallBalance: string;
-    ticker: string;
-    transferableBalance: string;
-    availableBalanceSafe: string;
-    availableBalanceUnSafe: string;
-    selfMint: boolean;
-}
-
-export interface TokenInfo {
-    totalSupply: string;
-    totalMinted: string;
-    decimal: number;
-    holder: string;
-    inscriptionId: string;
-    selfMint?: boolean;
-}
-
-export interface TokenTransfer {
-    ticker: string;
-    amount: string;
-    inscriptionId: string;
-    inscriptionNumber: number;
-    timestamp: number;
-    confirmations: number;
-    satoshi: number;
-}
-
-export interface AddressTokenSummary {
-    tokenInfo: TokenInfo;
-    tokenBalance: TokenBalance;
-    historyList: TokenTransfer[];
-    transferableList: TokenTransfer[];
 }
 
 export enum RiskType {
@@ -285,19 +239,9 @@ export interface OPTokenInfo {
     logo?: string;
 }
 
-export interface BtcChannelItem {
-    channel: PaymentChannelType;
-    quote: number;
-    payType: string[];
-}
-
 export interface TickPriceItem {
     curPrice: number;
     changePercent: number;
-}
-
-export interface BuyBtcChannel {
-    channel: string;
 }
 
 export interface GroupAsset {

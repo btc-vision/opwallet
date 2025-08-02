@@ -152,6 +152,12 @@ export class ProviderController {
                 throw new Error(`the chain is invalid, supported chains: ${CHAINS.map((v) => v.enum).join(',')}`);
             }
 
+            // Check if chain is disabled and user doesn't have custom network
+            const chain = CHAINS_MAP[chainType];
+            if (chain?.disable) {
+                throw new Error(`${chain.label} is not available. Please add a custom RPC endpoint for this network.`);
+            }
+
             if (chainType == wallet.getChainType()) {
                 // skip approval
                 return true;

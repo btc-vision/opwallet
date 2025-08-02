@@ -15,7 +15,7 @@ export interface Props {
 }
 
 export default function SignText({ params: { data, session } }: Props) {
-    const [getApproval, resolveApproval, rejectApproval] = useApproval();
+    const { resolveApproval, rejectApproval } = useApproval();
     const account = useCurrentAccount();
     const [isKeystoneSigning, setIsKeystoneSigning] = useState(false);
 

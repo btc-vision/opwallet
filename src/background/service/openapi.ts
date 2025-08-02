@@ -5,8 +5,6 @@ import {
     AppSummary,
     BitcoinBalance,
     BtcPrice,
-    BuyBtcChannel,
-    DecodedPsbt,
     FeeSummary,
     GroupAsset,
     UTXO,
@@ -61,6 +59,10 @@ export class OpenApiService {
         Web3API.setNetwork(chainType);
 
         const chain = CHAINS_MAP[chainType];
+        if (!chain) {
+            throw new Error(`Chain ${chainType} not found in CHAINS_MAP`);
+        }
+
         this.endpoint = chain.endpoints[0];
 
         if (!this.store.deviceId) {
@@ -184,17 +186,17 @@ export class OpenApiService {
         };
     }
 
-    async getAddressBalance(address: string): Promise<BitcoinBalance> {
+    async getAddressBalance(_: string): Promise<BitcoinBalance> {
         await Promise.resolve();
         throw new Error('Method not implemented.');
     }
 
-    async findGroupAssets(groups: { type: number; address_arr: string[] }[]): Promise<GroupAsset[]> {
+    async findGroupAssets(_: { type: number; address_arr: string[] }[]): Promise<GroupAsset[]> {
         await Promise.resolve();
         throw new Error('Method not implemented.');
     }
 
-    async getBTCUtxos(address: string): Promise<UTXO[]> {
+    async getBTCUtxos(_: string): Promise<UTXO[]> {
         await Promise.resolve();
         throw new Error('Method not implemented.');
     }
@@ -203,7 +205,7 @@ export class OpenApiService {
         return this.httpGet<AppSummary>('/v5/default/app-summary-v2', {});
     }
 
-    async pushTx(rawtx: string): Promise<string> {
+    async pushTx(_: string): Promise<string> {
         await Promise.resolve();
         throw new Error('Method not implemented.');
     }
@@ -244,14 +246,6 @@ export class OpenApiService {
         }
 
         return this.refreshBtcPrice();
-    }
-
-    async decodePsbt(psbtHex: string, website: string): Promise<DecodedPsbt> {
-        return this.httpPost<DecodedPsbt>('/v5/tx/decode2', { psbtHex, website });
-    }
-
-    async getBuyBtcChannelList(): Promise<BuyBtcChannel[]> {
-        return this.httpGet<BuyBtcChannel[]>('/v5/buy-btc/channel-list', {});
     }
 
     async createPaymentUrl(address: string, channel: string): Promise<string> {

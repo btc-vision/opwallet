@@ -1,10 +1,9 @@
 import { compareVersions } from 'compare-versions';
 import { useCallback } from 'react';
 
-import { CHAINS_MAP, ChainType, VERSION } from '@/shared/constant';
+import { CHAINS_MAP, ChainType, TypeChain, VERSION } from '@/shared/constant';
 import { NetworkType } from '@/shared/types';
 import { useWallet } from '@/ui/utils';
-import i18n, { addResourceBundle } from '@/ui/utils/i18n';
 
 import { AppState } from '..';
 import { useAppDispatch, useAppSelector } from '../hooks';
@@ -12,36 +11,6 @@ import { settingsActions } from './reducer';
 
 export function useSettingsState(): AppState['settings'] {
     return useAppSelector((state) => state.settings);
-}
-
-export function useLocale() {
-    const settings = useSettingsState();
-    return settings.locale;
-}
-
-export function useChangeLocaleCallback() {
-    const dispatch = useAppDispatch();
-    const wallet = useWallet();
-    return useCallback(
-        async (locale: string) => {
-            await wallet.setLocale(locale);
-            await addResourceBundle(locale);
-            await i18n.changeLanguage(locale);
-            dispatch(
-                settingsActions.updateSettings({
-                    locale
-                })
-            );
-
-            window.location.reload();
-        },
-        [dispatch, wallet]
-    );
-}
-
-export function useAddressType() {
-    const accountsState = useSettingsState();
-    return accountsState.addressType;
 }
 
 export function useNetworkType() {
@@ -56,44 +25,24 @@ export function useNetworkType() {
     }
 }
 
-export function useChangeNetworkTypeCallback() {
-    const dispatch = useAppDispatch();
-    const wallet = useWallet();
-    return useCallback(
-        async (type: NetworkType) => {
-            if (type === NetworkType.MAINNET) {
-                await wallet.setChainType(ChainType.BITCOIN_MAINNET);
-                dispatch(
-                    settingsActions.updateSettings({
-                        chainType: ChainType.BITCOIN_MAINNET
-                    })
-                );
-            } else if (type === NetworkType.TESTNET) {
-                await wallet.setChainType(ChainType.BITCOIN_TESTNET);
-                dispatch(
-                    settingsActions.updateSettings({
-                        chainType: ChainType.BITCOIN_TESTNET
-                    })
-                );
-            }
-        },
-        [dispatch]
-    );
-}
-
 export function useChainType() {
     const accountsState = useSettingsState();
     return accountsState.chainType;
 }
 
-export function useChain() {
+export function useChain(): TypeChain<ChainType> {
     const accountsState = useSettingsState();
-    return CHAINS_MAP[accountsState.chainType];
+    const chain = CHAINS_MAP[accountsState.chainType];
+
+    if (!chain) throw new Error(`Chain not found for type: ${accountsState.chainType}`);
+
+    return chain;
 }
 
 export function useChangeChainTypeCallback() {
     const dispatch = useAppDispatch();
     const wallet = useWallet();
+
     return useCallback(
         async (type: ChainType) => {
             await wallet.setChainType(type);
@@ -103,19 +52,19 @@ export function useChangeChainTypeCallback() {
                 })
             );
         },
-        [dispatch]
+        [dispatch, wallet]
     );
 }
 
 export function useBTCUnit() {
     const chainType = useChainType();
-    return CHAINS_MAP[chainType].unit;
+    return CHAINS_MAP[chainType]?.unit || 'BTC';
 }
 
 export function useTxExplorerUrl(txId: string) {
     const chain = useChain();
 
-    switch (chain.enum) {
+    switch (chain?.enum) {
         case ChainType.BITCOIN_MAINNET:
             return `https://opscan.org/transactions/${txId}?network=mainnet`;
         case ChainType.BITCOIN_TESTNET:
@@ -130,7 +79,7 @@ export function useTxExplorerUrl(txId: string) {
 export function useAddressExplorerUrl(address: string) {
     const chain = useChain();
 
-    switch (chain.enum) {
+    switch (chain?.enum) {
         case ChainType.BITCOIN_MAINNET:
             return `https://opscan.org/accounts/${address}?network=mainnet`;
         case ChainType.BITCOIN_TESTNET:
@@ -144,13 +93,7 @@ export function useAddressExplorerUrl(address: string) {
 
 export function useFaucetUrl() {
     const chain = useChain();
-
-    return chain.faucetUrl;
-}
-
-export function useUnisatWebsite() {
-    const chainType = useChainType();
-    return CHAINS_MAP[chainType].unisatUrl;
+    return chain?.faucetUrl || '';
 }
 
 export function useWalletConfig() {
@@ -200,11 +143,13 @@ export function useVersionInfo() {
 export function useSkipVersionCallback() {
     const wallet = useWallet();
     const dispatch = useAppDispatch();
-    return useCallback(async (version: string) => {
-        await wallet.setSkippedVersion(version).then((v) => {
+    return useCallback(
+        async (version: string) => {
+            await wallet.setSkippedVersion(version);
             dispatch(settingsActions.updateSettings({ skippedVersion: version }));
-        });
-    }, []);
+        },
+        [dispatch, wallet]
+    );
 }
 
 export function useAutoLockTimeId() {

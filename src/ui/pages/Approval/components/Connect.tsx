@@ -49,7 +49,7 @@ export interface Props {
 }
 
 export default function Connect({ params: { session } }: Props) {
-    const [getApproval, resolveApproval, rejectApproval] = useApproval();
+    const { resolveApproval, rejectApproval } = useApproval();
 
     const handleCancel = async () => {
         await rejectApproval('User rejected the request.');

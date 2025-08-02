@@ -38,7 +38,6 @@ import {
     AddressUserToSignInput,
     AppSummary,
     BitcoinBalance,
-    BuyBtcChannel,
     DecodedPsbt,
     FeeSummary,
     GroupAsset,
@@ -1390,17 +1389,59 @@ export class WalletController {
 
     public getNetworkType = (): NetworkType => {
         const chainType = this.getChainType();
-        return CHAINS_MAP[chainType].networkType;
+        const chain = CHAINS_MAP[chainType];
+        if (!chain) {
+            throw new WalletControllerError(`Chain ${chainType} not found in CHAINS_MAP`);
+        }
+        return chain.networkType;
     };
 
     public setNetworkType = async (networkType: NetworkType): Promise<void> => {
-        if (networkType === NetworkType.MAINNET) {
-            await this.setChainType(ChainType.BITCOIN_MAINNET);
-        } else if (networkType === NetworkType.REGTEST) {
-            await this.setChainType(ChainType.BITCOIN_REGTEST);
-        } else {
-            await this.setChainType(ChainType.BITCOIN_TESTNET);
+        // Get current chain to determine the base chain type (Bitcoin, Litecoin, etc.)
+        const currentChainType = this.getChainType();
+        let baseChain = 'BITCOIN'; // default
+
+        if (currentChainType.includes('BITCOIN')) baseChain = 'BITCOIN';
+        else if (currentChainType.includes('FRACTAL')) baseChain = 'FRACTAL_BITCOIN';
+        else if (currentChainType.includes('DOGECOIN')) baseChain = 'DOGECOIN';
+        else if (currentChainType.includes('LITECOIN')) baseChain = 'LITECOIN';
+        else if (currentChainType.includes('BITCOINCASH')) baseChain = 'BITCOINCASH';
+        else if (currentChainType.includes('DASH')) baseChain = 'DASH';
+
+        let newChainType: ChainType;
+
+        switch (networkType) {
+            case NetworkType.MAINNET:
+                newChainType = `${baseChain}_MAINNET` as ChainType;
+                break;
+            case NetworkType.TESTNET:
+                // Special cases for testnet
+                if (baseChain === 'BITCOIN' && currentChainType === ChainType.BITCOIN_TESTNET4) {
+                    newChainType = ChainType.BITCOIN_TESTNET4;
+                } else if (baseChain === 'BITCOIN' && currentChainType === ChainType.BITCOIN_SIGNET) {
+                    newChainType = ChainType.BITCOIN_SIGNET;
+                } else {
+                    newChainType = `${baseChain}_TESTNET` as ChainType;
+                }
+                break;
+            case NetworkType.REGTEST:
+                newChainType = `${baseChain}_REGTEST` as ChainType;
+                break;
+            default:
+                throw new WalletControllerError(`Invalid network type: ${networkType}`);
         }
+
+        // Check if the chain exists and is not disabled
+        const targetChain = CHAINS_MAP[newChainType];
+        if (!targetChain) {
+            throw new WalletControllerError(`Chain ${newChainType} not found`);
+        }
+
+        if (targetChain.disable) {
+            throw new WalletControllerError(`Chain ${newChainType} is disabled. Please add a custom RPC endpoint.`);
+        }
+
+        await this.setChainType(newChainType);
     };
 
     public getNetworkName = (): string => {
@@ -1410,7 +1451,11 @@ export class WalletController {
 
     public getLegacyNetworkName = (): string => {
         const chainType = this.getChainType();
-        return NETWORK_TYPES[CHAINS_MAP[chainType].networkType].name;
+        const chain = CHAINS_MAP[chainType];
+        if (!chain) {
+            throw new WalletControllerError(`Chain ${chainType} not found in CHAINS_MAP`);
+        }
+        return NETWORK_TYPES[chain.networkType].name;
     };
 
     /**
@@ -1421,7 +1466,13 @@ export class WalletController {
         try {
             Web3API.setNetwork(chainType);
             preferenceService.setChainType(chainType);
-            await this.openapi.setEndpoints(CHAINS_MAP[chainType].endpoints);
+
+            const chain = CHAINS_MAP[chainType];
+            if (!chain) {
+                throw new WalletControllerError(`Chain ${chainType} not found in CHAINS_MAP`);
+            }
+
+            await this.openapi.setEndpoints(chain.endpoints);
 
             const currentAccount = await this.getCurrentAccount();
             const keyring = await this.getCurrentKeyring();
@@ -2024,18 +2075,6 @@ export class WalletController {
             });
         }
     };
-
-    public getBuyBtcChannelList = async (): Promise<BuyBtcChannel[]> => {
-        return openapiService.getBuyBtcChannelList();
-    };
-
-    // public getEnableSignData = (): boolean => {
-    //     return preferenceService.getEnableSignData();
-    // };
-
-    // public setEnableSignData = (enable: boolean): void => {
-    //     preferenceService.setEnableSignData(enable);
-    // };
 
     public getAutoLockTimeId = (): number => {
         return preferenceService.getAutoLockTimeId();

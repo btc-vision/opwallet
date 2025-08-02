@@ -21,7 +21,6 @@ export const getUiType = (): UiTypeCheck => {
     const { pathname } = window.location;
     return Object.entries(UI_TYPE).reduce<UiTypeCheck>(
         (m, [key, value]) => {
-            const a = key;
             m[`is${key}`] = pathname === `/${value}.html`;
 
             return m;
@@ -30,68 +29,8 @@ export const getUiType = (): UiTypeCheck => {
     );
 };
 
-export const hex2Text = (hex: string) => {
-    try {
-        return hex.startsWith('0x') ? decodeURIComponent(hex.replace(/^0x/, '').replace(/[0-9a-f]{2}/g, '%$&')) : hex;
-    } catch {
-        return hex;
-    }
-};
-
-export const getUITypeName = (): string => {
-    // need to refact
-    const UIType = getUiType();
-
-    if (UIType.isPop) return 'popup';
-    if (UIType.isNotification) return 'notification';
-    if (UIType.isTab) return 'tab';
-
-    return '';
-};
-
-/**
- *
- * @param origin (exchange.pancakeswap.finance)
- * @returns (pancakeswap)
- */
-export const getOriginName = (origin: string) => {
-    const matches = origin.replace(/https?:\/\//, '').match(/^([^.]+\.)?(\S+)\./);
-
-    return matches ? matches[2] || origin : origin;
-};
-
-export const hashCode = (str: string) => {
-    if (!str) return 0;
-    let hash = 0,
-        i: number,
-        chr: number,
-        len: number;
-    if (str.length === 0) return hash;
-    for (i = 0, len = str.length; i < len; i++) {
-        chr = str.charCodeAt(i);
-        hash = (hash << 5) - hash + chr;
-        hash |= 0; // Convert to 32bit integer
-    }
-    return hash;
-};
-
-export const ellipsisOverflowedText = (str: string, length = 5, removeLastComma = false) => {
-    if (str.length <= length) return str;
-    let cut = str.substring(0, length);
-    if (removeLastComma) {
-        if (cut.endsWith(',')) {
-            cut = cut.substring(0, length - 1);
-        }
-    }
-    return `${cut}...`;
-};
-
 export const satoshisToBTC = (amount: number) => {
     return amount / 100000000;
-};
-
-export const btcTosatoshis = (amount: number) => {
-    return Math.floor(amount * 100000000);
 };
 
 export function shortAddress(address?: string, len = 5) {
@@ -107,7 +46,7 @@ export function shortDesc(desc?: string, len = 50) {
 }
 
 export function shortUtxo(txid: string, vout: number): string {
-    return `${txid.slice(0, 8)}...:${vout}}`;
+    return `${txid.slice(0, 8)}...:${vout}`;
 }
 
 export async function sleep(timeSec: number) {
@@ -125,38 +64,49 @@ export function isValidAddress(address: string) {
 export const copyToClipboard = async (textToCopy: string | number): Promise<void> => {
     const text = textToCopy.toString();
 
-    // If the modern API is available and we are in a secure context
+    // Try the modern Clipboard API first
     if (navigator.clipboard && window.isSecureContext) {
-        // Use the asynchronous clipboard API
-        return navigator.clipboard.writeText(text);
+        try {
+            await navigator.clipboard.writeText(text);
+            return;
+        } catch (err) {
+            // If Clipboard API fails, fall through to the legacy approach
+            console.warn('Clipboard API failed, falling back to legacy method:', err);
+        }
     }
 
-    // Fallback if Clipboard API is not available or we are not in a secure context
+    // Legacy fallback for older browsers or non-secure contexts
     const textArea = document.createElement('textarea');
     textArea.value = text;
 
     // Make textarea invisible and move it off-screen
-    textArea.style.position = 'absolute';
-    textArea.style.opacity = '0';
-    textArea.style.left = '-999999px';
-    textArea.style.top = '-999999px';
+    textArea.style.position = 'fixed';
+    textArea.style.top = '0';
+    textArea.style.left = '0';
+    textArea.style.width = '2em';
+    textArea.style.height = '2em';
+    textArea.style.padding = '0';
+    textArea.style.border = 'none';
+    textArea.style.outline = 'none';
+    textArea.style.boxShadow = 'none';
+    textArea.style.background = 'transparent';
 
     document.body.appendChild(textArea);
     textArea.focus();
     textArea.select();
 
-    return new Promise<void>((resolve, reject) => {
-        // Deprecated path: still used as fallback
+    try {
+        // Use execCommand as fallback, acknowledging it's deprecated
         // eslint-disable-next-line @typescript-eslint/no-deprecated
         const successful = document.execCommand('copy');
-        textArea.remove();
-
-        if (successful) {
-            resolve();
-        } else {
-            reject(new Error('Failed to copy text to clipboard'));
+        if (!successful) {
+            throw new Error('Copy command was unsuccessful');
         }
-    });
+    } catch (err) {
+        throw new Error('Failed to copy text to clipboard');
+    } finally {
+        document.body.removeChild(textArea);
+    }
 };
 
 export function satoshisToAmount(val: number) {

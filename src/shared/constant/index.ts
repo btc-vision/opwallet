@@ -178,7 +178,19 @@ export enum ChainType {
     BITCOIN_REGTEST = 'BITCOIN_REGTEST',
     BITCOIN_SIGNET = 'BITCOIN_SIGNET',
     FRACTAL_BITCOIN_MAINNET = 'FRACTAL_BITCOIN_MAINNET',
-    FRACTAL_BITCOIN_TESTNET = 'FRACTAL_BITCOIN_TESTNET'
+    FRACTAL_BITCOIN_TESTNET = 'FRACTAL_BITCOIN_TESTNET',
+    DOGECOIN_MAINNET = 'DOGECOIN_MAINNET',
+    DOGECOIN_TESTNET = 'DOGECOIN_TESTNET',
+    DOGECOIN_REGTEST = 'DOGECOIN_REGTEST',
+    LITECOIN_MAINNET = 'LITECOIN_MAINNET',
+    LITECOIN_TESTNET = 'LITECOIN_TESTNET',
+    LITECOIN_REGTEST = 'LITECOIN_REGTEST',
+    BITCOINCASH_MAINNET = 'BITCOINCASH_MAINNET',
+    BITCOINCASH_TESTNET = 'BITCOINCASH_TESTNET',
+    BITCOINCASH_REGTEST = 'BITCOINCASH_REGTEST',
+    DASH_MAINNET = 'DASH_MAINNET',
+    DASH_TESTNET = 'DASH_TESTNET',
+    DASH_REGTEST = 'DASH_REGTEST'
 }
 
 export const NETWORK_TYPES = [
@@ -187,7 +199,39 @@ export const NETWORK_TYPES = [
     { value: NetworkType.REGTEST, label: 'REGTEST', name: 'regtest', validNames: ['regtest'] }
 ];
 
-interface TypeChain<T extends ChainType> {
+export enum ChainId {
+    Bitcoin = 0,
+    Fractal = 1,
+    Dogecoin = 2,
+    Litecoin = 3,
+    BitcoinCash = 4,
+    Dash = 5
+}
+
+export interface ContractsDetails {
+    router?: string;
+    moto?: string;
+    pill?: string;
+}
+
+export interface CustomNetwork {
+    id: string;
+    name: string;
+    networkType: NetworkType;
+    chainId: ChainId;
+    chainType: ChainType;
+    icon: string;
+    unit: string;
+    opnetUrl: string;
+    mempoolSpaceUrl: string;
+    faucetUrl?: string;
+    showPrice: boolean;
+    isCustom: true;
+    createdAt: number;
+    contractAddresses: ContractsDetails;
+}
+
+export interface TypeChain<T extends ChainType> {
     enum: T;
     label: string;
     icon: string;
@@ -196,18 +240,18 @@ interface TypeChain<T extends ChainType> {
     endpoints: string[];
     opnetUrl: string;
     mempoolSpaceUrl: string;
-    unisatUrl: string;
-    ordinalsUrl: string;
     faucetUrl: string;
     okxExplorerUrl: string;
     isViewTxHistoryInternally?: boolean;
     disable?: boolean;
     isFractal?: boolean;
     showPrice: boolean;
-    defaultExplorer: 'mempool-space' | 'unisat-explorer';
+    defaultExplorer: 'mempool-space' | 'opnet-explorer';
+    isCustom?: boolean;
+    contractAddresses: ContractsDetails;
 }
 
-export const CHAINS_MAP: { [key in ChainType]: TypeChain<key> } = {
+export const DEFAULT_CHAINS_MAP: { [key in ChainType]?: TypeChain<key> } = {
     [ChainType.BITCOIN_MAINNET]: {
         enum: ChainType.BITCOIN_MAINNET,
         label: 'Bitcoin Mainnet',
@@ -215,15 +259,14 @@ export const CHAINS_MAP: { [key in ChainType]: TypeChain<key> } = {
         icon: './images/artifacts/bitcoin-mainnet.png',
         networkType: NetworkType.MAINNET,
         opnetUrl: 'https://api.opnet.org',
-        endpoints: ['https://wallet-api.unisat.io'],
+        endpoints: ['https://wallet.opnet.org'],
         mempoolSpaceUrl: 'https://mempool.space',
-        unisatUrl: 'https://unisat.io',
-        ordinalsUrl: 'https://ordinals.com',
         faucetUrl: '',
         okxExplorerUrl: '',
         disable: true,
         showPrice: true,
-        defaultExplorer: 'mempool-space'
+        defaultExplorer: 'mempool-space',
+        contractAddresses: {}
     },
     [ChainType.BITCOIN_TESTNET]: {
         enum: ChainType.BITCOIN_TESTNET,
@@ -232,15 +275,18 @@ export const CHAINS_MAP: { [key in ChainType]: TypeChain<key> } = {
         icon: './images/artifacts/bitcoin-testnet.svg',
         networkType: NetworkType.TESTNET,
         opnetUrl: 'https://testnet.opnet.org',
-        endpoints: ['https://wallet-api-fractal-testnet.unisat.io'], //['https://wallet-api-testnet.unisat.space'],
+        endpoints: ['https://wallet.opnet.org'],
         mempoolSpaceUrl: 'https://mempool.space/testnet',
-        unisatUrl: 'https://testnet.unisat.io',
-        ordinalsUrl: 'https://testnet.ordinals.com',
         faucetUrl: 'https://faucet.opnet.org/',
         okxExplorerUrl: '',
         disable: false,
         showPrice: false,
-        defaultExplorer: 'mempool-space'
+        defaultExplorer: 'mempool-space',
+        contractAddresses: {
+            router: '0x9e14fc4c4cfca73a89e25e1216ae3a22302a12a7c6e1e3a568e05e8cb824112b',
+            moto: '0xdb944e78cada1d705af892bb0560a4a9c4b9896d64ef23dfd3870ffd5004f4f2',
+            pill: '0x7a0b58be893a250638cb2c95bf993ebe00b60779a4597b7c1ef0e76552c823ce'
+        }
     },
     [ChainType.BITCOIN_TESTNET4]: {
         enum: ChainType.BITCOIN_TESTNET4,
@@ -249,15 +295,16 @@ export const CHAINS_MAP: { [key in ChainType]: TypeChain<key> } = {
         unit: 'tBTC',
         networkType: NetworkType.TESTNET,
         opnetUrl: 'https://testnet4.opnet.org',
-        endpoints: ['https://wallet-api-fractal-testnet.unisat.io'], //['https://wallet-api-testnet4.unisat.io'],
+        endpoints: ['https://wallet.opnet.org'],
         mempoolSpaceUrl: 'https://mempool.space/testnet4',
-        unisatUrl: 'https://testnet4.unisat.io',
-        ordinalsUrl: 'https://testnet4.ordinals.com',
         faucetUrl: 'https://faucet.opnet.org/',
         okxExplorerUrl: '',
         disable: true,
         showPrice: false,
-        defaultExplorer: 'mempool-space'
+        defaultExplorer: 'mempool-space',
+        contractAddresses: {
+            // Add testnet4 addresses when available
+        }
     },
     [ChainType.BITCOIN_REGTEST]: {
         enum: ChainType.BITCOIN_REGTEST,
@@ -266,14 +313,16 @@ export const CHAINS_MAP: { [key in ChainType]: TypeChain<key> } = {
         icon: './images/artifacts/bitcoin-testnet.svg',
         networkType: NetworkType.REGTEST,
         opnetUrl: 'https://regtest.opnet.org',
-        endpoints: ['https://wallet-api-fractal-testnet.unisat.io'],
+        endpoints: ['https://wallet.opnet.org'],
         mempoolSpaceUrl: 'https://mempool.opnet.org',
-        unisatUrl: 'https://unisat.io',
-        ordinalsUrl: 'https://ordinals.com',
         faucetUrl: 'https://faucet.opnet.org/',
         okxExplorerUrl: '',
         showPrice: false,
-        defaultExplorer: 'mempool-space'
+        defaultExplorer: 'mempool-space',
+        contractAddresses: {
+            moto: '0x97493c8f728f484151a8d498d1f94108826dedadd0dc9c1845285a180b7a478f',
+            pill: '0x88d3642a7a7cb1be7cc49455084d08101fcebe56e9ea3c3c3c0d109796c9537f'
+        }
     },
     [ChainType.BITCOIN_SIGNET]: {
         enum: ChainType.BITCOIN_SIGNET,
@@ -282,15 +331,14 @@ export const CHAINS_MAP: { [key in ChainType]: TypeChain<key> } = {
         unit: 'sBTC',
         networkType: NetworkType.TESTNET,
         opnetUrl: 'https://signet.opnet.org',
-        endpoints: ['https://wallet-api-signet.unisat.io'],
+        endpoints: ['https://wallet.opnet.org'],
         mempoolSpaceUrl: 'https://mempool.space/signet',
-        unisatUrl: 'https://signet.unisat.io',
-        ordinalsUrl: 'https://signet.ordinals.com',
         faucetUrl: 'https://faucet.opnet.org/',
         okxExplorerUrl: '',
         disable: true,
         showPrice: false,
-        defaultExplorer: 'mempool-space'
+        defaultExplorer: 'mempool-space',
+        contractAddresses: {}
     },
     [ChainType.FRACTAL_BITCOIN_MAINNET]: {
         enum: ChainType.FRACTAL_BITCOIN_MAINNET,
@@ -299,17 +347,16 @@ export const CHAINS_MAP: { [key in ChainType]: TypeChain<key> } = {
         unit: 'FB',
         networkType: NetworkType.MAINNET,
         opnetUrl: 'https://fractal.opnet.org',
-        endpoints: ['https://wallet-api-fractal.unisat.io'],
+        endpoints: ['https://wallet.opnet.org'],
         mempoolSpaceUrl: 'https://mempool.fractalbitcoin.io',
-        unisatUrl: 'https://fractal.unisat.io',
-        ordinalsUrl: 'https://ordinals.fractalbitcoin.io',
         faucetUrl: '',
         okxExplorerUrl: '',
         isViewTxHistoryInternally: false,
         disable: true,
         isFractal: true,
         showPrice: true,
-        defaultExplorer: 'mempool-space'
+        defaultExplorer: 'mempool-space',
+        contractAddresses: {}
     },
     [ChainType.FRACTAL_BITCOIN_TESTNET]: {
         enum: ChainType.FRACTAL_BITCOIN_TESTNET,
@@ -318,20 +365,89 @@ export const CHAINS_MAP: { [key in ChainType]: TypeChain<key> } = {
         unit: 'tFB',
         networkType: NetworkType.MAINNET,
         opnetUrl: 'https://fractal-testnet.opnet.org',
-        endpoints: ['https://wallet-api-fractal-testnet.unisat.io'],
+        endpoints: ['https://wallet.opnet.org'],
         mempoolSpaceUrl: 'https://fractal-mempool.opnet.org',
-        unisatUrl: 'https://fractal-testnet.unisat.io',
-        ordinalsUrl: 'https://ordinals-testnet.fractalbitcoin.io',
         faucetUrl: 'https://fractal-faucet.opnet.org/',
         okxExplorerUrl: '',
         isViewTxHistoryInternally: true,
         isFractal: true,
         showPrice: false,
-        defaultExplorer: 'mempool-space'
+        defaultExplorer: 'mempool-space',
+        contractAddresses: {}
     }
 };
 
-export const CHAINS = Object.values(CHAINS_MAP);
+// Initialize CHAINS_MAP with default chains
+export const CHAINS_MAP: { [key in ChainType]?: TypeChain<ChainType> } = {};
+
+// Initialize with default chains
+Object.entries(DEFAULT_CHAINS_MAP).forEach(([key, value]) => {
+    if (value) {
+        CHAINS_MAP[key as ChainType] = value as TypeChain<ChainType>;
+    }
+});
+
+// Add disabled entries for all other chain types
+Object.values(ChainType).forEach((chainType) => {
+    if (!CHAINS_MAP[chainType]) {
+        // Determine network type and chain id from the enum name
+        const isMainnet = chainType.includes('MAINNET');
+        const isTestnet = chainType.includes('TESTNET');
+        const isRegtest = chainType.includes('REGTEST');
+
+        let networkType = NetworkType.MAINNET;
+        if (isTestnet) networkType = NetworkType.TESTNET;
+        else if (isRegtest) networkType = NetworkType.REGTEST;
+
+        let unit = 'BTC';
+        let icon = './images/artifacts/bitcoin-mainnet.png';
+        const label = chainType
+            .replace(/_/g, ' ')
+            .toLowerCase()
+            .replace(/\b\w/g, (l) => l.toUpperCase());
+
+        if (chainType.includes('DOGECOIN')) {
+            unit = isMainnet ? 'DOGE' : 'tDOGE';
+            icon = CHAIN_ICONS[ChainId.Dogecoin];
+        } else if (chainType.includes('LITECOIN')) {
+            unit = isMainnet ? 'LTC' : 'tLTC';
+            icon = CHAIN_ICONS[ChainId.Litecoin];
+        } else if (chainType.includes('BITCOINCASH')) {
+            unit = isMainnet ? 'BCH' : 'tBCH';
+            icon = CHAIN_ICONS[ChainId.BitcoinCash];
+        } else if (chainType.includes('DASH')) {
+            unit = isMainnet ? 'DASH' : 'tDASH';
+            icon = CHAIN_ICONS[ChainId.Dash];
+        }
+
+        CHAINS_MAP[chainType] = {
+            enum: chainType,
+            label,
+            unit,
+            icon,
+            networkType,
+            opnetUrl: '',
+            endpoints: ['https://wallet.opnet.org'],
+            mempoolSpaceUrl: '',
+            faucetUrl: '',
+            okxExplorerUrl: '',
+            disable: true, // Disabled by default until custom RPC is added
+            showPrice: isMainnet,
+            defaultExplorer: 'mempool-space'
+        } as TypeChain<ChainType>;
+    }
+});
+
+export const CHAINS = Object.values(CHAINS_MAP).filter(Boolean);
+
+export const CHAIN_ICONS: { [key in ChainId]: string } = {
+    [ChainId.Bitcoin]: './images/artifacts/bitcoin-mainnet.png',
+    [ChainId.Fractal]: './images/artifacts/fractal-mainnet.svg',
+    [ChainId.Dogecoin]: './images/artifacts/dogecoin.png',
+    [ChainId.Litecoin]: './images/artifacts/litecoin.png',
+    [ChainId.BitcoinCash]: './images/artifacts/bitcoin-cash.png',
+    [ChainId.Dash]: './images/artifacts/dash.png'
+};
 
 export interface TypeChainGroup {
     type: 'single' | 'list';
@@ -340,30 +456,6 @@ export interface TypeChainGroup {
     icon?: string;
     items?: TypeChain<ChainType>[];
 }
-
-export const CHAIN_GROUPS: TypeChainGroup[] = [
-    {
-        type: 'single',
-        chain: CHAINS_MAP[ChainType.BITCOIN_MAINNET]
-    },
-    {
-        type: 'list',
-        label: 'Bitcoin Testnet',
-        icon: './images/artifacts/bitcoin-testnet-all.svg',
-        items: [
-            CHAINS_MAP[ChainType.BITCOIN_REGTEST],
-            CHAINS_MAP[ChainType.BITCOIN_TESTNET],
-            CHAINS_MAP[ChainType.BITCOIN_TESTNET4],
-            CHAINS_MAP[ChainType.BITCOIN_SIGNET]
-        ]
-    },
-    {
-        type: 'list',
-        label: 'Fractal',
-        icon: './images/artifacts/fractal-mainnet.svg',
-        items: [CHAINS_MAP[ChainType.FRACTAL_BITCOIN_MAINNET], CHAINS_MAP[ChainType.FRACTAL_BITCOIN_TESTNET]]
-    }
-];
 
 export const INTERNAL_REQUEST_ORIGIN = 'https://opnet.org';
 
