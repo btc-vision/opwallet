@@ -63,68 +63,7 @@ export const useApproval = () => {
         return () => window.removeEventListener('beforeunload', handleBeforeUnload);
     }, [handleBeforeUnload]);
 
-    return [getApproval, resolveApproval, rejectApproval] as const;
-};
-
-export const useSelectOption = <T>({
-    options,
-    defaultValue = [],
-    onChange,
-    value
-}: {
-    options: T[];
-    defaultValue?: T[];
-    onChange?: (arg: T[]) => void;
-    value?: T[];
-}) => {
-    const isControlled = useRef(typeof value !== 'undefined').current;
-    const [idxs, setChoosedIdxs] = useState(
-        (isControlled ? (value ?? defaultValue) : defaultValue).map((x) => options.indexOf(x))
-    );
-    useEffect(() => {
-        if (!isControlled) {
-            return;
-        }
-
-        // shallow compare
-        if (value && idxs.some((x, i) => options[x] != value[i])) {
-            setChoosedIdxs(value.map((x) => options.indexOf(x)));
-        }
-    }, [value]);
-
-    const changeValue = (idxs: number[]) => {
-        setChoosedIdxs([...idxs]);
-        onChange?.(idxs.map((o) => options[o]));
-    };
-
-    const handleRemove = (i: number) => {
-        idxs.splice(i, 1);
-        changeValue(idxs);
-    };
-
-    const handleChoose = (i: number) => {
-        if (idxs.includes(i)) {
-            return;
-        }
-
-        idxs.push(i);
-        changeValue(idxs);
-    };
-
-    const handleToggle = (i: number) => {
-        const inIdxs = idxs.indexOf(i);
-        if (inIdxs !== -1) {
-            handleRemove(inIdxs);
-        } else {
-            handleChoose(i);
-        }
-    };
-
-    const handleClear = () => {
-        changeValue([]);
-    };
-
-    return [idxs.map((o) => options[o]), handleRemove, handleChoose, handleToggle, handleClear, idxs] as const;
+    return { getApproval, resolveApproval, rejectApproval };
 };
 
 export const useWalletRequest = <TArgs extends unknown[], TResult>(
@@ -178,33 +117,4 @@ export const useWalletRequest = <TArgs extends unknown[], TResult>(
     };
 
     return [run, loading, res, err] as const;
-};
-
-export interface UseHoverOptions {
-    mouseEnterDelayMS?: number;
-    mouseLeaveDelayMS?: number;
-}
-
-export type HoverProps = Pick<React.HTMLAttributes<HTMLElement>, 'onMouseEnter' | 'onMouseLeave'>;
-
-export const useHover = ({ mouseEnterDelayMS = 0, mouseLeaveDelayMS = 0 }: UseHoverOptions = {}): [
-    boolean,
-    HoverProps
-] => {
-    const [isHovering, setIsHovering] = useState(false);
-    let mouseEnterTimer: number | undefined;
-    let mouseOutTimer: number | undefined;
-    return [
-        isHovering,
-        {
-            onMouseEnter: () => {
-                clearTimeout(mouseOutTimer);
-                mouseEnterTimer = window.setTimeout(() => setIsHovering(true), mouseEnterDelayMS);
-            },
-            onMouseLeave: () => {
-                clearTimeout(mouseEnterTimer);
-                mouseOutTimer = window.setTimeout(() => setIsHovering(false), mouseLeaveDelayMS);
-            }
-        }
-    ];
 };

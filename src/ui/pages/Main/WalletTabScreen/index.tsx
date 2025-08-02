@@ -32,7 +32,7 @@ import { fontSizes } from '@/ui/theme/font';
 import { amountToSatoshis, useWallet } from '@/ui/utils';
 
 import { RouteTypes, useNavigate } from '../../MainRoute';
-import { SwitchChainModal } from '../../Settings/SwitchChainModal';
+import { SwitchChainModal } from '../../Settings/network/SwitchChainModal';
 import { OPNetList } from './OPNetList';
 
 const $noBreakStyle: CSSProperties = {
@@ -130,7 +130,7 @@ export default function WalletTabScreen() {
                             }}
                         />
                         <Image
-                            src={chain.icon}
+                            src={chain?.icon || './images/artifacts/bitcoin-mainnet.png'}
                             size={22}
                             style={{
                                 position: 'absolute',
@@ -240,7 +240,7 @@ export default function WalletTabScreen() {
 
                         <button
                             onClick={() => {
-                                window.open(faucetUrl, '_blank', 'noopener noreferrer');
+                                window.open(faucetUrl || '', '_blank', 'noopener noreferrer');
                             }}
                             className="op_action_button">
                             <div className="op_icon_wrapper">

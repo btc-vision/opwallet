@@ -44,23 +44,16 @@ function SignTxDetails({ txInfo, type, rawTxInfo }: { txInfo: TxInfo; rawTxInfo?
         const outValue = txInfo.decodedPsbt.outputs
             .filter((v) => v.address === address)
             .reduce((pre, cur) => cur.value + pre, 0);
-        const spend = inValue - outValue;
-        return spend;
-    }, [txInfo.decodedPsbt]);
+        return inValue - outValue;
+    }, [address, txInfo.decodedPsbt.inputs, txInfo.decodedPsbt.outputs]);
 
     const sendingSatoshis = useMemo(() => {
-        const inValue = txInfo.decodedPsbt.inputs
-            .filter((v) => v.address === address)
-            .reduce((pre, cur) => cur.value + pre, 0);
-        return inValue;
-    }, [txInfo.decodedPsbt]);
+        return txInfo.decodedPsbt.inputs.filter((v) => v.address === address).reduce((pre, cur) => cur.value + pre, 0);
+    }, [address, txInfo.decodedPsbt.inputs]);
 
     const receivingSatoshis = useMemo(() => {
-        const outValue = txInfo.decodedPsbt.outputs
-            .filter((v) => v.address === address)
-            .reduce((pre, cur) => cur.value + pre, 0);
-        return outValue;
-    }, [txInfo.decodedPsbt]);
+        return txInfo.decodedPsbt.outputs.filter((v) => v.address === address).reduce((pre, cur) => cur.value + pre, 0);
+    }, [address, txInfo.decodedPsbt.outputs]);
 
     const spendAmount = useMemo(() => satoshisToAmount(spendSatoshis), [spendSatoshis]);
     const balanceChangedAmount = useMemo(
@@ -238,7 +231,7 @@ export default function SignPsbt({
 }: Props) {
     const [txInfo, setTxInfo] = useState<TxInfo>(initTxInfo);
 
-    const [getApproval, resolveApproval, rejectApproval] = useApproval();
+    const { resolveApproval, rejectApproval } = useApproval();
 
     const btcUnit = useBTCUnit();
 

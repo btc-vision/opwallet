@@ -61,7 +61,7 @@ export function OPNetList() {
             const myVersion = ++fetchVersionRef.current;
 
             try {
-                Web3API.setNetwork(chainType);
+                await Web3API.setNetwork(chainType);
 
                 // Get stored tokens
                 const key = `opnetTokens_${chainType}_${currentAccount.pubkey}`;

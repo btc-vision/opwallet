@@ -23,7 +23,7 @@ export default function SignInteraction(props: Props) {
         params: { data, session }
     } = props;
 
-    const [_, resolveApproval, rejectApproval] = useApproval();
+    const { resolveApproval, rejectApproval } = useApproval();
     const unitBtc = useBTCUnit();
 
     const [interactionParameters, setInteractionParameters] = useState(data.interactionParameters);

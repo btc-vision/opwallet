@@ -1,4 +1,4 @@
-import { AddressFlagType, CHAINS, ChainType, DEFAULT_LOCKTIME_ID, EVENTS } from '@/shared/constant';
+import { AddressFlagType, CHAINS, ChainType, CustomNetwork, DEFAULT_LOCKTIME_ID, EVENTS } from '@/shared/constant';
 import eventBus from '@/shared/eventBus';
 import { SessionEvent } from '@/shared/interfaces/SessionEvent';
 import { Account, AddressType, AppSummary, BitcoinBalance, NetworkType, TxHistoryItem } from '@/shared/types';
@@ -40,8 +40,8 @@ export interface PreferenceStore {
     };
     showSafeNotice: boolean;
     addressFlags: Record<string, number>;
-    // enableSignData: boolean;
     autoLockTimeId: number;
+    customNetworks: Record<string, CustomNetwork>;
 }
 
 const SUPPORT_LOCALES = ['en'];
@@ -65,8 +65,8 @@ const DEFAULTS = {
         firstOpen: false,
         currency: 'USD',
         addressType: AddressType.P2TR,
-        networkType: NetworkType.TESTNET, // TODO: To change to mainnet when mainnet is ready
-        chainType: ChainType.BITCOIN_TESTNET, // TODO: To change to mainnet when mainnet is ready
+        networkType: NetworkType.TESTNET,
+        chainType: ChainType.BITCOIN_TESTNET,
         keyringAlianNames: {},
         accountAlianNames: {},
         skippedVersion: '',
@@ -77,8 +77,8 @@ const DEFAULTS = {
         },
         showSafeNotice: true,
         addressFlags: {},
-        // enableSignData: false,
-        autoLockTimeId: DEFAULT_LOCKTIME_ID
+        autoLockTimeId: DEFAULT_LOCKTIME_ID,
+        customNetworks: {}
     } as PreferenceStore
 };
 
@@ -125,13 +125,12 @@ class PreferenceService {
         }
 
         if (!this.store.networkType) {
-            this.store.networkType = NetworkType.REGTEST; // default to regtest
+            this.store.networkType = NetworkType.REGTEST;
         }
 
         if (this.store.currentAccount) {
             if (!this.store.currentAccount.pubkey) {
-                // old version.
-                this.store.currentAccount = undefined; // will restored to new version
+                this.store.currentAccount = undefined;
             }
         }
 
@@ -162,10 +161,6 @@ class PreferenceService {
             this.store.addressFlags = {};
         }
 
-        // if (typeof this.store.enableSignData !== 'boolean') {
-        //     this.store.enableSignData = false;
-        // }
-
         if (!this.store.chainType) {
             this.store.chainType = ChainType.BITCOIN_REGTEST;
         }
@@ -174,8 +169,12 @@ class PreferenceService {
             this.store.autoLockTimeId = DEFAULT_LOCKTIME_ID;
         }
 
+        if (!this.store.customNetworks) {
+            this.store.customNetworks = {};
+        }
+
         if (!saved) {
-            this.persist();
+            await this.persist();
         }
     };
 
@@ -191,7 +190,7 @@ class PreferenceService {
         return cloneDeep(this.store.currentAccount);
     };
 
-    setCurrentAccount = (account?: Account | null) => {
+    setCurrentAccount = async (account?: Account | null) => {
         this.store.currentAccount = account;
         if (account) {
             sessionService.broadcastEvent(SessionEvent.accountsChanged, [account.address]);
@@ -200,21 +199,20 @@ class PreferenceService {
                 params: account
             });
         }
-        this.persist();
+        await this.persist();
     };
 
     getWatchAddressPreference = () => {
         return this.store.watchAddressPreference;
     };
 
-    setWatchAddressPreference = (address: string, preference: number) => {
+    setWatchAddressPreference = async (address: string, preference: number) => {
         this.store.watchAddressPreference = Object.assign({}, this.store.watchAddressPreference, {
             [address]: preference
         });
-        this.persist();
+        await this.persist();
     };
 
-    // popupOpen
     setPopupOpen = (isOpen: boolean) => {
         this.popupOpen = isOpen;
     };
@@ -223,26 +221,24 @@ class PreferenceService {
         return this.popupOpen;
     };
 
-    // addressBalance
-    updateAddressBalance = (address: string, data: BitcoinBalance) => {
+    updateAddressBalance = async (address: string, data: BitcoinBalance) => {
         const balanceMap = this.store.balanceMap || {};
         this.store.balanceMap = {
             ...balanceMap,
             [address]: data
         };
-        this.persist();
+        await this.persist();
     };
 
-    removeAddressBalance = (address: string) => {
+    removeAddressBalance = async (address: string) => {
         const key = address;
         if (key in this.store.balanceMap) {
             const map = this.store.balanceMap;
-            // Since we're already checking if the key exists, we can disable this eslint error
             // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
             delete map[key];
             this.store.balanceMap = map;
         }
-        this.persist();
+        await this.persist();
     };
 
     getAddressBalance = (address: string): BitcoinBalance | null => {
@@ -250,26 +246,24 @@ class PreferenceService {
         return balanceMap[address] || null;
     };
 
-    // addressHistory
-    updateAddressHistory = (address: string, data: TxHistoryItem[]) => {
+    updateAddressHistory = async (address: string, data: TxHistoryItem[]) => {
         const historyMap = this.store.historyMap || {};
         this.store.historyMap = {
             ...historyMap,
             [address]: data
         };
-        this.persist();
+        await this.persist();
     };
 
-    removeAddressHistory = (address: string) => {
+    removeAddressHistory = async (address: string) => {
         const key = address;
         if (key in this.store.historyMap) {
             const map = this.store.historyMap;
-            // Since we're already checking if the key exists, we can disable this eslint error
             // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
             delete map[key];
             this.store.historyMap = map;
         }
-        this.persist();
+        await this.persist();
     };
 
     getAddressHistory = (address: string): TxHistoryItem[] => {
@@ -277,17 +271,15 @@ class PreferenceService {
         return historyMap[address] || [];
     };
 
-    // externalLinkAck
     getExternalLinkAck = (): boolean => {
         return this.store.externalLinkAck;
     };
 
-    setExternalLinkAck = (ack = false) => {
+    setExternalLinkAck = async (ack = false) => {
         this.store.externalLinkAck = ack;
-        this.persist();
+        await this.persist();
     };
 
-    // locale
     getLocale = () => {
         return this.store.locale;
     };
@@ -295,60 +287,54 @@ class PreferenceService {
     setLocale = async (locale: string) => {
         this.store.locale = locale;
         await i18n.changeLanguage(locale);
-        this.persist();
+        await this.persist();
     };
 
-    // currency
     getCurrency = () => {
         return this.store.currency;
     };
 
-    setCurrency = (currency: string) => {
+    setCurrency = async (currency: string) => {
         this.store.currency = currency;
-        this.persist();
+        await this.persist();
     };
 
-    // walletSavedList
     getWalletSavedList = () => {
         return this.store.walletSavedList || [];
     };
 
-    updateWalletSavedList = (list: []) => {
+    updateWalletSavedList = async (list: []) => {
         this.store.walletSavedList = list;
-        this.persist();
+        await this.persist();
     };
 
-    // alianNames
     getInitAlianNameStatus = () => {
         return this.store.initAlianNames;
     };
 
-    changeInitAlianNameStatus = () => {
+    changeInitAlianNameStatus = async () => {
         this.store.initAlianNames = true;
-        this.persist();
+        await this.persist();
     };
 
-    // isFirstOpen
-    getIsFirstOpen = () => {
+    getIsFirstOpen = async () => {
         if (!this.store.currentVersion || compareVersions(version, this.store.currentVersion)) {
             this.store.currentVersion = version;
             this.store.firstOpen = true;
         }
-        this.persist();
+        await this.persist();
         return this.store.firstOpen;
     };
 
-    updateIsFirstOpen = () => {
+    updateIsFirstOpen = async () => {
         this.store.firstOpen = false;
-        this.persist();
+        await this.persist();
     };
 
-    // deprecate
     getAddressType = () => {
         return this.store.addressType;
     };
 
-    // chain type
     getChainType = (): ChainType => {
         if (!this.store) {
             throw new Error('Preference store is not initialized');
@@ -361,58 +347,45 @@ class PreferenceService {
         return this.store.chainType;
     };
 
-    // // network type
-    // getNetworkType = () => {
-    //   return this.store.networkType;
-    // };
-
-    // setNetworkType = (networkType: NetworkType) => {
-    //   this.store.networkType = networkType;
-    //   this.persist();
-    // };
-
-    setChainType = (chainType: ChainType) => {
+    setChainType = async (chainType: ChainType) => {
         this.store.chainType = chainType;
-        this.persist();
+        await this.persist();
     };
 
-    // currentKeyringIndex
     getCurrentKeyringIndex = () => {
         return this.store.currentKeyringIndex;
     };
 
-    setCurrentKeyringIndex = (keyringIndex: number) => {
+    setCurrentKeyringIndex = async (keyringIndex: number) => {
         this.store.currentKeyringIndex = keyringIndex;
-        this.persist();
+        await this.persist();
     };
 
-    // keyringAlianNames
-    setKeyringAlianName = (keyringKey: string, name: string) => {
+    setKeyringAlianName = async (keyringKey: string, name: string) => {
         this.store.keyringAlianNames = Object.assign({}, this.store.keyringAlianNames, { [keyringKey]: name });
-        this.persist();
+        await this.persist();
     };
 
-    getKeyringAlianName = (keyringKey: string, defaultName?: string) => {
+    getKeyringAlianName = async (keyringKey: string, defaultName?: string) => {
         const name = this.store.keyringAlianNames[keyringKey];
         if (!name && defaultName) {
             this.store.keyringAlianNames[keyringKey] = defaultName;
+            await this.persist();
         }
-        this.persist();
         return this.store.keyringAlianNames[keyringKey];
     };
 
-    // accountAlianNames
-    setAccountAlianName = (accountKey: string, name: string) => {
+    setAccountAlianName = async (accountKey: string, name: string) => {
         this.store.accountAlianNames = Object.assign({}, this.store.accountAlianNames, { [accountKey]: name });
-        this.persist();
+        await this.persist();
     };
 
-    getAccountAlianName = (accountKey: string, defaultName?: string) => {
+    getAccountAlianName = async (accountKey: string, defaultName?: string) => {
         const name = this.store.accountAlianNames[accountKey];
         if (!name && defaultName) {
             this.store.accountAlianNames[accountKey] = defaultName;
         }
-        this.persist();
+        await this.persist();
         return this.store.accountAlianNames[accountKey];
     };
 
@@ -421,24 +394,24 @@ class PreferenceService {
         return this.store.addressFlags[address] || 0;
     };
 
-    setAddressFlag = (address: string, flag: number) => {
+    setAddressFlag = async (address: string, flag: number) => {
         this.store.addressFlags = Object.assign({}, this.store.addressFlags, { [address]: flag });
-        this.persist();
+        await this.persist();
     };
 
     // Add address flag
-    addAddressFlag = (address: string, flag: AddressFlagType) => {
+    addAddressFlag = async (address: string, flag: AddressFlagType) => {
         const finalFlag = (this.store.addressFlags[address] || 0) | flag;
         this.store.addressFlags = Object.assign({}, this.store.addressFlags, { [address]: finalFlag });
-        this.persist();
+        await this.persist();
         return finalFlag;
     };
 
     // Remove address flag
-    removeAddressFlag = (address: string, flag: AddressFlagType) => {
+    removeAddressFlag = async (address: string, flag: AddressFlagType) => {
         const finalFlag = (this.store.addressFlags[address] || 0) & ~flag;
         this.store.addressFlags = Object.assign({}, this.store.addressFlags, { [address]: finalFlag });
-        this.persist();
+        await this.persist();
         return finalFlag;
     };
 
@@ -447,9 +420,9 @@ class PreferenceService {
         return this.store.editingKeyringIndex;
     };
 
-    setEditingKeyringIndex = (keyringIndex: number) => {
+    setEditingKeyringIndex = async (keyringIndex: number) => {
         this.store.editingKeyringIndex = keyringIndex;
-        this.persist();
+        await this.persist();
     };
 
     // editingAccount
@@ -457,50 +430,76 @@ class PreferenceService {
         return cloneDeep(this.store.editingAccount);
     };
 
-    setEditingAccount = (account?: Account | null) => {
+    setEditingAccount = async (account?: Account | null) => {
         this.store.editingAccount = account;
-        this.persist();
+        await this.persist();
     };
 
     getSkippedVersion = () => {
         return this.store.skippedVersion;
     };
 
-    setSkippedVersion = (version: string) => {
+    setSkippedVersion = async (version: string) => {
         this.store.skippedVersion = version;
-        this.persist();
+        await this.persist();
     };
 
     getAppTab = () => {
         return this.store.appTab;
     };
 
-    setAppSummary = (appSummary: AppSummary) => {
+    setAppSummary = async (appSummary: AppSummary) => {
         this.store.appTab.summary = appSummary;
-        this.persist();
+        await this.persist();
     };
 
-    setReadTabTime = (timestamp: number) => {
+    setReadTabTime = async (timestamp: number) => {
         this.store.appTab.readTabTime = timestamp;
-        this.persist();
+        await this.persist();
     };
 
-    setReadAppTime = (appid: number, timestamp: number) => {
+    setReadAppTime = async (appid: number, timestamp: number) => {
         this.store.appTab.readAppTime[appid] = timestamp;
-        this.persist();
+        await this.persist();
     };
 
     getShowSafeNotice = () => {
         return this.store.showSafeNotice;
     };
 
-    setShowSafeNotice = (showSafeNotice: boolean) => {
+    setShowSafeNotice = async (showSafeNotice: boolean) => {
         this.store.showSafeNotice = showSafeNotice;
-        this.persist();
+        await this.persist();
     };
 
     getAutoLockTimeId = () => {
         return this.store.autoLockTimeId;
+    };
+
+    getCustomNetworks = (): Record<string, CustomNetwork> => {
+        return this.store.customNetworks || {};
+    };
+
+    setCustomNetworks = async (networks: Record<string, CustomNetwork>) => {
+        this.store.customNetworks = networks;
+        await this.persist();
+    };
+
+    addCustomNetwork = async (network: CustomNetwork) => {
+        this.store.customNetworks = {
+            ...this.store.customNetworks,
+            [network.id]: network
+        };
+        await this.persist();
+    };
+
+    removeCustomNetwork = async (id: string) => {
+        const networks = { ...this.store.customNetworks };
+        // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
+        delete networks[id];
+
+        this.store.customNetworks = networks;
+        await this.persist();
     };
 
     // getEnableSignData = () => {
@@ -512,13 +511,14 @@ class PreferenceService {
     //     this.persist();
     // };
 
-    setAutoLockTimeId = (id: number) => {
+    setAutoLockTimeId = async (id: number) => {
         this.store.autoLockTimeId = id;
-        this.persist();
+
+        await this.persist();
     };
 
-    private persist = () => {
-        browser.storage.local.set({ preference: this.store });
+    private persist = async () => {
+        await browser.storage.local.set({ preference: this.store });
     };
 }
 

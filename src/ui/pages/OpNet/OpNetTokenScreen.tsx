@@ -58,7 +58,7 @@ export default function OpNetTokenScreen() {
     const unitBtc = useBTCUnit();
     useEffect(() => {
         const getAddress = async () => {
-            Web3API.setNetwork(await wallet.getChainType());
+            await Web3API.setNetwork(await wallet.getChainType());
 
             const myWallet = await getWallet();
             const contract: IOP_20Contract = getContract<IOP_20Contract>(

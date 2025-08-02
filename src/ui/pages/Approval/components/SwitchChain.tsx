@@ -14,7 +14,7 @@ export default function SwitchChain({ params: { data, session } }: Props) {
     const from = CHAINS_MAP[chainType];
     const to = CHAINS_MAP[data.chain];
 
-    const [getApproval, resolveApproval, rejectApproval] = useApproval();
+    const { resolveApproval, rejectApproval } = useApproval();
 
     const handleCancel = async () => {
         await rejectApproval('User rejected the request.');
@@ -23,6 +23,27 @@ export default function SwitchChain({ params: { data, session } }: Props) {
     const handleConnect = async () => {
         await resolveApproval();
     };
+
+    if (!from || !to) {
+        return (
+            <Layout>
+                <Header>
+                    <WebsiteBar session={session} />
+                </Header>
+                <Content>
+                    <Column mt="lg">
+                        <Text text="Invalid chain configuration" textCenter preset="title-bold" mt="lg" />
+                        <Text text="The requested chain is not available." textCenter mt="lg" />
+                    </Column>
+                </Content>
+                <Footer>
+                    <Row full>
+                        <Button text="Cancel" preset="default" onClick={handleCancel} full />
+                    </Row>
+                </Footer>
+            </Layout>
+        );
+    }
 
     return (
         <Layout>

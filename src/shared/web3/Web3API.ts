@@ -1,7 +1,7 @@
 import BigNumber from 'bignumber.js';
 import { CallResult, getContract, IOP_20Contract, JSONRpcProvider, OP_20_ABI, UTXOs } from 'opnet';
 
-import { CHAINS_MAP, ChainType } from '@/shared/constant';
+import { ChainId as WalletChainId, ChainType } from '@/shared/constant';
 import { NetworkType } from '@/shared/types';
 import { contractLogoManager } from '@/shared/web3/contracts-logo/ContractLogoManager';
 import { ContractInformation } from '@/shared/web3/interfaces/ContractInformation';
@@ -19,20 +19,49 @@ import {
     TransactionFactory,
     UTXO
 } from '@btc-vision/transaction';
+import { customNetworksManager } from '@/shared/utils/CustomNetworksManager';
 
 BigNumber.config({ EXPONENTIAL_AT: 256 });
 
-export function getOPNetChainType(chain: ChainType): ChainId {
-    switch (chain) {
-        case ChainType.FRACTAL_BITCOIN_MAINNET: {
+export async function getOPNetChainType(chain: ChainType): Promise<ChainId> {
+    // Get the chain configuration
+    const chainConfig = customNetworksManager.getChain(chain);
+
+    if (chainConfig) {
+        // Check if it's a fractal chain
+        if (chainConfig.isFractal || chain.includes('FRACTAL')) {
             return ChainId.Fractal;
         }
-        case ChainType.FRACTAL_BITCOIN_TESTNET: {
-            return ChainId.Fractal;
+
+        // For custom networks, try to determine from the chainId in the custom network data
+        if (chainConfig.isCustom) {
+            const customNetwork = await customNetworksManager.getCustomNetworkByChainType(chain);
+            if (customNetwork) {
+                // Map the ChainId enum from constants to the OPNet ChainId
+                switch (customNetwork.chainId) {
+                    case WalletChainId.Bitcoin:
+                        return ChainId.Bitcoin;
+                    case WalletChainId.Fractal:
+                        return ChainId.Fractal;
+                    default: {
+                        throw new Error(
+                            `Unsupported custom network chainId: ${customNetwork.chainId} for chain ${chain}`
+                        );
+                    }
+                }
+            }
         }
-        default:
-            return ChainId.Bitcoin;
     }
+
+    // Fallback to checking the chain type name
+    if (chain.includes('FRACTAL')) {
+        return ChainId.Fractal;
+    }
+
+    // Default to Bitcoin for all other chains
+    // This includes Dogecoin, Litecoin, Bitcoin Cash, Dash, etc.
+    // until OPNet officially supports them
+    return ChainId.Bitcoin;
 }
 
 export function getOPNetNetwork(network: NetworkType): OPNetNetwork {
@@ -48,8 +77,22 @@ export function getOPNetNetwork(network: NetworkType): OPNetNetwork {
     }
 }
 
-export function getBitcoinLibJSNetwork(network: NetworkType): Network {
-    switch (network) {
+export function getBitcoinLibJSNetwork(networkType: NetworkType, chainType?: ChainType): Network {
+    // If chainType is provided, check for special network configurations
+    if (chainType) {
+        const chainConfig = customNetworksManager.getChain(chainType);
+
+        // Fractal chains use bitcoin network parameters even for testnet
+        if (chainConfig?.isFractal || chainType.includes('FRACTAL')) {
+            return networks.bitcoin;
+        }
+
+        // Add custom network configurations here if needed
+        // For example, some chains might have their own network parameters
+    }
+
+    // Standard network type mapping
+    switch (networkType) {
         case NetworkType.MAINNET:
             return networks.bitcoin;
         case NetworkType.TESTNET:
@@ -78,9 +121,9 @@ class Web3API {
 
     private currentChain?: ChainType;
 
-    constructor() {
-        this.setProviderFromUrl('https://api.opnet.org');
-    }
+    //constructor() {
+    // Initialize with default, will be set properly when setNetwork is called
+    // }
 
     private _limitedProvider: OPNetLimitedProvider | undefined;
 
@@ -103,57 +146,30 @@ class Web3API {
     }
 
     public get ROUTER_ADDRESS(): Address | null {
-        const network = this.getOPNetNetwork();
+        if (!this.currentChain) return null;
 
-        switch (network) {
-            case OPNetNetwork.Mainnet: {
-                return null; // TODO: To be changed if needed
-            }
-            case OPNetNetwork.Testnet: {
-                return Address.fromString('0x9e14fc4c4cfca73a89e25e1216ae3a22302a12a7c6e1e3a568e05e8cb824112b');
-            }
-            case OPNetNetwork.Regtest: {
-                return null; // TODO: To be changed if needed
-            }
-            default:
-                throw new Error('Invalid network');
-        }
+        const chainConfig = customNetworksManager.getChain(this.currentChain);
+        if (!chainConfig?.contractAddresses?.router) return null;
+
+        return Address.fromString(chainConfig.contractAddresses.router);
     }
 
     public get motoAddress(): Address | null {
-        const network = this.getOPNetNetwork();
+        if (!this.currentChain) return null;
 
-        switch (network) {
-            case OPNetNetwork.Mainnet: {
-                return null; // TODO: To be changed if needed
-            }
-            case OPNetNetwork.Testnet: {
-                return Address.fromString('0xdb944e78cada1d705af892bb0560a4a9c4b9896d64ef23dfd3870ffd5004f4f2');
-            }
-            case OPNetNetwork.Regtest: {
-                return Address.fromString('0x97493c8f728f484151a8d498d1f94108826dedadd0dc9c1845285a180b7a478f');
-            }
-            default:
-                throw new Error('Invalid network');
-        }
+        const chainConfig = customNetworksManager.getChain(this.currentChain);
+        if (!chainConfig?.contractAddresses?.moto) return null;
+
+        return Address.fromString(chainConfig.contractAddresses.moto);
     }
 
     public get pillAddress(): Address | null {
-        const network = this.getOPNetNetwork();
+        if (!this.currentChain) return null;
 
-        switch (network) {
-            case OPNetNetwork.Mainnet: {
-                return null; // TODO: To be changed if needed
-            }
-            case OPNetNetwork.Testnet: {
-                return Address.fromString('0x7a0b58be893a250638cb2c95bf993ebe00b60779a4597b7c1ef0e76552c823ce');
-            }
-            case OPNetNetwork.Regtest: {
-                return Address.fromString('0x88d3642a7a7cb1be7cc49455084d08101fcebe56e9ea3c3c3c0d109796c9537f');
-            }
-            default:
-                throw new Error('Invalid network');
-        }
+        const chainConfig = customNetworksManager.getChain(this.currentChain);
+        if (!chainConfig?.contractAddresses?.pill) return null;
+
+        return Address.fromString(chainConfig.contractAddresses.pill);
     }
 
     public get motoAddressP2OP(): string | null {
@@ -180,30 +196,23 @@ class Web3API {
         return this._metadata;
     }
 
-    public setNetwork(chainType: ChainType): void {
-        switch (chainType) {
-            case ChainType.BITCOIN_MAINNET:
-                this.network = networks.bitcoin;
-                break;
-            case ChainType.BITCOIN_TESTNET:
-                this.network = networks.testnet;
-                break;
-            case ChainType.BITCOIN_REGTEST:
-                this.network = networks.regtest;
-                break;
-            case ChainType.FRACTAL_BITCOIN_MAINNET:
-                this.network = networks.bitcoin;
-                break;
-            case ChainType.FRACTAL_BITCOIN_TESTNET:
-                this.network = networks.bitcoin;
-                break;
-            default:
-                this.network = networks.bitcoin;
-                break;
+    public async setNetwork(chainType: ChainType): Promise<void> {
+        // Get chain configuration from customNetworksManager
+        const chainConfig = customNetworksManager.getChain(chainType);
+
+        if (!chainConfig) {
+            throw new Error(`Chain configuration not found for ${chainType}`);
         }
 
+        if (chainConfig.disable) {
+            throw new Error(`Chain ${chainType} is disabled`);
+        }
+
+        // Set the Bitcoin network based on the chain's network type and chain type
+        this.network = getBitcoinLibJSNetwork(chainConfig.networkType, chainType);
+
         if (chainType !== this.currentChain) {
-            const chainId = getOPNetChainType(chainType);
+            const chainId = await getOPNetChainType(chainType);
 
             this.currentChain = chainType;
             this.chainId = chainId;
@@ -211,7 +220,8 @@ class Web3API {
             try {
                 this._metadata = OPNetMetadata.getAddresses(this.getOPNetNetwork(), chainId);
             } catch (e) {
-                //
+                // Metadata might not be available for custom networks
+                console.warn(`Metadata not available for chain ${chainType}:`, e);
             }
 
             this.setProvider(chainType);
@@ -382,13 +392,14 @@ class Web3API {
     }
 
     private setProvider(chainType: ChainType): void {
-        const chainMetadata = CHAINS_MAP[chainType];
+        const chainMetadata = customNetworksManager.getChain(chainType);
+
         if (!chainMetadata) {
             throw new Error(`Chain metadata not found for ${chainType}`);
         }
 
         if (!chainMetadata.opnetUrl) {
-            throw new Error('OPNet RPC URL not set');
+            throw new Error(`OPNet RPC URL not set for ${chainType}`);
         }
 
         this.setProviderFromUrl(chainMetadata.opnetUrl);

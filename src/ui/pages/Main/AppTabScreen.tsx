@@ -10,9 +10,9 @@ function AppItem({ info }: { info: AppInfo }) {
     return (
         <Card
             preset="style1"
-            onClick={() => {
+            onClick={async () => {
                 if (info.url) window.open(info.url);
-                readApp(info.id);
+                await readApp(info.id);
             }}>
             <Row full>
                 <Column justifyCenter>

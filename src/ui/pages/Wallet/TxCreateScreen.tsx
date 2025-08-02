@@ -43,7 +43,10 @@ export default function TxCreateScreen() {
 
     /* --------------------------------------------------------------------- */
     useEffect(() => {
-        void wallet.getChainType().then(Web3API.setNetwork.bind(Web3API));
+        void (async () => {
+            const chain = await wallet.getChainType();
+            await Web3API.setNetwork(chain);
+        })();
     }, [wallet]);
 
     useEffect(() => {

@@ -17,7 +17,7 @@ import { useWallet } from '@/ui/utils';
 import { RightOutlined } from '@ant-design/icons';
 
 import { Tabs } from 'webextension-polyfill';
-import { SwitchChainModal } from '../Settings/SwitchChainModal';
+import { SwitchChainModal } from '../Settings/network/SwitchChainModal';
 
 interface Setting {
     label?: string;
@@ -30,15 +30,6 @@ interface Setting {
 }
 
 const SettingList: Setting[] = [
-    // {
-    //   label: 'Manage Wallet',
-    //   value: '',
-    //   desc: '',
-    //   action: 'manage-wallet',
-    //   route: '/settings/manage-wallet',
-    //   right: true
-    // },
-
     {
         label: 'Address Type',
         value: 'Taproot',
@@ -135,7 +126,7 @@ export default function SettingsTabScreen() {
             }
         };
         void run();
-    }, []);
+    }, [wallet]);
 
     const isCustomHdPath = useMemo(() => {
         const item = ADDRESS_TYPES[currentKeyring.addressType];
@@ -155,6 +146,7 @@ export default function SettingsTabScreen() {
         if (v.action == 'connected-sites') {
             v.value = connected ? 'Connected' : 'Not connected';
         }
+        
         //edit this ycry
         if (v.action == 'networkType') {
             v.value = chain.label;

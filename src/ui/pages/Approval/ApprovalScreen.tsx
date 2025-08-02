@@ -8,7 +8,7 @@ import { ApprovalComponents } from './components';
 
 export default function ApprovalScreen() {
     const wallet = useWallet();
-    const [getApproval, , rejectApproval] = useApproval();
+    const { getApproval, rejectApproval } = useApproval();
 
     const [approvalData, setApprovalData] = useState<StandardApprovalData | null>(null);
 

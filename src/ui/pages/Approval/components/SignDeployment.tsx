@@ -37,7 +37,7 @@ export default function SignDeployment(props: Props) {
         params: { data, session }
     } = props;
 
-    const [_, resolveApproval, rejectApproval] = useApproval();
+    const { resolveApproval, rejectApproval } = useApproval();
     const handleCancel = async () => {
         await rejectApproval('User rejected the request.');
     };

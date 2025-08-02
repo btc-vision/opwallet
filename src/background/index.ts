@@ -19,6 +19,7 @@ import { StoredData } from './service/keyring';
 import { isOpenapiServiceMethod, isWalletControllerMethod } from './utils/controller';
 import { storage } from './webapi';
 import browser, { browserRuntimeOnConnect, browserRuntimeOnInstalled } from './webapi/browser';
+import { customNetworksManager } from '@/shared/utils/CustomNetworksManager';
 
 const { PortMessage } = Message;
 
@@ -26,7 +27,7 @@ let appStoreLoaded = false;
 
 async function restoreAppState() {
     const keyringState = await storage.get<StoredData>('keyringState');
-    keyringService.loadStore(keyringState ?? {booted: '', vault: ''});
+    keyringService.loadStore(keyringState ?? { booted: '', vault: '' });
     keyringService.store.subscribe((value) => storage.set('keyringState', value));
 
     await preferenceService.init();
@@ -36,6 +37,16 @@ async function restoreAppState() {
     await permissionService.init();
 
     await contactBookService.init();
+
+    await customNetworksManager.reload();
+
+    chrome.storage.onChanged.addListener(async (changes, areaName) => {
+        if (areaName === 'local' && changes['custom_networks']) {
+            console.log('Custom networks updated from UI, reinitializing...');
+            // Force reload of custom networks and rebuild CHAINS_MAP
+            await customNetworksManager.reload();
+        }
+    });
 
     appStoreLoaded = true;
 }
@@ -53,14 +64,16 @@ browserRuntimeOnConnect((port: Runtime.Port) => {
                         eventBus.emit(data.method, data.params);
                         return Promise.resolve();
                     case 'openapi':
-                        // TODO (typing): Check this again as it's not the most ideal solution. 
-                        // However, the problem is that we have a general type like RequestParams for 
-                        // incoming request data as we have different handlers. So, we assumed that 
-                        // the params are passed correctly for each method for now  
+                        // TODO (typing): Check this again as it's not the most ideal solution.
+                        // However, the problem is that we have a general type like RequestParams for
+                        // incoming request data as we have different handlers. So, we assumed that
+                        // the params are passed correctly for each method for now
                         if (isOpenapiServiceMethod(data.method)) {
                             const method = walletController.openapi[data.method];
                             const params = Array.isArray(data.params) ? data.params : [];
-                            return Promise.resolve((method as (...args: unknown[]) => unknown).apply(walletController.openapi, params));
+                            return Promise.resolve(
+                                (method as (...args: unknown[]) => unknown).apply(walletController.openapi, params)
+                            );
                         } else {
                             const errorMsg = `Method ${data.method} not found in openapi`;
                             console.error(errorMsg);
@@ -68,14 +81,16 @@ browserRuntimeOnConnect((port: Runtime.Port) => {
                         }
                     case 'controller':
                     default:
-                        // TODO (typing): Check this again as it's not the most ideal solution. 
-                        // However, the problem is that we have a general type like RequestParams for 
-                        // incoming request data as we have different handlers. So, we assumed that 
-                        // the params are passed correctly for each method for now 
+                        // TODO (typing): Check this again as it's not the most ideal solution.
+                        // However, the problem is that we have a general type like RequestParams for
+                        // incoming request data as we have different handlers. So, we assumed that
+                        // the params are passed correctly for each method for now
                         if (isWalletControllerMethod(data.method)) {
                             const method = walletController[data.method];
                             const params = Array.isArray(data.params) ? data.params : [];
-                            return Promise.resolve((method as (...args: unknown[]) => unknown).apply(walletController, params));
+                            return Promise.resolve(
+                                (method as (...args: unknown[]) => unknown).apply(walletController, params)
+                            );
                         } else {
                             const errorMsg = `Method ${data.method} not found in controller`;
                             console.error(errorMsg);
@@ -151,7 +166,7 @@ const addAppInstalledEvent = async () => {
 };
 
 browserRuntimeOnInstalled(async (details) => {
-    if (details.reason === 'install' ) {
+    if (details.reason === 'install') {
         await addAppInstalledEvent();
     }
 });

@@ -132,7 +132,7 @@ export function Step2({
 
     const fetchAddressesBalance = async () => {
         try {
-            Web3API.setNetwork(await wallet.getChainType());
+            await Web3API.setNetwork(await wallet.getChainType());
 
             if (!contextData.isRestore) {
                 return;

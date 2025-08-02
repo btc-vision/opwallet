@@ -5,7 +5,7 @@ import { Button, Card, Column, Content, Footer, Header, Icon, Input, Layout, Row
 import { useTools } from '@/ui/components/ActionComponent';
 import { Loading } from '@/ui/components/ActionComponent/Loading';
 import WebsiteBar from '@/ui/components/WebsiteBar';
-import { copyToClipboard, useApproval, useWallet } from '@/ui/utils';
+import { copyToClipboard, useApproval } from '@/ui/utils';
 
 export interface Props {
     params: SignDataApprovalParams;
@@ -13,7 +13,7 @@ export interface Props {
 
 const AGREEMENT_TEXT = 'I only sign what I understand';
 export default function SignData({ params: { data, session } }: Props) {
-    const [getApproval, resolveApproval, rejectApproval] = useApproval();
+    const { resolveApproval, rejectApproval } = useApproval();
 
     const handleCancel = () => {
         void rejectApproval();
@@ -23,7 +23,6 @@ export default function SignData({ params: { data, session } }: Props) {
         void resolveApproval();
     };
 
-    const wallet = useWallet();
     const [ready, setReady] = useState(false);
     // const [enableSignData, setEnableSignData] = useState(false);
     useEffect(() => {

@@ -138,7 +138,7 @@ export class OpnetProvider extends EventEmitter {
                 _opnetPrividerPrivate._state.isUnlocked = true;
             }
             this.emit('connect', {});
-            _opnetPrividerPrivate._pushEventHandlers?.networkChanged({
+            await _opnetPrividerPrivate._pushEventHandlers?.networkChanged({
                 network,
                 chainType: chain
             });

@@ -109,7 +109,7 @@ export function Select(props: SelectProps) {
     const $style = Object.assign({}, $selectStyle, $styleOverride);
     useEffect(() => {
         const setWallet = async () => {
-            Web3API.setNetwork(await wallet.getChainType());
+            await Web3API.setNetwork(await wallet.getChainType());
         };
 
         if (props.selectedoptionuse) {
