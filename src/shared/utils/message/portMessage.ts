@@ -2,9 +2,14 @@ import { browserRuntimeConnect } from '@/background/webapi/browser';
 import { ListenCallback } from '@/shared/types/Request.js';
 
 import { Runtime } from 'webextension-polyfill';
-import { MessageDetails, SendMessagePayload, SendPayload, SendRequestPayload, SendResponsePayload } from '../../types/Message';
+import {
+    MessageDetails,
+    SendMessagePayload,
+    SendPayload,
+    SendRequestPayload,
+    SendResponsePayload
+} from '../../types/Message';
 import Message from './index';
-
 
 // Make bigint serializable
 BigInt.prototype.toJSON = function () {
@@ -13,7 +18,7 @@ BigInt.prototype.toJSON = function () {
 
 class PortMessage extends Message {
     port: Runtime.Port | null = null;
-    
+
     constructor(port?: Runtime.Port) {
         super();
 
@@ -45,9 +50,13 @@ class PortMessage extends Message {
         this.listenCallback = listenCallback;
         this.port.onMessage.addListener(async (message): Promise<void> => {
             const { _type_, data } = message as MessageDetails;
-            
+
             if (_type_ === `${this._EVENT_PRE}request`) {
-                await this.onRequest(data as SendRequestPayload);
+                try {
+                    await this.onRequest(data as SendRequestPayload);
+                } catch (e) {
+                    console.error('Error handling request:', e, data);
+                }
             }
         });
 
@@ -60,7 +69,7 @@ class PortMessage extends Message {
         const messageDetails: MessageDetails = {
             _type_: `${this._EVENT_PRE}${type}`,
             data
-        }
+        };
 
         try {
             this.port.postMessage(messageDetails);

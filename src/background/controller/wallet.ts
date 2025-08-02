@@ -1730,23 +1730,23 @@ export class WalletController {
         return this.displayedKeyringToWalletKeyring(displayedKeyring, editingKeyringIndex);
     };
 
-    public setEditingKeyring = (index: number): void => {
-        preferenceService.setEditingKeyringIndex(index);
+    public setEditingKeyring = async (index: number): Promise<void> => {
+        await preferenceService.setEditingKeyringIndex(index);
     };
 
     public getEditingAccount = (): Account | undefined | null => {
         return preferenceService.getEditingAccount();
     };
 
-    public setEditingAccount = (account: Account): void => {
-        preferenceService.setEditingAccount(account);
+    public setEditingAccount = async (account: Account): Promise<void> => {
+        await preferenceService.setEditingAccount(account);
     };
 
     /**
      * Get the app summary (list of recommended apps, etc.) from openapi, with read/unread flags.
      */
     public getAppSummary = async (): Promise<AppSummary> => {
-        const appTab = preferenceService.getAppTab();
+        /*const appTab = preferenceService.getAppTab();
         try {
             const data = await openapiService.getAppSummary();
             const readTabTime = appTab.readTabTime;
@@ -1763,12 +1763,63 @@ export class WalletController {
                 }
             });
             data.readTabTime = readTabTime;
-            preferenceService.setAppSummary(data);
+            await preferenceService.setAppSummary(data);
             return data;
         } catch (e) {
             console.log('getAppSummary error:', e);
             return appTab.summary;
-        }
+        }*/
+
+        const appTab = preferenceService.getAppTab();
+        const readTabTime = appTab.readTabTime;
+
+        const opWalletAppSummaryResponse: AppSummary = {
+            apps: [
+                {
+                    desc: 'Easily and smoothly create your inscriptions.',
+                    id: 1,
+                    logo: 'https://static.unisat.io/res/images/app-fractal-inscribe.png',
+                    new: false,
+                    tag: 'Inscription Service',
+                    tagColor: 'rgba(34,249,128,0.6)',
+                    title: 'Fractal Inscribe',
+                    url: 'https://fractal-testnet.unisat.io/inscribe',
+                    time: 0, // Adding required field
+                    readtime: undefined
+                },
+                {
+                    desc: 'Trade your Ordinals and Runes on the Fractal Marketplace, including brc-20 and runes assets.',
+                    id: 3,
+                    logo: 'https://static.unisat.io/res/images/app-fractal-market.png',
+                    new: false,
+                    tag: 'Marketplace',
+                    tagColor: 'rgba(249,192,34,0.8)',
+                    title: 'Fractal Marketplace',
+                    url: 'https://fractal-testnet.unisat.io/market',
+                    time: 0, // Adding required field
+                    readtime: undefined
+                },
+                {
+                    desc: 'Seamless asset swapping and management across chains on Fractal',
+                    id: 4,
+                    logo: 'https://static.unisat.io/res/images/app-fractal-swap.png',
+                    new: false,
+                    tag: 'Marketplace',
+                    tagColor: 'rgba(249,192,34,0.8)',
+                    title: 'Bridge & PizzaSwap',
+                    url: 'https://fractal-testnet.unisat.io/apps',
+                    time: 0, // Adding required field
+                    readtime: undefined
+                }
+            ],
+            readTabTime: 1
+        };
+
+        opWalletAppSummaryResponse.readTabTime = readTabTime;
+
+        await preferenceService.setAppSummary(opWalletAppSummaryResponse);
+
+        return opWalletAppSummaryResponse;
     };
 
     public readTab = async (): Promise<void> => {

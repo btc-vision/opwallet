@@ -217,9 +217,11 @@ export class OpenApiService {
     async refreshBtcPrice() {
         try {
             this.isRefreshingBtcPrice = true;
-            const result: BtcPrice = await this.httpGet<BtcPrice>('/v5/default/btc-price', {});
+            // TODO: Remove this mock
+
+            // const result: BtcPrice = await this.httpGet<BtcPrice>('/v5/default/btc-price', {});
             // test
-            // const result: BtcPrice = await Promise.resolve({ price: 58145.19716040577, updateTime: 1634160000000 });
+            const result: BtcPrice = await Promise.resolve({ price: 10145.19716040577, updateTime: Date.now() });
 
             this.btcPriceCache = result.price;
             this.btcPriceUpdateTime = Date.now();
@@ -239,6 +241,7 @@ export class OpenApiService {
         if (this.btcPriceCache && Date.now() - this.btcPriceUpdateTime < 30 * 1000) {
             return this.btcPriceCache;
         }
+
         // 40s return cache and refresh
         if (this.btcPriceCache && Date.now() - this.btcPriceUpdateTime < 40 * 1000) {
             this.refreshBtcPrice().then();
@@ -253,7 +256,14 @@ export class OpenApiService {
     }
 
     async checkWebsite(website: string): Promise<{ isScammer: boolean; warning: string }> {
-        return this.httpPost<{ isScammer: boolean; warning: string }>('/v5/default/check-website', { website });
+        //return this.httpPost<{ isScammer: boolean; warning: string }>('/v5/default/check-website', { website });
+        // TODO: remove this mock
+        await Promise.resolve();
+
+        return {
+            isScammer: false,
+            warning: ''
+        };
     }
 
     async getVersionDetail(version: string): Promise<VersionDetail> {
