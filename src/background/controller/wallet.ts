@@ -17,11 +17,13 @@ import {
     AddressFlagType,
     AUTO_LOCKTIMES,
     BRAND_ALIAN_TYPE_TEXT,
+    ChainId,
     CHAINS_ENUM,
     CHAINS_MAP,
     ChainType,
     COIN_NAME,
     COIN_SYMBOL,
+    CustomNetwork,
     DEFAULT_LOCKTIME_ID,
     EVENTS,
     KEYRING_TYPE,
@@ -81,6 +83,7 @@ import { UTXOs } from 'opnet/src/bitcoin/UTXOs';
 import { ContactBookItem, ContactBookStore } from '../service/contactBook';
 import { OpenApiService } from '../service/openapi';
 import { ConnectedSite } from '../service/permission';
+import { customNetworksManager } from '@/shared/utils/CustomNetworksManager';
 
 export interface AccountAsset {
     name: string;
@@ -498,10 +501,12 @@ export class WalletController {
             addressType,
             keyringService.keyrings.length - 1
         );
-        const walletKeyring = this.displayedKeyringToWalletKeyring(
+
+        const walletKeyring = await this.displayedKeyringToWalletKeyring(
             displayedKeyring,
             keyringService.keyrings.length - 1
         );
+
         this.changeKeyring(walletKeyring);
     };
 
@@ -543,12 +548,15 @@ export class WalletController {
                 addressType,
                 keyringService.keyrings.length - 1
             );
-            const walletKeyring = this.displayedKeyringToWalletKeyring(
+
+            const walletKeyring = await this.displayedKeyringToWalletKeyring(
                 displayedKeyring,
                 keyringService.keyrings.length - 1
             );
+
             this.changeKeyring(walletKeyring);
-            preferenceService.setShowSafeNotice(true);
+
+            await preferenceService.setShowSafeNotice(true);
         } catch (err) {
             throw new WalletControllerError(`Could not create keyring from mnemonics: ${String(err)}`);
         }
@@ -557,13 +565,13 @@ export class WalletController {
     /**
      * Create a temporary HD Keyring in memory with given mnemonic info.
      */
-    public createTmpKeyringWithMnemonics = (
+    public createTmpKeyringWithMnemonics = async (
         mnemonic: string,
         hdPath: string,
         passphrase: string,
         addressType: AddressType,
         accountCount = 1
-    ): WalletKeyring => {
+    ): Promise<WalletKeyring> => {
         const activeIndexes: number[] = [];
         for (let i = 0; i < accountCount; i++) {
             activeIndexes.push(i);
@@ -579,22 +587,26 @@ export class WalletController {
         });
 
         const displayedKeyring = keyringService.displayForKeyring(originKeyring, addressType, -1);
-        return this.displayedKeyringToWalletKeyring(displayedKeyring, -1, false);
+        return await this.displayedKeyringToWalletKeyring(displayedKeyring, -1, false);
     };
 
     /**
      * Create a temporary keyring in memory with a single private key.
      */
-    public createTmpKeyringWithPrivateKey = (privateKey: string, addressType: AddressType): WalletKeyring => {
+    public createTmpKeyringWithPrivateKey = async (
+        privateKey: string,
+        addressType: AddressType
+    ): Promise<WalletKeyring> => {
         const network = this.getNetworkType();
         const originKeyring = keyringService.createTmpKeyring(KEYRING_TYPE.SimpleKeyring, {
             privateKeys: [privateKey],
             network: getBitcoinLibJSNetwork(network)
         });
+
         const displayedKeyring = keyringService.displayForKeyring(originKeyring, addressType, -1);
 
-        preferenceService.setShowSafeNotice(true);
-        return this.displayedKeyringToWalletKeyring(displayedKeyring, -1, false);
+        await preferenceService.setShowSafeNotice(true);
+        return await this.displayedKeyringToWalletKeyring(displayedKeyring, -1, false);
     };
 
     /**
@@ -655,17 +667,20 @@ export class WalletController {
                     }
                 });
             }
+
             const displayedKeyring = keyringService.displayForKeyring(
                 originKeyring,
                 addressType,
                 keyringService.keyrings.length - 1
             );
-            const walletKeyring = this.displayedKeyringToWalletKeyring(
+
+            const walletKeyring = await this.displayedKeyringToWalletKeyring(
                 displayedKeyring,
                 keyringService.keyrings.length - 1
             );
+
             this.changeKeyring(walletKeyring);
-            preferenceService.setShowSafeNotice(false);
+            await preferenceService.setShowSafeNotice(false);
         } catch (err) {
             throw new WalletControllerError(`Could not create keyring with Keystone data: ${String(err)}`, {
                 urType,
@@ -1353,16 +1368,16 @@ export class WalletController {
         return preferenceService.getInitAlianNameStatus();
     };
 
-    public updateInitAlianNameStatus = (): void => {
-        preferenceService.changeInitAlianNameStatus();
+    public updateInitAlianNameStatus = (): Promise<void> => {
+        return preferenceService.changeInitAlianNameStatus();
     };
 
-    public getIsFirstOpen = (): boolean => {
+    public getIsFirstOpen = (): Promise<boolean> => {
         return preferenceService.getIsFirstOpen();
     };
 
-    public updateIsFirstOpen = (): void => {
-        preferenceService.updateIsFirstOpen();
+    public updateIsFirstOpen = (): Promise<void> => {
+        return preferenceService.updateIsFirstOpen();
     };
 
     /**
@@ -1498,6 +1513,50 @@ export class WalletController {
         }
     };
 
+    public addCustomNetwork = async (params: {
+        name: string;
+        networkType: NetworkType;
+        chainId: ChainId;
+        unit: string;
+        opnetUrl: string;
+        mempoolSpaceUrl: string;
+        faucetUrl?: string;
+        showPrice?: boolean;
+    }): Promise<CustomNetwork> => {
+        try {
+            // The network will be added and validated by customNetworksManager
+            const network = await customNetworksManager.addCustomNetwork(params);
+
+            // Force reload of chains to ensure background service is aware
+            await customNetworksManager.ensureInitialized();
+
+            return network;
+        } catch (err) {
+            throw new WalletControllerError(`Failed to add custom network: ${String(err)}`, params);
+        }
+    };
+
+    public deleteCustomNetwork = async (id: string): Promise<boolean> => {
+        try {
+            const success = await customNetworksManager.deleteCustomNetwork(id);
+            if (success) {
+                // Force reload of chains
+                await customNetworksManager.ensureInitialized();
+            }
+            return success;
+        } catch (err) {
+            throw new WalletControllerError(`Failed to delete custom network: ${String(err)}`, { id });
+        }
+    };
+
+    public getAllCustomNetworks = async (): Promise<CustomNetwork[]> => {
+        return customNetworksManager.getAllCustomNetworks();
+    };
+
+    public testRpcConnection = async (url: string): Promise<boolean> => {
+        return customNetworksManager.testRpcConnection(url);
+    };
+
     public getChainType = (): ChainType => {
         return preferenceService.getChainType();
     };
@@ -1525,11 +1584,11 @@ export class WalletController {
     /**
      * Convert a displayedKeyring to a typed WalletKeyring.
      */
-    public displayedKeyringToWalletKeyring = (
+    public displayedKeyringToWalletKeyring = async (
         displayedKeyring: DisplayedKeyring,
         index: number,
         initName = true
-    ): WalletKeyring => {
+    ): Promise<WalletKeyring> => {
         const networkType = this.getNetworkType();
         const addressType = displayedKeyring.addressType;
         const key = `keyring_${index}`;
@@ -1541,7 +1600,7 @@ export class WalletController {
             const address = publicKeyToAddress(pubkey, addressType, networkType);
             const accountKey = `${key}#${j}`;
             const defaultName = this.getAlianName(pubkey) ?? this._generateAlianName(type, j + 1);
-            const alianName = preferenceService.getAccountAlianName(accountKey, defaultName);
+            const alianName = await preferenceService.getAccountAlianName(accountKey, defaultName);
             const flag = preferenceService.getAddressFlag(address);
             accounts.push({
                 type,
@@ -1557,11 +1616,12 @@ export class WalletController {
             type === KEYRING_TYPE.HdKeyring || type === KEYRING_TYPE.KeystoneKeyring
                 ? displayedKeyring.keyring.hdPath
                 : '';
-        const alianName = preferenceService.getKeyringAlianName(
+        const alianName = await preferenceService.getKeyringAlianName(
             key,
             initName ? `${KEYRING_TYPES[type].alianName} #${index + 1}` : ''
         );
-        const walletKeyring: WalletKeyring = {
+
+        return {
             index,
             key,
             type,
@@ -1570,7 +1630,6 @@ export class WalletController {
             alianName,
             hdPath
         };
-        return walletKeyring;
     };
 
     /**
@@ -1584,7 +1643,8 @@ export class WalletController {
             if (displayedKeyring.type === KEYRING_TYPE.Empty) {
                 continue;
             }
-            const walletKeyring = this.displayedKeyringToWalletKeyring(displayedKeyring, displayedKeyring.index);
+
+            const walletKeyring = await this.displayedKeyringToWalletKeyring(displayedKeyring, displayedKeyring.index);
             keyrings.push(walletKeyring);
         }
         return keyrings;
@@ -1706,12 +1766,12 @@ export class WalletController {
         }
     };
 
-    public readTab = (): void => {
-        return preferenceService.setReadTabTime(Date.now());
+    public readTab = async (): Promise<void> => {
+        return await preferenceService.setReadTabTime(Date.now());
     };
 
-    public readApp = (appid: number): void => {
-        return preferenceService.setReadAppTime(appid, Date.now());
+    public readApp = async (appid: number): Promise<void> => {
+        return await preferenceService.setReadAppTime(appid, Date.now());
     };
 
     /**
@@ -1812,8 +1872,8 @@ export class WalletController {
     /**
      * Add a flag to an account's address.
      */
-    public addAddressFlag = (account: Account, flag: AddressFlagType): Account => {
-        account.flag = preferenceService.addAddressFlag(account.address, flag);
+    public addAddressFlag = async (account: Account, flag: AddressFlagType): Promise<Account> => {
+        account.flag = await preferenceService.addAddressFlag(account.address, flag);
         openapiService.setClientAddress(account.address, account.flag);
         return account;
     };
@@ -1821,8 +1881,8 @@ export class WalletController {
     /**
      * Remove a flag from an account's address.
      */
-    public removeAddressFlag = (account: Account, flag: AddressFlagType): Account => {
-        account.flag = preferenceService.removeAddressFlag(account.address, flag);
+    public removeAddressFlag = async (account: Account, flag: AddressFlagType): Promise<Account> => {
+        account.flag = await preferenceService.removeAddressFlag(account.address, flag);
         openapiService.setClientAddress(account.address, account.flag);
         return account;
     };

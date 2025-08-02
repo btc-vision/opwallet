@@ -4,7 +4,7 @@ import { AccountAsset } from '@/background/controller/wallet';
 import { ContactBookItem, ContactBookStore } from '@/background/service/contactBook';
 import { SavedVault, ToSignInput } from '@/background/service/keyring';
 import { ConnectedSite } from '@/background/service/permission';
-import { AddressFlagType, ChainType } from '@/shared/constant';
+import { AddressFlagType, ChainId, ChainType, CustomNetwork } from '@/shared/constant';
 import {
     Account,
     AddressSummary,
@@ -263,6 +263,23 @@ export interface WalletController {
     genSignMsgUr(text: string, msgType?: string): Promise<{ type: string; cbor: string; requestId: string }>;
 
     parseSignMsgUr(type: string, cbor: string, msgType?: string): Promise<ParsedSignMsgUr>;
+
+    addCustomNetwork(params: {
+        name: string;
+        networkType: NetworkType;
+        chainId: ChainId;
+        unit: string;
+        opnetUrl: string;
+        mempoolSpaceUrl: string;
+        faucetUrl?: string;
+        showPrice?: boolean;
+    }): Promise<CustomNetwork>;
+
+    deleteCustomNetwork(id: string): Promise<boolean>;
+
+    getAllCustomNetworks(): Promise<CustomNetwork[]>;
+
+    testRpcConnection(url: string): Promise<boolean>;
 
     setAutoLockTimeId(timeId: number): Promise<void>;
 

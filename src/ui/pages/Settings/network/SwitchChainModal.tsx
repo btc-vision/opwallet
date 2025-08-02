@@ -10,6 +10,7 @@ import { colors } from '@/ui/theme/colors';
 import { CloseOutlined, DeleteOutlined, PlusOutlined } from '@ant-design/icons';
 import { customNetworksManager } from '@/shared/utils/CustomNetworksManager';
 import { AddCustomNetworkModal } from './CustomNetworkModalComponent';
+import { useWallet } from '@/ui/utils';
 
 function ChainItem(props: { chainType: ChainType; inGroup?: boolean; onClose: () => void; onDelete?: () => void }) {
     // All hooks must be called at the top level, before any conditional returns
@@ -145,6 +146,7 @@ function ChainGroup(props: { group: TypeChainGroup; onClose: () => void; onRefre
 }
 
 export const SwitchChainModal = ({ onClose }: { onClose: () => void }) => {
+    const wallet = useWallet();
     const [showAddNetwork, setShowAddNetwork] = useState(false);
     const [customNetworks, setCustomNetworks] = useState<TypeChain<ChainType>[]>([]);
     const [chainGroups, setChainGroups] = useState<TypeChainGroup[]>([]);
@@ -175,7 +177,8 @@ export const SwitchChainModal = ({ onClose }: { onClose: () => void }) => {
         const confirmed = window.confirm(`Are you sure you want to delete "${customNetwork.name}"?`);
         if (!confirmed) return;
 
-        const deleted = await customNetworksManager.deleteCustomNetwork(customNetwork.id);
+        // Use wallet controller for deletion
+        const deleted = await wallet.deleteCustomNetwork(customNetwork.id);
         if (deleted) {
             tools.toastSuccess('Custom network deleted');
             setRefreshKey((prev) => prev + 1);

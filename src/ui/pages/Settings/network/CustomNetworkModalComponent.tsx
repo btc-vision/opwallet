@@ -4,9 +4,9 @@ import { NetworkType } from '@/shared/types';
 import { Button, Card, Column, Icon, Image, Input, Row, Text } from '@/ui/components';
 import { BottomModal } from '@/ui/components/BottomModal';
 import { useTools } from '@/ui/components/ActionComponent';
-import { customNetworksManager } from '@/shared/utils/CustomNetworksManager';
 import { colors } from '@/ui/theme/colors';
 import { CloseOutlined } from '@ant-design/icons';
+import { useWallet } from '@/ui/utils';
 
 interface NetworkOption {
     value: NetworkType;
@@ -35,6 +35,7 @@ const CHAIN_OPTIONS: ChainOption[] = [
 ];
 
 export const AddCustomNetworkModal = ({ onClose, onSuccess }: { onClose: () => void; onSuccess: () => void }) => {
+    const wallet = useWallet();
     const tools = useTools();
     const [name, setName] = useState('');
     const [networkType, setNetworkType] = useState<NetworkType>(NetworkType.MAINNET);
@@ -73,7 +74,8 @@ export const AddCustomNetworkModal = ({ onClose, onSuccess }: { onClose: () => v
             setTesting(true);
             tools.showLoading(true);
 
-            await customNetworksManager.addCustomNetwork({
+            // Use wallet controller instead of direct customNetworksManager
+            await wallet.addCustomNetwork({
                 name: name.trim(),
                 networkType,
                 chainId,
