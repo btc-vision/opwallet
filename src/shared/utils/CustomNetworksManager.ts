@@ -174,13 +174,16 @@ class CustomNetworksManager {
 
         const id = `custom_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
 
+        // Get the appropriate icon based on chain and network type
+        const icon = this.getChainIcon(params.chainId, params.networkType);
+
         const network: CustomNetwork = {
             id,
             name: params.name,
             networkType: params.networkType,
             chainId: params.chainId,
             chainType,
-            icon: CHAIN_ICONS[params.chainId] || './images/artifacts/custom-network.svg',
+            icon,
             unit: params.unit,
             opnetUrl: params.opnetUrl,
             mempoolSpaceUrl: params.mempoolSpaceUrl,
@@ -331,7 +334,7 @@ class CustomNetworksManager {
             const chain: ConcreteTypeChain = {
                 enum: network.chainType,
                 label: network.name,
-                icon: network.icon || CHAIN_ICONS[network.chainId] || './images/artifacts/custom-network.svg',
+                icon: network.icon,
                 unit: network.unit,
                 networkType: network.networkType,
                 endpoints: ['https://wallet.opnet.org'],
@@ -392,6 +395,37 @@ class CustomNetworksManager {
 
         const chainTypeName = `${chainIdNames[chainId]}_${networkTypeNames[networkType]}`;
         return chainTypeName as ChainType;
+    }
+
+    private getChainIcon(chainId: ChainId, networkType: NetworkType): string {
+        // Special handling for Bitcoin networks
+        if (chainId === ChainId.Bitcoin) {
+            switch (networkType) {
+                case NetworkType.TESTNET:
+                    return './images/artifacts/bitcoin-testnet.svg';
+                case NetworkType.REGTEST:
+                    return './images/artifacts/bitcoin-testnet.svg'; // Using testnet icon for regtest
+                case NetworkType.MAINNET:
+                default:
+                    return './images/artifacts/bitcoin-mainnet.png';
+            }
+        }
+
+        // Special handling for Fractal networks
+        if (chainId === ChainId.Fractal) {
+            switch (networkType) {
+                case NetworkType.TESTNET:
+                case NetworkType.REGTEST:
+                    return './images/artifacts/fractal-testnet.svg';
+                case NetworkType.MAINNET:
+                default:
+                    return './images/artifacts/fractal-mainnet.svg';
+            }
+        }
+
+        // For other chains, use the default icon from CHAIN_ICONS
+        // You might want to add testnet-specific icons for other chains in the future
+        return CHAIN_ICONS[chainId] || './images/artifacts/custom-network.svg';
     }
 }
 

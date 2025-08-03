@@ -12,7 +12,13 @@ import { customNetworksManager } from '@/shared/utils/CustomNetworksManager';
 import { AddCustomNetworkModal } from './CustomNetworkModalComponent';
 import { useWallet } from '@/ui/utils';
 
-function ChainItem(props: { chainType: ChainType; inGroup?: boolean; onClose: () => void; onDelete?: () => void }) {
+function ChainItem(props: {
+    chainType: ChainType;
+    inGroup?: boolean;
+    onClose: () => void;
+    onDelete?: () => void;
+    hideDisabled?: boolean;
+}) {
     // All hooks must be called at the top level, before any conditional returns
     const currentChain = useChain();
     const changeChainType = useChangeChainTypeCallback();
@@ -23,6 +29,9 @@ function ChainItem(props: { chainType: ChainType; inGroup?: boolean; onClose: ()
 
     // Early return after all hooks have been called
     if (!chain) return null;
+
+    // Hide disabled chains if hideDisabled is true
+    if (props.hideDisabled && chain.disable) return null;
 
     const selected = currentChain?.enum == chain.enum;
     const isCustom = chain.isCustom;
@@ -79,7 +88,12 @@ function ChainItem(props: { chainType: ChainType; inGroup?: boolean; onClose: ()
     );
 }
 
-function ChainGroup(props: { group: TypeChainGroup; onClose: () => void; onRefresh: () => void }) {
+function ChainGroup(props: {
+    group: TypeChainGroup;
+    onClose: () => void;
+    onRefresh: () => void;
+    hideDisabled?: boolean;
+}) {
     const group = props.group;
     const currentChain = useChain();
 
@@ -96,8 +110,21 @@ function ChainGroup(props: { group: TypeChainGroup; onClose: () => void; onRefre
     }, [currentChain, group.type, group.items]);
 
     if (group.type === 'single' && group.chain) {
-        return <ChainItem chainType={group.chain.enum} onClose={props.onClose} />;
+        return <ChainItem chainType={group.chain.enum} onClose={props.onClose} hideDisabled={props.hideDisabled} />;
     } else {
+        // Filter visible items if hideDisabled is true
+        const visibleItems = props.hideDisabled
+            ? group.items?.filter((item) => {
+                  const chain = customNetworksManager.getChain(item.enum);
+                  return chain && !chain.disable;
+              })
+            : group.items;
+
+        // Don't render the group if there are no visible items
+        if (props.hideDisabled && (!visibleItems || visibleItems.length === 0)) {
+            return null;
+        }
+
         return (
             <Column>
                 <Card
@@ -133,8 +160,14 @@ function ChainGroup(props: { group: TypeChainGroup; onClose: () => void; onRefre
 
                         {!folded ? (
                             <Column gap="zero">
-                                {group.items?.map((v) => (
-                                    <ChainItem key={v.enum} inGroup chainType={v.enum} onClose={props.onClose} />
+                                {visibleItems?.map((v) => (
+                                    <ChainItem
+                                        key={v.enum}
+                                        inGroup
+                                        chainType={v.enum}
+                                        onClose={props.onClose}
+                                        hideDisabled={props.hideDisabled}
+                                    />
                                 ))}
                             </Column>
                         ) : null}
@@ -150,6 +183,7 @@ export const SwitchChainModal = ({ onClose }: { onClose: () => void }) => {
     const [showAddNetwork, setShowAddNetwork] = useState(false);
     const [customNetworks, setCustomNetworks] = useState<TypeChain<ChainType>[]>([]);
     const [chainGroups, setChainGroups] = useState<TypeChainGroup[]>([]);
+    const [hideDisabled, setHideDisabled] = useState(true); // Default to true
     const tools = useTools();
 
     const loadData = async () => {
@@ -224,6 +258,27 @@ export const SwitchChainModal = ({ onClose }: { onClose: () => void }) => {
                             <CloseOutlined />
                         </Row>
                     </Row>
+
+                    {/* Toggle for hiding disabled networks */}
+                    <Row fullX justifyEnd itemsCenter mt="sm">
+                        <label
+                            style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                cursor: 'pointer',
+                                fontSize: '14px',
+                                color: colors.textDim
+                            }}>
+                            <input
+                                type="checkbox"
+                                checked={hideDisabled}
+                                onChange={(e) => setHideDisabled(e.target.checked)}
+                                style={{ marginRight: '8px', cursor: 'pointer' }}
+                            />
+                            Hide disabled networks
+                        </label>
+                    </Row>
+
                     <Row fullX style={{ borderTopWidth: 1, borderColor: colors.border }} mt="md" />
                 </Column>
 
@@ -242,7 +297,13 @@ export const SwitchChainModal = ({ onClose }: { onClose: () => void }) => {
                         minHeight: 0
                     }}>
                     {chainGroups.map((v, index) => (
-                        <ChainGroup key={`chain_group_${index}`} group={v} onClose={onClose} onRefresh={loadData} />
+                        <ChainGroup
+                            key={`chain_group_${index}`}
+                            group={v}
+                            onClose={onClose}
+                            onRefresh={loadData}
+                            hideDisabled={hideDisabled}
+                        />
                     ))}
 
                     {customNetworks.length > 0 && (
@@ -256,6 +317,7 @@ export const SwitchChainModal = ({ onClose }: { onClose: () => void }) => {
                                     chainType={chain.enum}
                                     onClose={onClose}
                                     onDelete={() => handleDeleteCustomNetwork(chain.enum)}
+                                    hideDisabled={hideDisabled}
                                 />
                             ))}
                         </>
