@@ -3,7 +3,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { ChainType, COIN_DUST } from '@/shared/constant';
 import { Action, Features, SendBitcoinParameters } from '@/shared/interfaces/RawTxParameters';
-import Web3API, { bigIntToDecimal } from '@/shared/web3/Web3API';
+import Web3API from '@/shared/web3/Web3API';
 import { Button, Column, Content, Header, Image, Input, Layout, Row, Text } from '@/ui/components';
 import { BtcUsd } from '@/ui/components/BtcUsd';
 import { FeeRateBar } from '@/ui/components/FeeRateBar';
@@ -34,9 +34,12 @@ export default function TxCreateScreen() {
     const [disabled, setDisabled] = useState(true);
     const [error, setError] = useState('');
     const [showP2PKWarning, setDisplayP2PKWarning] = useState(false);
-    const [totalAvailableAmount, setBalanceValue] = useState<number>(0);
+    const [showP2OPWarning, setDisplayP2OPWarning] = useState(false);
     const [autoAdjust, setAutoAdjust] = useState(false);
-    const [currentBalance, setCurrentBalance] = useState<bigint>(0n);
+    const [totalBalanceValue, setTotalBalanceValue] = useState('0');
+    const [balanceValue, setBalanceValue] = useState('0');
+    const [balanceValueInSatoshis, setBalanceValueInSatoshis] = useState(0n);
+    const [note, setNote] = useState<string>('');
 
     /* --------------------------------------------------------------------- */
     useEffect(() => {
@@ -44,17 +47,21 @@ export default function TxCreateScreen() {
     }, [wallet]);
 
     useEffect(() => {
-        const _currentBalance = Web3API.getBalance(account.address, true);
-        void _currentBalance.then(setCurrentBalance);
-    }, [account.address]);
+        const fetchTotalBalanceValue = async () => {
+            const addressBalance = await wallet.getAddressBalance(account.address);
+            setTotalBalanceValue(addressBalance.amount);
+        };
+        void fetchTotalBalanceValue();
+    }, [account.address, wallet]);
 
     useEffect(() => {
-        const fetchBalance = async () => {
-            const btcBalanceGet = await Web3API.getUTXOTotal(account.address);
-            setBalanceValue(new BigNumber(bigIntToDecimal(btcBalanceGet, 8)).toNumber());
+        const fetchBalanceValue = async () => {
+            const addressBalance = await wallet.getAddressBalance(account.address);
+            setBalanceValue(addressBalance.amount);
+            setBalanceValueInSatoshis(BigInt(amountToSatoshis(addressBalance.amount)));
         };
-        void fetchBalance();
-    }, [chain.enum, account.address]);
+        void fetchBalanceValue();
+    }, [chain.enum, account.address, wallet]);
 
     /* --------------------------------------------------------------------- */
     const toSatoshis = useMemo(() => (inputAmount ? amountToSatoshis(inputAmount) : 0), [inputAmount]);
@@ -71,14 +78,14 @@ export default function TxCreateScreen() {
             setError(`Amount must be at least ${dustAmount} ${btcUnit}`);
             return;
         }
-        if (toSatoshis / 10 ** 8 > totalAvailableAmount) {
-            setError('Amount exceeds your available balance');
+        if (toSatoshis > balanceValueInSatoshis) {
+            setError('Amount exceeds your total balance');
             return;
         }
         if (feeRate <= 0) return;
 
         setDisabled(false);
-    }, [toInfo, inputAmount, feeRate, enableRBF, toSatoshis, totalAvailableAmount, dustAmount, btcUnit]);
+    }, [toInfo, inputAmount, feeRate, enableRBF, toSatoshis, balanceValueInSatoshis, dustAmount, btcUnit]);
 
     /* --------------------------------------------------------------------- */
     const handleNext = () => {
@@ -90,7 +97,8 @@ export default function TxCreateScreen() {
             priorityFee: 0n,
             header: `Send ${btcUnit}`,
             tokens: [],
-            action: Action.SendBitcoin
+            action: Action.SendBitcoin,
+            note
         };
 
         navigate(RouteTypes.TxOpnetConfirmScreen, { rawTxInfo: event });
@@ -99,6 +107,7 @@ export default function TxCreateScreen() {
     const onSetAddress = useCallback(
         (val: { address: string; domain: string }) => {
             setDisplayP2PKWarning(false);
+            setDisplayP2OPWarning(false);
 
             const address = val.address;
             const type = AddressVerificator.detectAddressType(address, Web3API.network);
@@ -110,6 +119,11 @@ export default function TxCreateScreen() {
 
             if (type === AddressTypes.P2PK) {
                 setDisplayP2PKWarning(true);
+                return;
+            }
+
+            if (type === AddressTypes.P2OP) {
+                setDisplayP2OPWarning(true);
                 return;
             }
 
@@ -136,7 +150,7 @@ export default function TxCreateScreen() {
                         background: 'rgba(255,255,255,0.02)'
                     }}>
                     {/* chain icon fixed spacing */}
-                    <Row justifyCenter style={{ marginTop: '14vh', marginBottom: 8 }}>
+                    <Row justifyCenter style={{ marginTop: '26vh', marginBottom: 8 }}>
                         <Image src={chain.icon} size={60} style={{ filter: 'drop-shadow(0 0 4px rgba(0,0,0,0.4))' }} />
                     </Row>
 
@@ -168,6 +182,25 @@ export default function TxCreateScreen() {
                                 />
                             </Row>
                         )}
+
+                        {showP2OPWarning && (
+                            <Row
+                                fullX
+                                style={{
+                                    background: 'rgba(255,165,0,0.12)',
+                                    border: '1px solid #ffa640',
+                                    borderRadius: 6,
+                                    padding: 6,
+                                    marginTop: 6
+                                }}>
+                                <Text
+                                    text="⚠️ Sending BTC to P2OP addresses is not supported."
+                                    size="xs"
+                                    color="gold"
+                                    textCenter
+                                />
+                            </Row>
+                        )}
                     </Column>
 
                     {/* Amount */}
@@ -188,7 +221,7 @@ export default function TxCreateScreen() {
                             enableMax
                             onMaxClick={() => {
                                 setAutoAdjust(true);
-                                setUiState({ inputAmount: totalAvailableAmount.toString() });
+                                setUiState({ inputAmount: balanceValue });
                             }}
                         />
 
@@ -196,22 +229,19 @@ export default function TxCreateScreen() {
                         <Row justifyBetween style={{ marginTop: 6 }}>
                             <Text text="Available" color="gold" />
                             <Row gap={'sm'}>
-                                <Text text={totalAvailableAmount} size="sm" color="gold" />
+                                <Text text={balanceValue} size="sm" color="gold" />
                                 <Text text={btcUnit} size="sm" color="textDim" />
-                                {chain.enum !== ChainType.BITCOIN_REGTEST && (
-                                    <>
-                                        <Text text="(" size="sm" color="textDim" />
-                                        <Text
-                                            text={BitcoinUtils.formatUnits(currentBalance, 8)}
-                                            size="sm"
-                                            color="gold"
-                                        />
-                                        <Text text={btcUnit} size="sm" color="textDim" />
-                                        <Text text=")" size="sm" color="textDim" />
-                                    </>
-                                )}
                             </Row>
                         </Row>
+                        {chain.enum !== ChainType.BITCOIN_REGTEST && (
+                            <Row justifyBetween>
+                                <Text text="Total" color="textDim" />
+                                <Row gap={'sm'}>
+                                    <Text text={totalBalanceValue} size="sm" color="gold" />
+                                    <Text text={btcUnit} size="sm" color="textDim" />
+                                </Row>
+                            </Row>
+                        )}
 
                         {/* divider */}
                         <div style={{ height: 1, background: 'rgba(255,255,255,0.06)', margin: '14px 0' }} />
@@ -232,6 +262,28 @@ export default function TxCreateScreen() {
                         <Text text="Miner fee" color="textDim" />
                         <FeeRateBar onChange={(val) => setUiState({ feeRate: val })} />
                     </Column>
+
+                    {/* Note */}
+                    <div style={{ marginTop: 20 }}>
+                        <Text text="Note (optional)" color="textDim" />
+                        <input
+                            type="text"
+                            value={note}
+                            onChange={(e) => setNote(e.target.value)}
+                            placeholder="Enter a note for the transaction"
+                            style={{
+                                marginTop: 6,
+                                backgroundColor: 'transparent',
+                                borderRadius: 5,
+                                borderWidth: 1,
+                                borderColor: 'rgba(255,255,255,0.3)',
+                                padding: 4,
+                                width: '100%',
+                                fontFamily: 'monospace',
+                                fontSize: 14
+                            }}
+                        />
+                    </div>
                 </div>
             </Content>
 

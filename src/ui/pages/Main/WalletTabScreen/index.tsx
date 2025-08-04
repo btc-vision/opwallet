@@ -1,10 +1,8 @@
-import { Tabs, Tooltip } from 'antd';
-import BigNumber from 'bignumber.js';
-import { CSSProperties, ReactElement, useEffect, useState } from 'react';
+import { Tooltip } from 'antd';
+import { CSSProperties, useEffect, useState } from 'react';
 
 import { AddressFlagType } from '@/shared/constant';
 import { checkAddressFlag } from '@/shared/utils';
-import Web3API, { bigIntToDecimal } from '@/shared/web3/Web3API';
 import { AddressBar, Card, Column, Content, Footer, Header, Icon, Image, Layout, Row, Text } from '@/ui/components';
 import AccountSelect from '@/ui/components/AccountSelect';
 import { BtcUsd } from '@/ui/components/BtcUsd';
@@ -12,7 +10,12 @@ import { DisableUnconfirmedsPopover } from '@/ui/components/DisableUnconfirmedPo
 import { NavTabBar } from '@/ui/components/NavTabBar';
 import { UpgradePopover } from '@/ui/components/UpgradePopover';
 import { BtcDisplay } from '@/ui/pages/Main/WalletTabScreen/components/BtcDisplay';
-import { useAccountBalance, useAddressSummary, useCurrentAccount } from '@/ui/state/accounts/hooks';
+import {
+    useAccountBalance,
+    useAddressSummary,
+    useCurrentAccount,
+    useFetchBalanceCallback
+} from '@/ui/state/accounts/hooks';
 import { accountActions } from '@/ui/state/accounts/reducer';
 import { useAppDispatch } from '@/ui/state/hooks';
 import { useCurrentKeyring } from '@/ui/state/keyrings/hooks';
@@ -24,10 +27,9 @@ import {
     useVersionInfo,
     useWalletConfig
 } from '@/ui/state/settings/hooks';
-import { useAssetTabKey, useResetUiTxCreateScreen } from '@/ui/state/ui/hooks';
-import { AssetTabKey, uiActions } from '@/ui/state/ui/reducer';
+import { useResetUiTxCreateScreen } from '@/ui/state/ui/hooks';
 import { fontSizes } from '@/ui/theme/font';
-import { amountToSatoshis, satoshisToAmount, useWallet } from '@/ui/utils';
+import { amountToSatoshis, useWallet } from '@/ui/utils';
 
 import { RouteTypes, useNavigate } from '../../MainRoute';
 import { SwitchChainModal } from '../../Settings/SwitchChainModal';
@@ -42,54 +44,28 @@ export default function WalletTabScreen() {
     const navigate = useNavigate();
 
     const accountBalance = useAccountBalance();
+    const fetchBalance = useFetchBalanceCallback();
     const chain = useChain();
+    const addressSummary = useAddressSummary();
+    const btcUnit = useBTCUnit();
+    const faucetUrl = useFaucetUrl();
+
+    const [switchChainModalVisible, setSwitchChainModalVisible] = useState(false);
 
     const currentKeyring = useCurrentKeyring();
     const currentAccount = useCurrentAccount();
     const wallet = useWallet();
 
     const dispatch = useAppDispatch();
-    const assetTabKey = useAssetTabKey();
 
     const skipVersion = useSkipVersionCallback();
 
     const walletConfig = useWalletConfig();
     const versionInfo = useVersionInfo();
 
-    // const [showSafeNotice, setShowSafeNotice] = useState(false);
+    const resetUiTxCreateScreen = useResetUiTxCreateScreen();
+
     const [showDisableUnconfirmedUtxoNotice, setShowDisableUnconfirmedUtxoNotice] = useState(false);
-
-    const availableSatoshis =
-        amountToSatoshis(accountBalance.amount) - amountToSatoshis(accountBalance.inscription_amount);
-
-    const totalSatoshis = amountToSatoshis(accountBalance.amount);
-    const unavailableSatoshis = totalSatoshis - availableSatoshis;
-    const [availableAmount, setAvailableAmount] = useState(0);
-    const unavailableAmount = satoshisToAmount(unavailableSatoshis);
-    const totalAmountUse = satoshisToAmount(totalSatoshis);
-    const [totalAmount, setTotalAmount] = useState(totalAmountUse);
-
-    const addressSummary = useAddressSummary();
-
-    useEffect(() => {
-        const fetchBalance = async () => {
-            if (accountBalance.amount === '0') {
-                setAvailableAmount(0);
-            } else {
-                try {
-                    Web3API.setNetwork(await wallet.getChainType());
-
-                    const btcBalance = await Web3API.getBalance(currentAccount.address, true);
-                    setAvailableAmount(new BigNumber(bigIntToDecimal(btcBalance, 8)).toNumber());
-                    setTotalAmount(bigIntToDecimal(btcBalance, 8).toString());
-                } catch (e) {
-                    console.warn(`Unable to fetch balance -> ${e}`);
-                }
-            }
-        };
-
-        void fetchBalance();
-    }, [accountBalance.amount, chain.enum, currentAccount.address, wallet]);
 
     useEffect(() => {
         void (async () => {
@@ -110,19 +86,19 @@ export default function WalletTabScreen() {
         })();
     }, [addressSummary, currentAccount, dispatch, wallet]);
 
-    const tabItems: { key: AssetTabKey; label: string; children: ReactElement }[] = [
-        {
-            key: AssetTabKey.OP_NET,
-            label: 'OP_NET',
-            children: <OPNetList />
-        }
-    ];
+    useEffect(() => {
+        void fetchBalance();
+    }, [fetchBalance]);
 
-    const faucetUrl = useFaucetUrl();
-    const resetUiTxCreateScreen = useResetUiTxCreateScreen();
-    const btcUnit = useBTCUnit();
+    // TODO: When ordinals are implemented, we can uncomment this
+    // const tabItems: { key: AssetTabKey; label: string; children: ReactElement }[] = [
+    //     {
+    //         key: AssetTabKey.OP_NET,
+    //         label: 'OP_NET',
+    //         children: <OPNetList />
+    //     }
+    // ];
 
-    const [switchChainModalVisible, setSwitchChainModalVisible] = useState(false);
     return (
         <Layout>
             <Header
@@ -195,15 +171,15 @@ export default function WalletTabScreen() {
                             <>
                                 <Row justifyBetween>
                                     <span style={$noBreakStyle}>{'Available '}</span>
-                                    <span style={$noBreakStyle}>{` ${availableAmount} ${btcUnit}`}</span>
+                                    <span style={$noBreakStyle}>{` ${accountBalance.confirm_amount} ${btcUnit}`}</span>
                                 </Row>
                                 <Row justifyBetween>
                                     <span style={$noBreakStyle}>{'Unavailable '}</span>
-                                    <span style={$noBreakStyle}>{` ${unavailableAmount} ${btcUnit}`}</span>
+                                    <span style={$noBreakStyle}>{` ${accountBalance.pending_amount} ${btcUnit}`}</span>
                                 </Row>
                                 <Row justifyBetween>
                                     <span style={$noBreakStyle}>{'Total '}</span>
-                                    <span style={$noBreakStyle}>{` ${totalAmount} ${btcUnit}`}</span>
+                                    <span style={$noBreakStyle}>{` ${accountBalance.amount} ${btcUnit}`}</span>
                                 </Row>
                             </>
                         }
@@ -211,7 +187,7 @@ export default function WalletTabScreen() {
                             fontSize: fontSizes.xs
                         }}>
                         <div>
-                            <Text text={'AVAILABLE BALANCE'} textCenter color="textDim" />
+                            <Text text={'TOTAL BALANCE'} textCenter color="textDim" />
                             <BtcDisplay balance={accountBalance.amount} />
                         </div>
                     </Tooltip>
@@ -274,15 +250,23 @@ export default function WalletTabScreen() {
                         </button>
                     </Row>
 
-                    <Tabs
-                        size={'small'}
-                        defaultActiveKey={assetTabKey.toString()}
-                        activeKey={assetTabKey.toString()}
-                        items={tabItems}
-                        onTabClick={(key) => {
-                            dispatch(uiActions.updateAssetTabScreen({ assetTabKey: key as unknown as AssetTabKey }));
-                        }}
-                    />
+                    {/* TODO: When ordinals are implemented, we can uncomment this
+                        <Tabs
+                            size={'small'}
+                            defaultActiveKey={assetTabKey.toString()}
+                            activeKey={assetTabKey.toString()}
+                            items={tabItems}
+                            onTabClick={(key: string) => {
+                                if (Object.values(AssetTabKey).includes(key as AssetTabKey)) {
+                                    dispatch(uiActions.updateAssetTabScreen({ assetTabKey: key as AssetTabKey }));
+                                }
+                            }}
+                        />
+                    */}
+
+                    <div style={{ marginTop: 6 }}>
+                        <OPNetList />
+                    </div>
                 </Column>
 
                 {!versionInfo.skipped && (

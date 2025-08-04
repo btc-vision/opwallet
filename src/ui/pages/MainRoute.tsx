@@ -27,7 +27,6 @@ import BoostScreen from './Main/BoostScreen';
 import SettingsTabScreen from './Main/SettingsTabScreen';
 import WalletTabScreen from './Main/WalletTabScreen';
 import WelcomeScreen from './Main/WelcomeScreen';
-import Airdrop from './OpNet/Airdrop';
 import DeployContract from './OpNet/DeployContract';
 import Mint from './OpNet/Mint';
 import OpNetTokenScreen from './OpNet/OpNetTokenScreen';
@@ -87,8 +86,7 @@ export enum RouteTypes {
     TxCreateScreen = 'TxCreateScreen',
     Swap = 'Swap',
     DeployContract = 'DeployContract',
-    Mint = 'Mint',
-    Airdrop = 'Airdrop'
+    Mint = 'Mint'
 }
 
 type Routes = {
@@ -246,10 +244,6 @@ export const routes: Routes = {
     Mint: {
         path: '/opnet/mint',
         element: <Mint />
-    },
-    Airdrop: {
-        path: '/opnet/airdrop',
-        element: <Airdrop />
     }
 };
 

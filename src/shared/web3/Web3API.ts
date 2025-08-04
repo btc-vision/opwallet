@@ -138,8 +138,30 @@ class Web3API {
         }
     }
 
+    public get pillAddress(): Address | null {
+        const network = this.getOPNetNetwork();
+
+        switch (network) {
+            case OPNetNetwork.Mainnet: {
+                return null; // TODO: To be changed if needed
+            }
+            case OPNetNetwork.Testnet: {
+                return Address.fromString('0x7a0b58be893a250638cb2c95bf993ebe00b60779a4597b7c1ef0e76552c823ce');
+            }
+            case OPNetNetwork.Regtest: {
+                return Address.fromString('0x88d3642a7a7cb1be7cc49455084d08101fcebe56e9ea3c3c3c0d109796c9537f');
+            }
+            default:
+                throw new Error('Invalid network');
+        }
+    }
+
     public get motoAddressP2OP(): string | null {
         return this.motoAddress?.p2op(this.network) || null;
+    }
+
+    public get pillAddressP2OP(): string | null {
+        return this.pillAddress?.p2op(this.network) || null;
     }
 
     public get chain(): ChainType {
@@ -212,10 +234,6 @@ class Web3API {
     public setProviderFromUrl(url: string): void {
         this._provider = new JSONRpcProvider(url, this.network, 6000);
         this._limitedProvider = new OPNetLimitedProvider(url);
-    }
-
-    public async getBalance(address: string, filterOrdinals: boolean): Promise<bigint> {
-        return await this.provider.getBalance(address, filterOrdinals);
     }
 
     public isValidAddress(address: string): boolean {
@@ -293,17 +311,40 @@ class Web3API {
         }
     }
 
-    public async getUTXOs(addresses: string[], requiredAmount?: bigint): Promise<UTXO[]> {
-        return await this.getUTXOsForAddresses(addresses, requiredAmount);
+    public async getUnspentUTXOsForAddresses(addresses: string[], requiredAmount?: bigint): Promise<UTXO[]> {
+        let finalUTXOs: UTXOs = [];
+
+        for (const address of addresses) {
+            let utxos: UTXOs = [];
+
+            try {
+                if (!requiredAmount) {
+                    utxos = await this.provider.utxoManager.getUTXOs({
+                        address,
+                        optimize: false,
+                        mergePendingUTXOs: false,
+                        filterSpentUTXOs: true
+                    });
+                } else {
+                    utxos = await this.provider.utxoManager.getUTXOsForAmount({
+                        address,
+                        amount: requiredAmount,
+                        optimize: false,
+                        mergePendingUTXOs: false,
+                        filterSpentUTXOs: true
+                    });
+                }
+            } catch {
+                //
+            }
+
+            finalUTXOs = finalUTXOs.concat(utxos);
+        }
+
+        return finalUTXOs;
     }
 
-    public async getUTXOTotal(address: string): Promise<bigint> {
-        const utxos: UTXO[] = await this.getUTXOsForAddresses([address]);
-
-        return utxos.reduce((acc, utxo) => acc + utxo.value, 0n);
-    }
-
-    private async getUTXOsForAddresses(addresses: string[], requiredAmount?: bigint): Promise<UTXO[]> {
+    public async getAllUTXOsForAddresses(addresses: string[], requiredAmount?: bigint): Promise<UTXO[]> {
         let finalUTXOs: UTXOs = [];
 
         for (const address of addresses) {
@@ -322,8 +363,8 @@ class Web3API {
                         address,
                         amount: requiredAmount,
                         optimize: false,
-                        filterSpentUTXOs: true,
-                        mergePendingUTXOs: true
+                        mergePendingUTXOs: true,
+                        filterSpentUTXOs: true
                     });
                 }
             } catch {

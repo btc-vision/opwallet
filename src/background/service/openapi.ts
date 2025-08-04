@@ -171,7 +171,7 @@ export class OpenApiService {
     };
 
     async getWalletConfig(): Promise<WalletConfig> {
-        return this.httpGet<WalletConfig>('/v5/default/config', {}, 'https://wallet-api.opnet.org');
+        return this.httpGet<WalletConfig>('/v5/default/config', {}, 'https://wallet.opnet.org');
     }
 
     async getAddressSummary(address: string): Promise<AddressSummary> {

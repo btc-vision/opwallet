@@ -52,6 +52,7 @@ export interface BaseRawTxInfo<T extends Action> {
     readonly feeRate: number;
     readonly priorityFee: bigint;
     readonly gasSatFee?: bigint; // TODO: Implement this.
+    readonly note?: string | Buffer; // Optional note for the transaction
 
     readonly action: T;
 }

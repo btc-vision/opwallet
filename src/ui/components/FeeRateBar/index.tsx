@@ -1,8 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 
-import { NetworkType } from '@/shared/types';
-import { useWallet } from '@/ui/utils';
-
+import Web3API from '@/shared/web3/Web3API';
 import { Column } from '../Column';
 import { Input } from '../Input';
 
@@ -13,41 +11,48 @@ enum FeeRateType {
     CUSTOM
 }
 
+type BitcoinFees = {
+    readonly conservative: number;
+    readonly recommended: {
+        readonly low: number;
+        readonly medium: number;
+        readonly high: number;
+    };
+};
+
 export function FeeRateBar({ readonly, onChange }: { readonly?: boolean; onChange?: (val: number) => void }) {
-    const wallet = useWallet();
     const [feeOptions, setFeeOptions] = useState<{ title: string; desc?: string; feeRate: number }[]>([]);
 
     const getData = useCallback(async () => {
-        if ((await wallet.getNetworkType()) == NetworkType.REGTEST) {
-            const feeArray = [
-                { title: 'Slow', desc: 'Slow', feeRate: 2 },
-                { title: 'Medium', desc: 'Medium', feeRate: 3 },
-                { title: 'Fast', desc: 'Fast', feeRate: 5 }
-            ];
-            setFeeOptions([...feeArray, { title: 'Custom', feeRate: 0 }]);
-        } else if ((await wallet.getNetworkType()) == NetworkType.TESTNET) {
-            const feeArray = [
+        const gasParameters = await Web3API.provider.gasParameters();
+        if (!gasParameters) {
+            setFeeOptions([
                 { title: 'Slow', desc: 'Slow', feeRate: 2 },
                 { title: 'Medium', desc: 'Medium', feeRate: 5 },
-                { title: 'Fast', desc: 'Fast', feeRate: 10 }
-            ];
-            setFeeOptions([...feeArray, { title: 'Custom', feeRate: 0 }]);
-        } else {
-            const v = await wallet.getFeeSummary();
-            const list = readonly ? v.list : [...v.list, { title: 'Custom', feeRate: 0 }];
-
-            list.forEach((v) => {
-                v.feeRate = v.feeRate < 5 ? (v.feeRate = 5) : v.feeRate;
-                v.feeRate += 10;
-
-                return v;
-            });
-
-            console.log('set fee', list);
-
-            setFeeOptions(list);
+                { title: 'Fast', desc: 'Fast', feeRate: 10 },
+                { title: 'Custom', feeRate: 0 }
+            ]);
+            return;
         }
-    }, [readonly, wallet]);
+
+        const bitcoin = gasParameters.bitcoin as BitcoinFees;
+        if (!bitcoin || !bitcoin.recommended) {
+            setFeeOptions([
+                { title: 'Slow', desc: 'Slow', feeRate: 2 },
+                { title: 'Medium', desc: 'Medium', feeRate: 5 },
+                { title: 'Fast', desc: 'Fast', feeRate: 10 },
+                { title: 'Custom', feeRate: 0 }
+            ]);
+            return;
+        }
+
+        setFeeOptions([
+            { title: 'Slow', desc: 'Slow', feeRate: bitcoin.recommended.low },
+            { title: 'Medium', desc: 'Medium', feeRate: bitcoin.recommended.medium },
+            { title: 'Fast', desc: 'Fast', feeRate: bitcoin.recommended.high },
+            { title: 'Custom', feeRate: 0 }
+        ]);
+    }, []);
 
     useEffect(() => {
         void getData();

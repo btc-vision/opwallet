@@ -315,7 +315,7 @@ export default function TxOpnetConfirmScreen() {
             const currentWalletAddress = await wallet.getCurrentAccount();
             const userWallet = await getWallet();
 
-            const utxos: UTXO[] = await Web3API.getUTXOs(
+            const utxos: UTXO[] = await Web3API.getUnspentUTXOsForAddresses(
                 [currentWalletAddress.address],
                 BitcoinUtils.expandToDecimals(parameters.inputAmount, 8) * 2n
             );
@@ -329,7 +329,8 @@ export default function TxOpnetConfirmScreen() {
                 priorityFee: 0n,
                 gasSatFee: 0n,
                 to: parameters.to,
-                from: currentWalletAddress.address
+                from: currentWalletAddress.address,
+                note: parameters.note
             };
 
             const sendTransact = await Web3API.transactionFactory.createBTCTransfer(IFundingTransactionParameters);
@@ -359,17 +360,17 @@ export default function TxOpnetConfirmScreen() {
             const currentWalletAddress = await wallet.getCurrentAccount();
             const userWallet = await getWallet();
 
-            const utxos: UTXO[] = await Web3API.getUTXOs([currentWalletAddress.address], 1_000_000n); // maximum fee a contract can pay
+            const utxos: UTXO[] = await Web3API.getUnspentUTXOsForAddresses([currentWalletAddress.address], 1_000_000n); // maximum fee a contract can pay
 
             const arrayBuffer = await parameters.file.arrayBuffer();
             const uint8Array = new Uint8Array(arrayBuffer);
 
-            const preimage = await Web3API.provider.getPreimage();
+            const challenge = await Web3API.provider.getChallenge();
             const calldata = parameters.calldataHex ? Buffer.from(parameters.calldataHex, 'hex') : Buffer.from([]);
 
             // TODO: Add calldata support
             const deploymentParameters: IDeploymentParameters = {
-                preimage,
+                challenge,
                 utxos: utxos,
                 signer: userWallet.keypair,
                 network: Web3API.network,
@@ -380,7 +381,8 @@ export default function TxOpnetConfirmScreen() {
                 bytecode: Buffer.from(uint8Array),
                 calldata: calldata,
                 optionalInputs: [],
-                optionalOutputs: []
+                optionalOutputs: [],
+                note: parameters.note
             };
 
             const sendTransact: DeploymentResult =

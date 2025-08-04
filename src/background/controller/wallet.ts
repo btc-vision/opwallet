@@ -11,11 +11,7 @@ import {
 } from '@/background/service';
 import { DisplayedKeyring, Keyring, SavedVault } from '@/background/service/keyring';
 import { WalletSaveList } from '@/background/service/preference';
-import {
-    BroadcastTransactionOptions,
-    IDeploymentParametersWithoutSigner,
-    InteractionParametersWithoutSigner
-} from '@/content-script/pageProvider/Web3Provider.js';
+import { BroadcastTransactionOptions } from '@/content-script/pageProvider/Web3Provider.js';
 import {
     ADDRESS_TYPES,
     AddressFlagType,
@@ -58,7 +54,15 @@ import {
 } from '@/shared/types';
 import { getChainInfo } from '@/shared/utils';
 import Web3API, { bigIntToDecimal, getBitcoinLibJSNetwork } from '@/shared/web3/Web3API';
-import { DeploymentResult, IDeploymentParameters, IInteractionParameters, Wallet } from '@btc-vision/transaction';
+import {
+    DeploymentResult,
+    IDeploymentParameters,
+    IDeploymentParametersWithoutSigner,
+    IInteractionParameters,
+    InteractionParametersWithoutSigner,
+    RawChallenge,
+    Wallet
+} from '@btc-vision/transaction';
 import { publicKeyToAddress, scriptPkToAddress } from '@btc-vision/wallet-sdk/lib/address';
 import { bitcoin, ECPair } from '@btc-vision/wallet-sdk/lib/bitcoin-core';
 import { KeystoneKeyring } from '@btc-vision/wallet-sdk/lib/keyring';
@@ -272,10 +276,10 @@ export class WalletController {
             const addressList = addresses.split(',');
             const summaries: AddressSummary[] = [];
             for (const address of addressList) {
-                const balance = await Web3API.getBalance(address, true);
+                const addressBalance = await this.getAddressBalance(address);
                 const summary: AddressSummary = {
                     address: address,
-                    totalSatoshis: Number(balance),
+                    totalSatoshis: Number(addressBalance.amount) * 1e8,
                     loading: false
                 };
                 summaries.push(summary);
@@ -301,16 +305,19 @@ export class WalletController {
      */
     public getAddressCacheBalance = (address: string | undefined): BitcoinBalance => {
         const defaultBalance: BitcoinBalance = {
+            amount: '0',
             confirm_amount: '0',
             pending_amount: '0',
-            amount: '0',
-            usd_value: '0',
+
+            btc_amount: '0',
             confirm_btc_amount: '0',
             pending_btc_amount: '0',
-            btc_amount: '0',
+
+            inscription_amount: '0',
             confirm_inscription_amount: '0',
             pending_inscription_amount: '0',
-            inscription_amount: '0'
+
+            usd_value: '0.00'
         };
         if (!address) return defaultBalance;
         return preferenceService.getAddressBalance(address) ?? defaultBalance;
@@ -453,14 +460,14 @@ export class WalletController {
         if (!('hdPath' in serialized) || serialized.hdPath === undefined || serialized.hdPath === null) {
             throw new WalletControllerError('No hdPath found in keyring');
         }
-        if (!('passphrase' in serialized) || serialized.passphrase === undefined || serialized.passphrase === null) {
-            throw new WalletControllerError('No passphrase found in keyring');
-        }
+
+        const passphrase =
+            serialized.passphrase !== undefined && serialized.passphrase !== null ? serialized.passphrase : undefined;
 
         return {
             mnemonic: serialized.mnemonic,
             hdPath: serialized.hdPath,
-            passphrase: serialized.passphrase
+            passphrase
         };
     };
 
@@ -982,7 +989,9 @@ export class WalletController {
      */
     public signAndBroadcastInteraction = async (
         interactionParameters: InteractionParametersWithoutSigner
-    ): Promise<[BroadcastedTransaction, BroadcastedTransaction, import('@btc-vision/transaction').UTXO[], string]> => {
+    ): Promise<
+        [BroadcastedTransaction, BroadcastedTransaction, import('@btc-vision/transaction').UTXO[], RawChallenge]
+    > => {
         const account = await this.getCurrentAccount();
         if (!account) throw new WalletControllerError('No current account');
 
@@ -1043,7 +1052,7 @@ export class WalletController {
 
             Web3API.provider.utxoManager.spentUTXO(account.address, utxos, response.nextUTXOs);
 
-            return [fundingTx, interTx, response.nextUTXOs, response.preimage];
+            return [fundingTx, interTx, response.nextUTXOs, response.challenge];
         } catch (err) {
             throw new WalletControllerError(`signAndBroadcastInteraction failed: ${String(err)}`, {
                 interactionParameters
@@ -1128,12 +1137,12 @@ export class WalletController {
                     };
                 }) || [];
 
-            const preimage = await Web3API.provider.getPreimage();
+            const challenge = await Web3API.provider.getChallenge();
             const walletGet: Wallet = Wallet.fromWif(wifWallet.wif, Web3API.network);
             const deployContractParameters: IDeploymentParameters = {
                 ...params,
                 utxos,
-                preimage,
+                challenge,
                 signer: walletGet.keypair,
                 network: Web3API.network,
                 feeRate: Number(params.feeRate.toString()),
@@ -1149,7 +1158,8 @@ export class WalletController {
                         : Buffer.from(params.calldata)
                     : undefined,
                 optionalOutputs: params.optionalOutputs || [],
-                optionalInputs: optionalInputs
+                optionalInputs: optionalInputs,
+                note: params.note
             };
 
             return await Web3API.transactionFactory.signDeployment(deployContractParameters);
@@ -2060,31 +2070,35 @@ export class WalletController {
     };
 
     /**
-     * Retrieve OPNet "balance" by calling Web3API directly for both spendable and total UTXOs.
      * @throws WalletControllerError
      */
-    public getOpNetBalance = async (address: string): Promise<BitcoinBalance> => {
+    private getOpNetBalance = async (address: string): Promise<BitcoinBalance> => {
         try {
-            const [btcBalanceSpendable, confirmedBalance] = await Promise.all([
-                //btcBalanceSpendableCurrent
-                Web3API.getUTXOTotal(address),
-                //Web3API.getBalance(address, true),
-                Web3API.getBalance(address, false)
+            const [unspentUTXOs, allUTXOs] = await Promise.all([
+                Web3API.getUnspentUTXOsForAddresses([address]),
+                Web3API.getAllUTXOsForAddresses([address])
             ]);
 
-            const btcBalanceTotalStr: string = bigIntToDecimal(btcBalanceSpendable, 8);
-            const confirmedBalanceStr: string = bigIntToDecimal(confirmedBalance, 8);
+            const totalAll = allUTXOs.reduce((sum, u) => sum + u.value, 0n);
+            const totalUnspent = unspentUTXOs.reduce((sum, u) => sum + u.value, 0n);
+
+            const totalAmount = bigIntToDecimal(totalAll, 8);
+            const confirmAmount = bigIntToDecimal(totalUnspent, 8);
+            const pendingAmount = bigIntToDecimal(totalAll - totalUnspent, 8);
 
             return {
-                confirm_amount: btcBalanceTotalStr,
-                pending_amount: '0',
-                amount: btcBalanceTotalStr,
-                confirm_btc_amount: confirmedBalanceStr,
-                pending_btc_amount: '0',
-                btc_amount: btcBalanceTotalStr,
-                confirm_inscription_amount: '0',
-                pending_inscription_amount: '0',
-                inscription_amount: '0',
+                amount: totalAmount, // TODO: To change later when inscriptions are supported
+                confirm_amount: confirmAmount, // TODO: To change later when inscriptions are supported
+                pending_amount: pendingAmount, // TODO: To change later when inscriptions are supported
+
+                btc_amount: totalAmount,
+                confirm_btc_amount: confirmAmount,
+                pending_btc_amount: pendingAmount,
+
+                inscription_amount: '0', // TODO: Add support later
+                confirm_inscription_amount: '0', // TODO: Add support later
+                pending_inscription_amount: '0', // TODO: Add support later
+
                 usd_value: '0.00'
             };
         } catch (err) {
@@ -2099,7 +2113,7 @@ export class WalletController {
         requiredMinimum = 0
     ): Promise<{ response: InteractionResponse; utxos: UTXOs }> => {
         const wallet = Wallet.fromWif(wifWallet.wif, Web3API.network);
-        const preimage = await Web3API.provider.getPreimage();
+        const challenge = await Web3API.provider.getChallenge();
 
         const utxos: UTXOs = interactionParameters.utxos.map((u) => {
             let nonWitnessUtxo: Buffer | undefined;
@@ -2137,7 +2151,7 @@ export class WalletController {
             if (currentTotal < BigInt(requiredMinimum)) {
                 const stillNeeded = BigInt(requiredMinimum) - currentTotal;
 
-                const fetched: UTXOs = await Web3API.getUTXOs([account.address], stillNeeded);
+                const fetched: UTXOs = await Web3API.getUnspentUTXOsForAddresses([account.address], stillNeeded);
                 const alreadyUsed = new Set<string>(utxos.map((u) => `${u.transactionId}:${u.outputIndex}`));
 
                 fetched
@@ -2186,7 +2200,7 @@ export class WalletController {
         const submit: IInteractionParameters = {
             from: interactionParameters.from,
             to: interactionParameters.to,
-            preimage,
+            challenge,
             utxos,
             signer: wallet.keypair,
             network: Web3API.network,
@@ -2196,7 +2210,8 @@ export class WalletController {
             calldata: Buffer.from(interactionParameters.calldata as unknown as string, 'hex'),
             optionalInputs,
             optionalOutputs: interactionParameters.optionalOutputs || [],
-            contract: interactionParameters.contract
+            contract: interactionParameters.contract,
+            note: interactionParameters.note
         };
 
         const response = await Web3API.transactionFactory.signInteraction(submit);

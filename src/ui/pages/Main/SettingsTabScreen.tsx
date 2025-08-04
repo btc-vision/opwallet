@@ -16,8 +16,8 @@ import { spacing } from '@/ui/theme/spacing';
 import { useWallet } from '@/ui/utils';
 import { RightOutlined } from '@ant-design/icons';
 
-import { SwitchChainModal } from '../Settings/SwitchChainModal';
 import { Tabs } from 'webextension-polyfill';
+import { SwitchChainModal } from '../Settings/SwitchChainModal';
 
 interface Setting {
     label?: string;
@@ -119,7 +119,7 @@ export default function SettingsTabScreen() {
         const run = async () => {
             // TODO (typing): ideally ts should already know the return type but it's giving
             // unsafe any error here and we need to cast it explicitly here
-            const res = await getCurrentTab() as Tabs.Tab | undefined;
+            const res = (await getCurrentTab()) as Tabs.Tab | undefined;
             if (!res?.url) return;
 
             const origin = new URL(res.url).origin;
@@ -142,7 +142,6 @@ export default function SettingsTabScreen() {
         return (
             currentKeyring.hdPath !== '' &&
             item.hdPath !== currentKeyring.hdPath &&
-
             // TODO: IMPORTANT, ADD A SETTING TO DISABLE THIS. (keyring-mnemonic)
             currentKeyring.type !== KEYRING_TYPE.HdKeyring
         );
@@ -284,7 +283,9 @@ export default function SettingsTabScreen() {
                             color="red"
                             textCenter
                             onClick={() => {
-                                window.open('https://opnet.org/wallet');
+                                window.open(
+                                    'https://chromewebstore.google.com/detail/opwallet/pmbjpcmaaladnfpacpmhmnfmpklgbdjb?hl=en'
+                                );
                             }}
                         />
                     )}
