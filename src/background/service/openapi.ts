@@ -5,8 +5,6 @@ import {
     AppSummary,
     BitcoinBalance,
     BtcPrice,
-    BuyBtcChannel,
-    DecodedPsbt,
     FeeSummary,
     GroupAsset,
     UTXO,
@@ -58,9 +56,13 @@ export class OpenApiService {
               } as OpenApiStore);
 
         const chainType = preferenceService.getChainType();
-        Web3API.setNetwork(chainType);
+        await Web3API.setNetwork(chainType);
 
         const chain = CHAINS_MAP[chainType];
+        if (!chain) {
+            throw new Error(`Chain ${chainType} not found in CHAINS_MAP`);
+        }
+
         this.endpoint = chain.endpoints[0];
 
         if (!this.store.deviceId) {
@@ -184,17 +186,17 @@ export class OpenApiService {
         };
     }
 
-    async getAddressBalance(address: string): Promise<BitcoinBalance> {
+    async getAddressBalance(_: string): Promise<BitcoinBalance> {
         await Promise.resolve();
         throw new Error('Method not implemented.');
     }
 
-    async findGroupAssets(groups: { type: number; address_arr: string[] }[]): Promise<GroupAsset[]> {
+    async findGroupAssets(_: { type: number; address_arr: string[] }[]): Promise<GroupAsset[]> {
         await Promise.resolve();
         throw new Error('Method not implemented.');
     }
 
-    async getBTCUtxos(address: string): Promise<UTXO[]> {
+    async getBTCUtxos(_: string): Promise<UTXO[]> {
         await Promise.resolve();
         throw new Error('Method not implemented.');
     }
@@ -203,7 +205,7 @@ export class OpenApiService {
         return this.httpGet<AppSummary>('/v5/default/app-summary-v2', {});
     }
 
-    async pushTx(rawtx: string): Promise<string> {
+    async pushTx(_: string): Promise<string> {
         await Promise.resolve();
         throw new Error('Method not implemented.');
     }
@@ -215,9 +217,11 @@ export class OpenApiService {
     async refreshBtcPrice() {
         try {
             this.isRefreshingBtcPrice = true;
-            const result: BtcPrice = await this.httpGet<BtcPrice>('/v5/default/btc-price', {});
+            // TODO: Remove this mock
+
+            // const result: BtcPrice = await this.httpGet<BtcPrice>('/v5/default/btc-price', {});
             // test
-            // const result: BtcPrice = await Promise.resolve({ price: 58145.19716040577, updateTime: 1634160000000 });
+            const result: BtcPrice = await Promise.resolve({ price: 10145.19716040577, updateTime: Date.now() });
 
             this.btcPriceCache = result.price;
             this.btcPriceUpdateTime = Date.now();
@@ -237,6 +241,7 @@ export class OpenApiService {
         if (this.btcPriceCache && Date.now() - this.btcPriceUpdateTime < 30 * 1000) {
             return this.btcPriceCache;
         }
+
         // 40s return cache and refresh
         if (this.btcPriceCache && Date.now() - this.btcPriceUpdateTime < 40 * 1000) {
             this.refreshBtcPrice().then();
@@ -246,20 +251,19 @@ export class OpenApiService {
         return this.refreshBtcPrice();
     }
 
-    async decodePsbt(psbtHex: string, website: string): Promise<DecodedPsbt> {
-        return this.httpPost<DecodedPsbt>('/v5/tx/decode2', { psbtHex, website });
-    }
-
-    async getBuyBtcChannelList(): Promise<BuyBtcChannel[]> {
-        return this.httpGet<BuyBtcChannel[]>('/v5/buy-btc/channel-list', {});
-    }
-
     async createPaymentUrl(address: string, channel: string): Promise<string> {
         return this.httpPost<string>('/v5/buy-btc/create', { address, channel });
     }
 
     async checkWebsite(website: string): Promise<{ isScammer: boolean; warning: string }> {
-        return this.httpPost<{ isScammer: boolean; warning: string }>('/v5/default/check-website', { website });
+        //return this.httpPost<{ isScammer: boolean; warning: string }>('/v5/default/check-website', { website });
+        // TODO: remove this mock
+        await Promise.resolve();
+
+        return {
+            isScammer: false,
+            warning: ''
+        };
     }
 
     async getVersionDetail(version: string): Promise<VersionDetail> {

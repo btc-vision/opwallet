@@ -120,7 +120,7 @@ export default function TxOpnetConfirmScreen() {
 
     useEffect(() => {
         const setWallet = async () => {
-            Web3API.setNetwork(await wallet.getChainType());
+            await Web3API.setNetwork(await wallet.getChainType());
 
             setRouterAddress(Web3API.ROUTER_ADDRESS ? Web3API.ROUTER_ADDRESS : null);
         };
@@ -179,7 +179,8 @@ export default function TxOpnetConfirmScreen() {
                 maximumAllowedSatToSpend: parameters.priorityFee, // The maximum we want to allocate to this transaction in satoshis
                 feeRate: parameters.feeRate, // We need to provide a fee rate
                 network: Web3API.network, // The network we are operating on
-                priorityFee: parameters.priorityFee
+                priorityFee: parameters.priorityFee,
+                note: parameters.note
             };
 
             const symbol = await contract.symbol();
@@ -230,7 +231,8 @@ export default function TxOpnetConfirmScreen() {
             maximumAllowedSatToSpend: parameters.priorityFee, // The maximum we want to allocate to this transaction in satoshis
             feeRate: parameters.feeRate, // We need to provide a fee rate
             network: Web3API.network, // The network we are operating on
-            priorityFee: parameters.priorityFee
+            priorityFee: parameters.priorityFee,
+            note: parameters.note
         };
 
         const sendTransaction = await airdropData.sendTransaction(interactionParameters);
@@ -293,7 +295,8 @@ export default function TxOpnetConfirmScreen() {
             maximumAllowedSatToSpend: swapParameters.priorityFee, // The maximum we want to allocate to this transaction in satoshis
             feeRate: swapParameters.feeRate, // We need to provide a fee rate
             network: Web3API.network, // The network we are operating on
-            priorityFee: swapParameters.priorityFee
+            priorityFee: swapParameters.priorityFee,
+            note: swapParameters.note
         };
 
         const sendTransaction = await contractData.sendTransaction(interactionParameters);
@@ -466,7 +469,8 @@ export default function TxOpnetConfirmScreen() {
                 maximumAllowedSatToSpend: parameters.priorityFee, // The maximum we want to allocate to this transaction in satoshis
                 feeRate: parameters.feeRate, // We need to provide a fee rate
                 network: Web3API.network, // The network we are operating on
-                priorityFee: parameters.priorityFee
+                priorityFee: parameters.priorityFee,
+                note: parameters.note
             };
 
             const sendTransaction = await mintData.sendTransaction(interactionParameters);

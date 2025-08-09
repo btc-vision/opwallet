@@ -44,7 +44,7 @@ abstract class Message extends EventEmitter {
                 this.send('request', { ident, data });
             } catch (e) {
                 this._waitingMap.delete(ident);
-                const error = e instanceof Error ? e : new Error('Unknown error during message send')
+                const error = e instanceof Error ? e : new Error('Unknown error during message send');
                 reject(error);
             }
         });
@@ -78,6 +78,8 @@ abstract class Message extends EventEmitter {
             } catch (_e) {
                 const e = _e as WalletError;
                 err = serializeError(e);
+
+                console.warn('Error handling request:', e, data, err);
             }
 
             this.send('response', { ident, res, err });

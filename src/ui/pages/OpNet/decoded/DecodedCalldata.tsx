@@ -66,6 +66,7 @@ import {
     MintDecodedInfo,
     TransferFromDecodedInfo
 } from './op20/OP20';
+import { useEffect } from 'react';
 
 interface DecodedProps {
     readonly decoded: Decoded;
@@ -75,7 +76,9 @@ interface DecodedProps {
 }
 
 export function DecodedCalldata(props: DecodedProps) {
-    Web3API.setNetwork(props.chain);
+    useEffect(() => {
+        void Web3API.setNetwork(props.chain);
+    }, [props.chain]);
 
     const contractInfo: Partial<ContractInformation> = props.contractInfo || {
         name: 'Unknown'

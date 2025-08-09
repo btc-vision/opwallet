@@ -2,15 +2,14 @@ import { createContext, ReactNode, useContext } from 'react';
 
 import { AccountAsset } from '@/background/controller/wallet';
 import { ContactBookItem, ContactBookStore } from '@/background/service/contactBook';
-import { ToSignInput } from '@/background/service/keyring';
+import { SavedVault, ToSignInput } from '@/background/service/keyring';
 import { ConnectedSite } from '@/background/service/permission';
-import { AddressFlagType, ChainType } from '@/shared/constant';
+import { AddressFlagType, ChainId, ChainType, CustomNetwork } from '@/shared/constant';
 import {
     Account,
     AddressSummary,
     AppSummary,
     BitcoinBalance,
-    BtcChannelItem,
     DecodedPsbt,
     FeeSummary,
     NetworkType,
@@ -27,7 +26,6 @@ import { ApprovalData, ApprovalResponse } from '@/shared/types/Approval';
 import { InteractionParametersWithoutSigner } from '@btc-vision/transaction';
 import { AddressType, UnspentOutput } from '@btc-vision/wallet-sdk';
 import { bitcoin } from '@btc-vision/wallet-sdk/lib/bitcoin-core';
-import { SavedVault } from '../../background/service/keyring';
 
 export interface WalletController {
     changePassword: (password: string, newPassword: string) => Promise<void>;
@@ -266,11 +264,22 @@ export interface WalletController {
 
     parseSignMsgUr(type: string, cbor: string, msgType?: string): Promise<ParsedSignMsgUr>;
 
-    // getEnableSignData(): Promise<boolean>;
+    addCustomNetwork(params: {
+        name: string;
+        networkType: NetworkType;
+        chainId: ChainId;
+        unit: string;
+        opnetUrl: string;
+        mempoolSpaceUrl: string;
+        faucetUrl?: string;
+        showPrice?: boolean;
+    }): Promise<CustomNetwork>;
 
-    // setEnableSignData(enable: boolean): Promise<void>;
+    deleteCustomNetwork(id: string): Promise<boolean>;
 
-    getBuyBtcChannelList(): Promise<BtcChannelItem[]>;
+    getAllCustomNetworks(): Promise<CustomNetwork[]>;
+
+    testRpcConnection(url: string): Promise<boolean>;
 
     setAutoLockTimeId(timeId: number): Promise<void>;
 

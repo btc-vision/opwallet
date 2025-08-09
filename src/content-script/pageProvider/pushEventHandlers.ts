@@ -59,11 +59,11 @@ class PushEventHandlers {
         this._emit('accountsChanged', accounts);
     };
 
-    networkChanged = ({ network, chainType }: { network: string; chainType: ChainType }) => {
+    networkChanged = async ({ network, chainType }: { network: string; chainType: ChainType }) => {
         this.connect({});
 
         if (network !== this._unisatProviderPrivate._network) {
-            if (chainType) Web3API.setNetwork(chainType);
+            if (chainType) await Web3API.setNetwork(chainType);
 
             this._unisatProviderPrivate._network = network;
             // TODO (typing): check if this event is listened in this format

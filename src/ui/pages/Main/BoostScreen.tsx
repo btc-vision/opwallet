@@ -8,7 +8,7 @@ export default function BoostScreen() {
     const navigate = useNavigate();
     const wallet = useWallet();
 
-    const [getApproval, , rejectApproval] = useApproval();
+    const { getApproval, rejectApproval } = useApproval();
     const loadView = async () => {
         const UIType = getUiType();
         const isInNotification = UIType.isNotification;
