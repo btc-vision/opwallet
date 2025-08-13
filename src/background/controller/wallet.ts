@@ -76,6 +76,7 @@ import { toPsbtNetwork } from '@btc-vision/wallet-sdk/lib/network';
 import { toXOnly } from '@btc-vision/wallet-sdk/lib/utils';
 import { AbstractWallet } from '@btc-vision/wallet-sdk/lib/wallet';
 
+import { customNetworksManager } from '@/shared/utils/CustomNetworksManager';
 import { address as bitcoinAddress, Psbt } from '@btc-vision/bitcoin';
 import { InteractionResponse } from '@btc-vision/transaction/src/transaction/TransactionFactory';
 import { Buffer } from 'buffer';
@@ -83,7 +84,6 @@ import { UTXOs } from 'opnet/src/bitcoin/UTXOs';
 import { ContactBookItem, ContactBookStore } from '../service/contactBook';
 import { OpenApiService } from '../service/openapi';
 import { ConnectedSite } from '../service/permission';
-import { customNetworksManager } from '@/shared/utils/CustomNetworksManager';
 
 export interface AccountAsset {
     name: string;
@@ -1055,6 +1055,10 @@ export class WalletController {
 
         try {
             const { response, utxos } = signed;
+
+            if (!response?.fundingTransaction) {
+                throw new WalletControllerError('No funding transaction found');
+            }
 
             const fundingTx = await Web3API.provider.sendRawTransaction(response.fundingTransaction, false);
             if (!fundingTx) throw new WalletControllerError('No result from funding transaction broadcast');
