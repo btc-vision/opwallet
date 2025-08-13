@@ -1,4 +1,3 @@
- 
 import { useState } from 'react';
 
 import { Button, Column, Content, Layout, Logo, Row, Text } from '@/ui/components';
@@ -50,6 +49,21 @@ export default function WelcomeScreen() {
                                     navigate(RouteTypes.CreateHDWalletScreen, { isImport: true });
                                 } else {
                                     navigate(RouteTypes.CreatePasswordScreen, { isNewAccount: false });
+                                }
+                            }}
+                        />
+                        <Button
+                            text="I have an Ethereum wallet"
+                            preset="default"
+                            onClick={async () => {
+                                const isBooted = await wallet.isBooted();
+                                if (isBooted) {
+                                    navigate(RouteTypes.CreateSimpleWalletScreen, { isImport: true });
+                                } else {
+                                    navigate(RouteTypes.CreatePasswordScreen, {
+                                        isNewAccount: false,
+                                        isEthereum: true
+                                    });
                                 }
                             }}
                         />

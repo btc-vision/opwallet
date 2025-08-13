@@ -6,12 +6,13 @@ import { useTools } from '@/ui/components/ActionComponent';
 import { useWallet, useWalletRequest } from '@/ui/utils';
 import { getPasswordStrengthWord, MIN_PASSWORD_LENGTH } from '@/ui/utils/password-utils';
 
-import { RouteTypes, useNavigate } from '../MainRoute';
 import { WalletError } from '@/shared/types/Error';
+import { RouteTypes, useNavigate } from '../MainRoute';
 
 interface LocationState {
     isNewAccount?: boolean;
     isKeystone?: boolean;
+    isEthereum?: boolean;
 }
 
 export default function CreatePasswordScreen() {
@@ -31,7 +32,7 @@ export default function CreatePasswordScreen() {
         });
     }
 
-    const { isNewAccount, isKeystone } = state;
+    const { isNewAccount, isKeystone, isEthereum } = state;
     const [newPassword, setNewPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
     const [disabled, setDisabled] = useState(true);
@@ -43,6 +44,8 @@ export default function CreatePasswordScreen() {
                 navigate(RouteTypes.CreateKeystoneWalletScreen, { fromUnlock: true });
             } else if (isNewAccount) {
                 navigate(RouteTypes.CreateHDWalletScreen, { isImport: false, fromUnlock: true });
+            } else if (isEthereum) {
+                navigate(RouteTypes.CreateSimpleWalletScreen, { isImport: true, fromUnlock: true });
             } else {
                 navigate(RouteTypes.CreateHDWalletScreen, { isImport: true, fromUnlock: true });
             }
