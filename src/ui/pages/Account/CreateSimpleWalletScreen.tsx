@@ -1,5 +1,5 @@
 import { ECPairFactory } from 'ecpair';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { ADDRESS_TYPES } from '@/shared/constant';
 import { AddressAssets, AddressType } from '@/shared/types';
@@ -12,6 +12,7 @@ import { TabBar } from '@/ui/components/TabBar';
 import { satoshisToAmount, useWallet } from '@/ui/utils';
 import * as ecc from '@bitcoinerlab/secp256k1';
 import { EcKeyPair, Wallet } from '@btc-vision/transaction';
+import { ethers } from 'ethers';
 
 import { RouteTypes, useNavigate } from '../MainRoute';
 
@@ -58,25 +59,33 @@ function Step1({
         const network = await wallet.getNetworkType();
         const bitcoinNetwork = getBitcoinLibJSNetwork(network);
 
-        let validWIF = false;
-        let validPrivateKey = false;
+        const raw = wif.trim();
+
+        let keyKind: KeyKind | null = null;
+
+        // try WIF first
         try {
-            ECPair.fromWIF(wif, bitcoinNetwork);
-            validWIF = true;
+            ECPair.fromWIF(raw, bitcoinNetwork);
+            keyKind = 'wif';
         } catch {}
 
-        try {
-            ECPair.fromPrivateKey(Buffer.from(wif.replace('0x', ''), 'hex'), { network: bitcoinNetwork });
-            validPrivateKey = true;
-        } catch {}
+        // then try raw 32-byte hex (ethereum-style)
+        if (!keyKind && isLikelyHexPriv(raw)) {
+            try {
+                const buf = Buffer.from(raw.replace(/^0x/, ''), 'hex');
+                ECPair.fromPrivateKey(buf, { network: bitcoinNetwork }); // just a secp check
+                keyKind = 'rawHex';
+            } catch {}
+        }
 
-        if (!validWIF && !validPrivateKey) {
-            tools.toastError(`Invalid wif/private key (Are you on the right network?)`);
+        if (!keyKind) {
+            tools.toastError(`Invalid WIF / 32-byte hex private key (check network too)`);
             return;
         }
 
         updateContextData({
-            wif,
+            wif: raw,
+            keyKind,
             tabType: TabType.STEP2
         });
     };
@@ -86,7 +95,7 @@ function Step1({
             <Text text="Private Key" textCenter preset="bold" />
 
             <Input
-                placeholder={'WIF Private Key or Hex Private Key'}
+                placeholder="WIF or 32-byte hex (Ethereum) private key"
                 onKeyUp={(e: React.KeyboardEvent<HTMLInputElement>) => {
                     if ('Enter' == e.key) {
                         void btnClick();
@@ -132,89 +141,86 @@ function Step2({
 
     const [previewAddresses, setPreviewAddresses] = useState<string[]>(hdPathOptions.map((v) => ''));
     const [addressAssets, setAddressAssets] = useState<Record<string, AddressAssets>>({});
+    const [ethAddress, setEthAddress] = useState<string | null>(null);
 
-    const selfRef = useRef<{
-        maxSatoshis: number;
-        recommended: number;
-        count: number;
-        addressBalances: Record<string, AddressAssets>;
-    }>({
-        maxSatoshis: 0,
-        recommended: 0,
-        count: 0,
-        addressBalances: {}
-    });
-
-    const self = selfRef.current;
     const run = async () => {
-        const addresses: string[] = [];
         const network = await wallet.getNetworkType();
         const bitcoinNetwork = getBitcoinLibJSNetwork(network);
 
-        for (const options of hdPathOptions) {
+        const addresses: string[] = [];
+        const balancesMap: Record<string, AddressAssets> = {};
+
+        const getAddrForType = (t: AddressType) => {
+            if (contextData.keyKind === 'wif') {
+                const w = Wallet.fromWif(contextData.wif, bitcoinNetwork);
+                if (t === AddressType.P2TR) return w.p2tr;
+                if (t === AddressType.P2SH_P2WPKH) return w.segwitLegacy;
+                if (t === AddressType.P2WPKH) return w.p2wpkh;
+                return EcKeyPair.getLegacyAddress(ECPair.fromWIF(contextData.wif, bitcoinNetwork), bitcoinNetwork);
+            } else {
+                const buf = Buffer.from(contextData.wif.replace(/^0x/, '').trim(), 'hex');
+                const kp = EcKeyPair.fromPrivateKey(buf, bitcoinNetwork);
+                if (t === AddressType.P2TR) return EcKeyPair.getTaprootAddress(kp, bitcoinNetwork);
+                if (t === AddressType.P2SH_P2WPKH) return EcKeyPair.getLegacySegwitAddress(kp, bitcoinNetwork);
+                if (t === AddressType.P2WPKH) return EcKeyPair.getP2WPKHAddress(kp, bitcoinNetwork);
+                return EcKeyPair.getLegacyAddress(kp, bitcoinNetwork);
+            }
+        };
+
+        for (const opt of hdPathOptions) {
             try {
-                const address = Wallet.fromWif(contextData.wif, bitcoinNetwork);
-
-                if (options.addressType == AddressType.P2TR) {
-                    addresses.push(address.p2tr);
-                } else if (options.addressType == AddressType.P2SH_P2WPKH) {
-                    addresses.push(address.segwitLegacy);
-                } else if (options.addressType == AddressType.P2WPKH) {
-                    addresses.push(address.p2wpkh);
-                } else {
-                    addresses.push(
-                        EcKeyPair.getLegacyAddress(ECPair.fromWIF(contextData.wif, bitcoinNetwork), bitcoinNetwork)
-                    );
-                }
-            } catch (e) {}
-
-            try {
-                const bufferPrivateKey = Buffer.from(contextData.wif.replace('0x', ''), 'hex');
-                const keypair = EcKeyPair.fromPrivateKey(bufferPrivateKey, bitcoinNetwork);
-
-                if (options.addressType == AddressType.P2TR) {
-                    addresses.push(EcKeyPair.getTaprootAddress(keypair, bitcoinNetwork));
-                } else if (options.addressType == AddressType.P2SH_P2WPKH) {
-                    addresses.push(EcKeyPair.getLegacySegwitAddress(keypair, bitcoinNetwork));
-                } else if (options.addressType == AddressType.P2WPKH) {
-                    addresses.push(EcKeyPair.getP2WPKHAddress(keypair, bitcoinNetwork));
-                } else {
-                    addresses.push(EcKeyPair.getLegacyAddress(keypair, bitcoinNetwork));
-                }
-            } catch (e) {}
-        }
-
-        const balances = await wallet.getMultiAddressAssets(addresses.join(','));
-        for (let i = 0; i < addresses.length; i++) {
-            const address = addresses[i];
-
-            const balance = balances[i];
-            const satoshis = balance.totalSatoshis;
-            self.addressBalances[address] = {
-                total_btc: satoshisToAmount(balance.totalSatoshis),
-                satoshis
-            };
-
-            if (satoshis > self.maxSatoshis) {
-                self.maxSatoshis = satoshis;
-                self.recommended = i;
+                const addr = getAddrForType(opt.addressType);
+                addresses.push(addr);
+            } catch (e) {
+                addresses.push(''); // keep length aligned with hdPathOptions
             }
         }
 
-        let recommended: AddressType = hdPathOptions[self.recommended].addressType;
-        if (self.maxSatoshis == 0) {
+        // fetch balances in one shot
+        const balances = await wallet.getMultiAddressAssets(addresses.join(','));
+        let maxSatoshis = 0;
+        let recommendedIndex = 0;
+
+        for (let i = 0; i < addresses.length; i++) {
+            const a = addresses[i];
+            if (!a) continue;
+            const b = balances[i];
+            const satoshis = b?.totalSatoshis ?? 0;
+            balancesMap[a] = { total_btc: satoshisToAmount(satoshis), satoshis };
+            if (satoshis > maxSatoshis) {
+                maxSatoshis = satoshis;
+                recommendedIndex = i;
+            }
+        }
+
+        let recommended: AddressType = hdPathOptions[recommendedIndex].addressType;
+        if (maxSatoshis === 0) {
             recommended = AddressType.P2TR;
         }
 
         updateContextData({ addressType: recommended });
-
-        setAddressAssets(self.addressBalances);
+        setAddressAssets(balancesMap);
         setPreviewAddresses(addresses);
     };
 
     useEffect(() => {
         void run();
     }, [contextData.wif]);
+
+    useEffect(() => {
+        const raw = contextData.wif?.trim();
+        if (contextData.keyKind !== 'rawHex' || !raw) {
+            setEthAddress(null);
+            return;
+        }
+        try {
+            const pk = raw.startsWith('0x') ? raw : '0x' + raw;
+            const addr = ethers.computeAddress(pk);
+            setEthAddress(addr);
+        } catch {
+            setEthAddress(null);
+        }
+    }, [contextData.wif, contextData.keyKind]);
 
     const pathIndex = useMemo(() => {
         return hdPathOptions.findIndex((v) => v.addressType === contextData.addressType);
@@ -224,7 +230,10 @@ function Step2({
 
     const onNext = async () => {
         try {
-            await wallet.createKeyringWithPrivateKey(contextData.wif, contextData.addressType);
+            const pk =
+                contextData.keyKind === 'rawHex' ? contextData.wif.replace(/^0x/, '').toLowerCase() : contextData.wif;
+
+            await wallet.createKeyringWithPrivateKey(pk, contextData.addressType);
             navigate(RouteTypes.MainScreen);
         } catch (e) {
             tools.toastError((e as Error).message);
@@ -259,6 +268,12 @@ function Step2({
                 );
             })}
 
+            {ethAddress && (
+                <Row>
+                    <Text preset="sub" text={`Linked Ethereum address: ${ethAddress}`} />
+                </Row>
+            )}
+
             <FooterButtonContainer>
                 <Button text="Continue" preset="primary" onClick={onNext} />
             </FooterButtonContainer>
@@ -272,8 +287,11 @@ enum TabType {
     STEP3 = 'STEP3'
 }
 
+type KeyKind = 'wif' | 'rawHex';
+
 interface ContextData {
     wif: string;
+    keyKind: KeyKind;
     addressType: AddressType;
     step1Completed: boolean;
     tabType: TabType;
@@ -281,14 +299,21 @@ interface ContextData {
 
 interface UpdateContextDataParams {
     wif?: string;
+    keyKind?: KeyKind;
     addressType?: AddressType;
     step1Completed?: boolean;
     tabType?: TabType;
 }
 
+function isLikelyHexPriv(s: string) {
+    const h = s.trim().toLowerCase().replace(/^0x/, '');
+    return /^[0-9a-f]{64}$/.test(h);
+}
+
 export default function CreateSimpleWalletScreen() {
     const [contextData, setContextData] = useState<ContextData>({
         wif: '',
+        keyKind: 'wif',
         addressType: AddressType.P2WPKH,
         step1Completed: false,
         tabType: TabType.STEP1
