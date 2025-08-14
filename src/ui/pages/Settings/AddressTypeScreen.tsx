@@ -80,21 +80,6 @@ function AddressTypeItem({ label, address, assets, checked, description, btcUnit
             onClick={onClick}
             onMouseEnter={() => setIsHovered(true)}
             onMouseLeave={() => setIsHovered(false)}>
-            {/* Selected indicator bar */}
-            {checked && (
-                <div
-                    style={{
-                        position: 'absolute',
-                        left: 0,
-                        top: 0,
-                        bottom: 0,
-                        width: '3px',
-                        background: colors.main,
-                        borderRadius: '12px 0 0 12px'
-                    }}
-                />
-            )}
-
             {/* Main Content */}
             <div
                 style={{
