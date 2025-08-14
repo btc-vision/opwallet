@@ -178,6 +178,7 @@ export default function WalletTabScreen() {
                         <DownOutlined style={{ fontSize: 12, color: colors.textFaded }} />
                     </button>
                 }
+                logoWithoutText
             />
 
             <Content style={{ padding: '12px' }}>

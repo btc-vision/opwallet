@@ -19,10 +19,11 @@ interface HeaderProps {
     hideLogo?: boolean;
     height?: string;
     padding?: number;
+    logoWithoutText?: boolean;
 }
 
 export function Header(props: HeaderProps) {
-    const { hideLogo, onBack, title, LeftComponent, RightComponent, children } = props;
+    const { hideLogo, onBack, title, LeftComponent, RightComponent, children, logoWithoutText } = props;
 
     const CenterComponent = useMemo(() => {
         if (hideLogo) {
@@ -33,7 +34,7 @@ export function Header(props: HeaderProps) {
         } else if (title) {
             return <Text text={title} preset="regular-bold" />;
         } else {
-            return <Logo preset="small" />;
+            return <Logo preset={logoWithoutText ? 'onlyLogo' : 'small'} />;
         }
     }, [title]);
 
