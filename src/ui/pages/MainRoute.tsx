@@ -31,7 +31,6 @@ import DeployContract from './OpNet/DeployContract';
 import Mint from './OpNet/Mint';
 import OpNetTokenScreen from './OpNet/OpNetTokenScreen';
 import SendOpNetScreen from './OpNet/SendOpNetScreen';
-import Swap from './OpNet/SwapToken';
 import AddressTypeScreen from './Settings/AddressTypeScreen';
 import AdvancedScreen from './Settings/AdvancedScreen';
 import ChangePasswordScreen from './Settings/ChangePasswordScreen';
@@ -84,7 +83,6 @@ export enum RouteTypes {
     OpNetTokenScreen = 'OpNetTokenScreen',
     SendOpNetScreen = 'SendOpNetScreen',
     TxCreateScreen = 'TxCreateScreen',
-    Swap = 'Swap',
     DeployContract = 'DeployContract',
     Mint = 'Mint'
 }
@@ -232,10 +230,6 @@ export const routes: Routes = {
     SendOpNetScreen: {
         path: '/opnet/send-opnet',
         element: <SendOpNetScreen />
-    },
-    Swap: {
-        path: '/opnet/swap',
-        element: <Swap />
     },
     DeployContract: {
         path: '/opnet/deploy-contract',

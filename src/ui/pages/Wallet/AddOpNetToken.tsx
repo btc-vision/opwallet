@@ -57,6 +57,17 @@ export const AddOpNetToken = ({
                 }
             }
 
+            try {
+                const isValidContract = await Web3API.queryContractInformation(tokenAddress);
+                if (!isValidContract) {
+                    tools.toastError('The address is not a valid contract.');
+                    return;
+                }
+            } catch {
+                tools.toastError('Failed to validate contract.');
+                return;
+            }
+
             const chain = await wallet.getChainType();
             const accountAddr = currentAccount.pubkey;
             const storageKey = `opnetTokens_${chain}_${accountAddr}`;

@@ -4,24 +4,45 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ChainType, COIN_DUST } from '@/shared/constant';
 import { Action, Features, SendBitcoinParameters } from '@/shared/interfaces/RawTxParameters';
 import Web3API from '@/shared/web3/Web3API';
-import { Button, Column, Content, Header, Image, Input, Layout, Row, Text } from '@/ui/components';
-import { BtcUsd } from '@/ui/components/BtcUsd';
+import { Column, Content, Header, Image, Input, Layout } from '@/ui/components';
 import { FeeRateBar } from '@/ui/components/FeeRateBar';
 import { RouteTypes, useNavigate } from '@/ui/pages/MainRoute';
 import { useCurrentAccount } from '@/ui/state/accounts/hooks';
 import { useBTCUnit, useChain } from '@/ui/state/settings/hooks';
 import { useUiTxCreateScreen, useUpdateUiTxCreateScreen } from '@/ui/state/ui/hooks';
 import { amountToSatoshis, isValidAddress, satoshisToAmount, useWallet } from '@/ui/utils';
+import {
+    DollarOutlined,
+    FileTextOutlined,
+    InfoCircleOutlined,
+    SendOutlined,
+    ThunderboltOutlined,
+    WalletOutlined
+} from '@ant-design/icons';
 import { AddressTypes, AddressVerificator } from '@btc-vision/transaction';
 import { BitcoinUtils } from 'opnet';
 
 BigNumber.config({ EXPONENTIAL_AT: 256 });
 
+const colors = {
+    main: '#f37413',
+    background: '#212121',
+    text: '#dbdbdb',
+    textFaded: 'rgba(219, 219, 219, 0.7)',
+    buttonBg: '#434343',
+    buttonHoverBg: 'rgba(85, 85, 85, 0.3)',
+    containerBg: '#434343',
+    containerBgFaded: '#292929',
+    containerBorder: '#303030',
+    inputBg: '#292828',
+    success: '#4ade80',
+    error: '#ef4444',
+    warning: '#fbbf24'
+};
+
 export default function TxCreateScreen() {
     const navigate = useNavigate();
     const btcUnit = useBTCUnit();
-
-    /* --------------------------------------------------------------------- */
     const setUiState = useUpdateUiTxCreateScreen();
     const uiState = useUiTxCreateScreen();
     const account = useCurrentAccount();
@@ -30,7 +51,6 @@ export default function TxCreateScreen() {
 
     const { toInfo, inputAmount, enableRBF, feeRate } = uiState;
 
-    /* --------------------------------------------------------------------- */
     const [disabled, setDisabled] = useState(true);
     const [error, setError] = useState('');
     const [showP2PKWarning, setDisplayP2PKWarning] = useState(false);
@@ -41,7 +61,6 @@ export default function TxCreateScreen() {
     const [balanceValueInSatoshis, setBalanceValueInSatoshis] = useState(0n);
     const [note, setNote] = useState<string>('');
 
-    /* --------------------------------------------------------------------- */
     useEffect(() => {
         void (async () => {
             const chain = await wallet.getChainType();
@@ -66,11 +85,9 @@ export default function TxCreateScreen() {
         void fetchBalanceValue();
     }, [chain.enum, account.address, wallet]);
 
-    /* --------------------------------------------------------------------- */
     const toSatoshis = useMemo(() => (inputAmount ? amountToSatoshis(inputAmount) : 0), [inputAmount]);
     const dustAmount = useMemo(() => satoshisToAmount(COIN_DUST), []);
 
-    /* --------------------------------------------------------------------- */
     useEffect(() => {
         setError('');
         setDisabled(true);
@@ -78,11 +95,11 @@ export default function TxCreateScreen() {
         if (!isValidAddress(toInfo.address)) return;
         if (!toSatoshis) return;
         if (toSatoshis < COIN_DUST) {
-            setError(`Amount must be at least ${dustAmount} ${btcUnit}`);
+            setError(`Minimum amount: ${dustAmount} ${btcUnit}`);
             return;
         }
         if (toSatoshis > balanceValueInSatoshis) {
-            setError('Amount exceeds your total balance');
+            setError('Insufficient balance');
             return;
         }
         if (feeRate <= 0) return;
@@ -90,7 +107,6 @@ export default function TxCreateScreen() {
         setDisabled(false);
     }, [toInfo, inputAmount, feeRate, enableRBF, toSatoshis, balanceValueInSatoshis, dustAmount, btcUnit]);
 
-    /* --------------------------------------------------------------------- */
     const handleNext = () => {
         const event: SendBitcoinParameters = {
             to: toInfo.address,
@@ -116,7 +132,7 @@ export default function TxCreateScreen() {
             const type = AddressVerificator.detectAddressType(address, Web3API.network);
 
             if (type === null) {
-                setError(`Invalid recipient address.`);
+                setError(`Invalid recipient address`);
                 return;
             }
 
@@ -135,180 +151,457 @@ export default function TxCreateScreen() {
         [setUiState]
     );
 
-    /* --------------------------------------------------------------------- */
     return (
         <Layout>
             <Header title={`Send ${btcUnit}`} onBack={() => window.history.go(-1)} />
 
-            <Content style={{ padding: 0, display: 'flex', justifyContent: 'center' }}>
-                <div
-                    style={{
-                        width: '100%',
-                        maxWidth: 420,
-                        padding: '12px 20px 96px', // reduced top padding
-                        border: '1px solid rgba(255,255,255,0.08)',
-                        borderRadius: 12,
-                        boxShadow: '0 4px 24px rgba(0,0,0,0.25)',
-                        backdropFilter: 'blur(6px)',
-                        background: 'rgba(255,255,255,0.02)'
-                    }}>
-                    {/* chain icon fixed spacing */}
-                    <Row justifyCenter style={{ marginTop: '26vh', marginBottom: 8 }}>
-                        <Image src={chain.icon} size={60} style={{ filter: 'drop-shadow(0 0 4px rgba(0,0,0,0.4))' }} />
-                    </Row>
+            <Content style={{ padding: '12px' }}>
+                <Column>
+                    {/* Network Badge */}
+                    <div
+                        style={{
+                            display: 'flex',
+                            justifyContent: 'center',
+                            marginBottom: '16px'
+                        }}>
+                        <div
+                            style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '8px',
+                                padding: '6px 12px',
+                                background: colors.containerBgFaded,
+                                borderRadius: '20px',
+                                border: `1px solid ${colors.containerBorder}`
+                            }}>
+                            <Image src={chain.icon} size={16} />
+                            <span
+                                style={{
+                                    fontSize: '12px',
+                                    color: colors.text,
+                                    fontWeight: 500
+                                }}>
+                                {chain.label}
+                            </span>
+                        </div>
+                    </div>
 
-                    {/* Recipient */}
-                    <Column mt="lg">
-                        <Text text="Recipient" preset="regular" color="textDim" />
+                    {/* Recipient Section */}
+                    <div
+                        style={{
+                            background: colors.containerBgFaded,
+                            borderRadius: '12px',
+                            padding: '14px',
+                            marginBottom: '12px'
+                        }}>
+                        <div
+                            style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '6px',
+                                marginBottom: '10px'
+                            }}>
+                            <WalletOutlined style={{ fontSize: 14, color: colors.main }} />
+                            <span
+                                style={{
+                                    fontSize: '12px',
+                                    fontWeight: 600,
+                                    color: colors.textFaded,
+                                    textTransform: 'uppercase',
+                                    letterSpacing: '0.5px'
+                                }}>
+                                Recipient
+                            </span>
+                        </div>
+
                         <Input
                             preset="address"
                             addressInputData={toInfo}
                             onAddressInputChange={(val) => onSetAddress(val)}
+                            placeholder="Enter address"
                             autoFocus
+                            style={{
+                                background: colors.inputBg,
+                                border: `1px solid ${colors.containerBorder}`,
+                                borderRadius: '8px'
+                            }}
                         />
 
                         {showP2PKWarning && (
-                            <Row
-                                fullX
+                            <div
                                 style={{
-                                    background: 'rgba(255,165,0,0.12)',
-                                    border: '1px solid #ffa640',
-                                    borderRadius: 6,
-                                    padding: 6,
-                                    marginTop: 6
+                                    marginTop: '8px',
+                                    padding: '8px',
+                                    background: `${colors.warning}15`,
+                                    border: `1px solid ${colors.warning}30`,
+                                    borderRadius: '8px',
+                                    display: 'flex',
+                                    gap: '6px'
                                 }}>
-                                <Text
-                                    text="⚠️ Wallets don't support P2PK addresses. Use only for tokens—don't send BTC here."
-                                    size="xs"
-                                    color="gold"
-                                    textCenter
+                                <InfoCircleOutlined
+                                    style={{
+                                        fontSize: 12,
+                                        color: colors.warning,
+                                        flexShrink: 0,
+                                        marginTop: '2px'
+                                    }}
                                 />
-                            </Row>
+                                <span
+                                    style={{
+                                        fontSize: '11px',
+                                        color: colors.warning,
+                                        lineHeight: '1.4'
+                                    }}>
+                                    P2PK addresses are for tokens only. Don&apos;t send BTC here.
+                                </span>
+                            </div>
                         )}
 
                         {showP2OPWarning && (
-                            <Row
-                                fullX
+                            <div
                                 style={{
-                                    background: 'rgba(255,165,0,0.12)',
-                                    border: '1px solid #ffa640',
-                                    borderRadius: 6,
-                                    padding: 6,
-                                    marginTop: 6
+                                    marginTop: '8px',
+                                    padding: '8px',
+                                    background: `${colors.error}15`,
+                                    border: `1px solid ${colors.error}30`,
+                                    borderRadius: '8px',
+                                    display: 'flex',
+                                    gap: '6px'
                                 }}>
-                                <Text
-                                    text="⚠️ Sending BTC to P2OP addresses is not supported."
-                                    size="xs"
-                                    color="gold"
-                                    textCenter
+                                <InfoCircleOutlined
+                                    style={{
+                                        fontSize: 12,
+                                        color: colors.error,
+                                        flexShrink: 0
+                                    }}
                                 />
-                            </Row>
+                                <span
+                                    style={{
+                                        fontSize: '11px',
+                                        color: colors.error,
+                                        lineHeight: '1.4'
+                                    }}>
+                                    Cannot send BTC to P2OP addresses.
+                                </span>
+                            </div>
                         )}
-                    </Column>
+                    </div>
 
-                    {/* Amount */}
-                    <Column mt="lg">
-                        <Row justifyBetween itemsCenter>
-                            <Text text="Amount" color="textDim" />
-                            <BtcUsd sats={toSatoshis} />
-                        </Row>
+                    {/* Amount Section */}
+                    <div
+                        style={{
+                            background: colors.containerBgFaded,
+                            borderRadius: '12px',
+                            padding: '14px',
+                            marginBottom: '12px'
+                        }}>
+                        <div
+                            style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                marginBottom: '10px'
+                            }}>
+                            <div
+                                style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '6px'
+                                }}>
+                                <DollarOutlined style={{ fontSize: 14, color: colors.main }} />
+                                <span
+                                    style={{
+                                        fontSize: '12px',
+                                        fontWeight: 600,
+                                        color: colors.textFaded,
+                                        textTransform: 'uppercase',
+                                        letterSpacing: '0.5px'
+                                    }}>
+                                    Amount
+                                </span>
+                            </div>
+                        </div>
 
-                        <Input
-                            preset="amount"
-                            placeholder="0.00"
-                            value={inputAmount}
-                            onAmountInputChange={(amount) => {
-                                if (autoAdjust) setAutoAdjust(false);
-                                setUiState({ inputAmount: amount });
-                            }}
-                            enableMax
-                            onMaxClick={() => {
-                                setAutoAdjust(true);
-                                setUiState({ inputAmount: balanceValue });
-                            }}
-                        />
+                        <div style={{ position: 'relative' }}>
+                            <Input
+                                preset="amount"
+                                placeholder="0.00"
+                                value={inputAmount}
+                                onAmountInputChange={(amount) => {
+                                    if (autoAdjust) setAutoAdjust(false);
+                                    setUiState({ inputAmount: amount });
+                                }}
+                                style={{
+                                    background: colors.inputBg,
+                                    border: `1px solid ${colors.containerBorder}`,
+                                    borderRadius: '8px',
+                                    paddingRight: '60px'
+                                }}
+                            />
+                            <button
+                                style={{
+                                    position: 'absolute',
+                                    right: '8px',
+                                    top: '50%',
+                                    transform: 'translateY(-50%)',
+                                    padding: '4px 8px',
+                                    background: colors.main,
+                                    border: 'none',
+                                    borderRadius: '6px',
+                                    color: colors.background,
+                                    fontSize: '11px',
+                                    fontWeight: 600,
+                                    cursor: 'pointer',
+                                    transition: 'all 0.15s'
+                                }}
+                                onClick={() => {
+                                    setAutoAdjust(true);
+                                    setUiState({ inputAmount: balanceValue });
+                                }}
+                                onMouseEnter={(e) => {
+                                    e.currentTarget.style.transform = 'translateY(-50%) scale(1.05)';
+                                }}
+                                onMouseLeave={(e) => {
+                                    e.currentTarget.style.transform = 'translateY(-50%) scale(1)';
+                                }}>
+                                MAX
+                            </button>
+                        </div>
 
-                        {/* balances */}
-                        <Row justifyBetween style={{ marginTop: 6 }}>
-                            <Text text="Available" color="gold" />
-                            <Row gap={'sm'}>
-                                <Text text={balanceValue} size="sm" color="gold" />
-                                <Text text={btcUnit} size="sm" color="textDim" />
-                            </Row>
-                        </Row>
-                        {chain.enum !== ChainType.BITCOIN_REGTEST && (
-                            <Row justifyBetween>
-                                <Text text="Total" color="textDim" />
-                                <Row gap={'sm'}>
-                                    <Text text={totalBalanceValue} size="sm" color="gold" />
-                                    <Text text={btcUnit} size="sm" color="textDim" />
-                                </Row>
-                            </Row>
+                        {/* Balance Info */}
+                        <div
+                            style={{
+                                marginTop: '10px',
+                                padding: '8px',
+                                background: colors.inputBg,
+                                borderRadius: '8px'
+                            }}>
+                            <div
+                                style={{
+                                    display: 'flex',
+                                    justifyContent: 'space-between',
+                                    marginBottom: '4px'
+                                }}>
+                                <span style={{ fontSize: '11px', color: colors.textFaded }}>Available</span>
+                                <span
+                                    style={{
+                                        fontSize: '11px',
+                                        color: colors.success,
+                                        fontWeight: 600
+                                    }}>
+                                    {balanceValue} {btcUnit}
+                                </span>
+                            </div>
+                            {chain.enum !== ChainType.BITCOIN_REGTEST && (
+                                <div
+                                    style={{
+                                        display: 'flex',
+                                        justifyContent: 'space-between'
+                                    }}>
+                                    <span style={{ fontSize: '11px', color: colors.textFaded }}>Total Balance</span>
+                                    <span
+                                        style={{
+                                            fontSize: '11px',
+                                            color: colors.textFaded
+                                        }}>
+                                        {totalBalanceValue} {btcUnit}
+                                    </span>
+                                </div>
+                            )}
+                        </div>
+
+                        {error && (
+                            <div
+                                style={{
+                                    marginTop: '8px',
+                                    padding: '6px',
+                                    background: `${colors.error}15`,
+                                    borderRadius: '6px',
+                                    textAlign: 'center'
+                                }}>
+                                <span
+                                    style={{
+                                        fontSize: '11px',
+                                        color: colors.error
+                                    }}>
+                                    {error}
+                                </span>
+                            </div>
                         )}
+                    </div>
 
-                        {/* divider */}
-                        <div style={{ height: 1, background: 'rgba(255,255,255,0.06)', margin: '14px 0' }} />
+                    {/* Fee Section */}
+                    <div
+                        style={{
+                            background: colors.containerBgFaded,
+                            borderRadius: '12px',
+                            padding: '14px',
+                            marginBottom: '12px'
+                        }}>
+                        <div
+                            style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '6px',
+                                marginBottom: '10px'
+                            }}>
+                            <ThunderboltOutlined style={{ fontSize: 14, color: colors.main }} />
+                            <span
+                                style={{
+                                    fontSize: '12px',
+                                    fontWeight: 600,
+                                    color: colors.textFaded,
+                                    textTransform: 'uppercase',
+                                    letterSpacing: '0.5px'
+                                }}>
+                                Network Fee
+                            </span>
+                        </div>
 
-                        {error && <Text text={error} color="error" style={{ textAlign: 'center' }} />}
-
-                        <Row justifyBetween>
-                            <Text text="Total (est.)" color="textDim" />
-                            <Row gap={'sm'}>
-                                <Text text={BitcoinUtils.formatUnits(toSatoshis, 8)} size="sm" color="textDim" />
-                                <Text text={`${btcUnit} + fee `} size="sm" color="textDim" />
-                            </Row>
-                        </Row>
-                    </Column>
-
-                    {/* Fees */}
-                    <Column mt="lg">
-                        <Text text="Miner fee" color="textDim" />
                         <FeeRateBar onChange={(val) => setUiState({ feeRate: val })} />
-                    </Column>
+                    </div>
 
-                    {/* Note */}
-                    <div style={{ marginTop: 20 }}>
-                        <Text text="Note (optional)" color="textDim" />
+                    {/* Note Section (Optional) */}
+                    <div
+                        style={{
+                            background: colors.containerBgFaded,
+                            borderRadius: '12px',
+                            padding: '14px',
+                            marginBottom: '12px'
+                        }}>
+                        <div
+                            style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '6px',
+                                marginBottom: '10px'
+                            }}>
+                            <FileTextOutlined style={{ fontSize: 14, color: colors.main }} />
+                            <span
+                                style={{
+                                    fontSize: '12px',
+                                    fontWeight: 600,
+                                    color: colors.textFaded,
+                                    textTransform: 'uppercase',
+                                    letterSpacing: '0.5px'
+                                }}>
+                                Note (Optional)
+                            </span>
+                        </div>
+
                         <input
                             type="text"
                             value={note}
                             onChange={(e) => setNote(e.target.value)}
-                            placeholder="Enter a note for the transaction"
+                            placeholder="Add a note for this transaction"
                             style={{
-                                marginTop: 6,
-                                backgroundColor: 'transparent',
-                                borderRadius: 5,
-                                borderWidth: 1,
-                                borderColor: 'rgba(255,255,255,0.3)',
-                                padding: 4,
                                 width: '100%',
-                                fontFamily: 'monospace',
-                                fontSize: 14
+                                padding: '8px 10px',
+                                background: colors.inputBg,
+                                border: `1px solid ${colors.containerBorder}`,
+                                borderRadius: '8px',
+                                color: colors.text,
+                                fontSize: '13px',
+                                outline: 'none',
+                                transition: 'border-color 0.15s'
+                            }}
+                            onFocus={(e) => {
+                                e.currentTarget.style.borderColor = colors.main;
+                            }}
+                            onBlur={(e) => {
+                                e.currentTarget.style.borderColor = colors.containerBorder;
                             }}
                         />
                     </div>
-                </div>
+
+                    {/* Summary */}
+                    <div
+                        style={{
+                            padding: '12px',
+                            background: `linear-gradient(135deg, ${colors.main}10 0%, ${colors.main}05 100%)`,
+                            border: `1px solid ${colors.main}20`,
+                            borderRadius: '10px',
+                            marginBottom: '80px'
+                        }}>
+                        <div
+                            style={{
+                                display: 'flex',
+                                justifyContent: 'space-between',
+                                alignItems: 'center'
+                            }}>
+                            <span
+                                style={{
+                                    fontSize: '12px',
+                                    color: colors.textFaded
+                                }}>
+                                Total Amount (est.)
+                            </span>
+                            <div style={{ textAlign: 'right' }}>
+                                <div
+                                    style={{
+                                        fontSize: '16px',
+                                        fontWeight: 600,
+                                        color: colors.text
+                                    }}>
+                                    {BitcoinUtils.formatUnits(toSatoshis, 8)} {btcUnit}
+                                </div>
+                                <div
+                                    style={{
+                                        fontSize: '10px',
+                                        color: colors.textFaded
+                                    }}>
+                                    + network fee
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </Column>
             </Content>
 
-            {/* sticky next */}
+            {/* Fixed Bottom Button */}
             <div
                 style={{
                     position: 'fixed',
                     bottom: 0,
                     left: 0,
                     right: 0,
-                    padding: '12px 16px 24px',
-                    background: 'linear-gradient(to top, rgba(0,0,0,0.8), rgba(0,0,0,0))',
-                    display: 'flex',
-                    justifyContent: 'center'
+                    padding: '12px',
+                    background: `linear-gradient(to top, ${colors.background} 0%, ${colors.background}00 100%)`,
+                    backdropFilter: 'blur(10px)'
                 }}>
-                <Button
-                    preset="primary"
-                    text="Next"
+                <button
+                    style={{
+                        width: '100%',
+                        padding: '14px',
+                        background: disabled ? colors.buttonBg : colors.main,
+                        border: 'none',
+                        borderRadius: '12px',
+                        color: disabled ? colors.textFaded : colors.background,
+                        fontSize: '14px',
+                        fontWeight: 600,
+                        cursor: disabled ? 'not-allowed' : 'pointer',
+                        opacity: disabled ? 0.5 : 1,
+                        transition: 'all 0.2s',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '8px'
+                    }}
                     disabled={disabled}
-                    style={{ width: '100%', maxWidth: 420 }}
                     onClick={handleNext}
-                />
+                    onMouseEnter={(e) => {
+                        if (!disabled) {
+                            e.currentTarget.style.transform = 'translateY(-2px)';
+                            e.currentTarget.style.boxShadow = `0 4px 12px ${colors.main}40`;
+                        }
+                    }}
+                    onMouseLeave={(e) => {
+                        e.currentTarget.style.transform = 'translateY(0)';
+                        e.currentTarget.style.boxShadow = 'none';
+                    }}>
+                    <span>Review Transaction</span>
+                    <SendOutlined style={{ fontSize: 14 }} />
+                </button>
             </div>
         </Layout>
     );

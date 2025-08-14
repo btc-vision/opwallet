@@ -1,16 +1,41 @@
-import { useState } from 'react';
 import { CHAIN_ICONS, ChainId } from '@/shared/constant';
 import { NetworkType } from '@/shared/types';
-import { Button, Card, Column, Icon, Image, Input, Row, Text } from '@/ui/components';
-import { BottomModal } from '@/ui/components/BottomModal';
+import { Column, Image, Row, Text } from '@/ui/components';
 import { useTools } from '@/ui/components/ActionComponent';
-import { colors } from '@/ui/theme/colors';
-import { CloseOutlined } from '@ant-design/icons';
+import { BottomModal } from '@/ui/components/BottomModal';
 import { useWallet } from '@/ui/utils';
+import {
+    ApiOutlined,
+    CheckCircleFilled,
+    CloseOutlined,
+    DollarOutlined,
+    ExperimentOutlined,
+    GlobalOutlined,
+    InfoCircleOutlined,
+    LinkOutlined
+} from '@ant-design/icons';
+import { useState } from 'react';
+
+const colors = {
+    main: '#f37413',
+    background: '#212121',
+    text: '#dbdbdb',
+    textFaded: 'rgba(219, 219, 219, 0.7)',
+    buttonBg: '#434343',
+    buttonHoverBg: 'rgba(85, 85, 85, 0.3)',
+    containerBg: '#434343',
+    containerBgFaded: '#292929',
+    containerBorder: '#303030',
+    inputBg: '#292828',
+    success: '#4ade80',
+    error: '#ef4444',
+    warning: '#fbbf24'
+};
 
 interface NetworkOption {
     value: NetworkType;
     label: string;
+    description: string;
 }
 
 interface ChainOption {
@@ -20,9 +45,9 @@ interface ChainOption {
 }
 
 const NETWORK_OPTIONS: NetworkOption[] = [
-    { value: NetworkType.MAINNET, label: 'Mainnet' },
-    { value: NetworkType.TESTNET, label: 'Testnet' },
-    { value: NetworkType.REGTEST, label: 'Regtest' }
+    { value: NetworkType.MAINNET, label: 'Mainnet', description: 'Production network' },
+    { value: NetworkType.TESTNET, label: 'Testnet', description: 'Test network' },
+    { value: NetworkType.REGTEST, label: 'Regtest', description: 'Local testing' }
 ];
 
 const CHAIN_OPTIONS: ChainOption[] = [
@@ -33,6 +58,125 @@ const CHAIN_OPTIONS: ChainOption[] = [
     { value: ChainId.BitcoinCash, label: 'Bitcoin Cash', icon: CHAIN_ICONS[ChainId.BitcoinCash] },
     { value: ChainId.Dash, label: 'Dash', icon: CHAIN_ICONS[ChainId.Dash] }
 ];
+
+const InputField = ({
+    label,
+    value,
+    onChange,
+    placeholder,
+    icon,
+    required = false,
+    info
+}: {
+    label: string;
+    value: string;
+    onChange: (value: string) => void;
+    placeholder: string;
+    icon?: React.ReactNode;
+    required?: boolean;
+    info?: string;
+}) => (
+    <div style={{ marginBottom: '16px' }}>
+        <div
+            style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                marginBottom: '6px'
+            }}>
+            <label
+                style={{
+                    fontSize: '12px',
+                    fontWeight: 600,
+                    color: colors.textFaded,
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.5px'
+                }}>
+                {label}
+                {required && <span style={{ color: colors.main }}> *</span>}
+            </label>
+            {info && (
+                <div style={{ position: 'relative', display: 'inline-block' }}>
+                    <InfoCircleOutlined
+                        style={{
+                            fontSize: 12,
+                            color: colors.textFaded,
+                            cursor: 'help'
+                        }}
+                    />
+                    <div
+                        style={{
+                            position: 'absolute',
+                            bottom: '120%',
+                            left: '50%',
+                            transform: 'translateX(-50%)',
+                            background: colors.containerBg,
+                            color: colors.text,
+                            fontSize: '11px',
+                            padding: '6px 8px',
+                            borderRadius: '6px',
+                            border: `1px solid ${colors.containerBorder}`,
+                            width: '200px',
+                            textAlign: 'left',
+                            zIndex: 1000,
+                            pointerEvents: 'none',
+                            whiteSpace: 'normal',
+                            lineHeight: '1.3',
+                            visibility: 'hidden',
+                            opacity: 0,
+                            transition: 'all 0.2s'
+                        }}
+                        className="tooltip">
+                        {info}
+                    </div>
+                    <style>{`
+                        .tooltip:hover + .tooltip,
+                        div:hover > .tooltip {
+                            visibility: visible !important;
+                            opacity: 1 !important;
+                        }
+                    `}</style>
+                </div>
+            )}
+        </div>
+        <div
+            style={{
+                display: 'flex',
+                alignItems: 'center',
+                background: colors.inputBg,
+                border: `1px solid ${colors.containerBorder}`,
+                borderRadius: '10px',
+                padding: '10px 12px',
+                transition: 'all 0.2s'
+            }}>
+            {icon && (
+                <div
+                    style={{
+                        marginRight: '10px',
+                        color: colors.textFaded,
+                        fontSize: '16px'
+                    }}>
+                    {icon}
+                </div>
+            )}
+            <input
+                type="text"
+                value={value}
+                onChange={(e) => onChange(e.target.value)}
+                placeholder={placeholder}
+                style={{
+                    flex: 1,
+                    background: 'transparent',
+                    border: 'none',
+                    outline: 'none',
+                    color: colors.text,
+                    fontSize: '13px',
+                    fontFamily: 'Inter-Regular, serif'
+                }}
+            />
+        </div>
+    </div>
+);
 
 export const AddCustomNetworkModal = ({ onClose, onSuccess }: { onClose: () => void; onSuccess: () => void }) => {
     const wallet = useWallet();
@@ -74,7 +218,6 @@ export const AddCustomNetworkModal = ({ onClose, onSuccess }: { onClose: () => v
             setTesting(true);
             tools.showLoading(true);
 
-            // Use wallet controller instead of direct customNetworksManager
             await wallet.addCustomNetwork({
                 name: name.trim(),
                 networkType,
@@ -99,222 +242,367 @@ export const AddCustomNetworkModal = ({ onClose, onSuccess }: { onClose: () => v
 
     return (
         <BottomModal onClose={onClose}>
-            <Column style={{ height: '100%', maxHeight: '80vh' }}>
-                {/* Fixed Header */}
-                <Column style={{ flexShrink: 0 }}>
-                    <Row justifyBetween itemsCenter style={{ height: 20 }} fullX>
-                        <Text text="Add Custom Network" textCenter size="md" />
-                        <Row onClick={onClose}>
-                            <CloseOutlined />
-                        </Row>
+            <Column style={{ height: '100%', maxHeight: '520px' }}>
+                {/* Header */}
+                <div
+                    style={{
+                        padding: '14px 16px',
+                        background: colors.background,
+                        borderBottom: `1px solid ${colors.containerBorder}`
+                    }}>
+                    <Row justifyBetween itemsCenter fullX>
+                        <Text
+                            text="Add Custom RPC"
+                            style={{
+                                fontSize: '16px',
+                                fontWeight: 600,
+                                color: colors.text,
+                                fontFamily: 'Inter-Regular, serif'
+                            }}
+                        />
+                        <button
+                            style={{
+                                width: '28px',
+                                height: '28px',
+                                background: colors.buttonHoverBg,
+                                border: 'none',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                borderRadius: '8px',
+                                transition: 'all 0.15s'
+                            }}
+                            onClick={onClose}
+                            onMouseEnter={(e) => {
+                                e.currentTarget.style.background = colors.buttonBg;
+                            }}
+                            onMouseLeave={(e) => {
+                                e.currentTarget.style.background = colors.buttonHoverBg;
+                            }}>
+                            <CloseOutlined style={{ fontSize: 14, color: colors.textFaded }} />
+                        </button>
                     </Row>
-                    <Row fullX style={{ borderTopWidth: 1, borderColor: colors.border }} mt="md" />
-                </Column>
+                </div>
 
                 {/* Scrollable Content */}
-                <Column
-                    gap="md"
-                    mt="lg"
-                    mb="lg"
-                    fullX
+                <div
                     style={{
                         flex: 1,
                         overflowY: 'auto',
                         overflowX: 'hidden',
-                        paddingRight: 8,
-                        paddingBottom: 20,
-                        minHeight: 0
+                        padding: '16px',
+                        background: colors.background
                     }}>
-                    <Column gap="sm">
-                        <Text text="Network Name" size="sm" />
-                        <Input
-                            placeholder="Enter network name"
-                            value={name}
-                            onChange={(e) => setName(e.target.value)}
-                        />
-                    </Column>
+                    {/* Network Name */}
+                    <InputField
+                        label="Network Name"
+                        value={name}
+                        onChange={setName}
+                        placeholder="My Custom Network"
+                        required
+                    />
 
-                    <Column gap="sm" style={{ position: 'relative' }}>
-                        <Text text="Network Type" size="sm" />
-                        <Card
+                    {/* Network Type Selector */}
+                    <div style={{ marginBottom: '16px' }}>
+                        <label
                             style={{
-                                backgroundColor: 'rgba(255,255,255,0.1)',
-                                borderRadius: 8,
-                                cursor: 'pointer'
-                            }}
-                            onClick={() => setShowNetworkDropdown(!showNetworkDropdown)}>
-                            <Row justifyBetween itemsCenter>
-                                <Text text={NETWORK_OPTIONS.find((o) => o.value === networkType)?.label || ''} />
-                                <Icon icon={showNetworkDropdown ? 'up' : 'down'} />
-                            </Row>
-                        </Card>
-                        {showNetworkDropdown && (
-                            <Card
-                                style={{
-                                    backgroundColor: 'rgba(0,0,0,0.9)',
-                                    borderRadius: 8,
-                                    position: 'absolute',
-                                    zIndex: 1000,
-                                    top: 70,
-                                    left: 0,
-                                    right: 0,
-                                    border: `1px solid ${colors.border}`,
-                                    maxHeight: 240, // Show max 5 items
-                                    overflow: 'hidden'
-                                }}>
-                                <Column
-                                    gap="zero"
+                                fontSize: '12px',
+                                fontWeight: 600,
+                                color: colors.textFaded,
+                                textTransform: 'uppercase',
+                                letterSpacing: '0.5px',
+                                display: 'block',
+                                marginBottom: '6px'
+                            }}>
+                            Network Type <span style={{ color: colors.main }}>*</span>
+                        </label>
+                        <div
+                            style={{
+                                display: 'grid',
+                                gridTemplateColumns: 'repeat(3, 1fr)',
+                                gap: '8px'
+                            }}>
+                            {NETWORK_OPTIONS.map((option) => (
+                                <button
+                                    key={option.value}
                                     style={{
-                                        maxHeight: 240,
-                                        overflowY: 'auto',
-                                        overflowX: 'hidden'
+                                        padding: '8px',
+                                        background: networkType === option.value ? colors.main : colors.buttonHoverBg,
+                                        border: `1px solid ${networkType === option.value ? colors.main : colors.containerBorder}`,
+                                        borderRadius: '8px',
+                                        cursor: 'pointer',
+                                        transition: 'all 0.15s'
+                                    }}
+                                    onClick={() => setNetworkType(option.value)}
+                                    onMouseEnter={(e) => {
+                                        if (networkType !== option.value) {
+                                            e.currentTarget.style.background = colors.buttonBg;
+                                        }
+                                    }}
+                                    onMouseLeave={(e) => {
+                                        if (networkType !== option.value) {
+                                            e.currentTarget.style.background = colors.buttonHoverBg;
+                                        }
                                     }}>
-                                    {NETWORK_OPTIONS.map((option, index) => (
-                                        <Card
-                                            key={option.value}
-                                            style={{
-                                                backgroundColor: 'transparent',
-                                                borderRadius: 0,
-                                                borderBottom:
-                                                    index < NETWORK_OPTIONS.length - 1
-                                                        ? `1px solid ${colors.border}`
-                                                        : 'none',
-                                                cursor: 'pointer',
-                                                minHeight: 48 // Consistent height
-                                            }}
-                                            onClick={() => {
-                                                setNetworkType(option.value);
-                                                setShowNetworkDropdown(false);
-                                            }}>
-                                            <Row itemsCenter style={{ height: '100%' }}>
-                                                <Text text={option.label} />
-                                            </Row>
-                                        </Card>
-                                    ))}
-                                </Column>
-                            </Card>
-                        )}
-                    </Column>
+                                    <div
+                                        style={{
+                                            fontSize: '12px',
+                                            fontWeight: 600,
+                                            color: networkType === option.value ? colors.background : colors.text
+                                        }}>
+                                        {option.label}
+                                    </div>
+                                    <div
+                                        style={{
+                                            fontSize: '10px',
+                                            color: networkType === option.value ? colors.background : colors.textFaded,
+                                            marginTop: '2px'
+                                        }}>
+                                        {option.description}
+                                    </div>
+                                </button>
+                            ))}
+                        </div>
+                    </div>
 
-                    <Column gap="sm" style={{ position: 'relative' }}>
-                        <Text text="Chain Type" size="sm" />
-                        <Card
+                    {/* Chain Type Dropdown */}
+                    <div style={{ marginBottom: '16px', position: 'relative' }}>
+                        <label
                             style={{
-                                backgroundColor: 'rgba(255,255,255,0.1)',
-                                borderRadius: 8,
-                                cursor: 'pointer'
+                                fontSize: '12px',
+                                fontWeight: 600,
+                                color: colors.textFaded,
+                                textTransform: 'uppercase',
+                                letterSpacing: '0.5px',
+                                display: 'block',
+                                marginBottom: '6px'
+                            }}>
+                            Chain Type <span style={{ color: colors.main }}>*</span>
+                        </label>
+                        <button
+                            style={{
+                                width: '100%',
+                                padding: '10px 12px',
+                                background: colors.inputBg,
+                                border: `1px solid ${colors.containerBorder}`,
+                                borderRadius: '10px',
+                                cursor: 'pointer',
+                                transition: 'all 0.15s',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between'
                             }}
                             onClick={() => setShowChainDropdown(!showChainDropdown)}>
-                            <Row justifyBetween itemsCenter>
-                                <Row itemsCenter gap="sm">
-                                    <Image src={CHAIN_OPTIONS.find((o) => o.value === chainId)?.icon || ''} size={20} />
-                                    <Text text={CHAIN_OPTIONS.find((o) => o.value === chainId)?.label || ''} />
-                                </Row>
-                                <Icon icon={showChainDropdown ? 'up' : 'down'} />
-                            </Row>
-                        </Card>
-                        {showChainDropdown && (
-                            <Card
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                <Image src={CHAIN_OPTIONS.find((o) => o.value === chainId)?.icon || ''} size={20} />
+                                <span
+                                    style={{
+                                        fontSize: '13px',
+                                        color: colors.text,
+                                        fontFamily: 'Inter-Regular, serif'
+                                    }}>
+                                    {CHAIN_OPTIONS.find((o) => o.value === chainId)?.label || ''}
+                                </span>
+                            </div>
+                            <span
                                 style={{
-                                    backgroundColor: 'rgba(0,0,0,0.9)',
-                                    borderRadius: 8,
+                                    fontSize: '10px',
+                                    color: colors.textFaded,
+                                    transform: showChainDropdown ? 'rotate(180deg)' : 'rotate(0)',
+                                    transition: 'transform 0.2s'
+                                }}>
+                                ▼
+                            </span>
+                        </button>
+
+                        {showChainDropdown && (
+                            <div
+                                style={{
                                     position: 'absolute',
-                                    zIndex: 1000,
-                                    top: 70,
+                                    top: '100%',
                                     left: 0,
                                     right: 0,
-                                    border: `1px solid ${colors.border}`,
-                                    maxHeight: 240, // Approximately 5 items * 48px per item
-                                    overflow: 'hidden'
+                                    marginTop: '4px',
+                                    background: colors.containerBg,
+                                    border: `1px solid ${colors.containerBorder}`,
+                                    borderRadius: '10px',
+                                    overflow: 'hidden',
+                                    zIndex: 1000,
+                                    boxShadow: '0 4px 12px rgba(0,0,0,0.3)'
                                 }}>
-                                <Column
-                                    gap="zero"
-                                    style={{
-                                        maxHeight: 240,
-                                        overflowY: 'auto',
-                                        overflowX: 'hidden'
-                                    }}>
-                                    {CHAIN_OPTIONS.map((option, index) => (
-                                        <Card
-                                            key={option.value}
+                                {CHAIN_OPTIONS.map((option) => (
+                                    <button
+                                        key={option.value}
+                                        style={{
+                                            width: '100%',
+                                            padding: '10px 12px',
+                                            background: 'transparent',
+                                            border: 'none',
+                                            borderBottom: `1px solid ${colors.containerBorder}`,
+                                            cursor: 'pointer',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '10px',
+                                            transition: 'all 0.15s'
+                                        }}
+                                        onClick={() => {
+                                            setChainId(option.value);
+                                            setShowChainDropdown(false);
+                                        }}
+                                        onMouseEnter={(e) => {
+                                            e.currentTarget.style.background = colors.buttonHoverBg;
+                                        }}
+                                        onMouseLeave={(e) => {
+                                            e.currentTarget.style.background = 'transparent';
+                                        }}>
+                                        <Image src={option.icon} size={20} />
+                                        <span
                                             style={{
-                                                backgroundColor: 'transparent',
-                                                borderRadius: 0,
-                                                borderBottom:
-                                                    index < CHAIN_OPTIONS.length - 1
-                                                        ? `1px solid ${colors.border}`
-                                                        : 'none',
-                                                cursor: 'pointer',
-                                                minHeight: 48 // Consistent height for each item
-                                            }}
-                                            onClick={() => {
-                                                setChainId(option.value);
-                                                setShowChainDropdown(false);
+                                                fontSize: '13px',
+                                                color: colors.text,
+                                                fontFamily: 'Inter-Regular, serif'
                                             }}>
-                                            <Row itemsCenter gap="sm" style={{ height: '100%' }}>
-                                                <Image src={option.icon} size={20} />
-                                                <Text text={option.label} />
-                                            </Row>
-                                        </Card>
-                                    ))}
-                                </Column>
-                            </Card>
+                                            {option.label}
+                                        </span>
+                                        {chainId === option.value && (
+                                            <CheckCircleFilled
+                                                style={{
+                                                    marginLeft: 'auto',
+                                                    fontSize: 14,
+                                                    color: colors.main
+                                                }}
+                                            />
+                                        )}
+                                    </button>
+                                ))}
+                            </div>
                         )}
-                    </Column>
+                    </div>
 
-                    <Column gap="sm">
-                        <Text text="Currency Unit" size="sm" />
-                        <Input
-                            placeholder="e.g., BTC, tBTC, FB"
-                            value={unit}
-                            onChange={(e) => setUnit(e.target.value)}
-                        />
-                    </Column>
+                    {/* Currency Unit */}
+                    <InputField
+                        label="Currency Unit"
+                        value={unit}
+                        onChange={setUnit}
+                        placeholder="BTC, tBTC, FB"
+                        icon={<DollarOutlined />}
+                        required
+                        info="The ticker symbol for this network"
+                    />
 
-                    <Column gap="sm">
-                        <Text text="RPC URL" size="sm" />
-                        <Input
-                            placeholder="https://mainnet.opnet.org"
-                            value={rpcUrl}
-                            onChange={(e) => setRpcUrl(e.target.value)}
-                        />
-                    </Column>
+                    {/* RPC URL */}
+                    <InputField
+                        label="RPC URL"
+                        value={rpcUrl}
+                        onChange={setRpcUrl}
+                        placeholder="https://mainnet.opnet.org"
+                        icon={<ApiOutlined />}
+                        required
+                        info="The RPC endpoint for this network"
+                    />
 
-                    <Column gap="sm">
-                        <Text text="Block Explorer URL" size="sm" />
-                        <Input
-                            placeholder="https://mempool.space"
-                            value={explorerUrl}
-                            onChange={(e) => setExplorerUrl(e.target.value)}
-                        />
-                    </Column>
+                    {/* Explorer URL */}
+                    <InputField
+                        label="Block Explorer"
+                        value={explorerUrl}
+                        onChange={setExplorerUrl}
+                        placeholder="https://mempool.space"
+                        icon={<GlobalOutlined />}
+                        required
+                        info="Block explorer for viewing transactions"
+                    />
 
-                    <Column gap="sm">
-                        <Text text="Faucet URL (Optional)" size="sm" />
-                        <Input
-                            placeholder="https://faucet.opnet.org"
-                            value={faucetUrl}
-                            onChange={(e) => setFaucetUrl(e.target.value)}
-                        />
-                    </Column>
+                    {/* Faucet URL */}
+                    <InputField
+                        label="Faucet URL"
+                        value={faucetUrl}
+                        onChange={setFaucetUrl}
+                        placeholder="https://faucet.opnet.org (optional)"
+                        icon={<ExperimentOutlined />}
+                        info="Faucet for getting test tokens"
+                    />
 
-                    <Row itemsCenter gap="sm">
+                    {/* Show Price Checkbox */}
+                    <label
+                        style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '10px',
+                            padding: '12px',
+                            background: colors.containerBgFaded,
+                            borderRadius: '10px',
+                            cursor: 'pointer',
+                            marginBottom: '20px',
+                            transition: 'all 0.15s'
+                        }}>
                         <input
                             type="checkbox"
                             checked={showPrice}
                             onChange={(e) => setShowPrice(e.target.checked)}
-                            style={{ width: 16, height: 16 }}
+                            style={{
+                                width: '16px',
+                                height: '16px',
+                                cursor: 'pointer',
+                                accentColor: colors.main
+                            }}
                         />
-                        <Text text="Show price information" size="sm" />
-                    </Row>
+                        <div style={{ flex: 1 }}>
+                            <div
+                                style={{
+                                    fontSize: '13px',
+                                    color: colors.text,
+                                    fontWeight: 500
+                                }}>
+                                Show price information
+                            </div>
+                            <div
+                                style={{
+                                    fontSize: '11px',
+                                    color: colors.textFaded,
+                                    marginTop: '2px'
+                                }}>
+                                Display fiat value for this network
+                            </div>
+                        </div>
+                        <LinkOutlined
+                            style={{
+                                fontSize: 14,
+                                color: showPrice ? colors.main : colors.textFaded
+                            }}
+                        />
+                    </label>
 
-                    <Button
-                        text={testing ? 'Testing Connection...' : 'Add Network'}
-                        preset="primary"
+                    {/* Submit Button */}
+                    <button
+                        style={{
+                            width: '100%',
+                            padding: '14px',
+                            background: testing ? colors.buttonBg : colors.main,
+                            border: 'none',
+                            borderRadius: '12px',
+                            color: testing ? colors.textFaded : colors.background,
+                            fontSize: '14px',
+                            fontWeight: 600,
+                            cursor: testing ? 'not-allowed' : 'pointer',
+                            transition: 'all 0.2s',
+                            fontFamily: 'Inter-Regular, serif'
+                        }}
                         onClick={handleSubmit}
                         disabled={testing}
-                    />
-                </Column>
+                        onMouseEnter={(e) => {
+                            if (!testing) {
+                                e.currentTarget.style.transform = 'translateY(-2px)';
+                                e.currentTarget.style.boxShadow = '0 4px 12px rgba(243, 116, 19, 0.3)';
+                            }
+                        }}
+                        onMouseLeave={(e) => {
+                            e.currentTarget.style.transform = 'translateY(0)';
+                            e.currentTarget.style.boxShadow = 'none';
+                        }}>
+                        {testing ? 'Testing Connection...' : 'Add Network'}
+                    </button>
+                </div>
             </Column>
         </BottomModal>
     );

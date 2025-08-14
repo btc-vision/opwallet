@@ -1,8 +1,8 @@
+import { CheckCircleFilled } from '@ant-design/icons';
 import { useCallback, useMemo, useState } from 'react';
 
 import { AddressType, RestoreWalletType } from '@/shared/types';
-import { Content, Header, Layout, Row } from '@/ui/components';
-import { TabBar } from '@/ui/components/TabBar';
+import { Content, Header, Layout } from '@/ui/components';
 import { Step0 } from '@/ui/pages/Account/createHDWalletComponents/Step0';
 import { Step1_Create } from '@/ui/pages/Account/createHDWalletComponents/Step1_Create';
 import { Step1_Import } from '@/ui/pages/Account/createHDWalletComponents/Step1_Import';
@@ -17,6 +17,20 @@ import {
 import { useLocationState } from '@/ui/utils';
 import { RouteTypes, useNavigate } from '../MainRoute';
 
+const colors = {
+    main: '#f37413',
+    background: '#212121',
+    text: '#dbdbdb',
+    textFaded: 'rgba(219, 219, 219, 0.7)',
+    buttonBg: '#434343',
+    buttonHoverBg: 'rgba(85, 85, 85, 0.3)',
+    containerBg: '#434343',
+    containerBgFaded: '#292929',
+    containerBorder: '#303030',
+    success: '#4ade80',
+    warning: '#fbbf24'
+};
+
 interface LocationState {
     isImport: boolean;
     fromUnlock?: boolean;
@@ -24,7 +38,6 @@ interface LocationState {
 
 export default function CreateHDWalletScreen() {
     const navigate = useNavigate();
-
     const { isImport, fromUnlock } = useLocationState<LocationState>();
 
     const [contextData, setContextData] = useState<ContextData>({
@@ -55,12 +68,12 @@ export default function CreateHDWalletScreen() {
                 return [
                     {
                         key: TabType.STEP1,
-                        label: 'Step 1',
+                        label: 'Type',
                         children: <Step0 contextData={contextData} updateContextData={updateContextData} />
                     },
                     {
                         key: TabType.STEP2,
-                        label: 'Step 2',
+                        label: 'Import',
                         children: <Step1_Import contextData={contextData} updateContextData={updateContextData} />
                     }
                 ];
@@ -68,17 +81,17 @@ export default function CreateHDWalletScreen() {
                 return [
                     {
                         key: TabType.STEP1,
-                        label: 'Step 1',
+                        label: 'Type',
                         children: <Step0 contextData={contextData} updateContextData={updateContextData} />
                     },
                     {
                         key: TabType.STEP2,
-                        label: 'Step 2',
+                        label: 'Import',
                         children: <Step1_Import contextData={contextData} updateContextData={updateContextData} />
                     },
                     {
                         key: TabType.STEP3,
-                        label: 'Step 3',
+                        label: 'Address',
                         children: <Step2 contextData={contextData} updateContextData={updateContextData} />
                     }
                 ];
@@ -87,17 +100,12 @@ export default function CreateHDWalletScreen() {
             return [
                 {
                     key: TabType.STEP1,
-                    label: 'Step 1',
+                    label: 'Create',
                     children: <Step1_Create contextData={contextData} updateContextData={updateContextData} />
                 },
-                // {
-                //   key: TabType.STEP2,
-                //   label: 'Step 2',
-                //   children: <Step1_Confirm contextData={contextData} updateContextData={updateContextData} />
-                // },
                 {
                     key: TabType.STEP2,
-                    label: 'Step 2',
+                    label: 'Address',
                     children: <Step2 contextData={contextData} updateContextData={updateContextData} />
                 }
             ];
@@ -109,6 +117,8 @@ export default function CreateHDWalletScreen() {
         return item?.children;
     }, [items, contextData.tabType]);
 
+    const currentStepIndex = items.findIndex((item) => item.key === contextData.tabType);
+
     return (
         <Layout>
             <Header
@@ -119,34 +129,178 @@ export default function CreateHDWalletScreen() {
                         window.history.go(-1);
                     }
                 }}
-                title={contextData.isRestore ? 'Restore from mnemonics' : 'Create a new HD Wallet'}
+                title={contextData.isRestore ? 'Import Wallet' : 'Create Wallet'}
             />
-            <Content>
-                <Row justifyCenter>
-                    <TabBar
-                        progressEnabled
-                        defaultActiveKey={contextData.tabType}
-                        activeKey={contextData.tabType}
-                        items={items.map((v) => ({
-                            key: v.key,
-                            label: v.label
-                        }))}
-                        onTabClick={(key) => {
-                            const toTabType = key as TabType;
-                            if (toTabType === TabType.STEP2) {
-                                if (!contextData.step1Completed) {
-                                    setTimeout(() => {
-                                        updateContextData({ tabType: contextData.tabType });
-                                    }, 200);
-                                    return;
-                                }
-                            }
-                            updateContextData({ tabType: toTabType });
-                        }}
-                    />
-                </Row>
 
-                {currentChildren}
+            <Content
+                style={{
+                    padding: '0',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    height: 'calc(100vh - 56px)', // Account for header height
+                    overflow: 'hidden'
+                }}>
+                {/* Compact Step Indicator */}
+                <div
+                    style={{
+                        padding: '12px 16px',
+                        background: colors.containerBgFaded,
+                        borderBottom: `1px solid ${colors.containerBorder}`,
+                        flexShrink: 0
+                    }}>
+                    <div
+                        style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            marginBottom: '8px'
+                        }}>
+                        <div
+                            style={{
+                                fontSize: '11px',
+                                color: colors.textFaded,
+                                fontWeight: 600,
+                                textTransform: 'uppercase',
+                                letterSpacing: '0.5px'
+                            }}>
+                            Step {currentStepIndex + 1} of {items.length}
+                        </div>
+                        <div
+                            style={{
+                                fontSize: '12px',
+                                color: colors.main,
+                                fontWeight: 600
+                            }}>
+                            {items[currentStepIndex]?.label}
+                        </div>
+                    </div>
+
+                    {/* Compact Progress Steps */}
+                    <div
+                        style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '8px'
+                        }}>
+                        {items.map((item, index) => {
+                            const isActive = item.key === contextData.tabType;
+                            const isCompleted = index < currentStepIndex;
+                            const isClickable =
+                                isCompleted || (index === currentStepIndex + 1 && contextData.step1Completed);
+
+                            return (
+                                <div
+                                    key={item.key}
+                                    style={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        flex: index === items.length - 1 ? '0' : '1'
+                                    }}>
+                                    <button
+                                        style={{
+                                            width: '24px',
+                                            height: '24px',
+                                            borderRadius: '50%',
+                                            background: isActive
+                                                ? colors.main
+                                                : isCompleted
+                                                  ? colors.success
+                                                  : colors.buttonHoverBg,
+                                            border: `1px solid ${
+                                                isActive
+                                                    ? colors.main
+                                                    : isCompleted
+                                                      ? colors.success
+                                                      : colors.containerBorder
+                                            }`,
+                                            color: isActive || isCompleted ? colors.background : colors.textFaded,
+                                            fontSize: '11px',
+                                            fontWeight: 600,
+                                            cursor: isClickable ? 'pointer' : 'default',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            transition: 'all 0.2s',
+                                            flexShrink: 0
+                                        }}
+                                        onClick={() => {
+                                            if (!isClickable) return;
+
+                                            const toTabType = item.key;
+                                            if (toTabType === TabType.STEP2 && !contextData.step1Completed) {
+                                                return;
+                                            }
+                                            if (toTabType === TabType.STEP3 && !contextData.step1Completed) {
+                                                return;
+                                            }
+                                            updateContextData({ tabType: toTabType });
+                                        }}>
+                                        {isCompleted ? <CheckCircleFilled style={{ fontSize: 12 }} /> : index + 1}
+                                    </button>
+                                    {index < items.length - 1 && (
+                                        <div
+                                            style={{
+                                                flex: 1,
+                                                height: '2px',
+                                                background: isCompleted ? colors.success : colors.containerBorder,
+                                                margin: '0 8px',
+                                                transition: 'background 0.3s'
+                                            }}
+                                        />
+                                    )}
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+
+                {/* Scrollable Content Area */}
+                <div
+                    style={{
+                        flex: 1,
+                        overflow: 'auto',
+                        padding: '16px',
+                        minHeight: 0 // Important for flex child scrolling
+                    }}>
+                    {currentChildren}
+                </div>
+
+                {/* Fixed Bottom Warning - Only show on first step of import or create */}
+                {((contextData.isRestore && currentStepIndex === 0) ||
+                    (!contextData.isRestore && currentStepIndex === 0)) && (
+                    <div
+                        style={{
+                            padding: '12px 16px',
+                            background: `${colors.warning}10`,
+                            borderTop: `1px solid ${colors.warning}30`,
+                            flexShrink: 0
+                        }}>
+                        <div
+                            style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '8px'
+                            }}>
+                            <span
+                                style={{
+                                    fontSize: '14px',
+                                    color: colors.warning
+                                }}>
+                                ⚠️
+                            </span>
+                            <div
+                                style={{
+                                    fontSize: '11px',
+                                    color: colors.textFaded,
+                                    lineHeight: '1.3'
+                                }}>
+                                {contextData.isRestore
+                                    ? 'Never share your seed phrase. Ensure privacy.'
+                                    : 'Write down and safely store your seed phrase.'}
+                            </div>
+                        </div>
+                    </div>
+                )}
             </Content>
         </Layout>
     );

@@ -1,10 +1,40 @@
 import { Action, Features } from '@/shared/interfaces/RawTxParameters';
-import { Button, Column, Content, Header, Layout, Text } from '@/ui/components';
+import { Content, Header, Layout } from '@/ui/components';
 import { useTools } from '@/ui/components/ActionComponent';
-import { FeeRateBar } from '@/ui/components/FeeRateBar';
+import { PriorityFeeBar } from '@/ui/components/PriorityFeeBar';
 import { useCurrentAccount } from '@/ui/state/accounts/hooks';
+import {
+    BookOutlined,
+    CheckCircleOutlined,
+    CloudUploadOutlined,
+    CodeOutlined,
+    EditOutlined,
+    FileOutlined,
+    GithubOutlined,
+    InfoCircleOutlined,
+    RocketOutlined,
+    ThunderboltOutlined,
+    ToolOutlined
+} from '@ant-design/icons';
 import React, { useEffect, useState } from 'react';
 import { RouteTypes, useNavigate } from '../MainRoute';
+
+const colors = {
+    main: '#f37413',
+    background: '#212121',
+    text: '#dbdbdb',
+    textFaded: 'rgba(219, 219, 219, 0.7)',
+    buttonBg: '#434343',
+    buttonHoverBg: 'rgba(85, 85, 85, 0.3)',
+    containerBg: '#434343',
+    containerBgFaded: '#292929',
+    containerBorder: '#303030',
+    inputBg: '#292828',
+    success: '#4ade80',
+    error: '#ef4444',
+    warning: '#fbbf24',
+    info: '#3b82f6'
+};
 
 export default function DeployContractOpnet() {
     const account = useCurrentAccount();
@@ -17,6 +47,8 @@ export default function DeployContractOpnet() {
     const [calldataHex, setCalldataHex] = useState<string>('');
     const [disabled, setDisabled] = useState(true);
     const [note, setNote] = useState<string>('');
+    const [isDragging, setIsDragging] = useState(false);
+    const [showGuide, setShowGuide] = useState(false);
 
     useEffect(() => {
         setDisabled(!wasmFile);
@@ -37,6 +69,7 @@ export default function DeployContractOpnet() {
 
     const onDrop = (e: React.DragEvent<HTMLDivElement>) => {
         e.preventDefault();
+        setIsDragging(false);
         const f = e.dataTransfer.files?.[0];
         if (f) handleFile(f);
     };
@@ -66,150 +99,565 @@ export default function DeployContractOpnet() {
 
     return (
         <Layout>
-            <Header title="Deploy Contract" onBack={() => window.history.go(-1)} />
-            <Content>
-                {/* warning */}
+            <Header title="Deploy Smart Contract" onBack={() => window.history.go(-1)} />
+
+            <Content
+                style={{
+                    maxWidth: '800px',
+                    margin: '0 auto',
+                    padding: '24px'
+                }}>
+                {/* Hero Section */}
                 <div
                     style={{
-                        background: 'rgba(255,165,0,0.1)',
-                        border: '1px solid rgba(255,165,0,0.4)',
-                        padding: 12,
-                        borderRadius: 8,
-                        marginBottom: 20
+                        background: `linear-gradient(135deg, ${colors.main}10 0%, ${colors.main}05 100%)`,
+                        border: `1px solid ${colors.main}20`,
+                        borderRadius: '16px',
+                        padding: '24px',
+                        marginBottom: '24px',
+                        textAlign: 'center'
                     }}>
-                    <Text text="Heads‑up: network confirmation can take up to 10 minutes after submitting the deploy transaction." />
+                    <RocketOutlined
+                        style={{
+                            fontSize: 48,
+                            color: colors.main,
+                            marginBottom: '16px'
+                        }}
+                    />
+                    <h2
+                        style={{
+                            fontSize: '24px',
+                            fontWeight: 700,
+                            color: colors.text,
+                            marginBottom: '8px'
+                        }}>
+                        Deploy Your OP_NET Contract
+                    </h2>
+                    <p
+                        style={{
+                            fontSize: '14px',
+                            color: colors.textFaded,
+                            margin: 0
+                        }}>
+                        Upload your compiled WASM file to deploy it on the OP_NET network
+                    </p>
                 </div>
 
-                {/* file uploader */}
-                <Text text="Upload Contract (.wasm)" color="textDim" />
+                {/* Warning Banner */}
                 <div
-                    onDragOver={(e) => {
-                        e.preventDefault();
+                    style={{
+                        background: `${colors.warning}10`,
+                        border: `1px solid ${colors.warning}30`,
+                        borderRadius: '12px',
+                        padding: '16px',
+                        marginBottom: '24px',
+                        display: 'flex',
+                        gap: '12px',
+                        alignItems: 'flex-start'
+                    }}>
+                    <InfoCircleOutlined
+                        style={{
+                            fontSize: 20,
+                            color: colors.warning,
+                            flexShrink: 0,
+                            marginTop: '2px'
+                        }}
+                    />
+                    <div>
+                        <div
+                            style={{
+                                fontSize: '14px',
+                                fontWeight: 600,
+                                color: colors.warning,
+                                marginBottom: '4px'
+                            }}>
+                            Important Notice
+                        </div>
+                        <div
+                            style={{
+                                fontSize: '13px',
+                                color: colors.text,
+                                lineHeight: '1.5'
+                            }}>
+                            Network confirmation can take up to 10 minutes after submitting the deploy transaction.
+                            Please be patient and don&apos;t close this window during the process.
+                        </div>
+                    </div>
+                </div>
+
+                {/* Main Content Grid */}
+                <div
+                    style={{
+                        display: 'grid',
+                        gridTemplateColumns: '1fr 1fr',
+                        gap: '20px',
+                        marginBottom: '24px'
+                    }}>
+                    {/* Left Column - File Upload */}
+                    <div>
+                        <div
+                            style={{
+                                background: colors.containerBgFaded,
+                                borderRadius: '14px',
+                                padding: '20px'
+                            }}>
+                            <div
+                                style={{
+                                    fontSize: '12px',
+                                    fontWeight: 600,
+                                    color: colors.textFaded,
+                                    textTransform: 'uppercase',
+                                    letterSpacing: '0.5px',
+                                    marginBottom: '12px',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '6px'
+                                }}>
+                                <FileOutlined style={{ fontSize: 12 }} />
+                                Contract File
+                            </div>
+
+                            {/* File Upload Area */}
+                            <div
+                                onDragOver={(e) => {
+                                    e.preventDefault();
+                                    setIsDragging(true);
+                                }}
+                                onDragLeave={() => setIsDragging(false)}
+                                onDrop={onDrop}
+                                style={{
+                                    border: `2px dashed ${isDragging ? colors.main : colors.containerBorder}`,
+                                    borderRadius: '12px',
+                                    padding: '40px 20px',
+                                    textAlign: 'center',
+                                    cursor: 'pointer',
+                                    transition: 'all 0.3s',
+                                    background: isDragging ? `${colors.main}05` : colors.inputBg,
+                                    position: 'relative'
+                                }}>
+                                <input
+                                    type="file"
+                                    accept=".wasm"
+                                    style={{ display: 'none' }}
+                                    id="fileInput"
+                                    onChange={onFileInput}
+                                />
+                                <label htmlFor="fileInput" style={{ cursor: 'pointer' }}>
+                                    {wasmFile ? (
+                                        <div>
+                                            <CheckCircleOutlined
+                                                style={{
+                                                    fontSize: 32,
+                                                    color: colors.success,
+                                                    marginBottom: '12px'
+                                                }}
+                                            />
+                                            <div
+                                                style={{
+                                                    fontSize: '14px',
+                                                    fontWeight: 600,
+                                                    color: colors.text,
+                                                    marginBottom: '4px'
+                                                }}>
+                                                {wasmFile.name}
+                                            </div>
+                                            <div
+                                                style={{
+                                                    fontSize: '12px',
+                                                    color: colors.textFaded
+                                                }}>
+                                                {(wasmFile.size / 1024).toFixed(2)} KB
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <div>
+                                            <CloudUploadOutlined
+                                                style={{
+                                                    fontSize: 32,
+                                                    color: colors.textFaded,
+                                                    marginBottom: '12px'
+                                                }}
+                                            />
+                                            <div
+                                                style={{
+                                                    fontSize: '14px',
+                                                    fontWeight: 600,
+                                                    color: colors.text,
+                                                    marginBottom: '4px'
+                                                }}>
+                                                Upload WASM File
+                                            </div>
+                                            <div
+                                                style={{
+                                                    fontSize: '12px',
+                                                    color: colors.textFaded
+                                                }}>
+                                                Click to browse or drag & drop
+                                            </div>
+                                        </div>
+                                    )}
+                                </label>
+                            </div>
+                        </div>
+
+                        {/* Optional Note */}
+                        <div
+                            style={{
+                                background: colors.containerBgFaded,
+                                borderRadius: '14px',
+                                padding: '20px',
+                                marginTop: '20px'
+                            }}>
+                            <div
+                                style={{
+                                    fontSize: '12px',
+                                    fontWeight: 600,
+                                    color: colors.textFaded,
+                                    textTransform: 'uppercase',
+                                    letterSpacing: '0.5px',
+                                    marginBottom: '12px',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '6px'
+                                }}>
+                                <EditOutlined style={{ fontSize: 12 }} />
+                                Transaction Note
+                            </div>
+                            <input
+                                type="text"
+                                placeholder="Add a note for this deployment (optional)"
+                                value={note}
+                                onChange={(e) => setNote(e.target.value)}
+                                style={{
+                                    width: '100%',
+                                    padding: '12px',
+                                    background: colors.inputBg,
+                                    border: `1px solid ${colors.containerBorder}`,
+                                    borderRadius: '10px',
+                                    color: colors.text,
+                                    fontSize: '13px',
+                                    outline: 'none',
+                                    fontFamily: 'Inter-Regular, serif'
+                                }}
+                            />
+                        </div>
+                    </div>
+
+                    {/* Right Column - Configuration */}
+                    <div>
+                        {/* Fee Configuration */}
+                        <div
+                            style={{
+                                background: colors.containerBgFaded,
+                                borderRadius: '14px',
+                                padding: '20px'
+                            }}>
+                            <div
+                                style={{
+                                    fontSize: '12px',
+                                    fontWeight: 600,
+                                    color: colors.textFaded,
+                                    textTransform: 'uppercase',
+                                    letterSpacing: '0.5px',
+                                    marginBottom: '16px',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '6px'
+                                }}>
+                                <ThunderboltOutlined style={{ fontSize: 12 }} />
+                                Network Configuration
+                            </div>
+
+                            {/* Fee Rate */}
+                            <div style={{ marginBottom: '16px' }}>
+                                <div
+                                    style={{
+                                        fontSize: '13px',
+                                        color: colors.textFaded,
+                                        marginBottom: '8px'
+                                    }}>
+                                    Fee Rate (sat/vB)
+                                </div>
+                                <input
+                                    type="number"
+                                    min={1}
+                                    max={1000}
+                                    step={1}
+                                    value={feeRate}
+                                    onChange={(e) => setFeeRate(Number(e.target.value))}
+                                    style={{
+                                        width: '100%',
+                                        padding: '12px',
+                                        background: colors.inputBg,
+                                        border: `1px solid ${colors.containerBorder}`,
+                                        borderRadius: '10px',
+                                        color: colors.text,
+                                        fontSize: '13px',
+                                        outline: 'none',
+                                        fontFamily: 'monospace'
+                                    }}
+                                />
+                            </div>
+
+                            {/* Gas Fee */}
+                            <div>
+                                <div
+                                    style={{
+                                        fontSize: '13px',
+                                        color: colors.textFaded,
+                                        marginBottom: '8px'
+                                    }}>
+                                    Gas Fee (sats)
+                                </div>
+                                <PriorityFeeBar onChange={(val) => setPriorityFee(String(val))} />
+                            </div>
+                        </div>
+
+                        {/* Custom Calldata */}
+                        <div
+                            style={{
+                                background: colors.containerBgFaded,
+                                borderRadius: '14px',
+                                padding: '20px',
+                                marginTop: '20px'
+                            }}>
+                            <div
+                                style={{
+                                    fontSize: '12px',
+                                    fontWeight: 600,
+                                    color: colors.textFaded,
+                                    textTransform: 'uppercase',
+                                    letterSpacing: '0.5px',
+                                    marginBottom: '12px',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '6px'
+                                }}>
+                                <CodeOutlined style={{ fontSize: 12 }} />
+                                Advanced Options
+                            </div>
+                            <div
+                                style={{
+                                    fontSize: '13px',
+                                    color: colors.textFaded,
+                                    marginBottom: '8px'
+                                }}>
+                                Custom Calldata (Hex)
+                            </div>
+                            <input
+                                type="text"
+                                placeholder="0x... (optional)"
+                                value={calldataHex}
+                                onChange={(e) => {
+                                    const hex = e.target.value;
+                                    if (hex === '' || /^0x[0-9a-fA-F]*$/.test(hex)) {
+                                        setCalldataHex(hex);
+                                    } else {
+                                        tools.toastError('Invalid hex string');
+                                    }
+                                }}
+                                style={{
+                                    width: '100%',
+                                    padding: '12px',
+                                    background: colors.inputBg,
+                                    border: `1px solid ${colors.containerBorder}`,
+                                    borderRadius: '10px',
+                                    color: colors.text,
+                                    fontSize: '13px',
+                                    outline: 'none',
+                                    fontFamily: 'monospace'
+                                }}
+                            />
+                        </div>
+                    </div>
+                </div>
+
+                {/* Quick Guide Section */}
+                <div
+                    style={{
+                        background: colors.containerBgFaded,
+                        borderRadius: '14px',
+                        overflow: 'hidden',
+                        marginBottom: '24px'
+                    }}>
+                    <button
+                        style={{
+                            width: '100%',
+                            padding: '16px 20px',
+                            background: 'transparent',
+                            border: 'none',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            transition: 'all 0.2s'
+                        }}
+                        onClick={() => setShowGuide(!showGuide)}
+                        onMouseEnter={(e) => {
+                            e.currentTarget.style.background = colors.buttonHoverBg;
+                        }}
+                        onMouseLeave={(e) => {
+                            e.currentTarget.style.background = 'transparent';
+                        }}>
+                        <div
+                            style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '10px'
+                            }}>
+                            <BookOutlined style={{ fontSize: 18, color: colors.main }} />
+                            <span
+                                style={{
+                                    fontSize: '14px',
+                                    fontWeight: 600,
+                                    color: colors.text
+                                }}>
+                                Quick Deployment Guide
+                            </span>
+                        </div>
+                        <span
+                            style={{
+                                fontSize: '12px',
+                                color: colors.textFaded,
+                                transform: showGuide ? 'rotate(180deg)' : 'rotate(0)',
+                                transition: 'transform 0.3s'
+                            }}>
+                            ▼
+                        </span>
+                    </button>
+
+                    {showGuide && (
+                        <div
+                            style={{
+                                padding: '0 20px 20px',
+                                borderTop: `1px solid ${colors.containerBorder}`
+                            }}>
+                            <div style={{ marginTop: '16px' }}>
+                                {[
+                                    {
+                                        icon: <GithubOutlined />,
+                                        title: 'Clone the Template',
+                                        code: 'git clone https://github.com/btc-vision/OP_20.git',
+                                        desc: 'Start with the official OP_20 template repository'
+                                    },
+                                    {
+                                        icon: <ToolOutlined />,
+                                        title: 'Configure Your Token',
+                                        code: 'src/contracts/MyToken.ts',
+                                        desc: 'Set maxSupply, decimals, name, and symbol'
+                                    },
+                                    {
+                                        icon: <CodeOutlined />,
+                                        title: 'Build the Contract',
+                                        code: 'npm install && npm run build',
+                                        desc: 'Find MyToken.wasm in the build/ directory'
+                                    },
+                                    {
+                                        icon: <CloudUploadOutlined />,
+                                        title: 'Deploy',
+                                        desc: 'Upload your .wasm file using this interface'
+                                    }
+                                ].map((step, index) => (
+                                    <div
+                                        key={index}
+                                        style={{
+                                            display: 'flex',
+                                            gap: '12px',
+                                            marginBottom: '16px'
+                                        }}>
+                                        <div
+                                            style={{
+                                                width: '32px',
+                                                height: '32px',
+                                                borderRadius: '8px',
+                                                background: `${colors.main}15`,
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                flexShrink: 0,
+                                                color: colors.main,
+                                                fontSize: '16px'
+                                            }}>
+                                            {step.icon}
+                                        </div>
+                                        <div style={{ flex: 1 }}>
+                                            <div
+                                                style={{
+                                                    fontSize: '13px',
+                                                    fontWeight: 600,
+                                                    color: colors.text,
+                                                    marginBottom: '4px'
+                                                }}>
+                                                Step {index + 1}: {step.title}
+                                            </div>
+                                            {step.code && (
+                                                <code
+                                                    style={{
+                                                        display: 'block',
+                                                        padding: '6px 8px',
+                                                        background: colors.inputBg,
+                                                        borderRadius: '6px',
+                                                        fontSize: '11px',
+                                                        color: colors.main,
+                                                        marginBottom: '4px',
+                                                        fontFamily: 'monospace'
+                                                    }}>
+                                                    {step.code}
+                                                </code>
+                                            )}
+                                            <div
+                                                style={{
+                                                    fontSize: '12px',
+                                                    color: colors.textFaded,
+                                                    lineHeight: '1.4'
+                                                }}>
+                                                {step.desc}
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+                </div>
+
+                {/* Deploy Button */}
+                <button
+                    style={{
+                        width: '100%',
+                        padding: '16px',
+                        background: disabled
+                            ? colors.buttonBg
+                            : `linear-gradient(135deg, ${colors.main} 0%, ${colors.main}dd 100%)`,
+                        border: 'none',
+                        borderRadius: '14px',
+                        color: disabled ? colors.textFaded : '#fff',
+                        fontSize: '16px',
+                        fontWeight: 600,
+                        cursor: disabled ? 'not-allowed' : 'pointer',
+                        transition: 'all 0.3s',
+                        opacity: disabled ? 0.5 : 1,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '10px',
+                        boxShadow: disabled ? 'none' : '0 4px 20px rgba(243, 116, 19, 0.3)'
                     }}
-                    onDrop={onDrop}
-                    style={{
-                        border: '2px dashed #ccc',
-                        borderRadius: 8,
-                        padding: 30,
-                        textAlign: 'center',
-                        cursor: 'pointer',
-                        marginBottom: 20
-                    }}>
-                    <input
-                        type="file"
-                        accept=".wasm"
-                        style={{ display: 'none' }}
-                        id="fileInput"
-                        onChange={onFileInput}
-                    />
-                    <label htmlFor="fileInput" style={{ cursor: 'pointer' }}>
-                        {wasmFile ? wasmFile.name : 'Click to select or drag & drop your .wasm file'}
-                    </label>
-                </div>
-
-                {/* fees */}
-                <Column>
-                    <Text text="Fee rate (sat/vB)" color="textDim" />
-                    <FeeRateBar onChange={setFeeRate} />
-                </Column>
-
-                <div style={{ marginTop: 20 }}>
-                    <Text text="Gas fee (sats)" color="textDim" />
-                    <input
-                        type="number"
-                        min={0}
-                        value={priorityFee}
-                        onChange={(e) => setPriorityFee(e.target.value)}
-                        style={{
-                            marginTop: 6,
-                            backgroundColor: 'transparent',
-                            borderRadius: 5,
-                            borderWidth: 1,
-                            borderColor: 'rgba(255,255,255,0.3)',
-                            padding: 4,
-                            width: '100%'
-                        }}
-                    />
-                </div>
-
-                {/* calldata */}
-                <div style={{ marginTop: 20 }}>
-                    <Text text="Custom calldata (hex, optional)" color="textDim" />
-                    <input
-                        type="text"
-                        placeholder="0x…"
-                        value={calldataHex}
-                        onChange={(e) => {
-                            // validate hex string
-                            const hex = e.target.value;
-                            if (/^0x[0-9a-fA-F]*$/.test(hex)) {
-                                setCalldataHex(hex);
-                            } else {
-                                tools.toastError('Invalid hex string');
-                            }
-                        }}
-                        style={{
-                            marginTop: 6,
-                            backgroundColor: 'transparent',
-                            borderRadius: 5,
-                            borderWidth: 1,
-                            borderColor: 'rgba(255,255,255,0.3)',
-                            padding: 4,
-                            width: '100%',
-                            fontFamily: 'monospace'
-                        }}
-                    />
-                </div>
-
-                {/* note */}
-                <div style={{ marginTop: 20 }}>
-                    <Text text="Note (optional)" color="textDim" />
-                    <input
-                        type="text"
-                        placeholder="Enter a note for the transaction"
-                        value={note}
-                        onChange={(e) => setNote(e.target.value)}
-                        style={{
-                            marginTop: 6,
-                            backgroundColor: 'transparent',
-                            borderRadius: 5,
-                            borderWidth: 1,
-                            borderColor: 'rgba(255,255,255,0.3)',
-                            padding: 4,
-                            width: '100%',
-                            fontFamily: 'monospace',
-                            fontSize: 14
-                        }}
-                    />
-                </div>
-
-                {/* quick guide */}
-                <details style={{ marginTop: 30 }}>
-                    <summary style={{ cursor: 'pointer', fontWeight: 'bold' }}>Need help? Quick guide</summary>
-                    <ol style={{ marginTop: 10, paddingLeft: 20, lineHeight: 1.6 }}>
-                        <li>
-                            Clone the OP_20 template: <code>git clone https://github.com/btc-vision/OP_20.git</code>
-                        </li>
-                        <li>
-                            Edit <code>src/contracts/MyToken.ts</code> → set maxSupply, decimals, name, symbol.
-                        </li>
-                        <li>
-                            Run <code>npm install</code> then <code>npm run build</code> →&#160;find{' '}
-                            <code>MyToken.wasm</code> in build/.
-                        </li>
-                        <li>Open OP_Wallet → Deploy → upload your .wasm file.</li>
-                        <li>Wait for ~10 min until the transaction is mined. Then mint / interact as usual.</li>
-                    </ol>
-                </details>
-
-                {/* deploy btn */}
-                <Button
-                    preset="primary"
-                    text="Deploy"
-                    style={{ marginTop: 30 }}
-                    disabled={disabled}
                     onClick={triggerDeploy}
-                />
+                    disabled={disabled}
+                    onMouseEnter={(e) => {
+                        if (!disabled) {
+                            e.currentTarget.style.transform = 'translateY(-2px)';
+                            e.currentTarget.style.boxShadow = '0 6px 30px rgba(243, 116, 19, 0.4)';
+                        }
+                    }}
+                    onMouseLeave={(e) => {
+                        e.currentTarget.style.transform = 'translateY(0)';
+                        e.currentTarget.style.boxShadow = disabled ? 'none' : '0 4px 20px rgba(243, 116, 19, 0.3)';
+                    }}>
+                    <RocketOutlined style={{ fontSize: 18 }} />
+                    Deploy Contract
+                </button>
             </Content>
         </Layout>
     );

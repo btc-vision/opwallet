@@ -52,10 +52,10 @@ class CustomNetworksManager {
                 label: 'Bitcoin Testnets',
                 icon: './images/artifacts/bitcoin-testnet-all.svg',
                 items: [
-                    this.getChain(ChainType.BITCOIN_REGTEST),
                     this.getChain(ChainType.BITCOIN_TESTNET),
                     this.getChain(ChainType.BITCOIN_TESTNET4),
-                    this.getChain(ChainType.BITCOIN_SIGNET)
+                    this.getChain(ChainType.BITCOIN_SIGNET),
+                    this.getChain(ChainType.BITCOIN_REGTEST)
                 ].filter(Boolean) as ConcreteTypeChain[]
             },
             {
