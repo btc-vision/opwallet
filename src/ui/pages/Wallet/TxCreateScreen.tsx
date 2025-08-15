@@ -19,7 +19,7 @@ import {
     ThunderboltOutlined,
     WalletOutlined
 } from '@ant-design/icons';
-import { AddressTypes, AddressVerificator } from '@btc-vision/transaction';
+import { Address, AddressTypes, AddressVerificator } from '@btc-vision/transaction';
 import { BitcoinUtils } from 'opnet';
 
 BigNumber.config({ EXPONENTIAL_AT: 256 });
@@ -138,6 +138,7 @@ export default function TxCreateScreen() {
 
             if (type === AddressTypes.P2PK) {
                 setDisplayP2PKWarning(true);
+                setUiState({ toInfo: { ...val, address: Address.fromString(address).p2tr(Web3API.network) } });
                 return;
             }
 
@@ -246,14 +247,29 @@ export default function TxCreateScreen() {
                                         marginTop: '2px'
                                     }}
                                 />
-                                <span
-                                    style={{
-                                        fontSize: '11px',
-                                        color: colors.warning,
-                                        lineHeight: '1.4'
-                                    }}>
-                                    P2PK addresses are for tokens only. Don&apos;t send BTC here.
-                                </span>
+                                <div>
+                                    <span
+                                        style={{
+                                            fontSize: '11px',
+                                            color: colors.warning,
+                                            lineHeight: '1.4',
+                                            fontWeight: 600
+                                        }}>
+                                        P2PK Address Detected
+                                    </span>
+                                    <span
+                                        style={{
+                                            fontSize: '11px',
+                                            color: colors.warning,
+                                            lineHeight: '1.4',
+                                            display: 'block',
+                                            marginTop: '4px',
+                                            opacity: 0.9
+                                        }}>
+                                        Funds will be sent to the associated Taproot address. Only proceed if you
+                                        understand this conversion.
+                                    </span>
+                                </div>
                             </div>
                         )}
 
@@ -275,14 +291,29 @@ export default function TxCreateScreen() {
                                         flexShrink: 0
                                     }}
                                 />
-                                <span
-                                    style={{
-                                        fontSize: '11px',
-                                        color: colors.error,
-                                        lineHeight: '1.4'
-                                    }}>
-                                    Cannot send BTC to P2OP addresses.
-                                </span>
+                                <div>
+                                    <span
+                                        style={{
+                                            fontSize: '11px',
+                                            color: colors.error,
+                                            lineHeight: '1.4',
+                                            fontWeight: 600
+                                        }}>
+                                        Contract Address Detected
+                                    </span>
+                                    <span
+                                        style={{
+                                            fontSize: '11px',
+                                            color: colors.error,
+                                            lineHeight: '1.4',
+                                            display: 'block',
+                                            marginTop: '4px',
+                                            opacity: 0.9
+                                        }}>
+                                        P2OP addresses are contract addresses and cannot receive direct BTC transfers.
+                                        Please use an alternative address.
+                                    </span>
+                                </div>
                             </div>
                         )}
                     </div>
