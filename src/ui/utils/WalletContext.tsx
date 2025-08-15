@@ -70,7 +70,7 @@ export interface WalletController {
 
     isReady(): Promise<boolean>;
 
-    getAddressBalance(address: string): Promise<BitcoinBalance>;
+    getAddressBalance(address: string, pubKey?: string): Promise<BitcoinBalance>;
 
     getAddressCacheBalance(address: string): Promise<BitcoinBalance>;
 

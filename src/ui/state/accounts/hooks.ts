@@ -98,7 +98,7 @@ export function useFetchBalanceCallback() {
         if (!currentAccount.address) return;
 
         const cachedBalance = await wallet.getAddressCacheBalance(currentAccount.address);
-        const _accountBalance = await wallet.getAddressBalance(currentAccount.address);
+        const _accountBalance = await wallet.getAddressBalance(currentAccount.address, currentAccount.pubkey);
 
         dispatch(
             accountActions.setBalance({
@@ -111,6 +111,14 @@ export function useFetchBalanceCallback() {
                 btc_amount: _accountBalance.btc_amount,
                 confirm_btc_amount: _accountBalance.confirm_btc_amount,
                 pending_btc_amount: _accountBalance.pending_btc_amount,
+
+                csv75_total_amount: _accountBalance.csv75_total_amount ?? '',
+                csv75_unlocked_amount: _accountBalance.csv75_unlocked_amount ?? '',
+                csv75_locked_amount: _accountBalance.csv75_locked_amount ?? '',
+
+                csv1_total_amount: _accountBalance.csv1_total_amount ?? '',
+                csv1_unlocked_amount: _accountBalance.csv1_unlocked_amount ?? '',
+                csv1_locked_amount: _accountBalance.csv1_locked_amount ?? '',
 
                 inscription_amount: _accountBalance.inscription_amount,
                 confirm_inscription_amount: _accountBalance.confirm_inscription_amount,

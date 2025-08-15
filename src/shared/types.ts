@@ -31,6 +31,14 @@ export interface BitcoinBalance {
     confirm_btc_amount: string;
     pending_btc_amount: string;
 
+    csv75_total_amount?: string;
+    csv75_unlocked_amount?: string;
+    csv75_locked_amount?: string;
+
+    csv1_total_amount?: string;
+    csv1_unlocked_amount?: string;
+    csv1_locked_amount?: string;
+
     inscription_amount: string;
     confirm_inscription_amount: string;
     pending_inscription_amount: string;

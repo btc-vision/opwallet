@@ -42,7 +42,14 @@ export default function ReceiveScreen() {
                         <Icon icon="user" />
                         <Text preset="regular-bold" text={currentAccount?.alianName} />
                     </Row>
-                    <AddressBar />
+                    <AddressBar
+                        csv75_total_amount={undefined}
+                        csv75_unlocked_amount={undefined}
+                        csv75_locked_amount={undefined}
+                        csv1_total_amount={undefined}
+                        csv1_unlocked_amount={undefined}
+                        csv1_locked_amount={undefined}
+                    />
                 </Column>
             </Content>
         </Layout>

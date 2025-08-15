@@ -1,8 +1,9 @@
 import BigNumber from 'bignumber.js';
 import { CallResult, getContract, IOP_20Contract, JSONRpcProvider, OP_20_ABI, UTXOs } from 'opnet';
 
-import { ChainId as WalletChainId, ChainType } from '@/shared/constant';
+import { ChainType, ChainId as WalletChainId } from '@/shared/constant';
 import { NetworkType } from '@/shared/types';
+import { customNetworksManager } from '@/shared/utils/CustomNetworksManager';
 import { contractLogoManager } from '@/shared/web3/contracts-logo/ContractLogoManager';
 import { ContractInformation } from '@/shared/web3/interfaces/ContractInformation';
 import { ContractNames } from '@/shared/web3/metadata/ContractNames';
@@ -19,7 +20,6 @@ import {
     TransactionFactory,
     UTXO
 } from '@btc-vision/transaction';
-import { customNetworksManager } from '@/shared/utils/CustomNetworksManager';
 
 BigNumber.config({ EXPONENTIAL_AT: 256 });
 
@@ -354,7 +354,11 @@ class Web3API {
         return finalUTXOs;
     }
 
-    public async getAllUTXOsForAddresses(addresses: string[], requiredAmount?: bigint): Promise<UTXO[]> {
+    public async getAllUTXOsForAddresses(
+        addresses: string[],
+        requiredAmount?: bigint,
+        olderThan?: bigint
+    ): Promise<UTXO[]> {
         let finalUTXOs: UTXOs = [];
 
         for (const address of addresses) {
@@ -366,7 +370,8 @@ class Web3API {
                         address,
                         optimize: false,
                         mergePendingUTXOs: true,
-                        filterSpentUTXOs: true
+                        filterSpentUTXOs: true,
+                        olderThan
                     });
                 } else {
                     utxos = await this.provider.utxoManager.getUTXOsForAmount({
@@ -374,7 +379,8 @@ class Web3API {
                         amount: requiredAmount,
                         optimize: false,
                         mergePendingUTXOs: true,
-                        filterSpentUTXOs: true
+                        filterSpentUTXOs: true,
+                        olderThan
                     });
                 }
             } catch {

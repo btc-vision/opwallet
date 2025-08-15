@@ -56,6 +56,7 @@ import {
 import { getChainInfo } from '@/shared/utils';
 import Web3API, { bigIntToDecimal, getBitcoinLibJSNetwork } from '@/shared/web3/Web3API';
 import {
+    Address,
     DeploymentResult,
     IDeploymentParameters,
     IDeploymentParametersWithoutSigner,
@@ -256,9 +257,9 @@ export class WalletController {
      * Fetch an address's balance from the OPNet or fallback service, then cache it.
      * @throws WalletControllerError
      */
-    public getAddressBalance = async (address: string): Promise<BitcoinBalance> => {
+    public getAddressBalance = async (address: string, pubKey?: string): Promise<BitcoinBalance> => {
         try {
-            const data: BitcoinBalance = await this.getOpNetBalance(address);
+            const data: BitcoinBalance = await this.getOpNetBalance(address, pubKey);
             preferenceService.updateAddressBalance(address, data);
             return data;
         } catch (err) {
@@ -314,6 +315,14 @@ export class WalletController {
             btc_amount: '0',
             confirm_btc_amount: '0',
             pending_btc_amount: '0',
+
+            csv75_total_amount: '0',
+            csv75_unlocked_amount: '0',
+            csv75_locked_amount: '0',
+
+            csv1_total_amount: '0',
+            csv1_unlocked_amount: '0',
+            csv1_locked_amount: '0',
 
             inscription_amount: '0',
             confirm_inscription_amount: '0',
@@ -2231,35 +2240,106 @@ export class WalletController {
     /**
      * @throws WalletControllerError
      */
-    private getOpNetBalance = async (address: string): Promise<BitcoinBalance> => {
+    private getOpNetBalance = async (address: string, pubKey?: string): Promise<BitcoinBalance> => {
+        let csv75Address = '';
+        let csv1Address = '';
+
+        if (pubKey) {
+            const addressInst = Address.fromString(pubKey);
+
+            csv75Address = addressInst.toCSV(75, Web3API.network).address;
+            csv1Address = addressInst.toCSV(1, Web3API.network).address;
+        }
+
         try {
-            const [unspentUTXOs, allUTXOs] = await Promise.all([
-                Web3API.getUnspentUTXOsForAddresses([address]),
-                Web3API.getAllUTXOsForAddresses([address])
-            ]);
+            if (!csv75Address || !csv1Address) {
+                const [allUTXOs, unspentUTXOs] = await Promise.all([
+                    Web3API.getAllUTXOsForAddresses([address]),
+                    Web3API.getUnspentUTXOsForAddresses([address])
+                ]);
 
-            const totalAll = allUTXOs.reduce((sum, u) => sum + u.value, 0n);
-            const totalUnspent = unspentUTXOs.reduce((sum, u) => sum + u.value, 0n);
+                const totalAll = allUTXOs.reduce((sum, u) => sum + u.value, 0n);
+                const totalUnspent = unspentUTXOs.reduce((sum, u) => sum + u.value, 0n);
 
-            const totalAmount = bigIntToDecimal(totalAll, 8);
-            const confirmAmount = bigIntToDecimal(totalUnspent, 8);
-            const pendingAmount = bigIntToDecimal(totalAll - totalUnspent, 8);
+                const totalAmount = bigIntToDecimal(totalAll, 8);
+                const confirmAmount = bigIntToDecimal(totalUnspent, 8);
+                const pendingAmount = bigIntToDecimal(totalAll - totalUnspent, 8);
 
-            return {
-                amount: totalAmount, // TODO: To change later when inscriptions are supported
-                confirm_amount: confirmAmount, // TODO: To change later when inscriptions are supported
-                pending_amount: pendingAmount, // TODO: To change later when inscriptions are supported
+                return {
+                    amount: totalAmount, // TODO: To change later when inscriptions are supported
+                    confirm_amount: confirmAmount, // TODO: To change later when inscriptions are supported
+                    pending_amount: pendingAmount, // TODO: To change later when inscriptions are supported
 
-                btc_amount: totalAmount,
-                confirm_btc_amount: confirmAmount,
-                pending_btc_amount: pendingAmount,
+                    btc_amount: totalAmount,
+                    confirm_btc_amount: confirmAmount,
+                    pending_btc_amount: pendingAmount,
 
-                inscription_amount: '0', // TODO: Add support later
-                confirm_inscription_amount: '0', // TODO: Add support later
-                pending_inscription_amount: '0', // TODO: Add support later
+                    inscription_amount: '0', // TODO: Add support later
+                    confirm_inscription_amount: '0', // TODO: Add support later
+                    pending_inscription_amount: '0', // TODO: Add support later
 
-                usd_value: '0.00'
-            };
+                    usd_value: '0.00'
+                };
+            } else {
+                const [allUTXOs, unspentUTXOs, allUTXOsCSV75, unlockedCSV75, allUTXOsCSV1, unlockedCSV1] =
+                    await Promise.all([
+                        Web3API.getAllUTXOsForAddresses([address]),
+                        Web3API.getUnspentUTXOsForAddresses([address]),
+                        Web3API.getAllUTXOsForAddresses([csv75Address], undefined),
+                        Web3API.getAllUTXOsForAddresses([csv75Address], undefined, 75n),
+                        Web3API.getAllUTXOsForAddresses([csv1Address], undefined),
+                        Web3API.getAllUTXOsForAddresses([csv1Address], undefined, 1n)
+                    ]);
+
+                const totalAll = allUTXOs.reduce((sum, u) => sum + u.value, 0n);
+                const totalUnspent = unspentUTXOs.reduce((sum, u) => sum + u.value, 0n);
+
+                const totalAmount = bigIntToDecimal(totalAll, 8);
+                const confirmAmount = bigIntToDecimal(totalUnspent, 8);
+                const pendingAmount = bigIntToDecimal(totalAll - totalUnspent, 8);
+
+                const totalCSV75 = allUTXOsCSV75.reduce((sum, u) => sum + u.value, 0n);
+                const csv75Total = bigIntToDecimal(totalCSV75, 8);
+
+                const totalCSV1 = allUTXOsCSV1.reduce((sum, u) => sum + u.value, 0n);
+                const csv1Total = bigIntToDecimal(totalCSV1, 8);
+
+                const csv75Unlocked = bigIntToDecimal(
+                    unlockedCSV75.reduce((sum, u) => sum + u.value, 0n),
+                    8
+                );
+                const csv75Locked = Number(csv75Total) - Number(csv75Unlocked);
+
+                const csv1Unlocked = bigIntToDecimal(
+                    unlockedCSV1.reduce((sum, u) => sum + u.value, 0n),
+                    8
+                );
+                const csv1Locked = Number(csv1Total) - Number(csv1Unlocked);
+
+                return {
+                    amount: totalAmount, // TODO: To change later when inscriptions are supported
+                    confirm_amount: confirmAmount, // TODO: To change later when inscriptions are supported
+                    pending_amount: pendingAmount, // TODO: To change later when inscriptions are supported
+
+                    btc_amount: totalAmount,
+                    confirm_btc_amount: confirmAmount,
+                    pending_btc_amount: pendingAmount,
+
+                    csv75_total_amount: csv75Total,
+                    csv75_unlocked_amount: csv75Unlocked,
+                    csv75_locked_amount: csv75Locked.toString(),
+
+                    csv1_total_amount: csv1Total,
+                    csv1_unlocked_amount: csv1Unlocked,
+                    csv1_locked_amount: csv1Locked.toString(),
+
+                    inscription_amount: '0', // TODO: Add support later
+                    confirm_inscription_amount: '0', // TODO: Add support later
+                    pending_inscription_amount: '0', // TODO: Add support later
+
+                    usd_value: '0.00'
+                };
+            }
         } catch (err) {
             throw new WalletControllerError(`Failed to get OPNET balance: ${String(err)}`, { address });
         }

@@ -231,7 +231,14 @@ export default function WalletTabScreen() {
 
                     <AccountSelect />
 
-                    <AddressBar />
+                    <AddressBar
+                        csv75_total_amount={accountBalance.csv75_total_amount}
+                        csv75_unlocked_amount={accountBalance.csv75_unlocked_amount}
+                        csv75_locked_amount={accountBalance.csv75_locked_amount}
+                        csv1_total_amount={accountBalance.csv1_total_amount}
+                        csv1_unlocked_amount={accountBalance.csv1_unlocked_amount}
+                        csv1_locked_amount={accountBalance.csv1_locked_amount}
+                    />
 
                     {/* Balance Card */}
                     <div

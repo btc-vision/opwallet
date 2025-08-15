@@ -7,6 +7,8 @@ import {
     DownOutlined,
     HistoryOutlined,
     InfoCircleOutlined,
+    LockOutlined,
+    UnlockOutlined,
     WalletOutlined
 } from '@ant-design/icons';
 import { Address } from '@btc-vision/transaction';
@@ -24,10 +26,25 @@ const colors = {
     containerBgFaded: '#292929',
     containerBorder: '#303030',
     inputBg: '#292828',
-    success: '#4ade80'
+    success: '#4ade80',
+    warning: '#fbbf24'
 };
 
-export function AddressBar() {
+export function AddressBar({
+    csv75_total_amount,
+    csv75_unlocked_amount,
+    csv75_locked_amount,
+    csv1_total_amount,
+    csv1_unlocked_amount,
+    csv1_locked_amount
+}: {
+    csv75_total_amount: string | undefined;
+    csv75_unlocked_amount: string | undefined;
+    csv75_locked_amount: string | undefined;
+    csv1_total_amount: string | undefined;
+    csv1_unlocked_amount: string | undefined;
+    csv1_locked_amount: string | undefined;
+}) {
     const tools = useTools();
     const untweakedPublicKey = useAccountPublicKey();
 
@@ -65,21 +82,37 @@ export function AddressBar() {
         closeTimeout.current = setTimeout(() => setShowMenu(false), 150);
     };
 
+    const formatAmount = (amount: string | undefined) => {
+        if (!amount || amount === '0') return '0';
+        const num = parseFloat(amount);
+        if (num < 0.00001) return '< 0.00001';
+        return num.toFixed(5);
+    };
+
     const otherAddresses = [
         {
             label: 'Untweaked Public Key',
             value: untweakedPublicKey,
-            info: 'The original public key before any transformations.'
+            info: 'The original public key before any transformations.',
+            showBalance: false
         },
         {
             label: 'CSV 75',
             value: csv75Address,
-            info: 'Address used for SHA1 Mining reward payouts on OP_NET.'
+            info: 'Address used for SHA1 Mining reward payouts on OP_NET.',
+            showBalance: true,
+            total: csv75_total_amount,
+            unlocked: csv75_unlocked_amount,
+            locked: csv75_locked_amount
         },
         {
             label: 'CSV 1',
             value: csv1Address,
-            info: 'Address for anti-pinning protection, used by contracts such as NativeSwap.'
+            info: 'Address for anti-pinning protection, used by contracts such as NativeSwap.',
+            showBalance: true,
+            total: csv1_total_amount,
+            unlocked: csv1_unlocked_amount,
+            locked: csv1_locked_amount
         }
     ];
 
@@ -249,7 +282,7 @@ export function AddressBar() {
                                 position: 'absolute',
                                 top: '40px',
                                 left: '0',
-                                width: 'calc(100% + 120px)',
+                                width: 'calc(100% + 180px)',
                                 background: colors.containerBg,
                                 border: `1px solid ${colors.containerBorder}`,
                                 borderRadius: '12px',
@@ -262,9 +295,6 @@ export function AddressBar() {
                                 <div
                                     key={addr.label}
                                     style={{
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'space-between',
                                         padding: '10px 12px',
                                         borderRadius: '8px',
                                         marginBottom: i !== otherAddresses.length - 1 ? '4px' : '0',
@@ -279,88 +309,199 @@ export function AddressBar() {
                                         e.currentTarget.style.background = 'transparent';
                                     }}
                                     onClick={() => handleCopy(addr.value)}>
-                                    <div style={{ flex: 1 }}>
-                                        <div
-                                            style={{
-                                                fontSize: '11px',
-                                                color: colors.main,
-                                                fontWeight: 600,
-                                                letterSpacing: '0.3px',
-                                                marginBottom: '4px',
-                                                fontFamily: 'Inter-Regular, serif'
-                                            }}>
-                                            {addr.label}
-                                        </div>
-                                        <div
-                                            style={{
-                                                fontSize: '13px',
-                                                color: colors.text,
-                                                fontFamily: 'monospace',
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                gap: '6px'
-                                            }}>
-                                            {shortAddress(addr.value, 8)}
-                                            {copiedOther === addr.value ? (
-                                                <CheckOutlined style={{ color: colors.success, fontSize: 11 }} />
-                                            ) : (
-                                                <CopyOutlined style={{ color: colors.textFaded, fontSize: 11 }} />
+                                    <div
+                                        style={{
+                                            display: 'flex',
+                                            alignItems: 'flex-start',
+                                            justifyContent: 'space-between'
+                                        }}>
+                                        <div style={{ flex: 1 }}>
+                                            <div
+                                                style={{
+                                                    fontSize: '11px',
+                                                    color: colors.main,
+                                                    fontWeight: 600,
+                                                    letterSpacing: '0.3px',
+                                                    marginBottom: '4px',
+                                                    fontFamily: 'Inter-Regular, serif'
+                                                }}>
+                                                {addr.label}
+                                            </div>
+                                            <div
+                                                style={{
+                                                    fontSize: '13px',
+                                                    color: colors.text,
+                                                    fontFamily: 'monospace',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    gap: '6px',
+                                                    marginBottom: addr.showBalance ? '8px' : 0
+                                                }}>
+                                                {shortAddress(addr.value, 8)}
+                                                {copiedOther === addr.value ? (
+                                                    <CheckOutlined style={{ color: colors.success, fontSize: 11 }} />
+                                                ) : (
+                                                    <CopyOutlined style={{ color: colors.textFaded, fontSize: 11 }} />
+                                                )}
+                                            </div>
+
+                                            {/* Balance Display */}
+                                            {addr.showBalance && (
+                                                <div
+                                                    style={{
+                                                        background: colors.inputBg,
+                                                        borderRadius: '6px',
+                                                        padding: '8px',
+                                                        marginTop: '6px'
+                                                    }}>
+                                                    <div
+                                                        style={{
+                                                            fontSize: '10px',
+                                                            color: colors.textFaded,
+                                                            fontWeight: 600,
+                                                            marginBottom: '6px',
+                                                            textTransform: 'uppercase',
+                                                            letterSpacing: '0.5px'
+                                                        }}>
+                                                        Balance
+                                                    </div>
+
+                                                    {/* Total */}
+                                                    <div
+                                                        style={{
+                                                            display: 'flex',
+                                                            justifyContent: 'space-between',
+                                                            alignItems: 'center',
+                                                            marginBottom: '4px'
+                                                        }}>
+                                                        <span style={{ fontSize: '11px', color: colors.textFaded }}>
+                                                            Total:
+                                                        </span>
+                                                        <span
+                                                            style={{
+                                                                fontSize: '11px',
+                                                                color: colors.text,
+                                                                fontWeight: 600,
+                                                                fontFamily: 'monospace'
+                                                            }}>
+                                                            {formatAmount(addr.total)} BTC
+                                                        </span>
+                                                    </div>
+
+                                                    {/* Unlocked */}
+                                                    <div
+                                                        style={{
+                                                            display: 'flex',
+                                                            justifyContent: 'space-between',
+                                                            alignItems: 'center',
+                                                            marginBottom: '4px'
+                                                        }}>
+                                                        <span
+                                                            style={{
+                                                                fontSize: '11px',
+                                                                color: colors.success,
+                                                                display: 'flex',
+                                                                alignItems: 'center',
+                                                                gap: '4px'
+                                                            }}>
+                                                            <UnlockOutlined style={{ fontSize: 10 }} />
+                                                            Unlocked:
+                                                        </span>
+                                                        <span
+                                                            style={{
+                                                                fontSize: '11px',
+                                                                color: colors.success,
+                                                                fontFamily: 'monospace'
+                                                            }}>
+                                                            {formatAmount(addr.unlocked)} BTC
+                                                        </span>
+                                                    </div>
+
+                                                    {/* Locked */}
+                                                    <div
+                                                        style={{
+                                                            display: 'flex',
+                                                            justifyContent: 'space-between',
+                                                            alignItems: 'center'
+                                                        }}>
+                                                        <span
+                                                            style={{
+                                                                fontSize: '11px',
+                                                                color: colors.warning,
+                                                                display: 'flex',
+                                                                alignItems: 'center',
+                                                                gap: '4px'
+                                                            }}>
+                                                            <LockOutlined style={{ fontSize: 10 }} />
+                                                            Locked:
+                                                        </span>
+                                                        <span
+                                                            style={{
+                                                                fontSize: '11px',
+                                                                color: colors.warning,
+                                                                fontFamily: 'monospace'
+                                                            }}>
+                                                            {formatAmount(addr.locked)} BTC
+                                                        </span>
+                                                    </div>
+                                                </div>
                                             )}
                                         </div>
-                                    </div>
-                                    <div
-                                        style={{ position: 'relative', display: 'inline-block' }}
-                                        onClick={(e) => e.stopPropagation()}
-                                        onMouseEnter={(e) => {
-                                            const tooltip = e.currentTarget.querySelector(
-                                                '.custom-tooltip'
-                                            ) as HTMLElement;
-                                            if (tooltip) {
-                                                tooltip.style.visibility = 'visible';
-                                                tooltip.style.opacity = '1';
-                                            }
-                                        }}
-                                        onMouseLeave={(e) => {
-                                            const tooltip = e.currentTarget.querySelector(
-                                                '.custom-tooltip'
-                                            ) as HTMLElement;
-                                            if (tooltip) {
-                                                tooltip.style.visibility = 'hidden';
-                                                tooltip.style.opacity = '0';
-                                            }
-                                        }}>
-                                        <InfoCircleOutlined
-                                            style={{
-                                                color: colors.textFaded,
-                                                cursor: 'help',
-                                                fontSize: 14
-                                            }}
-                                        />
+
                                         <div
-                                            style={{
-                                                visibility: 'hidden',
-                                                opacity: 0,
-                                                transition: 'all 0.2s',
-                                                position: 'absolute',
-                                                bottom: '120%',
-                                                right: '-10px',
-                                                background: colors.inputBg,
-                                                color: colors.text,
-                                                fontSize: '10px',
-                                                padding: '6px 8px',
-                                                borderRadius: '6px',
-                                                border: `1px solid ${colors.containerBorder}`,
-                                                width: '200px',
-                                                textAlign: 'left',
-                                                zIndex: 200,
-                                                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
-                                                pointerEvents: 'none',
-                                                whiteSpace: 'normal',
-                                                lineHeight: '1.3',
-                                                fontFamily: 'Inter-Regular, serif'
+                                            style={{ position: 'relative', display: 'inline-block', marginLeft: '8px' }}
+                                            onClick={(e) => e.stopPropagation()}
+                                            onMouseEnter={(e) => {
+                                                const tooltip = e.currentTarget.querySelector(
+                                                    '.custom-tooltip'
+                                                ) as HTMLElement;
+                                                if (tooltip) {
+                                                    tooltip.style.visibility = 'visible';
+                                                    tooltip.style.opacity = '1';
+                                                }
                                             }}
-                                            className="custom-tooltip">
-                                            {addr.info}
+                                            onMouseLeave={(e) => {
+                                                const tooltip = e.currentTarget.querySelector(
+                                                    '.custom-tooltip'
+                                                ) as HTMLElement;
+                                                if (tooltip) {
+                                                    tooltip.style.visibility = 'hidden';
+                                                    tooltip.style.opacity = '0';
+                                                }
+                                            }}>
+                                            <InfoCircleOutlined
+                                                style={{
+                                                    color: colors.textFaded,
+                                                    cursor: 'help',
+                                                    fontSize: 14
+                                                }}
+                                            />
+                                            <div
+                                                style={{
+                                                    visibility: 'hidden',
+                                                    opacity: 0,
+                                                    transition: 'all 0.2s',
+                                                    position: 'absolute',
+                                                    bottom: '120%',
+                                                    right: '-10px',
+                                                    background: colors.inputBg,
+                                                    color: colors.text,
+                                                    fontSize: '10px',
+                                                    padding: '6px 8px',
+                                                    borderRadius: '6px',
+                                                    border: `1px solid ${colors.containerBorder}`,
+                                                    width: '200px',
+                                                    textAlign: 'left',
+                                                    zIndex: 200,
+                                                    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
+                                                    pointerEvents: 'none',
+                                                    whiteSpace: 'normal',
+                                                    lineHeight: '1.3',
+                                                    fontFamily: 'Inter-Regular, serif'
+                                                }}
+                                                className="custom-tooltip">
+                                                {addr.info}
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
