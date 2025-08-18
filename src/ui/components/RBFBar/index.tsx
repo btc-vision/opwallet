@@ -12,13 +12,16 @@ export function RBFBar({ defaultValue, onChange }: { defaultValue?: boolean; onC
 
     useEffect(() => {
         onChange(enableRBF);
-    }, [enableRBF]);
+    }, [enableRBF, onChange]);
+
     return (
         <Row justifyBetween>
             <Tooltip
                 title={'A feature allows the transaction to be replaced.'}
-                overlayStyle={{
-                    fontSize: fontSizes.xs
+                styles={{
+                    root: {
+                        fontSize: fontSizes.xs
+                    }
                 }}>
                 <div style={{ display: 'flex', alignItems: 'center' }}>
                     <Row itemsCenter>

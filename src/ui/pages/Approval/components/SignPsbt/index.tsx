@@ -450,8 +450,10 @@ export default function SignPsbt({
                                             ? `The fee rate is much lower than recommended fee rate (${txInfo.decodedPsbt.recommendedFeeRate} sat/vB)`
                                             : `The fee rate is much higher than recommended fee rate (${txInfo.decodedPsbt.recommendedFeeRate} sat/vB)`
                                     }
-                                    overlayStyle={{
-                                        fontSize: fontSizes.xs
+                                    styles={{
+                                        root: {
+                                            fontSize: fontSizes.xs
+                                        }
                                     }}>
                                     <div>
                                         <Row>
