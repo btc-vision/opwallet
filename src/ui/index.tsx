@@ -20,6 +20,7 @@ import store from './state';
 import { WalletController, WalletProvider } from './utils';
 import ChainUpdater from './state/settings/updater';
 
+import './template.css';
 import '../opnet/styles.css';
 
 message.config({

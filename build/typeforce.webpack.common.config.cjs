@@ -238,15 +238,23 @@ const config = (env) => {
                                 {
                                     loader: require.resolve('babel-loader'),
                                     options: {
-                                        customize: require.resolve('babel-preset-react-app/webpack-overrides'),
                                         presets: [
                                             [
-                                                require.resolve('babel-preset-react-app'),
+                                                require.resolve('@babel/preset-env'),
+                                                {
+                                                    targets: {
+                                                        browsers: ['last 2 versions', 'not dead']
+                                                    },
+                                                    modules: false
+                                                }
+                                            ],
+                                            [
+                                                require.resolve('@babel/preset-react'),
                                                 {
                                                     runtime: hasJsxRuntime ? 'automatic' : 'classic'
                                                 }
                                             ]
-                                        ],
+                                        ],#
                                         plugins: [
                                             isEnvDevelopment &&
                                             shouldUseReactRefresh &&
@@ -278,14 +286,23 @@ const config = (env) => {
                                 {
                                     loader: require.resolve('babel-loader'),
                                     options: {
-                                        customize: require.resolve('babel-preset-react-app/webpack-overrides'),
                                         presets: [
                                             [
-                                                require.resolve('babel-preset-react-app'),
+                                                require.resolve('@babel/preset-env'),
+                                                {
+                                                    targets: {
+                                                        browsers: ['last 2 versions', 'not dead']
+                                                    },
+                                                    modules: false
+                                                }
+                                            ],
+                                            [
+                                                require.resolve('@babel/preset-react'),
                                                 {
                                                     runtime: hasJsxRuntime ? 'automatic' : 'classic'
                                                 }
-                                            ]
+                                            ],
+                                            require.resolve('@babel/preset-typescript')
                                         ],
                                         plugins: [
                                             isEnvDevelopment &&

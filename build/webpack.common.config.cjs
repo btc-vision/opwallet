@@ -6,7 +6,6 @@ const ForkTsCheckerWebpackPlugin = require('fork-ts-checker-webpack-plugin');
 const MiniCssExtractPlugin = require('mini-css-extract-plugin');
 const path = require('path');
 const fs = require('fs');
-const getCSSModuleLocalIdent = require('react-dev-utils/getCSSModuleLocalIdent');
 const WasmModuleWebpackPlugin = require('wasm-module-webpack-plugin');
 const { getBrowserPaths } = require('./paths.cjs');
 
@@ -19,6 +18,33 @@ const lessRegex = /\.less$/;
 const lessModuleRegex = /\.module\.less$/;
 const stylusRegex = /\.styl$/;
 const stylusModuleRegex = /\.module\.styl$/;
+
+const loaderUtils = require('loader-utils');
+
+const getCSSModuleLocalIdent = (context, localIdentName, localName, options) => {
+    // Create a hash based on the filename and class name
+    const fileNameOrFolder = context.resourcePath.match(
+        /index\.module\.(css|scss|sass|less)$/
+    )
+        ? '[folder]'
+        : '[name]';
+
+    const hash = loaderUtils.getHashDigest(
+        path.posix.relative(context.rootContext, context.resourcePath) + localName,
+        'md5',
+        'base64',
+        5
+    );
+
+    return loaderUtils
+        .interpolateName(
+            context,
+            fileNameOrFolder + '_' + localName + '__' + hash,
+            options
+        )
+        .replace(/\.module/g, '')
+        .replace(/[^a-zA-Z0-9-_]/g, '_');
+};
 
 const config = (env) => {
     // Determine dev/prod
@@ -55,6 +81,8 @@ const config = (env) => {
 
     // Common function to set up style loaders (CSS, PostCSS, etc.),
     // plus an optional pre-processor (less-loader, sass-loader, stylus-loader).
+    // Replace the existing getStyleLoaders function with this updated version:
+
     const getStyleLoaders = (cssOptions, preProcessor) => {
         const loaders = [
             // In dev, inject styles via <style> tags; in prod, extract to .css files.
@@ -71,26 +99,8 @@ const config = (env) => {
                 loader: require.resolve('postcss-loader'),
                 options: {
                     postcssOptions: {
-                        // If you have a postcss.config.js, you can reference it,
-                        // but here we configure plugins inline:
-                        plugins: !useTailwind
-                            ? [
-                                require('postcss-flexbugs-fixes'),
-                                require('postcss-preset-env')({
-                                    autoprefixer: { flexbox: 'no-2009' },
-                                    stage: 3
-                                }),
-                                // Adds PostCSS Normalize as the reset css with default options
-                                require('postcss-normalize')
-                            ]
-                            : [
-                                require('tailwindcss'),
-                                require('postcss-flexbugs-fixes'),
-                                require('postcss-preset-env')({
-                                    autoprefixer: { flexbox: 'no-2009' },
-                                    stage: 3
-                                })
-                            ]
+                        // Remove the inline plugin configuration
+                        // Let PostCSS use the postcss.config.cjs file instead
                     },
                     sourceMap: isEnvProduction ? shouldUseSourceMap : isEnvDevelopment
                 }
@@ -239,14 +249,23 @@ const config = (env) => {
                                 {
                                     loader: require.resolve('babel-loader'),
                                     options: {
-                                        customize: require.resolve('babel-preset-react-app/webpack-overrides'),
                                         presets: [
                                             [
-                                                require.resolve('babel-preset-react-app'),
+                                                require.resolve('@babel/preset-env'),
+                                                {
+                                                    targets: {
+                                                        browsers: ['last 2 versions', 'not dead']
+                                                    },
+                                                    modules: false
+                                                }
+                                            ],
+                                            [
+                                                require.resolve('@babel/preset-react'),
                                                 {
                                                     runtime: hasJsxRuntime ? 'automatic' : 'classic'
                                                 }
-                                            ]
+                                            ],
+                                            require.resolve('@babel/preset-typescript')
                                         ],
                                         plugins: [
                                             isEnvDevelopment &&
@@ -279,14 +298,23 @@ const config = (env) => {
                                 {
                                     loader: require.resolve('babel-loader'),
                                     options: {
-                                        customize: require.resolve('babel-preset-react-app/webpack-overrides'),
                                         presets: [
                                             [
-                                                require.resolve('babel-preset-react-app'),
+                                                require.resolve('@babel/preset-env'),
+                                                {
+                                                    targets: {
+                                                        browsers: ['last 2 versions', 'not dead']
+                                                    },
+                                                    modules: false
+                                                }
+                                            ],
+                                            [
+                                                require.resolve('@babel/preset-react'),
                                                 {
                                                     runtime: hasJsxRuntime ? 'automatic' : 'classic'
                                                 }
-                                            ]
+                                            ],
+                                            require.resolve('@babel/preset-typescript')
                                         ],
                                         plugins: [
                                             isEnvDevelopment &&
@@ -300,32 +328,6 @@ const config = (env) => {
                                 }
                             ]
                         },
-
-                        // Process application JS/TS with Babel
-                        /*{
-                            test: /\.(js|mjs|jsx|ts|tsx)$/,
-                            include: paths.appSrc,
-                            loader: require.resolve('babel-loader'),
-                            options: {
-                                customize: require.resolve('babel-preset-react-app/webpack-overrides'),
-                                presets: [
-                                    [
-                                        require.resolve('babel-preset-react-app'),
-                                        {
-                                            runtime: hasJsxRuntime ? 'automatic' : 'classic'
-                                        }
-                                    ]
-                                ],
-                                plugins: [
-                                    isEnvDevelopment &&
-                                    shouldUseReactRefresh &&
-                                    require.resolve('react-refresh/babel')
-                                ].filter(Boolean),
-                                cacheDirectory: true,
-                                cacheCompression: false,
-                                compact: isEnvProduction
-                            }
-                        },*/
                         // Process any JS outside of the app with Babel
                         {
                             test: /\.(js|mjs)$/,
@@ -336,10 +338,7 @@ const config = (env) => {
                                 configFile: false,
                                 compact: false,
                                 presets: [
-                                    [
-                                        require.resolve('babel-preset-react-app/dependencies'),
-                                        { helpers: true }
-                                    ]
+                                    require.resolve('@babel/preset-env')
                                 ],
                                 cacheDirectory: true,
                                 cacheCompression: false,
@@ -374,7 +373,7 @@ const config = (env) => {
                                 }
                             )
                         },
-                        // SASS (global)
+                        /*// SASS (global)
                         {
                             test: sassRegex,
                             exclude: sassModuleRegex,
@@ -402,7 +401,7 @@ const config = (env) => {
                                 },
                                 'sass-loader'
                             )
-                        },
+                        },*/
                         // Less (global)
                         {
                             test: lessRegex,
@@ -432,7 +431,7 @@ const config = (env) => {
                                 'less-loader'
                             )
                         },
-                        // Stylus (global)
+                        /*// Stylus (global)
                         {
                             test: stylusRegex,
                             exclude: stylusModuleRegex,
@@ -460,7 +459,7 @@ const config = (env) => {
                                 },
                                 'stylus-loader'
                             )
-                        },
+                        },*/
                         // Fallback resource loader
                         {
                             exclude: [/^$/, /\.(js|mjs|jsx|ts|tsx)$/, /\.html$/, /\.json$/],
