@@ -22,7 +22,8 @@
     },
     "author": "https://opnet.org",
     "background": {
-        "service_worker": "background.js"
+        "service_worker": "background.js",
+        "type": "module"
     },
     "homepage_url": "https://opnet.org",
     "permissions": ["storage", "unlimitedStorage", "activeTab"],
