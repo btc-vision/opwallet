@@ -44,11 +44,12 @@ const getCSSModuleLocalIdent = (context, localIdentName, localName, options) => 
 
 const config = (env) => {
     // Determine dev/prod
-    const isEnvProduction = env.mode === 'production';
-    const isEnvDevelopment = !isEnvProduction;
+    const isEnvProduction = env.config === 'pro' || env.config === 'production';
+    const isEnvDevelopment = env.config === 'dev' || env.config === 'development';
 
     const version = env.version;
     const paths = getBrowserPaths(env.browser);
+
     const manifest = env.manifest;
     const channel = env.channel;
 
@@ -58,7 +59,7 @@ const config = (env) => {
     const imageInlineSizeLimit = parseInt(process.env.IMAGE_INLINE_SIZE_LIMIT || '10000');
 
     // You can enable React Refresh only in dev if you like:
-    const shouldUseReactRefresh = false;
+    const shouldUseReactRefresh = isEnvDevelopment;
 
     // Common function to set up style loaders (CSS, PostCSS, etc.),
     // plus an optional pre-processor (less-loader, sass-loader, stylus-loader).
@@ -284,7 +285,7 @@ const config = (env) => {
                                                 react: {
                                                     runtime: "automatic",
                                                     development: isEnvDevelopment,
-                                                    refresh: isEnvDevelopment && shouldUseReactRefresh // Enable React Refresh
+                                                    refresh: isEnvDevelopment && shouldUseReactRefresh
                                                 }
                                             },
                                             target: "es2022",
