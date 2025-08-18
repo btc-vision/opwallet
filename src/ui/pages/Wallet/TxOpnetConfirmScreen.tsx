@@ -42,7 +42,7 @@ import {
     BitcoinUtils,
     getContract,
     IMotoswapRouterContract,
-    IOP_20Contract,
+    IOP20Contract,
     MOTOSWAP_ROUTER_ABI,
     OP_20_ABI,
     TransactionParameters
@@ -83,17 +83,12 @@ export const AIRDROP_ABI: BitcoinInterfaceAbi = [
                 type: ABIDataTypes.ADDRESS_UINT256_TUPLE
             }
         ],
-        outputs: [
-            {
-                name: 'ok',
-                type: ABIDataTypes.BOOL
-            }
-        ],
+        outputs: [],
         type: BitcoinAbiTypes.Function
     }
 ];
 
-export interface AirdropInterface extends IOP_20Contract {
+export interface AirdropInterface extends IOP20Contract {
     airdrop(tuple: AddressMap<bigint>): Promise<Airdrop>;
 }
 
@@ -177,7 +172,7 @@ export default function TxOpnetConfirmScreen() {
     const transferToken = async (parameters: TransferParameters) => {
         const userWallet = await getWallet();
         const currentWalletAddress = await wallet.getCurrentAccount();
-        const contract: IOP_20Contract = getContract<IOP_20Contract>(
+        const contract: IOP20Contract = getContract<IOP20Contract>(
             parameters.contractAddress,
             OP_20_ABI,
             Web3API.provider,
@@ -187,7 +182,7 @@ export default function TxOpnetConfirmScreen() {
 
         try {
             const address = await getPubKey(parameters.to);
-            const transferSimulation = await contract.transfer(address, parameters.inputAmount);
+            const transferSimulation = await contract.safeTransfer(address, parameters.inputAmount, new Uint8Array());
 
             const interactionParameters: TransactionParameters = {
                 signer: userWallet.keypair, // The keypair that will sign the transaction
@@ -468,7 +463,7 @@ export default function TxOpnetConfirmScreen() {
             const currentWalletAddress = await wallet.getCurrentAccount();
             const userWallet = await getWallet();
 
-            const contract = getContract<IOP_20Contract>(
+            const contract = getContract<IOP20Contract>(
                 parameters.contractAddress,
                 OP_20_ABI,
                 Web3API.provider,

@@ -20,12 +20,18 @@ export function selectorToString(calldata: string): string {
 
     switch (selector) {
         // OP20
-        case InteractionOP20.Transfer:
-            return 'transfer(address,uint256)';
-        case InteractionOP20.Approve:
-            return 'approve(address,uint256)';
-        case InteractionOP20.TransferFrom:
-            return 'transferFrom(address,address,uint256)';
+        case InteractionOP20.SafeTransfer:
+            return 'safeTransfer(address,uint256,bytes)';
+        case InteractionOP20.SafeTransferFrom:
+            return 'safeTransferFrom(address,address,uint256,bytes)';
+        case InteractionOP20.IncreaseAllowance:
+            return 'increaseAllowance(address,uint256)';
+        case InteractionOP20.DecreaseAllowance:
+            return 'decreaseAllowance(address,uint256)';
+        case InteractionOP20.IncreaseAllowanceBySignature:
+            return 'increaseAllowanceBySignature(address,address,uint256,uint64,bytes)';
+        case InteractionOP20.DecreaseAllowanceBySignature:
+            return 'decreaseAllowanceBySignature(address,address,uint256,uint64,bytes)';
 
         // NativeSwap
         case InteractionTypeNativeSwap.AddLiquidity:

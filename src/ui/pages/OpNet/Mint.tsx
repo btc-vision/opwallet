@@ -1,4 +1,4 @@
-import { BitcoinUtils, getContract, IOP_20Contract, OP_20_ABI } from 'opnet';
+import { BitcoinUtils, getContract, IOP20Contract, OP_20_ABI } from 'opnet';
 import { useCallback, useEffect, useState } from 'react';
 
 import { Action, Features, MintParameters } from '@/shared/interfaces/RawTxParameters';
@@ -85,7 +85,7 @@ export default function Mint() {
             setIsLoadingSupply(true);
             try {
                 await Web3API.setNetwork(await wallet.getChainType());
-                const contract: IOP_20Contract = getContract<IOP_20Contract>(
+                const contract: IOP20Contract = getContract<IOP20Contract>(
                     prop.address,
                     OP_20_ABI,
                     Web3API.provider,

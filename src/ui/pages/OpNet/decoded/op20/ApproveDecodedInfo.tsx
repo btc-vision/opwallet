@@ -2,14 +2,14 @@ import BigNumber from 'bignumber.js';
 
 import { ContractInformation } from '@/shared/web3/interfaces/ContractInformation';
 import { Card, Column, Image, Row, Text } from '@/ui/components';
-import { DecodedApprove } from '@/ui/pages/OpNet/decoded/DecodedTypes';
+import { DecodedDecreaseAllowance, DecodedIncreaseAllowance } from '@/ui/pages/OpNet/decoded/DecodedTypes';
 import { sliceAddress } from '@/ui/pages/OpNet/decoded/helpper';
 import { fontSizes } from '@/ui/theme/font';
 
 export const MAX_UINT256 = new BigNumber('0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff');
 
 interface DecodedApproveProps {
-    readonly decoded: DecodedApprove;
+    readonly decoded: DecodedIncreaseAllowance | DecodedDecreaseAllowance;
     readonly contractInfo: Partial<ContractInformation>;
     readonly interactionType: string;
 }
