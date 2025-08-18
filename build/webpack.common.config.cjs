@@ -5,56 +5,66 @@ const ESLintWebpackPlugin = require('eslint-webpack-plugin');
 const ForkTsCheckerWebpackPlugin = require('fork-ts-checker-webpack-plugin');
 const MiniCssExtractPlugin = require('mini-css-extract-plugin');
 const path = require('path');
-const fs = require('fs');
-const getCSSModuleLocalIdent = require('react-dev-utils/getCSSModuleLocalIdent');
 const WasmModuleWebpackPlugin = require('wasm-module-webpack-plugin');
+const ReactRefreshWebpackPlugin = require('@pmmmwh/react-refresh-webpack-plugin');
 const { getBrowserPaths } = require('./paths.cjs');
 
 // style files regexes
 const cssRegex = /\.css$/;
 const cssModuleRegex = /\.module\.css$/;
-const sassRegex = /\.(scss|sass)$/;
-const sassModuleRegex = /\.module\.(scss|sass)$/;
 const lessRegex = /\.less$/;
 const lessModuleRegex = /\.module\.less$/;
-const stylusRegex = /\.styl$/;
-const stylusModuleRegex = /\.module\.styl$/;
+
+const loaderUtils = require('loader-utils');
+
+const getCSSModuleLocalIdent = (context, localIdentName, localName, options) => {
+    // Create a hash based on the filename and class name
+    const fileNameOrFolder = context.resourcePath.match(
+        /index\.module\.(css|scss|sass|less)$/
+    )
+        ? '[folder]'
+        : '[name]';
+
+    const hash = loaderUtils.getHashDigest(
+        path.posix.relative(context.rootContext, context.resourcePath) + localName,
+        'md5',
+        'base64',
+        5
+    );
+
+    return loaderUtils
+        .interpolateName(
+            context,
+            fileNameOrFolder + '_' + localName + '__' + hash,
+            options
+        )
+        .replace(/\.module/g, '')
+        .replace(/[^a-zA-Z0-9-_]/g, '_');
+};
 
 const config = (env) => {
     // Determine dev/prod
-    const isEnvProduction = env.mode === 'production';
-    const isEnvDevelopment = !isEnvProduction;
+    const isEnvProduction = env.config === 'pro' || env.config === 'production';
+    const isEnvDevelopment = env.config === 'dev' || env.config === 'development';
 
     const version = env.version;
     const paths = getBrowserPaths(env.browser);
+
     const manifest = env.manifest;
     const channel = env.channel;
-
-    // Check if Tailwind config exists
-    const useTailwind = fs.existsSync(path.join(paths.appPath, 'tailwind.config.js'));
 
     // You can tweak this if you actually want source maps in production
     const shouldUseSourceMap = false;
 
     const imageInlineSizeLimit = parseInt(process.env.IMAGE_INLINE_SIZE_LIMIT || '10000');
-    // You can enable React Refresh only in dev if you like:
-    const shouldUseReactRefresh = false;
 
-    // Detect new JSX transform
-    const hasJsxRuntime = (() => {
-        if (process.env.DISABLE_NEW_JSX_TRANSFORM === 'true') {
-            return false;
-        }
-        try {
-            require.resolve('react/jsx-runtime');
-            return true;
-        } catch (e) {
-            return false;
-        }
-    })();
+    // You can enable React Refresh only in dev if you like:
+    const shouldUseReactRefresh = isEnvDevelopment;
 
     // Common function to set up style loaders (CSS, PostCSS, etc.),
     // plus an optional pre-processor (less-loader, sass-loader, stylus-loader).
+    // Replace the existing getStyleLoaders function with this updated version:
+
     const getStyleLoaders = (cssOptions, preProcessor) => {
         const loaders = [
             // In dev, inject styles via <style> tags; in prod, extract to .css files.
@@ -71,26 +81,8 @@ const config = (env) => {
                 loader: require.resolve('postcss-loader'),
                 options: {
                     postcssOptions: {
-                        // If you have a postcss.config.js, you can reference it,
-                        // but here we configure plugins inline:
-                        plugins: !useTailwind
-                            ? [
-                                require('postcss-flexbugs-fixes'),
-                                require('postcss-preset-env')({
-                                    autoprefixer: { flexbox: 'no-2009' },
-                                    stage: 3
-                                }),
-                                // Adds PostCSS Normalize as the reset css with default options
-                                require('postcss-normalize')
-                            ]
-                            : [
-                                require('tailwindcss'),
-                                require('postcss-flexbugs-fixes'),
-                                require('postcss-preset-env')({
-                                    autoprefixer: { flexbox: 'no-2009' },
-                                    stage: 3
-                                })
-                            ]
+                        // Remove the inline plugin configuration
+                        // Let PostCSS use the postcss.config.cjs file instead
                     },
                     sourceMap: isEnvProduction ? shouldUseSourceMap : isEnvDevelopment
                 }
@@ -171,10 +163,12 @@ const config = (env) => {
             path: paths.dist,
             filename: '[name].js',
             publicPath: '/',
-            // Use 'self' for better cross-context compatibility
-            globalObject: 'self',
-            // ES Module output (for Manifest V3)
-            environment: { module: true, dynamicImport: false }
+            module: true, // Enable ES modules output
+            chunkFormat: 'module', // Use ES module format for chunks
+            environment: {
+                module: true,
+                dynamicImport: true // MV3 supports dynamic imports
+            }
         },
         module: {
             rules: [
@@ -237,25 +231,34 @@ const config = (env) => {
                             include: paths.appSrc,
                             use: [
                                 {
-                                    loader: require.resolve('babel-loader'),
+                                    loader: require.resolve('swc-loader'),
                                     options: {
-                                        customize: require.resolve('babel-preset-react-app/webpack-overrides'),
-                                        presets: [
-                                            [
-                                                require.resolve('babel-preset-react-app'),
-                                                {
-                                                    runtime: hasJsxRuntime ? 'automatic' : 'classic'
+                                        jsc: {
+                                            parser: {
+                                                syntax: "ecmascript",
+                                                jsx: true,
+                                                decorators: true,
+                                                dynamicImport: true
+                                            },
+                                            transform: {
+                                                legacyDecorator: true,
+                                                decoratorMetadata: true,
+                                                react: {
+                                                    runtime: "automatic",
+                                                    development: isEnvDevelopment,
+                                                    refresh: isEnvDevelopment && shouldUseReactRefresh,
+                                                    throwIfNamespace: true,
+                                                    useBuiltins: true
                                                 }
-                                            ]
-                                        ],
-                                        plugins: [
-                                            isEnvDevelopment &&
-                                            shouldUseReactRefresh &&
-                                            require.resolve('react-refresh/babel')
-                                        ].filter(Boolean),
-                                        cacheDirectory: true,
-                                        cacheCompression: false,
-                                        compact: isEnvProduction
+                                            },
+                                            target: "es2022",
+                                            externalHelpers: true,
+                                            loose: false
+                                        },
+                                        module: {
+                                            type: "es6"
+                                        },
+                                        sourceMaps: isEnvDevelopment
                                     }
                                 }
                             ]
@@ -266,87 +269,36 @@ const config = (env) => {
                             test: /\.(ts|tsx)$/,
                             include: paths.appSrc,
                             use: [
-                                // First, run TS through `ts-loader` for type-checking + TS->JS
                                 {
-                                    loader: require.resolve('ts-loader'),
+                                    loader: require.resolve('swc-loader'),
                                     options: {
-                                        // Setting `transpileOnly: false` does full type-checking.
-                                        // If you want faster rebuilds & use separate type-checker plugin, set to true.
-                                        transpileOnly: true
-                                    }
-                                },
-                                // Then optionally run the output JS through Babel for further transforms
-                                {
-                                    loader: require.resolve('babel-loader'),
-                                    options: {
-                                        customize: require.resolve('babel-preset-react-app/webpack-overrides'),
-                                        presets: [
-                                            [
-                                                require.resolve('babel-preset-react-app'),
-                                                {
-                                                    runtime: hasJsxRuntime ? 'automatic' : 'classic'
+                                        jsc: {
+                                            parser: {
+                                                syntax: "typescript",
+                                                tsx: true,
+                                                decorators: true,
+                                                dynamicImport: true
+                                            },
+                                            transform: {
+                                                legacyDecorator: true,
+                                                decoratorMetadata: true,
+                                                react: {
+                                                    runtime: "automatic",
+                                                    development: isEnvDevelopment,
+                                                    refresh: isEnvDevelopment && shouldUseReactRefresh
                                                 }
-                                            ]
-                                        ],
-                                        plugins: [
-                                            isEnvDevelopment &&
-                                            shouldUseReactRefresh &&
-                                            require.resolve('react-refresh/babel')
-                                        ].filter(Boolean),
-                                        cacheDirectory: true,
-                                        cacheCompression: false,
-                                        compact: isEnvProduction
+                                            },
+                                            target: "es2022",
+                                            externalHelpers: true
+                                        },
+                                        module: {
+                                            type: "es6"
+                                        }
                                     }
                                 }
                             ]
                         },
 
-                        // Process application JS/TS with Babel
-                        /*{
-                            test: /\.(js|mjs|jsx|ts|tsx)$/,
-                            include: paths.appSrc,
-                            loader: require.resolve('babel-loader'),
-                            options: {
-                                customize: require.resolve('babel-preset-react-app/webpack-overrides'),
-                                presets: [
-                                    [
-                                        require.resolve('babel-preset-react-app'),
-                                        {
-                                            runtime: hasJsxRuntime ? 'automatic' : 'classic'
-                                        }
-                                    ]
-                                ],
-                                plugins: [
-                                    isEnvDevelopment &&
-                                    shouldUseReactRefresh &&
-                                    require.resolve('react-refresh/babel')
-                                ].filter(Boolean),
-                                cacheDirectory: true,
-                                cacheCompression: false,
-                                compact: isEnvProduction
-                            }
-                        },*/
-                        // Process any JS outside of the app with Babel
-                        {
-                            test: /\.(js|mjs)$/,
-                            exclude: /@babel(?:\/|\\{1,2})runtime/,
-                            loader: require.resolve('babel-loader'),
-                            options: {
-                                babelrc: false,
-                                configFile: false,
-                                compact: false,
-                                presets: [
-                                    [
-                                        require.resolve('babel-preset-react-app/dependencies'),
-                                        { helpers: true }
-                                    ]
-                                ],
-                                cacheDirectory: true,
-                                cacheCompression: false,
-                                sourceMaps: shouldUseSourceMap,
-                                inputSourceMap: shouldUseSourceMap
-                            }
-                        },
                         // CSS (global)
                         {
                             test: cssRegex,
@@ -374,7 +326,7 @@ const config = (env) => {
                                 }
                             )
                         },
-                        // SASS (global)
+                        /*// SASS (global)
                         {
                             test: sassRegex,
                             exclude: sassModuleRegex,
@@ -402,7 +354,7 @@ const config = (env) => {
                                 },
                                 'sass-loader'
                             )
-                        },
+                        },*/
                         // Less (global)
                         {
                             test: lessRegex,
@@ -432,7 +384,7 @@ const config = (env) => {
                                 'less-loader'
                             )
                         },
-                        // Stylus (global)
+                        /*// Stylus (global)
                         {
                             test: stylusRegex,
                             exclude: stylusModuleRegex,
@@ -460,7 +412,7 @@ const config = (env) => {
                                 },
                                 'stylus-loader'
                             )
-                        },
+                        },*/
                         // Fallback resource loader
                         {
                             exclude: [/^$/, /\.(js|mjs|jsx|ts|tsx)$/, /\.html$/, /\.json$/],
@@ -471,13 +423,18 @@ const config = (env) => {
                             test: /\.m?js$/,
                             include: [path.join(paths.appNodeModules, 'tiny-secp256k1')],
                             use: {
-                                loader: 'babel-loader',
+                                loader: 'swc-loader',
                                 options: {
-                                    presets: ['@babel/preset-env'],
-                                    plugins: [
-                                        '@babel/plugin-syntax-dynamic-import',
-                                        WasmModuleWebpackPlugin.BabelPlugin
-                                    ]
+                                    jsc: {
+                                        parser: {
+                                            syntax: "ecmascript",
+                                            dynamicImport: true
+                                        },
+                                        target: "es2022"
+                                    },
+                                    module: {
+                                        type: "es6"
+                                    }
                                 }
                             }
                         }
@@ -496,10 +453,23 @@ const config = (env) => {
                 extensions: ['ts', 'tsx', 'js', 'jsx'],
                 context: path.resolve(__dirname, '../src'),
                 overrideConfigFile: path.resolve(__dirname, '../eslint.config.cjs'),
-                failOnError: false,       // <--- this will fail the build on ESLint errors
-                failOnWarning: false,    // or true, if you want warnings to break the build
+                failOnError: false,
+                failOnWarning: false,
             }),
-            new ForkTsCheckerWebpackPlugin({
+            // React Refresh Plugin - conditional
+            isEnvDevelopment && shouldUseReactRefresh && new ReactRefreshWebpackPlugin({
+                overlay: false, // Disable overlay since it won't work in extension context
+                exclude: [
+                    /node_modules/,
+                    /background\.js/,
+                    /content-script\.js/,
+                    /pageProvider\.js/
+                ],
+                // For Chrome extensions, we need to handle the runtime differently
+                esModule: true,
+            }),
+            // ForkTsCheckerWebpackPlugin - make it conditional for production only
+            (isEnvProduction || process.env.CI) && new ForkTsCheckerWebpackPlugin({
                 async: true,
                 issue: {
                     exclude: [
@@ -521,19 +491,22 @@ const config = (env) => {
                 inject: true,
                 template: paths.notificationHtml,
                 chunks: ['ui'],
-                filename: 'notification.html'
+                filename: 'notification.html',
+                scriptLoading: 'module'
             }),
             new HtmlWebpackPlugin({
                 inject: true,
                 template: paths.indexHtml,
                 chunks: ['ui'],
-                filename: 'index.html'
+                filename: 'index.html',
+                scriptLoading: 'module'
             }),
             new HtmlWebpackPlugin({
                 inject: true,
                 template: paths.backgroundHtml,
                 chunks: ['background'],
-                filename: 'background.html'
+                filename: 'background.html',
+                scriptLoading: 'module'
             }),
             new webpack.ProvidePlugin({
                 Buffer: ['buffer', 'Buffer'],
@@ -546,13 +519,12 @@ const config = (env) => {
                 'process.env.manifest': JSON.stringify(manifest),
                 'process.env.channel': JSON.stringify(channel)
             }),
-            // Extracts CSS in production
             new MiniCssExtractPlugin({
                 filename: 'static/css/[name].css',
                 chunkFilename: 'static/css/[name].chunk.css'
             }),
             new WasmModuleWebpackPlugin.WebpackPlugin()
-        ],
+        ].filter(Boolean),
         resolve: {
             alias: {
                 // Example: re-map 'moment' to 'dayjs'

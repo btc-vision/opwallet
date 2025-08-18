@@ -1,6 +1,5 @@
 import { permissionService, sessionService } from '@/background/service';
 import { CHAINS, CHAINS_MAP, ChainType, NETWORK_TYPES, VERSION } from '@/shared/constant';
-import 'reflect-metadata';
 
 import { Session } from '@/background/service/session';
 import { SessionEvent } from '@/shared/interfaces/SessionEvent';

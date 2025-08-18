@@ -1,5 +1,5 @@
 import en from 'antd/es/locale/en_US';
-import message from 'antd/lib/message';
+import { message } from 'antd';
 import ReactDOM from 'react-dom/client';
 import { IdleTimerProvider } from 'react-idle-timer';
 import { Provider } from 'react-redux';
@@ -20,6 +20,7 @@ import store from './state';
 import { WalletController, WalletProvider } from './utils';
 import ChainUpdater from './state/settings/updater';
 
+import './template.css';
 import '../opnet/styles.css';
 
 message.config({
@@ -80,7 +81,6 @@ const wallet = new Proxy<WalletController>({} as WalletController, {
         };
     }
 });
-
 
 portMessageChannel.listen((data) => {
     if (data.type === 'broadcast') {
@@ -151,5 +151,5 @@ if (rootElement) {
         </Provider>
     );
 } else {
-    console.error("Root element not found.");
+    console.error('Root element not found.');
 }

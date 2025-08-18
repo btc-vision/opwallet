@@ -6,9 +6,9 @@ import devConfig from './build/webpack.dev.config.cjs';
 import proConfig from './build/webpack.pro.config.cjs';
 
 const configs = {
-    dev: devConfig,
-    pro: proConfig,
-    debug: debugConfig
+    dev: (env) => devConfig(env),
+    pro: (env) => proConfig(env),
+    debug: (env) => debugConfig(env)
 };
 
 const config = (env) => {
@@ -31,20 +31,25 @@ const config = (env) => {
     };
 
     let finalConfigs = env.config
-        ? webpackMerge.merge(commonConfig(env), configs[env.config], toAdd)
+        ? webpackMerge.merge(commonConfig(env), configs[env.config](env), toAdd)
         : webpackMerge.merge(commonConfig(env), toAdd);
 
     const addedConfigs = {
         experiments: {
-            outputModule: false,
+            outputModule: true,
             asyncWebAssembly: true,
-            syncWebAssembly: true
+            syncWebAssembly: true,
+            topLevelAwait: true
         },
         node: {
             __dirname: false
         },
         optimization: {
-            usedExports: true
+            usedExports: true,
+            ...(env.config === 'dev' && {
+                runtimeChunk: false,
+                splitChunks: false
+            })
         },
         target: 'web'
     };

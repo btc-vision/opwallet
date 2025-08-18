@@ -1,4 +1,3 @@
-// webpack.common.config.cjs
 const webpack = require('webpack');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
 const TSConfigPathsPlugin = require('tsconfig-paths-webpack-plugin');
@@ -42,27 +41,13 @@ function getStyleLoaders(isEnvProduction, isEnvDevelopment, paths, useTailwind) 
                 loader: require.resolve('postcss-loader'),
                 options: {
                     postcssOptions: {
-                        plugins: !useTailwind
-                            ? [
-                                require('postcss-flexbugs-fixes'),
-                                require('postcss-preset-env')({
-                                    autoprefixer: { flexbox: 'no-2009' },
-                                    stage: 3
-                                }),
-                                require('postcss-normalize')
-                            ]
-                            : [
-                                require('tailwindcss'),
-                                require('postcss-flexbugs-fixes'),
-                                require('postcss-preset-env')({
-                                    autoprefixer: { flexbox: 'no-2009' },
-                                    stage: 3
-                                })
-                            ]
+                        // Remove the inline plugin configuration
+                        // Let PostCSS use the postcss.config.cjs file instead
                     },
                     sourceMap: isEnvProduction ? shouldUseSourceMap : isEnvDevelopment
                 }
             }
+
         ].filter(Boolean);
 
         if (preProcessor) {
@@ -173,8 +158,12 @@ const config = (env) => {
             path: paths.dist,
             filename: '[name].js',
             publicPath: '/',
-            globalObject: 'self',
-            environment: { module: true, dynamicImport: false }
+            module: true, // Enable ES modules output
+            chunkFormat: 'module', // Use ES module format for chunks
+            environment: {
+                module: true,
+                dynamicImport: true // MV3 supports dynamic imports
+            }
         },
 
         module: {
@@ -238,10 +227,18 @@ const config = (env) => {
                                 {
                                     loader: require.resolve('babel-loader'),
                                     options: {
-                                        customize: require.resolve('babel-preset-react-app/webpack-overrides'),
                                         presets: [
                                             [
-                                                require.resolve('babel-preset-react-app'),
+                                                require.resolve('@babel/preset-env'),
+                                                {
+                                                    targets: {
+                                                        browsers: ['last 2 versions', 'not dead']
+                                                    },
+                                                    modules: false
+                                                }
+                                            ],
+                                            [
+                                                require.resolve('@babel/preset-react'),
                                                 {
                                                     runtime: hasJsxRuntime ? 'automatic' : 'classic'
                                                 }
@@ -265,36 +262,31 @@ const config = (env) => {
                             test: /\.(ts|tsx)$/,
                             include: paths.appSrc,
                             use: [
-                                // First, run TS through `ts-loader` for type-checking + TS->JS
                                 {
-                                    loader: require.resolve('ts-loader'),
+                                    loader: require.resolve('swc-loader'),
                                     options: {
-                                        // Setting `transpileOnly: false` does full type-checking.
-                                        // If you want faster rebuilds & use separate type-checker plugin, set to true.
-                                        transpileOnly: false
-                                    }
-                                },
-                                // Then optionally run the output JS through Babel for further transforms
-                                {
-                                    loader: require.resolve('babel-loader'),
-                                    options: {
-                                        customize: require.resolve('babel-preset-react-app/webpack-overrides'),
-                                        presets: [
-                                            [
-                                                require.resolve('babel-preset-react-app'),
-                                                {
-                                                    runtime: hasJsxRuntime ? 'automatic' : 'classic'
+                                        jsc: {
+                                            parser: {
+                                                syntax: "typescript",
+                                                tsx: true,
+                                                decorators: true,
+                                                dynamicImport: true
+                                            },
+                                            transform: {
+                                                legacyDecorator: true,
+                                                decoratorMetadata: true,
+                                                react: {
+                                                    runtime: "automatic",
+                                                    development: isEnvDevelopment,
+                                                    refresh: isEnvDevelopment && shouldUseReactRefresh
                                                 }
-                                            ]
-                                        ],
-                                        plugins: [
-                                            isEnvDevelopment &&
-                                            shouldUseReactRefresh &&
-                                            require.resolve('react-refresh/babel')
-                                        ].filter(Boolean),
-                                        cacheDirectory: true,
-                                        cacheCompression: false,
-                                        compact: isEnvProduction
+                                            },
+                                            target: "es2022",
+                                            externalHelpers: true
+                                        },
+                                        module: {
+                                            type: "es6"
+                                        }
                                     }
                                 }
                             ]
@@ -433,13 +425,18 @@ const config = (env) => {
                             test: /\.m?js$/,
                             include: [path.join(paths.appNodeModules, 'tiny-secp256k1')],
                             use: {
-                                loader: 'babel-loader',
+                                loader: 'swc-loader',
                                 options: {
-                                    presets: ['@babel/preset-env'],
-                                    plugins: [
-                                        '@babel/plugin-syntax-dynamic-import',
-                                        WasmModuleWebpackPlugin.BabelPlugin
-                                    ]
+                                    jsc: {
+                                        parser: {
+                                            syntax: "ecmascript",
+                                            dynamicImport: true
+                                        },
+                                        target: "es2022"
+                                    },
+                                    module: {
+                                        type: "es6"
+                                    }
                                 }
                             }
                         }

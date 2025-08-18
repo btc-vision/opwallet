@@ -1,14 +1,26 @@
 {
     "compilerOptions": {
         "target": "ESNext",
-        "lib": ["dom", "dom.iterable", "esnext"],
+        "lib": [
+            "dom",
+            "dom.iterable",
+            "esnext"
+        ],
         "baseUrl": "./",
         "paths": {
-            "@/*": ["./src/*"]
+            "@/*": [
+                "./src/*"
+            ]
         },
         "noImplicitAny": true,
         "downlevelIteration": true,
-        "types": ["chrome", "node", "react", "react-dom"],
+        "types": [
+            "chrome",
+            "node",
+            "react",
+            "react-dom",
+            "reflect-metadata"
+        ],
         "allowJs": true,
         "skipLibCheck": true,
         "esModuleInterop": true,
@@ -30,6 +42,10 @@
             }
         ]
     },
-    "exclude": ["./node_modules"],
-    "include": ["src"]
+    "exclude": [
+        "./node_modules"
+    ],
+    "include": [
+        "src"
+    ]
 }

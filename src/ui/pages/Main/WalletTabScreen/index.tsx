@@ -425,9 +425,11 @@ export default function WalletTabScreen() {
                                     </div>
                                 </div>
                             }
-                            overlayStyle={{
-                                fontSize: '11px',
-                                maxWidth: '280px'
+                            styles={{
+                                root: {
+                                    fontSize: '11px',
+                                    maxWidth: '280px'
+                                }
                             }}>
                             <div style={{ position: 'relative', zIndex: 1 }}>
                                 <div

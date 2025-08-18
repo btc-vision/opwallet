@@ -6,12 +6,12 @@ import { fontSizes } from '@/ui/theme/font';
 import {
     DecodedAirdrop,
     DecodedAirdropWithAmount,
-    DecodedApprove,
-    DecodedApproveFrom,
+    DecodedIncreaseAllowance,
+    DecodedIncreaseAllowanceBySignature,
     DecodedBurn,
     DecodedMint,
-    DecodedTransfer,
-    DecodedTransferFrom
+    DecodedSafeTransfer,
+    DecodedSafeTransferFrom, DecodedDecreaseAllowanceBySignature
 } from '@/ui/pages/OpNet/decoded/DecodedTypes';
 import { sliceAddress } from '@/ui/pages/OpNet/decoded/helpper';
 import BigNumber from 'bignumber.js';
@@ -24,10 +24,10 @@ interface CommonProps {
 }
 
 /* -------------------------------
-   Transfer (transfer(address,uint256))
+   SafeTransfer (safeTransfer(address,uint256,bytes))
 ----------------------------------- */
 interface TransferDecodedProps extends CommonProps {
-    readonly decoded: DecodedTransfer;
+    readonly decoded: DecodedSafeTransfer;
 }
 
 export function TransferDecodedInfo(props: TransferDecodedProps) {
@@ -60,10 +60,10 @@ export function TransferDecodedInfo(props: TransferDecodedProps) {
 }
 
 /* ---------------------------------
-   TransferFrom (transferFrom(address,address,uint256))
+   SafeTransferFrom (safeTransferFrom(address,address,uint256,bytes))
 ------------------------------------- */
 interface TransferFromDecodedProps extends CommonProps {
-    readonly decoded: DecodedTransferFrom;
+    readonly decoded: DecodedSafeTransferFrom;
 }
 
 export function TransferFromDecodedInfo(props: TransferFromDecodedProps) {
@@ -98,13 +98,13 @@ export function TransferFromDecodedInfo(props: TransferFromDecodedProps) {
 }
 
 /* -------------------------------
-   Approve (approve(address,uint256))
+   IncreaseAllowance (increaseAllowance(address,uint256))
 ----------------------------------- */
-interface ApproveDecodedProps extends CommonProps {
-    readonly decoded: DecodedApprove;
+interface IncreaseAllowanceDecodedProps extends CommonProps {
+    readonly decoded: DecodedIncreaseAllowance;
 }
 
-export function ApproveDecodedInfo(props: ApproveDecodedProps) {
+export function IncreaseAllowanceDecodedInfo(props: IncreaseAllowanceDecodedProps) {
     const { contractInfo, interactionType, decoded } = props;
 
     const balanceFormatted = BitcoinUtils.formatUnits(decoded.amount, contractInfo.decimals || 8);
@@ -140,13 +140,13 @@ export function ApproveDecodedInfo(props: ApproveDecodedProps) {
 }
 
 /* -------------------------------
-   ApproveFrom (approveFrom(address,uint256,bytes))
+   IncreaseAllowanceBySignature (increaseAllowanceBySignature(address,address,uint256,uint64,bytes))
 ----------------------------------- */
-interface ApproveFromDecodedProps extends CommonProps {
-    readonly decoded: DecodedApproveFrom;
+interface ApproveBySignatureDecodedProps extends CommonProps {
+    readonly decoded: DecodedIncreaseAllowanceBySignature | DecodedDecreaseAllowanceBySignature;
 }
 
-export function ApproveFromDecodedInfo(props: ApproveFromDecodedProps) {
+export function ApproveBySignatureDecodedInfo(props: ApproveBySignatureDecodedProps) {
     const { contractInfo, interactionType, decoded } = props;
 
     const balanceFormatted = BitcoinUtils.formatUnits(decoded.amount, contractInfo.decimals || 8);

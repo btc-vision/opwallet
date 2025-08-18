@@ -5,7 +5,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import browser from 'webextension-polyfill';
 
 import Web3API from '@/shared/web3/Web3API';
-import { getContract, IOP_20Contract, OP_20_ABI } from 'opnet';
+import { getContract, IOP20Contract, OP_20_ABI } from 'opnet';
 
 import { OPTokenInfo } from '@/shared/types';
 import { Address } from '@btc-vision/transaction';
@@ -181,7 +181,7 @@ export function OPNetList() {
                 throw new Error('Invalid contract');
             }
 
-            const contract = getContract<IOP_20Contract>(address, OP_20_ABI, Web3API.provider, Web3API.network);
+            const contract = getContract<IOP20Contract>(address, OP_20_ABI, Web3API.provider, Web3API.network);
 
             const balance = await contract.balanceOf(Address.fromString(currentAccount.pubkey));
 
