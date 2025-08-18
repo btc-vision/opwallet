@@ -1,5 +1,5 @@
 import { Checkbox } from 'antd';
-import { CheckboxChangeEvent } from 'antd/lib/checkbox';
+import type { CheckboxChangeEvent } from 'antd/es/checkbox';
 import { useEffect, useState } from 'react';
 
 import { Button, Card, Column, Grid, Icon, Row, Text } from '@/ui/components';

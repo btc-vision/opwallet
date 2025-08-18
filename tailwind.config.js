@@ -1,10 +1,5 @@
-import plugin from 'tailwindcss/plugin.js';
-
-export default {
-    // purge: [
-    //   './src/**/*.html',
-    //   './src/**/*.js',
-    // ],
+/** @type {import('tailwindcss').Config} */
+module.exports = {
     content: ['./index.html', './src/**/*.{js,jsx,ts,tsx,vue}'],
     theme: {
         extend: {
@@ -103,10 +98,10 @@ export default {
                 '2_5': '0.625rem'
             },
             animation: {
-                'fade-in': 'fadein 1s cubic-bezier(0.19, 1, 0.22, 1) 0 1 normal forwards infinite ',
-                'fade-out': 'fadeout 1s cubic-bezier(0.19, 1, 0.22, 1) 0 1 normal forwards infinite ',
-                'slide-up': 'slideup 1s cubic-bezier(0.19, 1, 0.22, 1) 0 1 normal forwards infinite ',
-                'slide-down': 'slidedown 1s cubic-bezier(0.19, 1, 0.22, 1) 0 1 normal forwards infinite '
+                'fade-in': 'fadein 1s cubic-bezier(0.19, 1, 0.22, 1) 0 1 normal forwards',
+                'fade-out': 'fadeout 1s cubic-bezier(0.19, 1, 0.22, 1) 0 1 normal forwards',
+                'slide-up': 'slideup 1s cubic-bezier(0.19, 1, 0.22, 1) 0 1 normal forwards',
+                'slide-down': 'slidedown 1s cubic-bezier(0.19, 1, 0.22, 1) 0 1 normal forwards'
             },
             keyframes: {
                 fadein: {
@@ -130,7 +125,7 @@ export default {
     },
     plugins: [
         // example: !bg-white ==> background: white !important;
-        plugin(function({ addVariant }) {
+        require('tailwindcss/plugin')(function ({ addVariant }) {
             addVariant('important', ({ container }) => {
                 container.walkRules((rule) => {
                     rule.selector = `.\\!${rule.selector.slice(1)}`;
