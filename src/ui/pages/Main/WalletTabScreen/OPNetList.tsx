@@ -8,7 +8,7 @@ import Web3API from '@/shared/web3/Web3API';
 import { getContract, IOP20Contract, OP_20_ABI } from 'opnet';
 
 import { OPTokenInfo } from '@/shared/types';
-import { Address } from '@btc-vision/transaction';
+import { Address, AddressTypes, AddressVerificator } from '@btc-vision/transaction';
 
 import { Column, Text } from '@/ui/components';
 import { useTools } from '@/ui/components/ActionComponent';
@@ -142,6 +142,11 @@ export function OPNetList() {
 
             // Remove duplicates
             addresses = Array.from(new Set(addresses));
+
+            // Remove non P2OP addresses
+            addresses = addresses.filter(
+                (addr) => AddressVerificator.detectAddressType(addr, Web3API.network) === AddressTypes.P2OP
+            );
 
             // Reverse to show newest first
             addresses.reverse();
@@ -683,95 +688,136 @@ export function OPNetList() {
             )}
 
             {/* Remove/Hide Modal */}
-            <Modal
-                open={showModal}
-                onCancel={() => {
-                    setShowModal(false);
-                    setModalToken(null);
-                }}
-                footer={null}
-                closeIcon={<CloseOutlined style={{ fontSize: '20px', color: colors.text }} />}
-                centered
-                style={{
-                    background: colors.containerBg,
-                    borderRadius: '14px',
-                    border: `1px solid ${colors.containerBorder}`
-                }}>
-                <div style={{ padding: '8px' }}>
-                    <Text text="Token Options" preset="title-bold" size="xl" style={{ marginBottom: 16 }} />
+            <>
+                {/* Add styles to override Ant Design */}
+                <style>{`
+            .custom-token-modal .ant-modal-content {
+                background: ${colors.containerBg} !important;
+                border: 1px solid ${colors.containerBorder} !important;
+                border-radius: 14px !important;
+            }
+            
+            .custom-token-modal .ant-modal-header {
+                background: ${colors.containerBg} !important;
+                border-bottom: 1px solid ${colors.containerBorder} !important;
+                border-radius: 14px 14px 0 0 !important;
+            }
+            
+            .custom-token-modal .ant-modal-title {
+                color: ${colors.text} !important;
+                font-weight: 600 !important;
+                font-size: 18px !important;
+            }
+            
+            .custom-token-modal .ant-modal-body {
+                background: ${colors.containerBg} !important;
+                color: ${colors.text} !important;
+                padding: 8px !important;
+            }
+            
+            .custom-token-modal .ant-modal-close {
+                color: ${colors.textFaded} !important;
+            }
+            
+            .custom-token-modal .ant-modal-close:hover {
+                color: ${colors.text} !important;
+                background: ${colors.buttonHoverBg} !important;
+            }
+            
+            .custom-token-modal .ant-modal-mask {
+                background: rgba(0, 0, 0, 0.6) !important;
+                backdrop-filter: blur(4px) !important;
+            }
+        `}</style>
 
-                    <Text
-                        text="What would you like to do with this token?"
-                        color="textDim"
-                        size="sm"
-                        style={{ marginBottom: 24 }}
-                    />
+                {/* Updated Modal with className */}
+                <Modal
+                    open={showModal}
+                    onCancel={() => {
+                        setShowModal(false);
+                        setModalToken(null);
+                    }}
+                    footer={null}
+                    closeIcon={<CloseOutlined style={{ fontSize: '16px' }} />}
+                    centered
+                    className="custom-token-modal"
+                    title="Token Options">
+                    <div style={{ padding: '8px 0' }}>
+                        <Text
+                            text="What would you like to do with this token?"
+                            color="textDim"
+                            size="sm"
+                            style={{ marginBottom: 24 }}
+                        />
 
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                        <button
-                            style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '10px',
-                                padding: '12px',
-                                background: colors.buttonHoverBg,
-                                border: `1px solid ${colors.containerBorder}`,
-                                borderRadius: '10px',
-                                cursor: 'pointer',
-                                transition: 'all 0.2s'
-                            }}
-                            onClick={() => handleModalAction('hide')}
-                            onMouseOver={(e) => {
-                                e.currentTarget.style.background = colors.buttonBg;
-                                e.currentTarget.style.borderColor = colors.main;
-                            }}
-                            onMouseOut={(e) => {
-                                e.currentTarget.style.background = colors.buttonHoverBg;
-                                e.currentTarget.style.borderColor = colors.containerBorder;
-                            }}>
-                            <FontAwesomeIcon icon={faEyeSlash} style={{ color: colors.main, fontSize: 16 }} />
-                            <div style={{ textAlign: 'left' }}>
-                                <div style={{ color: colors.text, fontSize: '14px', fontWeight: 600 }}>Hide Token</div>
-                                <div style={{ color: colors.textFaded, fontSize: '11px', marginTop: '2px' }}>
-                                    Temporarily hide from list (can be shown later)
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                            <button
+                                style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '10px',
+                                    padding: '12px',
+                                    background: colors.buttonHoverBg,
+                                    border: `1px solid ${colors.containerBorder}`,
+                                    borderRadius: '10px',
+                                    cursor: 'pointer',
+                                    transition: 'all 0.2s'
+                                }}
+                                onClick={() => handleModalAction('hide')}
+                                onMouseOver={(e) => {
+                                    e.currentTarget.style.background = colors.buttonBg;
+                                    e.currentTarget.style.borderColor = colors.main;
+                                }}
+                                onMouseOut={(e) => {
+                                    e.currentTarget.style.background = colors.buttonHoverBg;
+                                    e.currentTarget.style.borderColor = colors.containerBorder;
+                                }}>
+                                <FontAwesomeIcon icon={faEyeSlash} style={{ color: colors.main, fontSize: 16 }} />
+                                <div style={{ textAlign: 'left' }}>
+                                    <div style={{ color: colors.text, fontSize: '14px', fontWeight: 600 }}>
+                                        Hide Token
+                                    </div>
+                                    <div style={{ color: colors.textFaded, fontSize: '11px', marginTop: '2px' }}>
+                                        Temporarily hide from list (can be shown later)
+                                    </div>
                                 </div>
-                            </div>
-                        </button>
+                            </button>
 
-                        <button
-                            style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '10px',
-                                padding: '12px',
-                                background: colors.buttonHoverBg,
-                                border: `1px solid ${colors.containerBorder}`,
-                                borderRadius: '10px',
-                                cursor: 'pointer',
-                                transition: 'all 0.2s'
-                            }}
-                            onClick={() => handleModalAction('remove')}
-                            onMouseOver={(e) => {
-                                e.currentTarget.style.background = `${colors.error}15`;
-                                e.currentTarget.style.borderColor = colors.error;
-                            }}
-                            onMouseOut={(e) => {
-                                e.currentTarget.style.background = colors.buttonHoverBg;
-                                e.currentTarget.style.borderColor = colors.containerBorder;
-                            }}>
-                            <FontAwesomeIcon icon={faTrash} style={{ color: colors.error, fontSize: 16 }} />
-                            <div style={{ textAlign: 'left' }}>
-                                <div style={{ color: colors.text, fontSize: '14px', fontWeight: 600 }}>
-                                    Remove Token
+                            <button
+                                style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '10px',
+                                    padding: '12px',
+                                    background: colors.buttonHoverBg,
+                                    border: `1px solid ${colors.containerBorder}`,
+                                    borderRadius: '10px',
+                                    cursor: 'pointer',
+                                    transition: 'all 0.2s'
+                                }}
+                                onClick={() => handleModalAction('remove')}
+                                onMouseOver={(e) => {
+                                    e.currentTarget.style.background = `${colors.error}15`;
+                                    e.currentTarget.style.borderColor = colors.error;
+                                }}
+                                onMouseOut={(e) => {
+                                    e.currentTarget.style.background = colors.buttonHoverBg;
+                                    e.currentTarget.style.borderColor = colors.containerBorder;
+                                }}>
+                                <FontAwesomeIcon icon={faTrash} style={{ color: colors.error, fontSize: 16 }} />
+                                <div style={{ textAlign: 'left' }}>
+                                    <div style={{ color: colors.text, fontSize: '14px', fontWeight: 600 }}>
+                                        Remove Token
+                                    </div>
+                                    <div style={{ color: colors.textFaded, fontSize: '11px', marginTop: '2px' }}>
+                                        Permanently delete (must re-import to add back)
+                                    </div>
                                 </div>
-                                <div style={{ color: colors.textFaded, fontSize: '11px', marginTop: '2px' }}>
-                                    Permanently delete (must re-import to add back)
-                                </div>
-                            </div>
-                        </button>
+                            </button>
+                        </div>
                     </div>
-                </div>
-            </Modal>
+                </Modal>
+            </>
         </div>
     );
 }
