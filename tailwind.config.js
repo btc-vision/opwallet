@@ -98,10 +98,10 @@ module.exports = {
                 '2_5': '0.625rem'
             },
             animation: {
-                'fade-in': 'fadein 1s cubic-bezier(0.19, 1, 0.22, 1) 0 1 normal forwards',
-                'fade-out': 'fadeout 1s cubic-bezier(0.19, 1, 0.22, 1) 0 1 normal forwards',
-                'slide-up': 'slideup 1s cubic-bezier(0.19, 1, 0.22, 1) 0 1 normal forwards',
-                'slide-down': 'slidedown 1s cubic-bezier(0.19, 1, 0.22, 1) 0 1 normal forwards'
+                'fade-in': 'fadein 1s cubic-bezier(0.19, 1, 0.22, 1) 0 1 normal forwards infinite ',
+                'fade-out': 'fadeout 1s cubic-bezier(0.19, 1, 0.22, 1) 0 1 normal forwards infinite ',
+                'slide-up': 'slideup 1s cubic-bezier(0.19, 1, 0.22, 1) 0 1 normal forwards infinite ',
+                'slide-down': 'slidedown 1s cubic-bezier(0.19, 1, 0.22, 1) 0 1 normal forwards infinite '
             },
             keyframes: {
                 fadein: {
