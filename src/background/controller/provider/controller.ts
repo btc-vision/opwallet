@@ -10,7 +10,6 @@ import { ProviderControllerRequest } from '@/shared/types/Request.js';
 import { getChainInfo } from '@/shared/utils';
 import Web3API from '@/shared/web3/Web3API';
 import { DetailedInteractionParameters } from '@/shared/web3/interfaces/DetailedInteractionParameters';
-import { amountToSatoshis } from '@/ui/utils';
 import { IDeploymentParametersWithoutSigner } from '@btc-vision/transaction';
 import { bitcoin } from '@btc-vision/wallet-sdk/lib/bitcoin-core';
 import { verifyMessageOfBIP322Simple } from '@btc-vision/wallet-sdk/lib/message';
@@ -198,12 +197,7 @@ export class ProviderController {
         const account = await wallet.getCurrentAccount();
         if (!account) return null;
 
-        const balance = await wallet.getAddressBalance(account.address);
-        return {
-            confirmed: amountToSatoshis(balance.confirm_amount),
-            unconfirmed: amountToSatoshis(balance.pending_amount),
-            total: amountToSatoshis(balance.amount)
-        };
+        return await wallet.getAddressBalance(account.address);
     };
 
     @Reflect.metadata('SAFE', true)

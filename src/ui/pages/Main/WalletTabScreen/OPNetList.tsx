@@ -183,7 +183,15 @@ export function OPNetList() {
 
             const ci = await Web3API.queryContractInformation(address);
             if (!ci || ci.name === 'Generic Contract') {
-                throw new Error('Invalid contract');
+                console.warn(`No contract info found for ${address}, skipping...`);
+                return {
+                    address,
+                    name: 'Unknown',
+                    amount: 0n,
+                    divisibility: 8,
+                    symbol: '???',
+                    isLoading: false
+                };
             }
 
             const contract = getContract<IOP20Contract>(address, OP_20_ABI, Web3API.provider, Web3API.network);

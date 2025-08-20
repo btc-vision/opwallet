@@ -35,6 +35,14 @@ export function useAccountBalance() {
             confirm_inscription_amount: '0',
             pending_inscription_amount: '0',
 
+            csv75_total_amount: '0',
+            csv75_unlocked_amount: '0',
+            csv75_locked_amount: '0',
+
+            csv1_total_amount: '0',
+            csv1_unlocked_amount: '0',
+            csv1_locked_amount: '0',
+
             usd_value: '0.00'
         }
     );
@@ -97,40 +105,35 @@ export function useFetchBalanceCallback() {
     return useCallback(async () => {
         if (!currentAccount.address) return;
 
-        const cachedBalance = await wallet.getAddressCacheBalance(currentAccount.address);
-        const _accountBalance = await wallet.getAddressBalance(currentAccount.address, currentAccount.pubkey);
+        const accountBalance = await wallet.getAddressBalance(currentAccount.address, currentAccount.pubkey);
 
         dispatch(
             accountActions.setBalance({
                 address: currentAccount.address,
 
-                amount: _accountBalance.amount,
-                confirm_amount: _accountBalance.confirm_amount,
-                pending_amount: _accountBalance.pending_amount,
+                amount: accountBalance.amount,
+                confirm_amount: accountBalance.confirm_amount,
+                pending_amount: accountBalance.pending_amount,
 
-                btc_amount: _accountBalance.btc_amount,
-                confirm_btc_amount: _accountBalance.confirm_btc_amount,
-                pending_btc_amount: _accountBalance.pending_btc_amount,
+                btc_amount: accountBalance.btc_amount,
+                confirm_btc_amount: accountBalance.confirm_btc_amount,
+                pending_btc_amount: accountBalance.pending_btc_amount,
 
-                csv75_total_amount: _accountBalance.csv75_total_amount ?? '',
-                csv75_unlocked_amount: _accountBalance.csv75_unlocked_amount ?? '',
-                csv75_locked_amount: _accountBalance.csv75_locked_amount ?? '',
+                csv75_total_amount: accountBalance.csv75_total_amount ?? '',
+                csv75_unlocked_amount: accountBalance.csv75_unlocked_amount ?? '',
+                csv75_locked_amount: accountBalance.csv75_locked_amount ?? '',
 
-                csv1_total_amount: _accountBalance.csv1_total_amount ?? '',
-                csv1_unlocked_amount: _accountBalance.csv1_unlocked_amount ?? '',
-                csv1_locked_amount: _accountBalance.csv1_locked_amount ?? '',
+                csv1_total_amount: accountBalance.csv1_total_amount ?? '',
+                csv1_unlocked_amount: accountBalance.csv1_unlocked_amount ?? '',
+                csv1_locked_amount: accountBalance.csv1_locked_amount ?? '',
 
-                inscription_amount: _accountBalance.inscription_amount,
-                confirm_inscription_amount: _accountBalance.confirm_inscription_amount,
-                pending_inscription_amount: _accountBalance.pending_inscription_amount,
+                inscription_amount: accountBalance.inscription_amount,
+                confirm_inscription_amount: accountBalance.confirm_inscription_amount,
+                pending_inscription_amount: accountBalance.pending_inscription_amount,
 
-                usd_value: _accountBalance.usd_value
+                usd_value: accountBalance.usd_value
             })
         );
-
-        if (cachedBalance.amount !== _accountBalance.amount) {
-            dispatch(accountActions.expireHistory());
-        }
 
         dispatch(
             accountActions.setAddressSummary({
@@ -157,9 +160,6 @@ export function useReloadAccounts() {
 
         const account = await wallet.getCurrentAccount();
         dispatch(accountActions.setCurrent(account));
-
-        dispatch(accountActions.expireBalance());
-        dispatch(accountActions.expireInscriptions());
 
         const configs = await wallet.getWalletConfig();
         dispatch(settingsActions.updateSettings({ walletConfig: configs }));

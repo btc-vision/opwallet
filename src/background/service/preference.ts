@@ -1,7 +1,7 @@
 import { AddressFlagType, CHAINS, ChainType, CustomNetwork, DEFAULT_LOCKTIME_ID, EVENTS } from '@/shared/constant';
 import eventBus from '@/shared/eventBus';
 import { SessionEvent } from '@/shared/interfaces/SessionEvent';
-import { Account, AddressType, AppSummary, BitcoinBalance, NetworkType, TxHistoryItem } from '@/shared/types';
+import { Account, AddressType, AppSummary, NetworkType, TxHistoryItem } from '@/shared/types';
 import { compareVersions } from 'compare-versions';
 import cloneDeep from 'lodash/cloneDeep';
 import browser from '../webapi/browser';
@@ -15,7 +15,6 @@ export interface PreferenceStore {
     currentKeyringIndex: number;
     currentAccount: Account | undefined | null;
     externalLinkAck: boolean;
-    balanceMap: Record<string, BitcoinBalance>;
     historyMap: Record<string, TxHistoryItem[]>;
     locale: string;
     watchAddressPreference: Record<string, number>;
@@ -54,7 +53,6 @@ const DEFAULTS = {
         editingKeyringIndex: 0,
         editingAccount: undefined,
         externalLinkAck: false,
-        balanceMap: {},
         historyMap: {},
         locale: defaultLang,
         watchAddressPreference: {},
@@ -106,10 +104,6 @@ class PreferenceService {
         }
         if (!this.store.externalLinkAck) {
             this.store.externalLinkAck = false;
-        }
-
-        if (!this.store.balanceMap) {
-            this.store.balanceMap = {};
         }
 
         if (!this.store.historyMap) {
@@ -219,31 +213,6 @@ class PreferenceService {
 
     getPopupOpen = () => {
         return this.popupOpen;
-    };
-
-    updateAddressBalance = async (address: string, data: BitcoinBalance) => {
-        const balanceMap = this.store.balanceMap || {};
-        this.store.balanceMap = {
-            ...balanceMap,
-            [address]: data
-        };
-        await this.persist();
-    };
-
-    removeAddressBalance = async (address: string) => {
-        const key = address;
-        if (key in this.store.balanceMap) {
-            const map = this.store.balanceMap;
-            // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
-            delete map[key];
-            this.store.balanceMap = map;
-        }
-        await this.persist();
-    };
-
-    getAddressBalance = (address: string): BitcoinBalance | null => {
-        const balanceMap = this.store.balanceMap || {};
-        return balanceMap[address] || null;
     };
 
     updateAddressHistory = async (address: string, data: TxHistoryItem[]) => {

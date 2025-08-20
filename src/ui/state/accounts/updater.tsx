@@ -49,14 +49,11 @@ export default function AccountUpdater() {
         if (!isUnlocked) {
             return;
         }
-        if (!balance.expired) {
-            return;
-        }
         self.loadingBalance = true;
         fetchBalance().finally(() => {
             self.loadingBalance = false;
         });
-    }, [fetchBalance, wallet, isUnlocked, self, balance.expired]);
+    }, [fetchBalance, wallet, isUnlocked, self]);
 
     useEffect(() => {
         const accountChangeHandler = (params: unknown) => {

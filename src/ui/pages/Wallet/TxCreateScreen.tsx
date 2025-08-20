@@ -102,7 +102,7 @@ export default function TxCreateScreen() {
 
                 // Always add current address
                 balances.push({
-                    type: 'current',
+                    type: SourceType.CURRENT,
                     label: 'Primary Wallet',
                     address: account.address,
                     balance: currentBalance.amount,
@@ -118,7 +118,7 @@ export default function TxCreateScreen() {
                     const hasUnlocked = csv75UnlockedAmount !== '0';
 
                     balances.push({
-                        type: 'csv75',
+                        type: SourceType.CSV75,
                         label: 'CSV-75 Mining Rewards',
                         address: csv75Address.address,
                         balance: csv75UnlockedAmount,
@@ -137,7 +137,7 @@ export default function TxCreateScreen() {
                     const hasUnlocked = csv1UnlockedAmount !== '0';
 
                     balances.push({
-                        type: 'csv1',
+                        type: SourceType.CSV1,
                         label: 'CSV-1 Fast Access',
                         address: csv1Address.address,
                         balance: csv1UnlockedAmount,

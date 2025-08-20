@@ -399,6 +399,34 @@ class Web3API {
         return finalUTXOs;
     }
 
+    public async getTotalLockedAndUnlockedUTXOs(
+        address: string,
+        csvType: 'csv75' | 'csv1'
+    ): Promise<{
+        utxos: UTXO[];
+        unlockedUTXOs: UTXO[];
+        lockedUTXOs: UTXO[];
+    }> {
+        const threshold = csvType === 'csv75' ? 75n : 1n;
+
+        const [unlocked, all] = await Promise.all([
+            this.getAllUTXOsForAddresses([address], undefined, threshold),
+            this.getAllUTXOsForAddresses([address], undefined)
+        ]);
+
+        const key = (u: UTXO) => `${u.transactionId}:${u.outputIndex}`;
+        const unlockedSet = new Set(unlocked.map(key));
+
+        const unlockedUTXOs = all.filter((u) => unlockedSet.has(key(u)));
+        const lockedUTXOs = all.filter((u) => !unlockedSet.has(key(u)));
+
+        return {
+            utxos: all,
+            unlockedUTXOs,
+            lockedUTXOs
+        };
+    }
+
     private getContractName(address: string): string | undefined {
         return ContractNames[address] ?? 'Generic Contract';
     }

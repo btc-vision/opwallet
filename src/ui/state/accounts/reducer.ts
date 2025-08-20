@@ -12,15 +12,9 @@ export interface AccountsState {
         string,
         {
             list: TxHistoryItem[];
-            expired: boolean;
         }
     >;
-    inscriptionsMap: Record<
-        string,
-        {
-            expired: boolean;
-        }
-    >;
+    inscriptionsMap: Record<string, {}>;
     appSummary: AppSummary;
     addressSummary: AddressSummary;
 }
@@ -148,9 +142,7 @@ const slice = createSlice({
                 confirm_inscription_amount: '0',
                 pending_inscription_amount: '0',
 
-                usd_value: '0.00',
-
-                expired: true
+                usd_value: '0.00'
             };
             state.balanceMap[address].amount = amount;
             state.balanceMap[address].confirm_amount = confirm_amount;
@@ -173,50 +165,26 @@ const slice = createSlice({
             state.balanceMap[address].pending_inscription_amount = pending_inscription_amount;
 
             state.balanceMap[address].usd_value = usd_value;
-
-            state.balanceMap[address].expired = false;
         },
         setAddressSummary(state, action: { payload: AddressSummary }) {
             state.addressSummary = action.payload;
-        },
-        expireBalance(state) {
-            const balance = state.balanceMap[state.current.address];
-            if (balance) {
-                balance.expired = true;
-            }
         },
         setHistory(state, action: { payload: { address: string; list: TxHistoryItem[] } }) {
             const {
                 payload: { address, list }
             } = action;
             state.historyMap[address] = state.historyMap[address] || {
-                list: [],
-                expired: true
+                list: []
             };
             state.historyMap[address].list = list;
-            state.historyMap[address].expired = false;
-        },
-        expireHistory(state) {
-            const history = state.historyMap[state.current.address];
-            if (history) {
-                history.expired = true;
-            }
         },
         setInscriptions(state, action: { payload: { address: string } }) {
             const {
                 payload: { address }
             } = action;
             state.inscriptionsMap[address] = state.inscriptionsMap[address] || {
-                list: [],
-                expired: true
+                list: []
             };
-            state.inscriptionsMap[address].expired = false;
-        },
-        expireInscriptions(state) {
-            const inscriptions = state.inscriptionsMap[state.current.address];
-            if (inscriptions) {
-                inscriptions.expired = true;
-            }
         },
         setCurrentAccountName(state, action: { payload: string }) {
             const { payload } = action;

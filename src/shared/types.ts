@@ -44,8 +44,6 @@ export interface BitcoinBalance {
     pending_inscription_amount: string;
 
     usd_value: string;
-
-    expired?: boolean; // Indicates if the balance is expired
 }
 
 export interface AddressAssets {

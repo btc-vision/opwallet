@@ -93,6 +93,12 @@ export interface AccountAsset {
     value: string;
 }
 
+export interface BalanceCacheEntry {
+    balance: BitcoinBalance;
+    timestamp: number;
+    fetchPromise?: Promise<BitcoinBalance>;
+}
+
 /**
  * Custom error class for our WalletController.
  */
@@ -110,8 +116,12 @@ const stashKeyrings: Record<string, Keyring> = {};
 
 export class WalletController {
     public openapi: OpenApiService = openapiService;
-
     public timer: string | number | null = null;
+
+    // Cache properties
+    private balanceCache: Map<string, BalanceCacheEntry> = new Map();
+    private readonly CACHE_DURATION = 10000; // 10 seconds in milliseconds
+    private cacheCleanupTimer: NodeJS.Timeout | null = null;
 
     public getApproval = notificationService.getApproval;
     public getApprovalInteractionParametersToUse = notificationService.getApprovalInteractionParametersToUse;
@@ -216,6 +226,9 @@ export class WalletController {
                 await this.initAlianNames();
             }
             this._resetTimeout();
+
+            // Start cache cleanup timer
+            this._startCacheCleanup();
         } catch (err) {
             throw new WalletControllerError(`Unlock failed: ${String(err)}`, { passwordProvided: !!password });
         }
@@ -241,6 +254,9 @@ export class WalletController {
                 method: 'lock',
                 params: {}
             });
+
+            // Clear cache and stop cleanup timer
+            this._clearBalanceCache();
         } catch (err) {
             throw new WalletControllerError(`Lock wallet failed: ${String(err)}`);
         }
@@ -254,17 +270,54 @@ export class WalletController {
     };
 
     /**
-     * Fetch an address's balance from the OPNet or fallback service, then cache it.
+     * Fetch an address's balance with caching
      * @throws WalletControllerError
      */
     public getAddressBalance = async (address: string, pubKey?: string): Promise<BitcoinBalance> => {
-        try {
-            const data: BitcoinBalance = await this.getOpNetBalance(address, pubKey);
-            preferenceService.updateAddressBalance(address, data);
-            return data;
-        } catch (err) {
-            throw new WalletControllerError(`Failed to get address balance: ${String(err)}`, { address });
+        const cacheKey = this._generateCacheKey(address, pubKey);
+        const now = Date.now();
+        const cached = this.balanceCache.get(cacheKey);
+
+        // Check if we have a valid cached entry
+        if (cached && now - cached.timestamp < this.CACHE_DURATION) {
+            // If there's an ongoing fetch, wait for it
+            if (cached.fetchPromise) {
+                try {
+                    return await cached.fetchPromise;
+                } catch (err) {
+                    // If the ongoing fetch fails, continue to fetch again
+                    console.warn('Ongoing fetch failed, refetching:', err);
+                }
+            } else {
+                // Return cached balance
+                return cached.balance;
+            }
         }
+
+        // Create a new fetch promise to prevent duplicate requests
+        const fetchPromise = this.getOpNetBalance(address, pubKey).catch((err: unknown) => {
+            // Remove failed fetch from cache
+            this.balanceCache.delete(cacheKey);
+            throw new WalletControllerError(`Failed to get address balance: ${String(err)}`, { address });
+        });
+
+        // Store the promise in cache immediately to prevent race conditions
+        this.balanceCache.set(cacheKey, {
+            balance: cached?.balance || ({} as BitcoinBalance), // Keep old balance while fetching
+            timestamp: cached?.timestamp || now,
+            fetchPromise
+        });
+
+        const balance = await fetchPromise;
+
+        // Update cache with successful result
+        this.balanceCache.set(cacheKey, {
+            balance,
+            timestamp: now,
+            fetchPromise: undefined
+        });
+
+        return balance;
     };
 
     /**
@@ -301,37 +354,6 @@ export class WalletController {
     ): Promise<GroupAsset[]> => {
         // Potentially wrap in try/catch if there's network logic
         return openapiService.findGroupAssets(groups);
-    };
-
-    /**
-     * Get a cached balance for the address, or a default if none found.
-     */
-    public getAddressCacheBalance = (address: string | undefined): BitcoinBalance => {
-        const defaultBalance: BitcoinBalance = {
-            amount: '0',
-            confirm_amount: '0',
-            pending_amount: '0',
-
-            btc_amount: '0',
-            confirm_btc_amount: '0',
-            pending_btc_amount: '0',
-
-            csv75_total_amount: '0',
-            csv75_unlocked_amount: '0',
-            csv75_locked_amount: '0',
-
-            csv1_total_amount: '0',
-            csv1_unlocked_amount: '0',
-            csv1_locked_amount: '0',
-
-            inscription_amount: '0',
-            confirm_inscription_amount: '0',
-            pending_inscription_amount: '0',
-
-            usd_value: '0.00'
-        };
-        if (!address) return defaultBalance;
-        return preferenceService.getAddressBalance(address) ?? defaultBalance;
     };
 
     /**
@@ -1492,6 +1514,9 @@ export class WalletController {
      */
     public setChainType = async (chainType: ChainType): Promise<void> => {
         try {
+            // Clear balance cache when switching chains
+            this._clearBalanceCache();
+
             // Ensure custom networks are loaded
             await customNetworksManager.reload();
 
@@ -1526,6 +1551,9 @@ export class WalletController {
                 network,
                 chainType
             });
+
+            // Start cache cleanup timer
+            this._startCacheCleanup();
         } catch (err) {
             throw new WalletControllerError(`Failed to set chain type: ${String(err)}`, { chainType });
         }
@@ -2281,15 +2309,12 @@ export class WalletController {
                     usd_value: '0.00'
                 };
             } else {
-                const [allUTXOs, unspentUTXOs, allUTXOsCSV75, unlockedCSV75, allUTXOsCSV1, unlockedCSV1] =
-                    await Promise.all([
-                        Web3API.getAllUTXOsForAddresses([address]),
-                        Web3API.getUnspentUTXOsForAddresses([address]),
-                        Web3API.getAllUTXOsForAddresses([csv75Address], undefined),
-                        Web3API.getAllUTXOsForAddresses([csv75Address], undefined, 75n),
-                        Web3API.getAllUTXOsForAddresses([csv1Address], undefined),
-                        Web3API.getAllUTXOsForAddresses([csv1Address], undefined, 1n)
-                    ]);
+                const [allUTXOs, unspentUTXOs, csv75Data, csv1Data] = await Promise.all([
+                    Web3API.getAllUTXOsForAddresses([address]),
+                    Web3API.getUnspentUTXOsForAddresses([address]),
+                    Web3API.getTotalLockedAndUnlockedUTXOs(csv75Address, 'csv75'),
+                    Web3API.getTotalLockedAndUnlockedUTXOs(csv1Address, 'csv1')
+                ]);
 
                 const totalAll = allUTXOs.reduce((sum, u) => sum + u.value, 0n);
                 const totalUnspent = unspentUTXOs.reduce((sum, u) => sum + u.value, 0n);
@@ -2298,20 +2323,20 @@ export class WalletController {
                 const confirmAmount = bigIntToDecimal(totalUnspent, 8);
                 const pendingAmount = bigIntToDecimal(totalAll - totalUnspent, 8);
 
-                const totalCSV75 = allUTXOsCSV75.reduce((sum, u) => sum + u.value, 0n);
+                const totalCSV75 = csv75Data.utxos.reduce((sum, u) => sum + u.value, 0n);
                 const csv75Total = bigIntToDecimal(totalCSV75, 8);
 
-                const totalCSV1 = allUTXOsCSV1.reduce((sum, u) => sum + u.value, 0n);
+                const totalCSV1 = csv1Data.utxos.reduce((sum, u) => sum + u.value, 0n);
                 const csv1Total = bigIntToDecimal(totalCSV1, 8);
 
                 const csv75Unlocked = bigIntToDecimal(
-                    unlockedCSV75.reduce((sum, u) => sum + u.value, 0n),
+                    csv75Data.unlockedUTXOs.reduce((sum, u) => sum + u.value, 0n),
                     8
                 );
                 const csv75Locked = Number(csv75Total) - Number(csv75Unlocked);
 
                 const csv1Unlocked = bigIntToDecimal(
-                    unlockedCSV1.reduce((sum, u) => sum + u.value, 0n),
+                    csv1Data.unlockedUTXOs.reduce((sum, u) => sum + u.value, 0n),
                     8
                 );
                 const csv1Locked = Number(csv1Total) - Number(csv1Unlocked);
@@ -2472,6 +2497,64 @@ export class WalletController {
      */
     private _generateAlianName = (type: string, index: number): string => {
         return `${BRAND_ALIAN_TYPE_TEXT[type]} ${index}`;
+    };
+
+    /**
+     * Private method to generate cache key
+     */
+    private _generateCacheKey = (address: string, pubKey?: string): string => {
+        const chainType = this.getChainType();
+        return `${chainType}:${address}:${pubKey || 'no-pubkey'}`;
+    };
+
+    /**
+     * Private method to clear balance cache and stop cleanup timer
+     */
+    private _clearBalanceCache = (): void => {
+        this.balanceCache.clear();
+
+        if (this.cacheCleanupTimer) {
+            clearInterval(this.cacheCleanupTimer);
+            this.cacheCleanupTimer = null;
+        }
+    };
+
+    /**
+     * Start periodic cache cleanup to remove expired entries
+     */
+    private _startCacheCleanup = (): void => {
+        // Clear any existing timer
+        if (this.cacheCleanupTimer) {
+            clearInterval(this.cacheCleanupTimer);
+        }
+
+        // Run cleanup every 30 seconds
+        this.cacheCleanupTimer = setInterval(() => {
+            this._cleanupExpiredCache();
+        }, 30000);
+    };
+
+    /**
+     * Remove expired entries from cache
+     */
+    private _cleanupExpiredCache = (): void => {
+        const now = Date.now();
+        const expiredKeys: string[] = [];
+
+        this.balanceCache.forEach((entry, key) => {
+            // Remove entries older than twice the cache duration
+            if (now - entry.timestamp > this.CACHE_DURATION * 2) {
+                expiredKeys.push(key);
+            }
+        });
+
+        expiredKeys.forEach((key) => {
+            this.balanceCache.delete(key);
+        });
+
+        if (expiredKeys.length > 0) {
+            console.log(`Cleaned up ${expiredKeys.length} expired balance cache entries`);
+        }
     };
 }
 
