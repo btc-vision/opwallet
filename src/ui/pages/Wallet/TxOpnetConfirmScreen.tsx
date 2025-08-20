@@ -351,7 +351,7 @@ export default function TxOpnetConfirmScreen() {
 
                     utxos = await Web3API.getUnspentUTXOsForAddresses(
                         [fromAddress],
-                        BitcoinUtils.expandToDecimals(parameters.inputAmount * 1.5, 8),
+                        BitcoinUtils.expandToDecimals(parameters.inputAmount, 8),
                         75n
                     );
                 } else if (parameters.sourceType === SourceType.CSV1) {
@@ -361,7 +361,7 @@ export default function TxOpnetConfirmScreen() {
 
                     utxos = await Web3API.getUnspentUTXOsForAddresses(
                         [fromAddress],
-                        BitcoinUtils.expandToDecimals(parameters.inputAmount * 1.5, 8),
+                        BitcoinUtils.expandToDecimals(parameters.inputAmount, 8),
                         1n
                     );
                 }
@@ -375,7 +375,7 @@ export default function TxOpnetConfirmScreen() {
             } else {
                 utxos = await Web3API.getUnspentUTXOsForAddresses(
                     [fromAddress],
-                    BitcoinUtils.expandToDecimals(parameters.inputAmount * 1.5, 8)
+                    BitcoinUtils.expandToDecimals(parameters.inputAmount, 8)
                 );
             }
 
