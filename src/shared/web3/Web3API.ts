@@ -321,7 +321,11 @@ class Web3API {
         }
     }
 
-    public async getUnspentUTXOsForAddresses(addresses: string[], requiredAmount?: bigint): Promise<UTXO[]> {
+    public async getUnspentUTXOsForAddresses(
+        addresses: string[],
+        requiredAmount?: bigint,
+        olderThan?: bigint
+    ): Promise<UTXO[]> {
         let finalUTXOs: UTXOs = [];
 
         for (const address of addresses) {
@@ -333,7 +337,8 @@ class Web3API {
                         address,
                         optimize: false,
                         mergePendingUTXOs: false,
-                        filterSpentUTXOs: true
+                        filterSpentUTXOs: true,
+                        olderThan
                     });
                 } else {
                     utxos = await this.provider.utxoManager.getUTXOsForAmount({
@@ -341,7 +346,8 @@ class Web3API {
                         amount: requiredAmount,
                         optimize: false,
                         mergePendingUTXOs: false,
-                        filterSpentUTXOs: true
+                        filterSpentUTXOs: true,
+                        olderThan
                     });
                 }
             } catch {

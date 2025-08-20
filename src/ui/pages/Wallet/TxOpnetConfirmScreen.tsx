@@ -334,10 +334,55 @@ export default function TxOpnetConfirmScreen() {
             const currentWalletAddress = await wallet.getCurrentAccount();
             const userWallet = await getWallet();
 
-            const utxos: UTXO[] = await Web3API.getUnspentUTXOsForAddresses(
-                [currentWalletAddress.address],
-                BitcoinUtils.expandToDecimals(parameters.inputAmount, 8) * 2n
-            );
+            // Determine which address to send from and get UTXOs
+            let fromAddress = currentWalletAddress.address;
+            let utxos: UTXO[] = [];
+            let witnessScript: Buffer | undefined;
+
+            // Check if sending from a CSV address
+            if (parameters.from && parameters.sourceType && parameters.sourceType !== 'current') {
+                const currentAddress = Address.fromString(currentWalletAddress.pubkey);
+
+                if (parameters.sourceType === 'csv75') {
+                    const csv75Address = currentAddress.toCSV(75, Web3API.network);
+                    fromAddress = csv75Address.address;
+                    witnessScript = csv75Address.witnessScript;
+
+                    utxos = await Web3API.getUnspentUTXOsForAddresses(
+                        [fromAddress],
+                        BitcoinUtils.expandToDecimals(parameters.inputAmount * 1.5, 8),
+                        75n
+                    );
+                } else if (parameters.sourceType === 'csv1') {
+                    const csv1Address = currentAddress.toCSV(1, Web3API.network);
+                    fromAddress = csv1Address.address;
+                    witnessScript = csv1Address.witnessScript;
+
+                    utxos = await Web3API.getUnspentUTXOsForAddresses(
+                        [fromAddress],
+                        BitcoinUtils.expandToDecimals(parameters.inputAmount * 1.5, 8),
+                        1n
+                    );
+                }
+
+                if (witnessScript && utxos.length > 0) {
+                    utxos = utxos.map((utxo) => ({
+                        ...utxo,
+                        witnessScript: witnessScript // Add the witness script to each UTXO
+                    }));
+                }
+            } else {
+                utxos = await Web3API.getUnspentUTXOsForAddresses(
+                    [fromAddress],
+                    BitcoinUtils.expandToDecimals(parameters.inputAmount * 1.5, 8)
+                );
+            }
+
+            if (!utxos || utxos.length === 0) {
+                tools.toastError(`No UTXOs available for funding transaction`);
+                setDisabled(false);
+                return;
+            }
 
             const IFundingTransactionParameters: IFundingTransactionParameters = {
                 amount: BitcoinUtils.expandToDecimals(parameters.inputAmount, 8),
@@ -348,7 +393,7 @@ export default function TxOpnetConfirmScreen() {
                 priorityFee: 0n,
                 gasSatFee: 0n,
                 to: parameters.to,
-                from: currentWalletAddress.address,
+                from: fromAddress,
                 note: parameters.note
             };
 
@@ -362,9 +407,16 @@ export default function TxOpnetConfirmScreen() {
             }
 
             const amountA = Number(parameters.inputAmount).toLocaleString();
-            tools.toastSuccess(`You have successfully transferred ${amountA} ${btcUnit}`);
+            const sourceLabel =
+                parameters.sourceType === 'csv75'
+                    ? ' from CSV-75'
+                    : parameters.sourceType === 'csv1'
+                      ? ' from CSV-1'
+                      : '';
+            tools.toastSuccess(`You have successfully transferred ${amountA} ${btcUnit}${sourceLabel}`);
 
-            Web3API.provider.utxoManager.spentUTXO(currentWalletAddress.address, utxos, sendTransact.nextUTXOs);
+            // Update UTXO manager for the correct address
+            Web3API.provider.utxoManager.spentUTXO(fromAddress, utxos, sendTransact.nextUTXOs);
 
             navigate(RouteTypes.TxSuccessScreen, { txid: sendTransaction.result });
         } catch (e) {

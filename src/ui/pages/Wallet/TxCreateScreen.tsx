@@ -1,26 +1,27 @@
 import BigNumber from 'bignumber.js';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
-import { ChainType, COIN_DUST } from '@/shared/constant';
+import { COIN_DUST } from '@/shared/constant';
 import { Action, Features, SendBitcoinParameters } from '@/shared/interfaces/RawTxParameters';
 import Web3API from '@/shared/web3/Web3API';
-import { Column, Content, Header, Image, Input, Layout } from '@/ui/components';
+import { Column, Content, Header, Input, Layout } from '@/ui/components';
 import { FeeRateBar } from '@/ui/components/FeeRateBar';
 import { RouteTypes, useNavigate } from '@/ui/pages/MainRoute';
 import { useCurrentAccount } from '@/ui/state/accounts/hooks';
-import { useBTCUnit, useChain } from '@/ui/state/settings/hooks';
+import { useBTCUnit } from '@/ui/state/settings/hooks';
 import { useUiTxCreateScreen, useUpdateUiTxCreateScreen } from '@/ui/state/ui/hooks';
 import { amountToSatoshis, isValidAddress, satoshisToAmount, useWallet } from '@/ui/utils';
 import {
     DollarOutlined,
     FileTextOutlined,
     InfoCircleOutlined,
+    LoadingOutlined,
+    LockOutlined,
     SendOutlined,
     ThunderboltOutlined,
-    WalletOutlined
+    UnlockOutlined
 } from '@ant-design/icons';
 import { Address, AddressTypes, AddressVerificator } from '@btc-vision/transaction';
-import { BitcoinUtils } from 'opnet';
 
 BigNumber.config({ EXPONENTIAL_AT: 256 });
 
@@ -40,6 +41,19 @@ const colors = {
     warning: '#fbbf24'
 };
 
+interface AddressBalance {
+    type: 'current' | 'csv75' | 'csv1';
+    label: string;
+    address: string;
+    balance: string;
+    totalBalance?: string; // For CSV addresses, show total
+    lockedBalance?: string; // For CSV addresses, show locked amount
+    satoshis: bigint;
+    available: boolean;
+    lockTime?: number;
+    description: string;
+}
+
 export default function TxCreateScreen() {
     const navigate = useNavigate();
     const btcUnit = useBTCUnit();
@@ -47,7 +61,6 @@ export default function TxCreateScreen() {
     const uiState = useUiTxCreateScreen();
     const account = useCurrentAccount();
     const wallet = useWallet();
-    const chain = useChain();
 
     const { toInfo, inputAmount, enableRBF, feeRate } = uiState;
 
@@ -56,10 +69,13 @@ export default function TxCreateScreen() {
     const [showP2PKWarning, setDisplayP2PKWarning] = useState(false);
     const [showP2OPWarning, setDisplayP2OPWarning] = useState(false);
     const [autoAdjust, setAutoAdjust] = useState(false);
-    const [totalBalanceValue, setTotalBalanceValue] = useState('0');
-    const [balanceValue, setBalanceValue] = useState('0');
-    const [balanceValueInSatoshis, setBalanceValueInSatoshis] = useState(0n);
     const [note, setNote] = useState<string>('');
+
+    // Address selection states
+    const [addressBalances, setAddressBalances] = useState<AddressBalance[]>([]);
+    const [selectedBalance, setSelectedBalance] = useState<AddressBalance | null>(null);
+    const [loadingBalances, setLoadingBalances] = useState(true);
+    const [hasSelectedAddress, setHasSelectedAddress] = useState(false);
 
     useEffect(() => {
         void (async () => {
@@ -68,22 +84,81 @@ export default function TxCreateScreen() {
         })();
     }, [wallet]);
 
+    // Fetch all address balances including CSV addresses
     useEffect(() => {
-        const fetchTotalBalanceValue = async () => {
-            const addressBalance = await wallet.getAddressBalance(account.address);
-            setTotalBalanceValue(addressBalance.amount);
-        };
-        void fetchTotalBalanceValue();
-    }, [account.address, wallet]);
+        const fetchAllBalances = async () => {
+            setLoadingBalances(true);
+            try {
+                const currentAddress = Address.fromString(account.pubkey);
 
-    useEffect(() => {
-        const fetchBalanceValue = async () => {
-            const addressBalance = await wallet.getAddressBalance(account.address);
-            setBalanceValue(addressBalance.amount);
-            setBalanceValueInSatoshis(BigInt(amountToSatoshis(addressBalance.amount)));
+                // Get all balances in one call
+                const currentBalance = await wallet.getAddressBalance(account.address, account.pubkey);
+
+                // Get CSV addresses for display
+                const csv75Address = currentAddress.toCSV(75, Web3API.network);
+                const csv1Address = currentAddress.toCSV(1, Web3API.network);
+
+                const balances: AddressBalance[] = [];
+
+                // Always add current address
+                balances.push({
+                    type: 'current',
+                    label: 'Primary Wallet',
+                    address: account.address,
+                    balance: currentBalance.amount,
+                    satoshis: BigInt(amountToSatoshis(currentBalance.amount)),
+                    available: true,
+                    description: 'Standard wallet address'
+                });
+
+                // Check CSV75 balance from the response
+                if (currentBalance.csv75_total_amount && currentBalance.csv75_total_amount !== '0') {
+                    const csv75UnlockedAmount = currentBalance.csv75_unlocked_amount || '0';
+                    const csv75LockedAmount = currentBalance.csv75_locked_amount || '0';
+                    const hasUnlocked = csv75UnlockedAmount !== '0';
+
+                    balances.push({
+                        type: 'csv75',
+                        label: 'CSV-75 Mining Rewards',
+                        address: csv75Address.address,
+                        balance: csv75UnlockedAmount,
+                        totalBalance: currentBalance.csv75_total_amount,
+                        lockedBalance: csv75LockedAmount,
+                        satoshis: BigInt(amountToSatoshis(csv75UnlockedAmount)),
+                        available: hasUnlocked,
+                        lockTime: 75,
+                        description: 'SHA1 mining rewards (75 block lock)'
+                    });
+                }
+
+                // Check CSV1 balance from the response
+                if (currentBalance.csv1_total_amount && currentBalance.csv1_total_amount !== '0') {
+                    const csv1UnlockedAmount = currentBalance.csv1_unlocked_amount || '0';
+                    const hasUnlocked = csv1UnlockedAmount !== '0';
+
+                    balances.push({
+                        type: 'csv1',
+                        label: 'CSV-1 Fast Access',
+                        address: csv1Address.address,
+                        balance: csv1UnlockedAmount,
+                        totalBalance: currentBalance.csv1_total_amount,
+                        satoshis: BigInt(amountToSatoshis(csv1UnlockedAmount)),
+                        available: hasUnlocked,
+                        lockTime: 1,
+                        description: 'Anti-pinning protection (1 block lock)'
+                    });
+                }
+
+                setAddressBalances(balances);
+            } catch (error) {
+                console.error('Failed to fetch balances:', error);
+            } finally {
+                setLoadingBalances(false);
+            }
         };
-        void fetchBalanceValue();
-    }, [chain.enum, account.address, wallet]);
+
+        void fetchAllBalances();
+    }, [account.address, account.pubkey, wallet]);
 
     const toSatoshis = useMemo(() => (inputAmount ? amountToSatoshis(inputAmount) : 0), [inputAmount]);
     const dustAmount = useMemo(() => satoshisToAmount(COIN_DUST), []);
@@ -92,32 +167,40 @@ export default function TxCreateScreen() {
         setError('');
         setDisabled(true);
 
+        if (!selectedBalance) {
+            setError('Please select a source address');
+            return;
+        }
         if (!isValidAddress(toInfo.address)) return;
         if (!toSatoshis) return;
         if (toSatoshis < COIN_DUST) {
             setError(`Minimum amount: ${dustAmount} ${btcUnit}`);
             return;
         }
-        if (toSatoshis > balanceValueInSatoshis) {
+        if (toSatoshis > selectedBalance.satoshis) {
             setError('Insufficient balance');
             return;
         }
         if (feeRate <= 0) return;
 
         setDisabled(false);
-    }, [toInfo, inputAmount, feeRate, enableRBF, toSatoshis, balanceValueInSatoshis, dustAmount, btcUnit]);
+    }, [toInfo, inputAmount, feeRate, enableRBF, toSatoshis, selectedBalance, dustAmount, btcUnit]);
 
     const handleNext = () => {
+        if (!selectedBalance) return;
+
         const event: SendBitcoinParameters = {
             to: toInfo.address,
             inputAmount: parseFloat(inputAmount),
             feeRate,
             features: { [Features.rbf]: true, [Features.taproot]: true },
             priorityFee: 0n,
-            header: `Send ${btcUnit}`,
+            header: `Send ${btcUnit} from ${selectedBalance.label}`,
             tokens: [],
             action: Action.SendBitcoin,
-            note
+            note,
+            from: selectedBalance.address,
+            sourceType: selectedBalance.type
         };
 
         navigate(RouteTypes.TxOpnetConfirmScreen, { rawTxInfo: event });
@@ -152,39 +235,382 @@ export default function TxCreateScreen() {
         [setUiState]
     );
 
+    const handleSelectAddress = (balance: AddressBalance) => {
+        if (balance.available && balance.satoshis > 0n) {
+            setSelectedBalance(balance);
+            setHasSelectedAddress(true);
+            // Clear any existing input amount when switching addresses
+            setUiState({ inputAmount: '' });
+        }
+    };
+
+    // Show address selection screen first
+    if (!hasSelectedAddress) {
+        return (
+            <Layout>
+                <Header title={`Send ${btcUnit}`} onBack={() => window.history.go(-1)} />
+
+                <Content style={{ padding: '16px' }}>
+                    <Column>
+                        {/* Title */}
+                        <div
+                            style={{
+                                textAlign: 'center',
+                                marginBottom: '24px'
+                            }}>
+                            <h2
+                                style={{
+                                    fontSize: '18px',
+                                    fontWeight: 600,
+                                    color: colors.text,
+                                    marginBottom: '8px'
+                                }}>
+                                Select Source Address
+                            </h2>
+                            <p
+                                style={{
+                                    fontSize: '13px',
+                                    color: colors.textFaded
+                                }}>
+                                Choose which address to send from
+                            </p>
+                        </div>
+
+                        {loadingBalances ? (
+                            <div
+                                style={{
+                                    textAlign: 'center',
+                                    padding: '60px 20px'
+                                }}>
+                                <LoadingOutlined style={{ fontSize: 32, color: colors.main }} />
+                                <div
+                                    style={{
+                                        fontSize: '14px',
+                                        color: colors.textFaded,
+                                        marginTop: '16px'
+                                    }}>
+                                    Loading balances...
+                                </div>
+                            </div>
+                        ) : (
+                            <div
+                                style={{
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    gap: '12px'
+                                }}>
+                                {addressBalances.map((balance) => {
+                                    const isDisabled = !balance.available || balance.satoshis === 0n;
+                                    const hasBalance = balance.satoshis > 0n;
+
+                                    return (
+                                        <button
+                                            key={balance.type}
+                                            style={{
+                                                width: '100%',
+                                                padding: '16px',
+                                                background: colors.containerBgFaded,
+                                                border: `1px solid ${colors.containerBorder}`,
+                                                borderRadius: '14px',
+                                                cursor: isDisabled ? 'not-allowed' : 'pointer',
+                                                opacity: isDisabled ? 0.6 : 1,
+                                                transition: 'all 0.2s',
+                                                textAlign: 'left',
+                                                position: 'relative',
+                                                overflow: 'hidden'
+                                            }}
+                                            onClick={() => handleSelectAddress(balance)}
+                                            disabled={isDisabled}
+                                            onMouseEnter={(e) => {
+                                                if (!isDisabled) {
+                                                    e.currentTarget.style.borderColor = colors.main;
+                                                    e.currentTarget.style.transform = 'translateY(-2px)';
+                                                    e.currentTarget.style.boxShadow = `0 4px 12px ${colors.main}20`;
+                                                }
+                                            }}
+                                            onMouseLeave={(e) => {
+                                                e.currentTarget.style.borderColor = colors.containerBorder;
+                                                e.currentTarget.style.transform = 'translateY(0)';
+                                                e.currentTarget.style.boxShadow = 'none';
+                                            }}>
+                                            {/* Card Header */}
+                                            <div
+                                                style={{
+                                                    display: 'flex',
+                                                    justifyContent: 'space-between',
+                                                    alignItems: 'flex-start',
+                                                    marginBottom: '12px'
+                                                }}>
+                                                <div>
+                                                    <div
+                                                        style={{
+                                                            fontSize: '14px',
+                                                            fontWeight: 600,
+                                                            color: colors.text,
+                                                            marginBottom: '4px',
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            gap: '8px'
+                                                        }}>
+                                                        {balance.label}
+                                                        {balance.type === 'current' && (
+                                                            <span
+                                                                style={{
+                                                                    fontSize: '10px',
+                                                                    padding: '2px 6px',
+                                                                    background: colors.main + '20',
+                                                                    color: colors.main,
+                                                                    borderRadius: '4px',
+                                                                    fontWeight: 600
+                                                                }}>
+                                                                PRIMARY
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                    <div
+                                                        style={{
+                                                            fontSize: '11px',
+                                                            color: colors.textFaded
+                                                        }}>
+                                                        {balance.description}
+                                                    </div>
+                                                </div>
+
+                                                {balance.type !== 'current' && (
+                                                    <div
+                                                        style={{
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            gap: '4px'
+                                                        }}>
+                                                        {balance.available ? (
+                                                            <UnlockOutlined
+                                                                style={{
+                                                                    fontSize: 14,
+                                                                    color: colors.success
+                                                                }}
+                                                            />
+                                                        ) : (
+                                                            <LockOutlined
+                                                                style={{
+                                                                    fontSize: 14,
+                                                                    color: colors.warning
+                                                                }}
+                                                            />
+                                                        )}
+                                                    </div>
+                                                )}
+                                            </div>
+
+                                            {/* Balance Display */}
+                                            <div
+                                                style={{
+                                                    padding: '12px',
+                                                    background: colors.inputBg,
+                                                    borderRadius: '10px',
+                                                    marginBottom: balance.lockedBalance ? '8px' : '0'
+                                                }}>
+                                                <div
+                                                    style={{
+                                                        display: 'flex',
+                                                        justifyContent: 'space-between',
+                                                        alignItems: 'center'
+                                                    }}>
+                                                    <span
+                                                        style={{
+                                                            fontSize: '12px',
+                                                            color: colors.textFaded
+                                                        }}>
+                                                        Available
+                                                    </span>
+                                                    <span
+                                                        style={{
+                                                            fontSize: '16px',
+                                                            fontWeight: 600,
+                                                            color: hasBalance ? colors.success : colors.textFaded
+                                                        }}>
+                                                        {balance.balance} {btcUnit}
+                                                    </span>
+                                                </div>
+                                            </div>
+
+                                            {/* Locked Balance Info */}
+                                            {balance.lockedBalance && balance.lockedBalance !== '0' && (
+                                                <div
+                                                    style={{
+                                                        display: 'flex',
+                                                        justifyContent: 'space-between',
+                                                        alignItems: 'center',
+                                                        padding: '8px 12px',
+                                                        background: `${colors.warning}10`,
+                                                        borderRadius: '8px',
+                                                        fontSize: '11px'
+                                                    }}>
+                                                    <span style={{ color: colors.warning }}>
+                                                        <LockOutlined style={{ marginRight: '4px' }} />
+                                                        Locked ({balance.lockTime} blocks)
+                                                    </span>
+                                                    <span
+                                                        style={{
+                                                            color: colors.warning,
+                                                            fontWeight: 600
+                                                        }}>
+                                                        {balance.lockedBalance} {btcUnit}
+                                                    </span>
+                                                </div>
+                                            )}
+
+                                            {/* Total if different from available */}
+                                            {balance.totalBalance && balance.totalBalance !== balance.balance && (
+                                                <div
+                                                    style={{
+                                                        marginTop: '8px',
+                                                        paddingTop: '8px',
+                                                        borderTop: `1px solid ${colors.containerBorder}`,
+                                                        display: 'flex',
+                                                        justifyContent: 'space-between',
+                                                        fontSize: '11px'
+                                                    }}>
+                                                    <span style={{ color: colors.textFaded }}>Total Balance</span>
+                                                    <span style={{ color: colors.textFaded }}>
+                                                        {balance.totalBalance} {btcUnit}
+                                                    </span>
+                                                </div>
+                                            )}
+
+                                            {/* Select indicator */}
+                                            {!isDisabled && (
+                                                <div
+                                                    style={{
+                                                        position: 'absolute',
+                                                        top: '50%',
+                                                        right: '16px',
+                                                        transform: 'translateY(-50%)',
+                                                        width: '32px',
+                                                        height: '32px',
+                                                        borderRadius: '50%',
+                                                        background: colors.main + '20',
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        justifyContent: 'center'
+                                                    }}>
+                                                    <SendOutlined
+                                                        style={{
+                                                            fontSize: 14,
+                                                            color: colors.main
+                                                        }}
+                                                    />
+                                                </div>
+                                            )}
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        )}
+
+                        {/* Info message if only one address */}
+                        {addressBalances.length === 1 && !loadingBalances && (
+                            <div
+                                style={{
+                                    marginTop: '16px',
+                                    padding: '12px',
+                                    background: `${colors.main}10`,
+                                    border: `1px solid ${colors.main}20`,
+                                    borderRadius: '10px',
+                                    textAlign: 'center'
+                                }}>
+                                <InfoCircleOutlined
+                                    style={{
+                                        fontSize: 14,
+                                        color: colors.main,
+                                        marginBottom: '4px'
+                                    }}
+                                />
+                                <p
+                                    style={{
+                                        fontSize: '12px',
+                                        color: colors.main,
+                                        margin: 0
+                                    }}>
+                                    No CSV addresses with balance detected
+                                </p>
+                            </div>
+                        )}
+                    </Column>
+                </Content>
+            </Layout>
+        );
+    }
+
+    // Main transaction form after address selection
     return (
         <Layout>
-            <Header title={`Send ${btcUnit}`} onBack={() => window.history.go(-1)} />
+            <Header title={`Send ${btcUnit}`} onBack={() => setHasSelectedAddress(false)} />
 
             <Content style={{ padding: '12px' }}>
                 <Column>
-                    {/* Network Badge */}
+                    {/* Selected Address Display */}
                     <div
                         style={{
+                            background: `linear-gradient(135deg, ${colors.main}15 0%, ${colors.main}08 100%)`,
+                            border: `1px solid ${colors.main}30`,
+                            borderRadius: '12px',
+                            padding: '12px',
+                            marginBottom: '16px',
                             display: 'flex',
-                            justifyContent: 'center',
-                            marginBottom: '16px'
+                            justifyContent: 'space-between',
+                            alignItems: 'center'
                         }}>
-                        <div
-                            style={{
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: '8px',
-                                padding: '6px 12px',
-                                background: colors.containerBgFaded,
-                                borderRadius: '20px',
-                                border: `1px solid ${colors.containerBorder}`
-                            }}>
-                            <Image src={chain.icon} size={16} />
-                            <span
+                        <div>
+                            <div
                                 style={{
-                                    fontSize: '12px',
+                                    fontSize: '11px',
+                                    color: colors.main,
+                                    fontWeight: 600,
+                                    textTransform: 'uppercase',
+                                    letterSpacing: '0.5px',
+                                    marginBottom: '4px'
+                                }}>
+                                Sending From
+                            </div>
+                            <div
+                                style={{
+                                    fontSize: '13px',
                                     color: colors.text,
                                     fontWeight: 500
                                 }}>
-                                {chain.label}
-                            </span>
+                                {selectedBalance?.label}
+                            </div>
+                            <div
+                                style={{
+                                    fontSize: '12px',
+                                    color: colors.success,
+                                    marginTop: '2px'
+                                }}>
+                                {selectedBalance?.balance} {btcUnit} available
+                            </div>
                         </div>
+                        <button
+                            style={{
+                                padding: '6px 10px',
+                                background: colors.buttonHoverBg,
+                                border: `1px solid ${colors.containerBorder}`,
+                                borderRadius: '8px',
+                                color: colors.text,
+                                fontSize: '11px',
+                                fontWeight: 600,
+                                cursor: 'pointer',
+                                transition: 'all 0.15s'
+                            }}
+                            onClick={() => setHasSelectedAddress(false)}
+                            onMouseEnter={(e) => {
+                                e.currentTarget.style.background = colors.buttonBg;
+                            }}
+                            onMouseLeave={(e) => {
+                                e.currentTarget.style.background = colors.buttonHoverBg;
+                            }}>
+                            Change
+                        </button>
                     </div>
 
                     {/* Recipient Section */}
@@ -202,7 +628,7 @@ export default function TxCreateScreen() {
                                 gap: '6px',
                                 marginBottom: '10px'
                             }}>
-                            <WalletOutlined style={{ fontSize: 14, color: colors.main }} />
+                            <SendOutlined style={{ fontSize: 14, color: colors.main }} />
                             <span
                                 style={{
                                     fontSize: '12px',
@@ -219,7 +645,7 @@ export default function TxCreateScreen() {
                             preset="address"
                             addressInputData={toInfo}
                             onAddressInputChange={(val) => onSetAddress(val)}
-                            placeholder="Enter address"
+                            placeholder="Enter recipient address"
                             autoFocus
                             style={{
                                 background: colors.inputBg,
@@ -266,8 +692,7 @@ export default function TxCreateScreen() {
                                             marginTop: '4px',
                                             opacity: 0.9
                                         }}>
-                                        Funds will be sent to the associated Taproot address. Only proceed if you
-                                        understand this conversion.
+                                        Funds will be sent to the associated Taproot address.
                                     </span>
                                 </div>
                             </div>
@@ -310,8 +735,7 @@ export default function TxCreateScreen() {
                                             marginTop: '4px',
                                             opacity: 0.9
                                         }}>
-                                        P2OP addresses are contract addresses and cannot receive direct BTC transfers.
-                                        Please use an alternative address.
+                                        Cannot send BTC directly to contract addresses.
                                     </span>
                                 </div>
                             </div>
@@ -330,27 +754,20 @@ export default function TxCreateScreen() {
                             style={{
                                 display: 'flex',
                                 alignItems: 'center',
-                                justifyContent: 'space-between',
+                                gap: '6px',
                                 marginBottom: '10px'
                             }}>
-                            <div
+                            <DollarOutlined style={{ fontSize: 14, color: colors.main }} />
+                            <span
                                 style={{
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '6px'
+                                    fontSize: '12px',
+                                    fontWeight: 600,
+                                    color: colors.textFaded,
+                                    textTransform: 'uppercase',
+                                    letterSpacing: '0.5px'
                                 }}>
-                                <DollarOutlined style={{ fontSize: 14, color: colors.main }} />
-                                <span
-                                    style={{
-                                        fontSize: '12px',
-                                        fontWeight: 600,
-                                        color: colors.textFaded,
-                                        textTransform: 'uppercase',
-                                        letterSpacing: '0.5px'
-                                    }}>
-                                    Amount
-                                </span>
-                            </div>
+                                Amount
+                            </span>
                         </div>
 
                         <div style={{ position: 'relative' }}>
@@ -386,8 +803,10 @@ export default function TxCreateScreen() {
                                     transition: 'all 0.15s'
                                 }}
                                 onClick={() => {
-                                    setAutoAdjust(true);
-                                    setUiState({ inputAmount: balanceValue });
+                                    if (selectedBalance) {
+                                        setAutoAdjust(true);
+                                        setUiState({ inputAmount: selectedBalance.balance });
+                                    }
                                 }}
                                 onMouseEnter={(e) => {
                                     e.currentTarget.style.transform = 'translateY(-50%) scale(1.05)';
@@ -397,48 +816,6 @@ export default function TxCreateScreen() {
                                 }}>
                                 MAX
                             </button>
-                        </div>
-
-                        {/* Balance Info */}
-                        <div
-                            style={{
-                                marginTop: '10px',
-                                padding: '8px',
-                                background: colors.inputBg,
-                                borderRadius: '8px'
-                            }}>
-                            <div
-                                style={{
-                                    display: 'flex',
-                                    justifyContent: 'space-between',
-                                    marginBottom: '4px'
-                                }}>
-                                <span style={{ fontSize: '11px', color: colors.textFaded }}>Available</span>
-                                <span
-                                    style={{
-                                        fontSize: '11px',
-                                        color: colors.success,
-                                        fontWeight: 600
-                                    }}>
-                                    {balanceValue} {btcUnit}
-                                </span>
-                            </div>
-                            {chain.enum !== ChainType.BITCOIN_REGTEST && (
-                                <div
-                                    style={{
-                                        display: 'flex',
-                                        justifyContent: 'space-between'
-                                    }}>
-                                    <span style={{ fontSize: '11px', color: colors.textFaded }}>Total Balance</span>
-                                    <span
-                                        style={{
-                                            fontSize: '11px',
-                                            color: colors.textFaded
-                                        }}>
-                                        {totalBalanceValue} {btcUnit}
-                                    </span>
-                                </div>
-                            )}
                         </div>
 
                         {error && (
@@ -492,13 +869,13 @@ export default function TxCreateScreen() {
                         <FeeRateBar onChange={(val) => setUiState({ feeRate: val })} />
                     </div>
 
-                    {/* Note Section (Optional) */}
+                    {/* Note Section */}
                     <div
                         style={{
                             background: colors.containerBgFaded,
                             borderRadius: '12px',
                             padding: '14px',
-                            marginBottom: '12px'
+                            marginBottom: '80px'
                         }}>
                         <div
                             style={{
@@ -544,48 +921,6 @@ export default function TxCreateScreen() {
                             }}
                         />
                     </div>
-
-                    {/* Summary */}
-                    <div
-                        style={{
-                            padding: '12px',
-                            background: `linear-gradient(135deg, ${colors.main}10 0%, ${colors.main}05 100%)`,
-                            border: `1px solid ${colors.main}20`,
-                            borderRadius: '10px',
-                            marginBottom: '80px'
-                        }}>
-                        <div
-                            style={{
-                                display: 'flex',
-                                justifyContent: 'space-between',
-                                alignItems: 'center'
-                            }}>
-                            <span
-                                style={{
-                                    fontSize: '12px',
-                                    color: colors.textFaded
-                                }}>
-                                Total Amount (est.)
-                            </span>
-                            <div style={{ textAlign: 'right' }}>
-                                <div
-                                    style={{
-                                        fontSize: '16px',
-                                        fontWeight: 600,
-                                        color: colors.text
-                                    }}>
-                                    {BitcoinUtils.formatUnits(toSatoshis, 8)} {btcUnit}
-                                </div>
-                                <div
-                                    style={{
-                                        fontSize: '10px',
-                                        color: colors.textFaded
-                                    }}>
-                                    + network fee
-                                </div>
-                            </div>
-                        </div>
-                    </div>
                 </Column>
             </Content>
 
@@ -630,7 +965,7 @@ export default function TxCreateScreen() {
                         e.currentTarget.style.transform = 'translateY(0)';
                         e.currentTarget.style.boxShadow = 'none';
                     }}>
-                    <span>Review Transaction</span>
+                    <span>Continue</span>
                     <SendOutlined style={{ fontSize: 14 }} />
                 </button>
             </div>

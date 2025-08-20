@@ -71,6 +71,8 @@ export interface AirdropParameters extends BaseRawTxInfo<Action.Airdrop> {
 export interface SendBitcoinParameters extends BaseRawTxInfo<Action.SendBitcoin> {
     readonly to: string;
     readonly inputAmount: number;
+    readonly from?: string; // Optional: source address (current, CSV75, or CSV1)
+    readonly sourceType?: 'current' | 'csv75' | 'csv1'; // Optional: type of source address
 }
 
 export interface DeployContractParameters extends BaseRawTxInfo<Action.DeployContract> {
