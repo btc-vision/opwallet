@@ -5,6 +5,7 @@ import {
     MintParameters,
     RawTxInfo,
     SendBitcoinParameters,
+    SourceType,
     SwapParameters,
     TransferParameters
 } from '@/shared/interfaces/RawTxParameters';
@@ -340,10 +341,10 @@ export default function TxOpnetConfirmScreen() {
             let witnessScript: Buffer | undefined;
 
             // Check if sending from a CSV address
-            if (parameters.from && parameters.sourceType && parameters.sourceType !== 'current') {
+            if (parameters.from && parameters.sourceType && parameters.sourceType !== SourceType.CURRENT) {
                 const currentAddress = Address.fromString(currentWalletAddress.pubkey);
 
-                if (parameters.sourceType === 'csv75') {
+                if (parameters.sourceType === SourceType.CSV75) {
                     const csv75Address = currentAddress.toCSV(75, Web3API.network);
                     fromAddress = csv75Address.address;
                     witnessScript = csv75Address.witnessScript;
@@ -353,7 +354,7 @@ export default function TxOpnetConfirmScreen() {
                         BitcoinUtils.expandToDecimals(parameters.inputAmount * 1.5, 8),
                         75n
                     );
-                } else if (parameters.sourceType === 'csv1') {
+                } else if (parameters.sourceType === SourceType.CSV1) {
                     const csv1Address = currentAddress.toCSV(1, Web3API.network);
                     fromAddress = csv1Address.address;
                     witnessScript = csv1Address.witnessScript;
@@ -408,9 +409,9 @@ export default function TxOpnetConfirmScreen() {
 
             const amountA = Number(parameters.inputAmount).toLocaleString();
             const sourceLabel =
-                parameters.sourceType === 'csv75'
+                parameters.sourceType === SourceType.CSV75
                     ? ' from CSV-75'
-                    : parameters.sourceType === 'csv1'
+                    : parameters.sourceType === SourceType.CSV1
                       ? ' from CSV-1'
                       : '';
             tools.toastSuccess(`You have successfully transferred ${amountA} ${btcUnit}${sourceLabel}`);

@@ -2,7 +2,7 @@ import BigNumber from 'bignumber.js';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { COIN_DUST } from '@/shared/constant';
-import { Action, Features, SendBitcoinParameters } from '@/shared/interfaces/RawTxParameters';
+import { Action, Features, SendBitcoinParameters, SourceType } from '@/shared/interfaces/RawTxParameters';
 import Web3API from '@/shared/web3/Web3API';
 import { Column, Content, Header, Input, Layout } from '@/ui/components';
 import { FeeRateBar } from '@/ui/components/FeeRateBar';
@@ -42,7 +42,7 @@ const colors = {
 };
 
 interface AddressBalance {
-    type: 'current' | 'csv75' | 'csv1';
+    type: SourceType;
     label: string;
     address: string;
     balance: string;
@@ -353,7 +353,7 @@ export default function TxCreateScreen() {
                                                             gap: '8px'
                                                         }}>
                                                         {balance.label}
-                                                        {balance.type === 'current' && (
+                                                        {balance.type === SourceType.CURRENT && (
                                                             <span
                                                                 style={{
                                                                     fontSize: '10px',
@@ -376,7 +376,7 @@ export default function TxCreateScreen() {
                                                     </div>
                                                 </div>
 
-                                                {balance.type !== 'current' && (
+                                                {balance.type !== SourceType.CURRENT && (
                                                     <div
                                                         style={{
                                                             display: 'flex',
