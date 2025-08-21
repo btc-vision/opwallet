@@ -545,8 +545,34 @@ const config = (env) => {
             extensions: ['.js', '.jsx', '.ts', '.tsx']
         },
         stats: 'minimal',
-        // If you want to re-enable code splitting, do it here:
-        // optimization: { ... }
+        optimization: {
+            concatenateModules: false,  // Keep this disabled
+            moduleIds: 'deterministic',  // Add this
+            chunkIds: 'deterministic',   // Add this
+            runtimeChunk: {
+                name: 'runtime'  // Create a separate runtime chunk
+            },
+            splitChunks: {
+                chunks: 'all',
+                cacheGroups: {
+                    // Separate vendor chunks to avoid conflicts
+                    vendor: {
+                        test: /[\\/]node_modules[\\/]/,
+                        name: 'vendors',
+                        priority: -10
+                    },
+                    default: {
+                        minChunks: 2,
+                        priority: -20,
+                        reuseExistingChunk: true
+                    }
+                }
+            },
+            // Add this to ensure proper module isolation
+            usedExports: true,
+            providedExports: true,
+            sideEffects: false
+        },
         experiments: {
             asyncWebAssembly: true,
             topLevelAwait: true,

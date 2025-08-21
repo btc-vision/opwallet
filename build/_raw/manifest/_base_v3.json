@@ -33,13 +33,15 @@
             "matches": ["<all_urls>"],
             "js": ["content-script.js"],
             "run_at": "document_start",
-            "all_frames": true
+            "all_frames": true,
+            "type": "module"
         }
     ],
     "web_accessible_resources": [
         {
             "resources": ["pageProvider.js"],
-            "matches": ["<all_urls>"]
+            "matches": ["<all_urls>"],
+            "type": "module"
         }
     ],
     "content_security_policy": {

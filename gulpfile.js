@@ -141,12 +141,12 @@ export function task_uglify() {
                 compress: {
                     drop_console: false, // Keep console logs
                     drop_debugger: false, // Keep debugger statements
-                    // Remove pure_funcs since you want to keep console logs
                     passes: 2 // Multiple compression passes for better results
                 },
                 mangle: {
                     toplevel: true, // Mangle top-level variable names
                     properties: false,
+                    keep_fnames: false,
                     reserved: [
                         '$',
                         'jQuery',
@@ -161,7 +161,8 @@ export function task_uglify() {
                         'global',
                         'globalThis',
                         'console',
-                        'process'
+                        'process',
+                        'Buffer'
                     ]
                 },
                 output: {
