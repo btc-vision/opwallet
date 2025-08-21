@@ -134,6 +134,7 @@ export default function TxCreateScreen() {
                 // Check CSV1 balance from the response
                 if (currentBalance.csv1_total_amount && currentBalance.csv1_total_amount !== '0') {
                     const csv1UnlockedAmount = currentBalance.csv1_unlocked_amount || '0';
+                    const csv1LockedAmount = currentBalance.csv1_locked_amount || '0';
                     const hasUnlocked = csv1UnlockedAmount !== '0';
 
                     balances.push({
@@ -142,6 +143,7 @@ export default function TxCreateScreen() {
                         address: csv1Address.address,
                         balance: csv1UnlockedAmount,
                         totalBalance: currentBalance.csv1_total_amount,
+                        lockedBalance: csv1LockedAmount,
                         satoshis: BigInt(amountToSatoshis(csv1UnlockedAmount)),
                         available: hasUnlocked,
                         lockTime: 1,
