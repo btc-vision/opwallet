@@ -479,31 +479,6 @@ export default function TxCreateScreen() {
                                                     </span>
                                                 </div>
                                             )}
-
-                                            {/* Select indicator */}
-                                            {!isDisabled && (
-                                                <div
-                                                    style={{
-                                                        position: 'absolute',
-                                                        top: '50%',
-                                                        right: '16px',
-                                                        transform: 'translateY(-50%)',
-                                                        width: '32px',
-                                                        height: '32px',
-                                                        borderRadius: '50%',
-                                                        background: colors.main + '20',
-                                                        display: 'flex',
-                                                        alignItems: 'center',
-                                                        justifyContent: 'center'
-                                                    }}>
-                                                    <SendOutlined
-                                                        style={{
-                                                            fontSize: 14,
-                                                            color: colors.main
-                                                        }}
-                                                    />
-                                                </div>
-                                            )}
                                         </button>
                                     );
                                 })}
