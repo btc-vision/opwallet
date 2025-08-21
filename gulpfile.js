@@ -131,16 +131,49 @@ export function task_webpack(cb) {
     );
 }
 
+const nameCache = {};
+
 export function task_uglify() {
     return gulp
         .src(`dist/${options.browser}/**/*.js`)
         .pipe(
             uglify({
-                compress: true,
-                //mangle: {
-                //    toplevel: true
-                //},
-                ecma: 2023
+                compress: {
+                    drop_console: false, // Keep console logs
+                    drop_debugger: false, // Keep debugger statements
+                    passes: 2 // Multiple compression passes for better results
+                },
+                /*mangle: {
+                    toplevel: true, // Mangle top-level variable names
+                    properties: false,
+                    keep_fnames: false,
+                    reserved: [
+                        '$',
+                        'jQuery',
+                        '_',
+                        'exports',
+                        'require',
+                        'module',
+                        'chrome',
+                        'browser',
+                        'window',
+                        'document',
+                        'global',
+                        'globalThis',
+                        'console',
+                        'process',
+                        'Buffer'
+                    ]
+                },*/
+                output: {
+                    comments: false, // Remove all comments
+                    beautify: false,
+                    ascii_only: true // Escape non-ASCII characters
+                },
+                ecma: 2023,
+                module: false, // Enable ES module optimizations
+                toplevel: false, // Enable top-level variable/function name mangling
+                nameCache: nameCache // Cache mangled names for consistency across files
             })
         )
         .pipe(gulp.dest(`dist/${options.browser}`));

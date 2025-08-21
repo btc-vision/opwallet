@@ -37,7 +37,8 @@
             "matches": ["<all_urls>"],
             "js": ["content-script.js"],
             "run_at": "document_start",
-            "all_frames": true
+            "all_frames": true,
+            "type": "module"
         }
     ],
     "content_security_policy": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self'",

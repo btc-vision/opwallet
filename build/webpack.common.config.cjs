@@ -163,11 +163,11 @@ const config = (env) => {
             path: paths.dist,
             filename: '[name].js',
             publicPath: '/',
-            module: true, // Enable ES modules output
-            chunkFormat: 'module', // Use ES module format for chunks
+            module: false,
+            chunkFormat: 'array-push',
             environment: {
-                module: true,
-                dynamicImport: true // MV3 supports dynamic imports
+                module: false,
+                dynamicImport: true
             }
         },
         module: {
@@ -492,21 +492,21 @@ const config = (env) => {
                 template: paths.notificationHtml,
                 chunks: ['ui'],
                 filename: 'notification.html',
-                scriptLoading: 'module'
+                //scriptLoading: 'module'
             }),
             new HtmlWebpackPlugin({
                 inject: true,
                 template: paths.indexHtml,
                 chunks: ['ui'],
                 filename: 'index.html',
-                scriptLoading: 'module'
+                //scriptLoading: 'module'
             }),
             new HtmlWebpackPlugin({
                 inject: true,
                 template: paths.backgroundHtml,
                 chunks: ['background'],
                 filename: 'background.html',
-                scriptLoading: 'module'
+                //scriptLoading: 'module'
             }),
             new webpack.ProvidePlugin({
                 Buffer: ['buffer', 'Buffer'],
@@ -545,12 +545,45 @@ const config = (env) => {
             extensions: ['.js', '.jsx', '.ts', '.tsx']
         },
         stats: 'minimal',
-        // If you want to re-enable code splitting, do it here:
-        // optimization: { ... }
+        optimization: {
+            concatenateModules: false,  // Keep this disabled
+            moduleIds: 'deterministic',  // Add this
+            chunkIds: 'deterministic',   // Add this
+            runtimeChunk: false,
+            /*splitChunks: {
+                chunks: 'all',
+                cacheGroups: {
+                    // Vendor chunks for dependencies
+                    vendor: {
+                        test: /[\\/]node_modules[\\/]/,
+                        name: 'vendor',  // Single vendor chunk for MV3
+                        priority: 10,
+                        enforce: true
+                    },
+                    // Common chunks for shared code
+                    common: {
+                        minChunks: 2,
+                        priority: 5,
+                        name: 'common',
+                        reuseExistingChunk: true
+                    }
+                }
+            },*/
+            splitChunks: false,
+            usedExports: true,
+            providedExports: true,
+            sideEffects: false,
+
+            // Additional MV3-specific optimizations
+            minimize: true,  // Enable minification in production
+            removeAvailableModules: true,
+            removeEmptyChunks: true,
+            mergeDuplicateChunks: true
+        },
         experiments: {
             asyncWebAssembly: true,
             topLevelAwait: true,
-            outputModule: true
+            outputModule: false
         },
         target: 'web'
     };
