@@ -143,7 +143,7 @@ export function task_uglify() {
                     drop_debugger: false, // Keep debugger statements
                     passes: 2 // Multiple compression passes for better results
                 },
-                mangle: {
+                /*mangle: {
                     toplevel: true, // Mangle top-level variable names
                     properties: false,
                     keep_fnames: false,
@@ -164,15 +164,15 @@ export function task_uglify() {
                         'process',
                         'Buffer'
                     ]
-                },
+                },*/
                 output: {
                     comments: false, // Remove all comments
                     beautify: false,
                     ascii_only: true // Escape non-ASCII characters
                 },
                 ecma: 2023,
-                module: true, // Enable ES module optimizations
-                toplevel: true, // Enable top-level variable/function name mangling
+                module: false, // Enable ES module optimizations
+                toplevel: false, // Enable top-level variable/function name mangling
                 nameCache: nameCache // Cache mangled names for consistency across files
             })
         )
