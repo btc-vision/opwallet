@@ -200,9 +200,9 @@ export class ProviderController {
 
         const balance = await wallet.getAddressBalance(account.address);
         return {
-            confirmed: amountToSatoshis(balance.confirm_amount),
-            unconfirmed: amountToSatoshis(balance.pending_amount),
-            total: amountToSatoshis(balance.amount)
+            total: amountToSatoshis(balance.btc_total_amount),
+            confirmed: amountToSatoshis(balance.btc_confirm_amount),
+            unconfirmed: amountToSatoshis(balance.btc_pending_amount)
         };
     };
 

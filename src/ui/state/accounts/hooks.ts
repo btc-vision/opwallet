@@ -1,6 +1,6 @@
 import { useCallback } from 'react';
 
-import { Account } from '@/shared/types';
+import { Account, BitcoinBalance } from '@/shared/types';
 import { useWallet } from '@/ui/utils';
 import { AppState } from '..';
 import { useAppDispatch, useAppSelector } from '../hooks';
@@ -22,18 +22,11 @@ export function useAccountBalance() {
     const currentAccount = useCurrentAccount();
 
     return (
-        accountsState.balanceMap[currentAccount.address] || {
-            amount: '0',
-            confirm_amount: '0',
-            pending_amount: '0',
-
-            btc_amount: '0',
-            confirm_btc_amount: '0',
-            pending_btc_amount: '0',
-
-            inscription_amount: '0',
-            confirm_inscription_amount: '0',
-            pending_inscription_amount: '0',
+        accountsState.balanceMap[currentAccount.address] ||
+        ({
+            btc_total_amount: '0',
+            btc_confirm_amount: '0',
+            btc_pending_amount: '0',
 
             csv75_total_amount: '0',
             csv75_unlocked_amount: '0',
@@ -44,7 +37,7 @@ export function useAccountBalance() {
             csv1_locked_amount: '0',
 
             usd_value: '0.00'
-        }
+        } as BitcoinBalance)
     );
 }
 
@@ -111,25 +104,17 @@ export function useFetchBalanceCallback() {
             accountActions.setBalance({
                 address: currentAccount.address,
 
-                amount: accountBalance.amount,
-                confirm_amount: accountBalance.confirm_amount,
-                pending_amount: accountBalance.pending_amount,
+                btc_total_amount: accountBalance.btc_total_amount,
+                btc_confirm_amount: accountBalance.btc_confirm_amount,
+                btc_pending_amount: accountBalance.btc_pending_amount,
 
-                btc_amount: accountBalance.btc_amount,
-                confirm_btc_amount: accountBalance.confirm_btc_amount,
-                pending_btc_amount: accountBalance.pending_btc_amount,
+                csv75_total_amount: accountBalance.csv75_total_amount ?? '0',
+                csv75_unlocked_amount: accountBalance.csv75_unlocked_amount ?? '0',
+                csv75_locked_amount: accountBalance.csv75_locked_amount ?? '0',
 
-                csv75_total_amount: accountBalance.csv75_total_amount ?? '',
-                csv75_unlocked_amount: accountBalance.csv75_unlocked_amount ?? '',
-                csv75_locked_amount: accountBalance.csv75_locked_amount ?? '',
-
-                csv1_total_amount: accountBalance.csv1_total_amount ?? '',
-                csv1_unlocked_amount: accountBalance.csv1_unlocked_amount ?? '',
-                csv1_locked_amount: accountBalance.csv1_locked_amount ?? '',
-
-                inscription_amount: accountBalance.inscription_amount,
-                confirm_inscription_amount: accountBalance.confirm_inscription_amount,
-                pending_inscription_amount: accountBalance.pending_inscription_amount,
+                csv1_total_amount: accountBalance.csv1_total_amount ?? '0',
+                csv1_unlocked_amount: accountBalance.csv1_unlocked_amount ?? '0',
+                csv1_locked_amount: accountBalance.csv1_locked_amount ?? '0',
 
                 usd_value: accountBalance.usd_value
             })

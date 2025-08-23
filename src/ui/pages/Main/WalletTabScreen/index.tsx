@@ -116,7 +116,7 @@ export default function WalletTabScreen() {
 
     // Helper function to calculate total balance including CSV amounts
     const calculateTotalBalance = () => {
-        const mainBalance = parseFloat(accountBalance.amount || '0');
+        const mainBalance = parseFloat(accountBalance.btc_total_amount || '0');
         const csv75Total = parseFloat(accountBalance.csv75_total_amount || '0');
         const csv1Total = parseFloat(accountBalance.csv1_total_amount || '0');
 
@@ -306,14 +306,14 @@ export default function WalletTabScreen() {
                                             <span
                                                 style={
                                                     $noBreakStyle
-                                                }>{`${accountBalance.confirm_amount} ${btcUnit}`}</span>
+                                                }>{`${accountBalance.btc_confirm_amount} ${btcUnit}`}</span>
                                         </Row>
                                         <Row justifyBetween style={{ marginBottom: '4px' }}>
                                             <span style={$noBreakStyle}>Pending</span>
                                             <span
                                                 style={
                                                     $noBreakStyle
-                                                }>{`${accountBalance.pending_amount} ${btcUnit}`}</span>
+                                                }>{`${accountBalance.btc_pending_amount} ${btcUnit}`}</span>
                                         </Row>
                                     </div>
 

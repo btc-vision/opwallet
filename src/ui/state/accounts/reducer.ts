@@ -67,44 +67,16 @@ const slice = createSlice({
         setBalance(
             state,
             action: {
-                payload: {
-                    address: string;
-
-                    amount: string;
-                    confirm_amount: string;
-                    pending_amount: string;
-
-                    btc_amount: string;
-                    confirm_btc_amount: string;
-                    pending_btc_amount: string;
-
-                    csv75_total_amount: string;
-                    csv75_unlocked_amount: string;
-                    csv75_locked_amount: string;
-
-                    csv1_total_amount: string;
-                    csv1_unlocked_amount: string;
-                    csv1_locked_amount: string;
-
-                    inscription_amount: string;
-                    confirm_inscription_amount: string;
-                    pending_inscription_amount: string;
-
-                    usd_value: string;
-                };
+                payload: BitcoinBalance & { address: string };
             }
         ) {
             const {
                 payload: {
                     address,
 
-                    amount,
-                    confirm_amount,
-                    pending_amount,
-
-                    btc_amount,
-                    confirm_btc_amount,
-                    pending_btc_amount,
+                    btc_total_amount,
+                    btc_confirm_amount,
+                    btc_pending_amount,
 
                     csv75_total_amount,
                     csv75_unlocked_amount,
@@ -114,43 +86,29 @@ const slice = createSlice({
                     csv1_unlocked_amount,
                     csv1_locked_amount,
 
-                    inscription_amount,
-                    confirm_inscription_amount,
-                    pending_inscription_amount,
-
                     usd_value
                 }
             } = action;
-            state.balanceMap[address] = state.balanceMap[address] || {
-                amount: '0',
-                confirm_amount: '0',
-                pending_amount: '0',
+            state.balanceMap[address] =
+                state.balanceMap[address] ||
+                ({
+                    btc_total_amount: '0',
+                    btc_confirm_amount: '0',
+                    btc_pending_amount: '0',
 
-                btc_amount: '0',
-                confirm_btc_amount: '0',
-                pending_btc_amount: '0',
+                    csv75_total_amount: '0',
+                    csv75_unlocked_amount: '0',
+                    csv75_locked_amount: '0',
 
-                csv75_total_amount: '0',
-                csv75_unlocked_amount: '0',
-                csv75_locked_amount: '0',
+                    csv1_total_amount: '0',
+                    csv1_unlocked_amount: '0',
+                    csv1_locked_amount: '0',
 
-                csv1_total_amount: '0',
-                csv1_unlocked_amount: '0',
-                csv1_locked_amount: '0',
-
-                inscription_amount: '0',
-                confirm_inscription_amount: '0',
-                pending_inscription_amount: '0',
-
-                usd_value: '0.00'
-            };
-            state.balanceMap[address].amount = amount;
-            state.balanceMap[address].confirm_amount = confirm_amount;
-            state.balanceMap[address].pending_amount = pending_amount;
-
-            state.balanceMap[address].btc_amount = btc_amount;
-            state.balanceMap[address].confirm_btc_amount = confirm_btc_amount;
-            state.balanceMap[address].pending_btc_amount = pending_btc_amount;
+                    usd_value: '0.00'
+                } as BitcoinBalance & { address: string });
+            state.balanceMap[address].btc_total_amount = btc_total_amount;
+            state.balanceMap[address].btc_confirm_amount = btc_confirm_amount;
+            state.balanceMap[address].btc_pending_amount = btc_pending_amount;
 
             state.balanceMap[address].csv75_total_amount = csv75_total_amount;
             state.balanceMap[address].csv75_unlocked_amount = csv75_unlocked_amount;
@@ -159,10 +117,6 @@ const slice = createSlice({
             state.balanceMap[address].csv1_total_amount = csv1_total_amount;
             state.balanceMap[address].csv1_unlocked_amount = csv1_unlocked_amount;
             state.balanceMap[address].csv1_locked_amount = csv1_locked_amount;
-
-            state.balanceMap[address].inscription_amount = inscription_amount;
-            state.balanceMap[address].confirm_inscription_amount = confirm_inscription_amount;
-            state.balanceMap[address].pending_inscription_amount = pending_inscription_amount;
 
             state.balanceMap[address].usd_value = usd_value;
         },

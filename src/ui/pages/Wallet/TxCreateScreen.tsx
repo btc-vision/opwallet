@@ -105,8 +105,8 @@ export default function TxCreateScreen() {
                     type: SourceType.CURRENT,
                     label: 'Primary Wallet',
                     address: account.address,
-                    balance: currentBalance.amount,
-                    satoshis: BigInt(amountToSatoshis(currentBalance.amount)),
+                    balance: currentBalance.btc_total_amount,
+                    satoshis: BigInt(amountToSatoshis(currentBalance.btc_total_amount)),
                     available: true,
                     description: 'Standard wallet address'
                 });

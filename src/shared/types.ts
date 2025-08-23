@@ -23,13 +23,9 @@ export enum RestoreWalletType {
 }
 
 export interface BitcoinBalance {
-    amount: string;
-    confirm_amount: string;
-    pending_amount: string;
-
-    btc_amount: string;
-    confirm_btc_amount: string;
-    pending_btc_amount: string;
+    btc_total_amount: string;
+    btc_confirm_amount: string;
+    btc_pending_amount: string;
 
     csv75_total_amount?: string;
     csv75_unlocked_amount?: string;
@@ -38,10 +34,6 @@ export interface BitcoinBalance {
     csv1_total_amount?: string;
     csv1_unlocked_amount?: string;
     csv1_locked_amount?: string;
-
-    inscription_amount: string;
-    confirm_inscription_amount: string;
-    pending_inscription_amount: string;
 
     usd_value: string;
 }

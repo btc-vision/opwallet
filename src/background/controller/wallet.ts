@@ -335,7 +335,7 @@ export class WalletController {
                 const addressBalance = await this.getAddressBalance(address);
                 const summary: AddressSummary = {
                     address: address,
-                    totalSatoshis: Number(addressBalance.amount) * 1e8,
+                    totalSatoshis: Number(addressBalance.btc_total_amount) * 1e8,
                     loading: false
                 };
                 summaries.push(summary);
@@ -1422,7 +1422,9 @@ export class WalletController {
     public listChainAssets = async (pubkeyAddress: string): Promise<AccountAsset[]> => {
         try {
             const balance = await openapiService.getAddressBalance(pubkeyAddress);
-            return [{ name: COIN_NAME, symbol: COIN_SYMBOL, amount: balance.amount, value: balance.usd_value }];
+            return [
+                { name: COIN_NAME, symbol: COIN_SYMBOL, amount: balance.btc_total_amount, value: balance.usd_value }
+            ];
         } catch (err) {
             throw new WalletControllerError(`Failed to list chain assets: ${String(err)}`, {
                 pubkeyAddress
@@ -2294,17 +2296,9 @@ export class WalletController {
                 const pendingAmount = bigIntToDecimal(totalAll - totalUnspent, 8);
 
                 return {
-                    amount: totalAmount, // TODO: To change later when inscriptions are supported
-                    confirm_amount: confirmAmount, // TODO: To change later when inscriptions are supported
-                    pending_amount: pendingAmount, // TODO: To change later when inscriptions are supported
-
-                    btc_amount: totalAmount,
-                    confirm_btc_amount: confirmAmount,
-                    pending_btc_amount: pendingAmount,
-
-                    inscription_amount: '0', // TODO: Add support later
-                    confirm_inscription_amount: '0', // TODO: Add support later
-                    pending_inscription_amount: '0', // TODO: Add support later
+                    btc_total_amount: totalAmount,
+                    btc_confirm_amount: confirmAmount,
+                    btc_pending_amount: pendingAmount,
 
                     usd_value: '0.00'
                 };
@@ -2342,13 +2336,9 @@ export class WalletController {
                 const csv1Locked = Number(csv1Total) - Number(csv1Unlocked);
 
                 return {
-                    amount: totalAmount, // TODO: To change later when inscriptions are supported
-                    confirm_amount: confirmAmount, // TODO: To change later when inscriptions are supported
-                    pending_amount: pendingAmount, // TODO: To change later when inscriptions are supported
-
-                    btc_amount: totalAmount,
-                    confirm_btc_amount: confirmAmount,
-                    pending_btc_amount: pendingAmount,
+                    btc_total_amount: totalAmount,
+                    btc_confirm_amount: confirmAmount,
+                    btc_pending_amount: pendingAmount,
 
                     csv75_total_amount: csv75Total,
                     csv75_unlocked_amount: csv75Unlocked,
@@ -2357,10 +2347,6 @@ export class WalletController {
                     csv1_total_amount: csv1Total,
                     csv1_unlocked_amount: csv1Unlocked,
                     csv1_locked_amount: csv1Locked.toString(),
-
-                    inscription_amount: '0', // TODO: Add support later
-                    confirm_inscription_amount: '0', // TODO: Add support later
-                    pending_inscription_amount: '0', // TODO: Add support later
 
                     usd_value: '0.00'
                 };
