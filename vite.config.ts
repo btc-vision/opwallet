@@ -1,4 +1,4 @@
-import { defineConfig, type PluginOption, type UserConfig } from 'vite';
+import { defineConfig, type PluginOption } from 'vite';
 import react from '@vitejs/plugin-react-swc';
 import path, { resolve } from 'path';
 import tsconfigPaths from 'vite-tsconfig-paths';
@@ -6,144 +6,270 @@ import eslint from 'vite-plugin-eslint2';
 import checker from 'vite-plugin-checker';
 import wasm from 'vite-plugin-wasm';
 import topLevelAwait from 'vite-plugin-top-level-await';
+import { nodePolyfills } from 'vite-plugin-node-polyfills';
 import fs from 'fs';
+import archiver from 'archiver';
+import tailwindcss from '@tailwindcss/vite';
 
 // Get package version
 const packageJson = JSON.parse(fs.readFileSync('./package.json', 'utf-8'));
 const version = packageJson.version.split('-beta')[0];
 
-// Custom plugin to handle manifest generation
-function manifestPlugin(browser: string, manifestVersion: 'mv2' | 'mv3'): PluginOption {
+// Custom plugin to handle manifest generation for MV3
+function manifestPlugin(): PluginOption {
     return {
         name: 'manifest-plugin',
-        async writeBundle() {
-            const baseManifestFile = manifestVersion === 'mv2' ? '_base_v2.json' : '_base_v3.json';
-            const basePath = resolve(__dirname, `build/_raw/manifest/${baseManifestFile}`);
+        writeBundle() {
+            const browser = process.env.BROWSER || 'chrome';
+
+            // Load base manifest
+            const basePath = resolve(__dirname, 'build/_raw/manifest/_base_v3.json');
             const browserPath = resolve(__dirname, `build/_raw/manifest/${browser}.json`);
 
-            if (!fs.existsSync(basePath) || !fs.existsSync(browserPath)) {
-                console.warn('Manifest files not found, skipping manifest generation');
+            if (!fs.existsSync(basePath)) {
+                console.error(`Base manifest not found at ${basePath}`);
                 return;
             }
 
-            const baseManifest = JSON.parse(fs.readFileSync(basePath, 'utf-8'));
-            const browserManifest = JSON.parse(fs.readFileSync(browserPath, 'utf-8'));
+            let baseManifest = JSON.parse(fs.readFileSync(basePath, 'utf-8'));
+            let browserManifest = {};
 
+            // Load browser-specific manifest if it exists
+            if (fs.existsSync(browserPath)) {
+                browserManifest = JSON.parse(fs.readFileSync(browserPath, 'utf-8'));
+                console.log(`Loading browser-specific manifest from ${browserPath}`);
+            } else {
+                console.warn(`No browser-specific manifest found for ${browser}`);
+            }
+
+            // Merge manifests (browser-specific overrides base)
             const manifest = {
                 ...baseManifest,
                 ...browserManifest,
+                // Always set the version from package.json
                 version: version
             };
 
-            const outputPath = resolve(__dirname, `dist/manifest.json`);
-            fs.writeFileSync(outputPath, JSON.stringify(manifest, null, 2));
-            console.log(`Manifest generated for ${browser} (${manifestVersion})`);
+            // Ensure background service worker has type: module for MV3
+            if (manifest.background && manifest.background.service_worker) {
+                manifest.background.type = 'module';
+            }
+
+            // Remove incorrect type: module from content_scripts
+            if (manifest.content_scripts) {
+                manifest.content_scripts = manifest.content_scripts.map((script: any) => {
+                    const { type, ...rest } = script;
+                    return rest;
+                });
+            }
+
+            // Remove incorrect type: module from web_accessible_resources
+            if (manifest.web_accessible_resources) {
+                manifest.web_accessible_resources = manifest.web_accessible_resources.map((resource: any) => {
+                    const { type, ...rest } = resource;
+                    return rest;
+                });
+            }
+
+            // Write manifest to browser-specific directory
+            const manifestPath = resolve(__dirname, 'dist', browser, 'manifest.json');
+            fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2));
+            console.log(`Manifest generated at ${manifestPath}`);
         }
     };
 }
 
-// Custom plugin to copy raw files
-function copyRawFilesPlugin(): PluginOption {
+// Custom plugin to fix @btc-vision/wallet-sdk imports
+function fixBtcVisionImports(): PluginOption {
     return {
-        name: 'copy-raw-files',
+        name: 'fix-btc-vision-imports',
+        enforce: 'pre', // Run before other plugins
+        resolveId(source, importer) {
+            // Handle @btc-vision/wallet-sdk imports
+            if (source === '@btc-vision/wallet-sdk') {
+                // Main import should use lib/index.js
+                const resolvedPath = resolve(__dirname, 'node_modules/@btc-vision/wallet-sdk/lib/index.js');
+                return { id: resolvedPath, moduleSideEffects: false };
+            }
+            if (source.startsWith('@btc-vision/wallet-sdk/')) {
+                // Subpath imports should map correctly
+                const subpath = source.replace('@btc-vision/wallet-sdk/', '');
+                let fullPath = resolve(__dirname, 'node_modules/@btc-vision/wallet-sdk', subpath);
+
+                // Try different extensions
+                const extensions = ['', '.js', '.ts', '/index.js', '/index.ts'];
+                for (const ext of extensions) {
+                    if (fs.existsSync(fullPath + ext)) {
+                        return { id: fullPath + ext, moduleSideEffects: false };
+                    }
+                }
+            }
+            return null;
+        },
+        load(id) {
+            // If it's a @btc-vision/wallet-sdk file, load it
+            if (id.includes('@btc-vision/wallet-sdk')) {
+                try {
+                    const code = fs.readFileSync(id, 'utf-8');
+                    return {
+                        code,
+                        map: null
+                    };
+                } catch (e) {
+                    console.error(`Failed to load ${id}:`, e);
+                    return null;
+                }
+            }
+            return null;
+        }
+    };
+}
+
+// Copy static assets plugin
+function copyAssetsPlugin(): PluginOption {
+    return {
+        name: 'copy-assets',
         async writeBundle() {
+            const browser = process.env.BROWSER || 'chrome';
             const sourceDir = resolve(__dirname, 'build/_raw');
-            const destDir = resolve(__dirname, 'dist');
+            const destDir = resolve(__dirname, 'dist', browser);
 
-            // Copy all files except manifest directory
-            const copyRecursive = (src: string, dest: string) => {
-                if (!fs.existsSync(src)) return;
+            // Recursively copy all files from build/_raw
+            const copyRecursive = (src: string, dest: string, skipPatterns: string[] = []) => {
+                if (!fs.existsSync(src)) {
+                    console.warn(`Source directory ${src} does not exist`);
+                    return;
+                }
 
-                const stats = fs.statSync(src);
+                if (!fs.existsSync(dest)) {
+                    fs.mkdirSync(dest, { recursive: true });
+                }
 
-                if (stats.isDirectory()) {
-                    // Skip manifest directory as it's handled by manifestPlugin
-                    if (path.basename(src) === 'manifest') return;
-
-                    if (!fs.existsSync(dest)) {
-                        fs.mkdirSync(dest, { recursive: true });
+                const items = fs.readdirSync(src);
+                items.forEach((item) => {
+                    // Skip manifest directory as we generate it separately
+                    if (skipPatterns.some((pattern) => item.includes(pattern))) {
+                        return;
                     }
 
-                    const items = fs.readdirSync(src);
-                    items.forEach((item) => {
-                        copyRecursive(path.join(src, item), path.join(dest, item));
-                    });
-                } else {
-                    fs.copyFileSync(src, dest);
-                }
+                    const srcPath = path.join(src, item);
+                    const destPath = path.join(dest, item);
+
+                    if (fs.statSync(srcPath).isDirectory()) {
+                        copyRecursive(srcPath, destPath, skipPatterns);
+                    } else {
+                        fs.copyFileSync(srcPath, destPath);
+                        console.log(`Copied: ${item}`);
+                    }
+                });
             };
 
-            copyRecursive(sourceDir, destDir);
+            // Copy everything from build/_raw except manifest files
+            copyRecursive(sourceDir, destDir, ['manifest']);
+
+            // Also copy _locales if it exists
+            const localesPath = resolve(__dirname, 'build/_raw/_locales');
+            if (fs.existsSync(localesPath)) {
+                copyRecursive(localesPath, resolve(__dirname, 'dist', browser, '_locales'), []);
+            }
+
+            // Inject scripts into HTML files if they exist
+            const htmlFiles = ['index.html', 'notification.html'];
+            htmlFiles.forEach((htmlFile) => {
+                const htmlPath = path.join(destDir, htmlFile);
+                if (fs.existsSync(htmlPath)) {
+                    let htmlContent = fs.readFileSync(htmlPath, 'utf-8');
+
+                    // Remove the web app manifest link if present
+                    htmlContent = htmlContent.replace(/<link rel="manifest"[^>]*>/g, '');
+
+                    // Inject UI script for popup and notification pages
+                    if (!htmlContent.includes('ui.js')) {
+                        htmlContent = htmlContent.replace(
+                            '</body>',
+                            '<script type="module" src="ui.js"></script>\n</body>'
+                        );
+                    }
+
+                    fs.writeFileSync(htmlPath, htmlContent);
+                    console.log(`Injected scripts into ${htmlFile}`);
+                }
+            });
+        }
+    };
+}
+
+// Package creation plugin
+function packagePlugin(): PluginOption {
+    return {
+        name: 'package-plugin',
+        async closeBundle() {
+            if (process.env.PACKAGE === 'true') {
+                const browser = process.env.BROWSER || 'chrome';
+                const outputFile = `./dist/opwallet-${browser}-v${version}.zip`;
+
+                await new Promise<void>((resolve, reject) => {
+                    const output = fs.createWriteStream(outputFile);
+                    const archive = archiver('zip', { zlib: { level: 9 } });
+
+                    output.on('close', () => {
+                        console.log(
+                            `Package created: ${outputFile} (${(archive.pointer() / 1024 / 1024).toFixed(2)} MB)`
+                        );
+                        resolve();
+                    });
+
+                    archive.on('error', reject);
+                    archive.pipe(output);
+
+                    // Archive everything in the browser-specific directory
+                    archive.directory(`dist/${browser}/`, false);
+
+                    archive.finalize();
+                });
+            }
         }
     };
 }
 
 export default defineConfig(({ mode }) => {
-    // Get browser and manifest version from environment variables
     const browser = process.env.BROWSER || 'chrome';
-    const manifestVersion = (process.env.MANIFEST || 'mv3') as 'mv2' | 'mv3';
     const isDev = mode === 'development';
     const isProd = mode === 'production';
 
-    console.log(`Building for ${browser} with ${manifestVersion} in ${mode} mode`);
+    console.log(`🚀 Building for ${browser} (MV3) in ${mode} mode`);
 
-    const config: UserConfig = {
-        // Build configuration
+    return {
         build: {
-            // Output directory
-            outDir: 'dist',
-
-            // Clean output directory before building
+            outDir: `dist/${browser}`,
             emptyOutDir: true,
 
-            // Disable minification in dev for easier debugging
+            // Use terser for production minification
             minify: isProd ? 'terser' : false,
-
-            // Terser options for production builds
             terserOptions: isProd
                 ? {
                       compress: {
                           drop_console: false,
-                          drop_debugger: false,
+                          drop_debugger: true,
                           passes: 2
                       },
                       format: {
-                          comments: false,
-                          ascii_only: true
-                      },
-                      ecma: 2020,
-                      module: false,
-                      toplevel: false
+                          comments: false
+                      }
                   }
                 : undefined,
 
-            // Source maps
             sourcemap: isDev ? 'inline' : false,
 
-            // Set reasonable chunk size limits
-            chunkSizeWarningLimit: 2500,
-
-            // Rollup options for multiple entry points
             rollupOptions: {
                 input: {
-                    // Entry points
                     background: resolve(__dirname, 'src/background/index.ts'),
                     'content-script': resolve(__dirname, 'src/content-script/index.ts'),
                     pageProvider: resolve(__dirname, 'src/content-script/pageProvider/index.ts'),
-                    ui: resolve(__dirname, 'src/ui/index.tsx'),
-                    // HTML pages
-                    index: resolve(__dirname, 'index.html'),
-                    notification: resolve(__dirname, 'notification.html')
+                    ui: resolve(__dirname, 'src/ui/index.tsx')
                 },
                 output: {
-                    // Ensure consistent chunk names
-                    entryFileNames: (chunkInfo) => {
-                        // HTML files should not be renamed
-                        if (chunkInfo.name?.endsWith('.html')) {
-                            return '[name]';
-                        }
-                        return '[name].js';
-                    },
+                    entryFileNames: '[name].js',
                     chunkFileNames: 'js/[name]-[hash].js',
                     assetFileNames: (assetInfo) => {
                         const info = assetInfo.name?.split('.');
@@ -151,47 +277,54 @@ export default defineConfig(({ mode }) => {
                         if (/png|jpe?g|svg|gif|tiff|bmp|ico/i.test(ext || '')) {
                             return `images/[name][extname]`;
                         }
+                        if (/woff|woff2|eot|ttf|otf/i.test(ext || '')) {
+                            return `fonts/[name][extname]`;
+                        }
                         if (/css/i.test(ext || '')) {
                             return `css/[name][extname]`;
                         }
                         return `assets/[name][extname]`;
                     },
 
-                    // Disable code splitting for Chrome extensions (MV3 compatibility)
-                    manualChunks: undefined,
-                    inlineDynamicImports: true
+                    // Disable code splitting for Chrome extensions
+                    manualChunks: undefined
                 }
             },
 
-            // Target modern browsers
             target: 'esnext',
-
-            // Disable module preload polyfill
             modulePreload: false,
-
-            // CSS code splitting
             cssCodeSplit: false,
-
-            // Asset handling
-            assetsInlineLimit: 10000
+            assetsInlineLimit: 10000,
+            chunkSizeWarningLimit: 3000
         },
 
-        // Plugins as a regular array
         plugins: [
-            // React with SWC for fast refresh and compilation
-            react({
-                jsxImportSource: 'react',
-                plugins: []
+            // Node.js polyfills
+            nodePolyfills({
+                globals: {
+                    Buffer: true,
+                    global: true,
+                    process: true
+                }
             }),
 
-            // TypeScript paths resolution
+            // Fix for @btc-vision/wallet-sdk imports
+            fixBtcVisionImports(),
+
+            // React with SWC (without the non-existent prop-types plugin)
+            react({
+                jsxImportSource: 'react'
+            }),
+
+            // TypeScript paths
             tsconfigPaths(),
 
             // WASM support
             wasm(),
             topLevelAwait(),
+            tailwindcss(),
 
-            // ESLint plugin with vite-plugin-eslint2
+            // ESLint
             eslint({
                 cache: true,
                 fix: true,
@@ -202,50 +335,48 @@ export default defineConfig(({ mode }) => {
                 emitWarning: !isProd
             }),
 
-            // TypeScript type checking (only in production)
+            // TypeScript type checking
             isProd &&
                 checker({
                     typescript: {
                         tsconfigPath: './tsconfig.json',
                         buildMode: true
                     },
-                    overlay: {
-                        initialIsOpen: false,
-                        position: 'br'
-                    },
                     enableBuild: true
                 }),
 
             // Custom plugins
-            copyRawFilesPlugin(),
-            manifestPlugin(browser, manifestVersion)
+            manifestPlugin(),
+            copyAssetsPlugin(),
+            packagePlugin()
         ].filter(Boolean) as PluginOption[],
 
-        // Module resolution
         resolve: {
-            alias: {
-                '@': resolve(__dirname, './src'),
-                // Polyfills for Node.js built-ins
-                stream: 'stream-browserify',
-                crypto: 'crypto-browserify',
-                buffer: 'buffer',
-                process: 'process/browser',
-                events: 'events',
-                zlib: 'browserify-zlib',
-                http: 'stream-http',
-                https: 'https-browserify',
-                vm: 'vm-browserify',
-                // Replace moment with dayjs
-                moment: 'dayjs'
-            },
-            extensions: ['.ts', '.tsx', '.js', '.jsx', '.json']
+            alias: [
+                {
+                    find: '@',
+                    replacement: resolve(__dirname, './src')
+                },
+                {
+                    find: /^@btc-vision\/wallet-sdk$/,
+                    replacement: resolve(__dirname, 'node_modules/@btc-vision/wallet-sdk/lib/index.js')
+                },
+                {
+                    find: /^@btc-vision\/wallet-sdk\/(.*)/,
+                    replacement: resolve(__dirname, 'node_modules/@btc-vision/wallet-sdk/$1')
+                },
+                {
+                    find: 'moment',
+                    replacement: 'dayjs'
+                }
+            ],
+            extensions: ['.ts', '.tsx', '.js', '.jsx', '.json'],
+            mainFields: ['module', 'main', 'browser']
         },
 
-        // Define global constants
         define: {
             'process.env.version': JSON.stringify(version),
             'process.env.release': JSON.stringify(version),
-            'process.env.manifest': JSON.stringify(manifestVersion),
             'process.env.channel': JSON.stringify(process.env.CHANNEL || 'stable'),
             'process.env.BUILD_ENV': JSON.stringify(isProd ? 'PRO' : 'DEV'),
             'process.env.DEBUG': JSON.stringify(!isProd),
@@ -253,7 +384,6 @@ export default defineConfig(({ mode }) => {
             global: 'globalThis'
         },
 
-        // CSS configuration
         css: {
             modules: {
                 generateScopedName: isDev ? '[name]__[local]__[hash:base64:5]' : '[hash:base64:5]',
@@ -263,6 +393,7 @@ export default defineConfig(({ mode }) => {
                 less: {
                     javascriptEnabled: true,
                     modifyVars: {
+                        // Your Ant Design theme variables
                         'primary-color': 'rgb(234,202,68)',
                         'primary-color-active': '#383535',
                         'input-icon-hover-color': '#FFFFFF',
@@ -298,22 +429,15 @@ export default defineConfig(({ mode }) => {
             }
         },
 
-        // Development server configuration
         server: {
             port: 3000,
             open: false,
             hmr: {
                 protocol: 'ws',
                 host: 'localhost'
-            },
-            watch: {
-                ignored: ['**/node_modules/**', '**/dist/**'],
-                usePolling: true,
-                interval: 1000
             }
         },
 
-        // Optimizations
         optimizeDeps: {
             include: [
                 'react',
@@ -325,22 +449,14 @@ export default defineConfig(({ mode }) => {
                 'stream-browserify',
                 'crypto-browserify'
             ],
-            exclude: ['@btc-vision/transaction'],
-            esbuildOptions: {
-                target: 'esnext',
-                define: {
-                    global: 'globalThis'
-                }
-            }
+            exclude: ['@btc-vision/transaction']
         },
 
-        // Worker configuration
         worker: {
             format: 'es',
             plugins: () => [wasm(), topLevelAwait()]
         },
 
-        // Build optimizations
         esbuild: {
             target: 'esnext',
             jsx: 'automatic',
@@ -352,6 +468,4 @@ export default defineConfig(({ mode }) => {
             }
         }
     };
-
-    return config;
 });
