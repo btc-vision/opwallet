@@ -117,12 +117,6 @@ const stashKeyrings: Record<string, Keyring> = {};
 export class WalletController {
     public openapi: OpenApiService = openapiService;
     public timer: string | number | null = null;
-
-    // Cache properties
-    private balanceCache: Map<string, BalanceCacheEntry> = new Map();
-    private readonly CACHE_DURATION = 10000; // 10 seconds in milliseconds
-    private cacheCleanupTimer: NodeJS.Timeout | null = null;
-
     public getApproval = notificationService.getApproval;
     public getApprovalInteractionParametersToUse = notificationService.getApprovalInteractionParametersToUse;
     public clearApprovalInteractionParametersToUse = notificationService.clearApprovalInteractionParametersToUse;
@@ -131,6 +125,10 @@ export class WalletController {
     public getConnectedSite = permissionService.getConnectedSite;
     public getSite = permissionService.getSite;
     public getConnectedSites = permissionService.getConnectedSites;
+    // Cache properties
+    private balanceCache: Map<string, BalanceCacheEntry> = new Map();
+    private readonly CACHE_DURATION = 10000; // 10 seconds in milliseconds
+    private cacheCleanupTimer: NodeJS.Timeout | null = null;
 
     /**
      * Unlock the keyring vault with a password.
@@ -859,7 +857,7 @@ export class WalletController {
         if (options?.toSignInputs) {
             // Validate user-provided inputs
             toSignInputs = options.toSignInputs.map((input) => {
-                const index = Number(input.index);
+                const index = Number(input.index as unknown as string);
                 if (isNaN(index)) throw new Error('invalid index in toSignInput');
 
                 const addrInput = input as AddressUserToSignInput;
@@ -1195,8 +1193,11 @@ export class WalletController {
                 signer: walletGet.keypair,
                 network: Web3API.network,
                 feeRate: Number(params.feeRate.toString()),
-                gasSatFee: BigInt(params.gasSatFee || 0n) < 330n ? 330n : BigInt(params.gasSatFee || 0n),
-                priorityFee: BigInt(params.priorityFee || 0n),
+                gasSatFee:
+                    BigInt((params.gasSatFee as unknown as string) || 0n) < 330n
+                        ? 330n
+                        : BigInt((params.gasSatFee as unknown as string) || 0n),
+                priorityFee: BigInt((params.priorityFee as unknown as string) || 0n),
                 bytecode:
                     typeof params.bytecode === 'string'
                         ? Buffer.from(params.bytecode, 'hex')
@@ -2009,7 +2010,7 @@ export class WalletController {
 
             if (inputData.witnessUtxo?.script) {
                 try {
-                    address = bitcoinAddress.fromOutputScript(inputData.witnessUtxo.script, network).toString();
+                    address = bitcoinAddress.fromOutputScript(inputData.witnessUtxo.script, network);
                 } catch {
                     address = 'unknown';
                 }
@@ -2455,8 +2456,8 @@ export class WalletController {
             signer: wallet.keypair,
             network: Web3API.network,
             feeRate: interactionParameters.feeRate,
-            priorityFee: BigInt(interactionParameters.priorityFee || 0n),
-            gasSatFee: BigInt(interactionParameters.gasSatFee || 330n),
+            priorityFee: BigInt((interactionParameters.priorityFee as unknown as string) || 0n),
+            gasSatFee: BigInt((interactionParameters.gasSatFee as unknown as string) || 330n),
             calldata: Buffer.from(interactionParameters.calldata as unknown as string, 'hex'),
             optionalInputs,
             optionalOutputs: interactionParameters.optionalOutputs || [],
