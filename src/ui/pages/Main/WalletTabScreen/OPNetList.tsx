@@ -46,8 +46,36 @@ const colors = {
     containerBgFaded: '#292929',
     containerBorder: '#303030',
     success: '#4ade80',
-    error: '#ef4444'
+    error: '#ef4444',
+
+    headerBG: '#313131',
+    headerBorder: '#444746'
 };
+
+const tokenButtonStyle: React.CSSProperties = {
+    color: "white",
+    fontSize: "12px",
+    display: "flex",
+    alignItems: "center",
+    flex: "1",
+    justifyContent: "center",
+    gap: "8px",
+    height: "32px",
+    padding: "0 12px",
+    border: "1px solid #444746",
+    background: "#313131",
+    transition: "background-color 0.3s, border 0.3s",
+    borderRadius: "8px",
+    cursor: "pointer",
+    fontFamily: "Inter-Regular, serif",
+};
+
+const tokenRefreshButtonStyle: React.CSSProperties = {
+    ...tokenButtonStyle,
+    width: "32px",
+    padding: "0",
+    flex: "0 0 32px",
+}
 
 export function OPNetList() {
     const navigate = useNavigate();
@@ -409,112 +437,62 @@ export function OPNetList() {
                 style={{
                     display: 'flex',
                     gap: '8px',
-                    marginBottom: '12px',
-                    width: '100%'
+                    width: 'calc(100% + 24px)',
+                    borderBottom: `1px solid ${colors.headerBorder}`,
+                    borderTop: `1px solid ${colors.headerBorder}`,
+                    padding: `12px`,
+                    margin: '0 -12px 12px -12px',
+                    background: colors.headerBG
                 }}>
                 <button
-                    style={{
-                        flex: 1,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: '6px',
-                        padding: '10px',
-                        fontSize: '13px',
-                        fontWeight: 600,
-                        color: colors.text,
-                        background: colors.buttonHoverBg,
-                        border: 'none',
-                        borderRadius: '12px',
-                        cursor: 'pointer',
-                        transition: 'all 0.3s',
-                        fontFamily: 'Inter-Regular, serif'
-                    }}
+                    style={tokenButtonStyle}
                     onClick={() => setImportTokenBool(true)}
-                    onMouseOver={(e) => {
-                        e.currentTarget.style.background = colors.buttonBg;
-                    }}
-                    onMouseOut={(e) => {
-                        e.currentTarget.style.background = colors.buttonHoverBg;
-                    }}>
+                    onMouseOver={(e) => (e.currentTarget.style.background = "#212121")}
+                    onMouseOut={(e) => (e.currentTarget.style.background = "#313131")}
+                >
                     <FontAwesomeIcon icon={faPlus} style={{ fontSize: 12 }} />
                     <span>Import</span>
                 </button>
 
                 <button
-                    style={{
-                        flex: 1,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: '6px',
-                        padding: '10px',
-                        fontSize: '13px',
-                        fontWeight: 600,
-                        color: colors.text,
-                        background: colors.buttonHoverBg,
-                        border: 'none',
-                        borderRadius: '12px',
-                        cursor: 'pointer',
-                        transition: 'all 0.3s',
-                        fontFamily: 'Inter-Regular, serif'
-                    }}
+                    style={tokenButtonStyle}
                     onClick={async () => {
                         await browser.tabs.create({
-                            url: browser.runtime.getURL('/index.html#/opnet/deploy-contract')
+                            url: browser.runtime.getURL("/index.html#/opnet/deploy-contract"),
                         });
                     }}
-                    onMouseOver={(e) => {
-                        e.currentTarget.style.background = colors.buttonBg;
-                    }}
-                    onMouseOut={(e) => {
-                        e.currentTarget.style.background = colors.buttonHoverBg;
-                    }}>
+                    onMouseOver={(e) => (e.currentTarget.style.background = "#212121")}
+                    onMouseOut={(e) => (e.currentTarget.style.background = "#313131")}
+                >
                     <FontAwesomeIcon icon={faPencil} style={{ fontSize: 12 }} />
                     <span>Deploy</span>
                 </button>
 
                 <button
-                    style={{
-                        width: '40px',
-                        height: '40px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        background: colors.buttonHoverBg,
-                        border: 'none',
-                        borderRadius: '12px',
-                        cursor: 'pointer',
-                        transition: 'all 0.3s'
-                    }}
+                    style={tokenRefreshButtonStyle}
                     onClick={refreshCurrentPage}
                     disabled={isLoading}
                     onMouseOver={(e) => {
-                        if (!isLoading) e.currentTarget.style.background = colors.buttonBg;
+                        if (!isLoading) e.currentTarget.style.background = "#212121";
                     }}
-                    onMouseOut={(e) => {
-                        e.currentTarget.style.background = colors.buttonHoverBg;
-                    }}>
+                    onMouseOut={(e) => (e.currentTarget.style.background = "#313131")}
+                >
                     <FontAwesomeIcon
                         icon={faRefresh}
                         spin={isLoading}
                         style={{
                             fontSize: 14,
-                            color: isLoading ? colors.main : colors.text
+                            color: isLoading ? colors.main : "white",
                         }}
                     />
                 </button>
+
             </div>
 
             {/* Token List */}
             {allTokenAddresses.length > 0 ? (
                 <div
-                    style={{
-                        background: colors.containerBgFaded,
-                        borderRadius: '14px',
-                        padding: '8px',
-                        marginBottom: '12px'
-                    }}>
+                >
                     {currentPageBalances.length === 0 && currentPageAddresses.length > 0 ? (
                         <Column style={{ padding: 30 }} itemsCenter justifyCenter>
                             <LoadingOutlined style={{ fontSize: 20, color: colors.main }} />

@@ -318,3 +318,22 @@ button.op_action_button:hover {
     color: var(--op-orange);
     cursor: pointer;
 }
+
+.OP_token_button{
+    color:white;
+    font-size:14px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:8px;
+    height:32px;
+    padding:0 12px;
+    border:1px solid #444746;
+    background: #313131;
+    transition:background-color 0.3s, border 0.3s;
+    border-radius:8px;
+}
+
+.OP_token_button:hover {
+    background-color:#212121;
+}
