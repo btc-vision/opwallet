@@ -1,5 +1,5 @@
 import BigNumber from 'bignumber.js';
-import { CallResult, getContract, IOP20Contract, JSONRpcProvider, OP_20_ABI, UTXOs } from 'opnet';
+import { getContract, IOP20Contract, JSONRpcProvider, OP_20_ABI, UTXOs } from 'opnet';
 
 import { ChainId as WalletChainId, ChainType } from '@/shared/constant';
 import { NetworkType } from '@/shared/types';
@@ -283,33 +283,25 @@ class Web3API {
                 this.network
             );
 
-            const promises: [
-                Promise<CallResult<{ name: string }>>,
-                Promise<
-                    CallResult<{
-                        symbol: string;
-                    }>
-                >,
-                Promise<CallResult<{ decimals: number }>>,
-                Promise<string>
-            ] = [
-                genericContract.name(),
-                genericContract.symbol(),
-                genericContract.decimals(),
+            const results = await Promise.all([
+                genericContract.metadata(),
                 contractLogoManager.getContractLogo(addressP2OP)
-            ];
+            ]);
 
-            const results = await Promise.all(promises);
-            const name = results[0].properties.name ?? this.getContractName(addressP2OP);
-            const symbol = results[1].properties.symbol;
-            const decimals = results[2].properties.decimals;
+            const metadata = results[0].properties;
 
-            const logo = results[3];
+            const name = metadata.name ?? this.getContractName(addressP2OP);
+            const symbol = metadata.symbol ?? 'UNKNOWN';
+            const decimals = metadata.decimals ?? 0;
+            const maximumSupply = metadata.maximumSupply ?? 0n;
+
+            const logo = metadata.icon || results[1];
             return {
                 name,
                 symbol,
                 decimals,
-                logo
+                logo,
+                maximumSupply
             };
         } catch (e) {
             console.warn(`Couldn't query name/symbol/decimals/logo for contract ${address}:`, e);
