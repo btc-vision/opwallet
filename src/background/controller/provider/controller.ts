@@ -11,10 +11,10 @@ import { getChainInfo } from '@/shared/utils';
 import Web3API from '@/shared/web3/Web3API';
 import { DetailedInteractionParameters } from '@/shared/web3/interfaces/DetailedInteractionParameters';
 import { amountToSatoshis } from '@/ui/utils';
-import { IDeploymentParametersWithoutSigner } from '@btc-vision/transaction';
-import { message, toPsbtNetwork, verifyMessageOfBIP322Simple } from '@btc-vision/wallet-sdk';
-import wallet from '../wallet';
 import { Psbt } from '@btc-vision/bitcoin';
+import { IDeploymentParametersWithoutSigner } from '@btc-vision/transaction';
+import { toPsbtNetwork, verifyMessageOfBIP322Simple } from '@btc-vision/wallet-sdk';
+import wallet from '../wallet';
 
 function formatPsbtHex(psbtHex: string) {
     let formatData = '';
@@ -323,12 +323,12 @@ export class ProviderController {
         approvalRes: boolean;
         data: { params: IDeploymentParametersWithoutSigner };
     }) => {
-        const feeRate = await wallet.getFeeSummary();
-        const rate = feeRate.list[2] || feeRate.list[1] || feeRate.list[0];
+        const feeRate = await Web3API.provider.gasParameters();
+        const minimumFeeRate = feeRate.bitcoin.recommended.low;
 
-        if (Number(request.data.params.feeRate) < Number(rate.feeRate)) {
+        if (request.data.params.feeRate < minimumFeeRate) {
             // @ts-expect-error
-            request.data.params.feeRate = Number(rate.feeRate);
+            request.data.params.feeRate = minimumFeeRate;
 
             console.warn(
                 'The fee rate is too low, the system will automatically adjust the fee rate to the minimum value'

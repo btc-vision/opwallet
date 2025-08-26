@@ -5,7 +5,6 @@ import {
     AppSummary,
     BitcoinBalance,
     BtcPrice,
-    FeeSummary,
     GroupAsset,
     UTXO,
     VersionDetail,
@@ -208,10 +207,6 @@ export class OpenApiService {
     async pushTx(_: string): Promise<string> {
         await Promise.resolve();
         throw new Error('Method not implemented.');
-    }
-
-    async getFeeSummary(): Promise<FeeSummary> {
-        return this.httpGet<FeeSummary>('/v5/default/fee-summary', {});
     }
 
     async refreshBtcPrice() {

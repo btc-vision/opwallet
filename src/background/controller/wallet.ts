@@ -41,7 +41,6 @@ import {
     AppSummary,
     BitcoinBalance,
     DecodedPsbt,
-    FeeSummary,
     GroupAsset,
     NetworkType,
     PublicKeyUserToSignInput,
@@ -1980,10 +1979,6 @@ export class WalletController {
         account.flag = await preferenceService.removeAddressFlag(account.address, flag);
         openapiService.setClientAddress(account.address, account.flag);
         return account;
-    };
-
-    public getFeeSummary = async (): Promise<FeeSummary> => {
-        return openapiService.getFeeSummary();
     };
 
     public getBtcPrice = async (): Promise<number> => {

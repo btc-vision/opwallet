@@ -11,7 +11,6 @@ import {
     AppSummary,
     BitcoinBalance,
     DecodedPsbt,
-    FeeSummary,
     NetworkType,
     ParsedSignMsgUr,
     ParsedSignPsbtUr,
@@ -23,9 +22,9 @@ import {
     WalletKeyring
 } from '@/shared/types';
 import { ApprovalData, ApprovalResponse } from '@/shared/types/Approval';
+import { Psbt } from '@btc-vision/bitcoin';
 import { InteractionParametersWithoutSigner } from '@btc-vision/transaction';
 import { AddressType, UnspentOutput } from '@btc-vision/wallet-sdk';
-import { Psbt } from '@btc-vision/bitcoin';
 
 export interface WalletController {
     changePassword: (password: string, newPassword: string) => Promise<void>;
@@ -206,8 +205,6 @@ export interface WalletController {
     changeAddressType(addressType: AddressType): Promise<void>;
 
     setAccountAlianName(account: Account, name: string): Promise<Account>;
-
-    getFeeSummary(): Promise<FeeSummary>;
 
     getBtcPrice(): Promise<number>;
 

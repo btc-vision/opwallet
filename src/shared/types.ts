@@ -81,14 +81,6 @@ export interface AppSummary {
     readTabTime?: number;
 }
 
-export interface FeeSummary {
-    list: {
-        title: string;
-        desc: string;
-        feeRate: number;
-    }[];
-}
-
 export interface BtcPrice {
     price: number;
     updateTime: number;
