@@ -233,7 +233,11 @@ function packagePlugin(): PluginOption {
 }
 
 export default defineConfig(({ mode }) => {
-    const browser = process.env.BROWSER || 'chrome';
+    const browser = process.env.BROWSER;
+    if (!browser) {
+        throw new Error('BROWSER environment variable is not set. Use BROWSER=chrome or BROWSER=firefox');
+    }
+
     const isDev = mode === 'development';
     const isProd = mode === 'production';
 
@@ -242,7 +246,7 @@ export default defineConfig(({ mode }) => {
     return {
         build: {
             outDir: `dist/${browser}`,
-            emptyOutDir: true,
+            emptyOutDir: false,
 
             commonjsOptions: {
                 strictRequires: true,
@@ -270,7 +274,6 @@ export default defineConfig(({ mode }) => {
                 cache: true,
                 input: {
                     background: resolve(__dirname, 'src/background/index.ts'),
-                    'content-script': resolve(__dirname, 'src/content-script/index.ts'),
                     pageProvider: resolve(__dirname, 'src/content-script/pageProvider/index.ts'),
                     ui: resolve(__dirname, 'src/ui/index.tsx')
                 },
