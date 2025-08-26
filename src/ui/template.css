@@ -1,5 +1,5 @@
-/* src/app.css - Tailwind v4 main CSS file */
 @import "tailwindcss";
+@import "tailwindcss/utilities";
 
 /* Custom theme configuration for Tailwind v4 */
 @theme {

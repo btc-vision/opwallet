@@ -259,7 +259,7 @@ export default defineConfig(({ mode }) => {
                   }
                 : undefined,
 
-            sourcemap: isDev ? 'inline' : false,
+            sourcemap: false, //isDev ? 'inline' : false,
 
             rollupOptions: {
                 input: {
@@ -285,9 +285,16 @@ export default defineConfig(({ mode }) => {
                         }
                         return `assets/[name][extname]`;
                     },
-
-                    // Disable code splitting for Chrome extensions
-                    manualChunks: undefined
+                    inlineDynamicImports: true,
+                    manualChunks: (id) => {
+                        if (id.includes('node_modules')) {
+                            // Split vendor code
+                            if (id.includes('react') || id.includes('react-dom')) return 'react';
+                            if (id.includes('antd')) return 'antd';
+                            if (id.includes('@btc-vision')) return 'btc';
+                            return 'vendor';
+                        }
+                    }
                 }
             },
 
@@ -447,7 +454,9 @@ export default defineConfig(({ mode }) => {
                 'process',
                 'events',
                 'stream-browserify',
-                'crypto-browserify'
+                'crypto-browserify',
+                'bitcore-lib',
+                'bip-schnorr'
             ],
             exclude: ['@btc-vision/transaction']
         },
