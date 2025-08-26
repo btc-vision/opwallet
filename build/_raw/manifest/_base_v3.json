@@ -38,7 +38,7 @@
     ],
     "web_accessible_resources": [
         {
-            "resources": ["pageProvider.js",  "js/*.js"],
+            "resources": ["pageProvider.js",  "js/*.js", "crypto-polyfill.js"],
             "matches": ["<all_urls>"],
             "type": "module"
         }

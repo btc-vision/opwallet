@@ -295,7 +295,11 @@ export default defineConfig(({ mode }) => {
                         return `assets/[name][extname]`;
                     },
                     //inlineDynamicImports: true,
-                    manualChunks: undefined /*(id) => {
+                    manualChunks(id) {
+                        if (id.includes('crypto-browserify')) {
+                            return 'crypto-polyfill';
+                        }
+                    } /*(id) => {
                         if (id.includes('node_modules')) {
                             // Split vendor code
                             if (id.includes('react') || id.includes('react-dom')) return 'react';
@@ -384,6 +388,10 @@ export default defineConfig(({ mode }) => {
                 {
                     find: 'moment',
                     replacement: 'dayjs'
+                },
+                {
+                    find: 'crypto',
+                    replacement: 'crypto-browserify'
                 }
             ],
             extensions: ['.ts', '.tsx', '.js', '.jsx', '.json'],
@@ -397,6 +405,7 @@ export default defineConfig(({ mode }) => {
             'process.env.BUILD_ENV': JSON.stringify(isProd ? 'PRO' : 'DEV'),
             'process.env.DEBUG': JSON.stringify(!isProd),
             'process.env.NODE_ENV': JSON.stringify(mode),
+            'global.crypto': 'globalThis.crypto',
             global: 'globalThis'
         },
 
@@ -465,7 +474,8 @@ export default defineConfig(({ mode }) => {
                 'stream-browserify',
                 'crypto-browserify',
                 'bitcore-lib',
-                'bip-schnorr'
+                'bip-schnorr',
+                'crypto-browserify'
             ],
             exclude: ['@btc-vision/transaction']
         },
