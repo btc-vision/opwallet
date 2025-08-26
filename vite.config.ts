@@ -244,6 +244,11 @@ export default defineConfig(({ mode }) => {
             outDir: `dist/${browser}`,
             emptyOutDir: true,
 
+            commonjsOptions: {
+                strictRequires: true,
+                transformMixedEsModules: true
+            },
+
             // Use terser for production minification
             minify: isProd ? 'terser' : false,
             terserOptions: isProd
@@ -262,12 +267,14 @@ export default defineConfig(({ mode }) => {
             sourcemap: false, //isDev ? 'inline' : false,
 
             rollupOptions: {
+                cache: true,
                 input: {
                     background: resolve(__dirname, 'src/background/index.ts'),
                     'content-script': resolve(__dirname, 'src/content-script/index.ts'),
                     pageProvider: resolve(__dirname, 'src/content-script/pageProvider/index.ts'),
                     ui: resolve(__dirname, 'src/ui/index.tsx')
                 },
+                external: ['fs', 'path', 'crypto', 'stream'],
                 output: {
                     entryFileNames: '[name].js',
                     chunkFileNames: 'js/[name]-[hash].js',
@@ -285,8 +292,8 @@ export default defineConfig(({ mode }) => {
                         }
                         return `assets/[name][extname]`;
                     },
-                    inlineDynamicImports: true,
-                    manualChunks: (id) => {
+                    //inlineDynamicImports: true,
+                    manualChunks: undefined /*(id) => {
                         if (id.includes('node_modules')) {
                             // Split vendor code
                             if (id.includes('react') || id.includes('react-dom')) return 'react';
@@ -294,7 +301,7 @@ export default defineConfig(({ mode }) => {
                             if (id.includes('@btc-vision')) return 'btc';
                             return 'vendor';
                         }
-                    }
+                    }*/
                 }
             },
 
