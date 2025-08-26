@@ -12,18 +12,17 @@ import Web3API from '@/shared/web3/Web3API';
 import { DetailedInteractionParameters } from '@/shared/web3/interfaces/DetailedInteractionParameters';
 import { amountToSatoshis } from '@/ui/utils';
 import { IDeploymentParametersWithoutSigner } from '@btc-vision/transaction';
-import { bitcoin } from '@btc-vision/wallet-sdk/lib/bitcoin-core';
-import { verifyMessageOfBIP322Simple } from '@btc-vision/wallet-sdk/lib/message';
-import { toPsbtNetwork } from '@btc-vision/wallet-sdk/lib/network';
+import { message, toPsbtNetwork, verifyMessageOfBIP322Simple } from '@btc-vision/wallet-sdk';
 import wallet from '../wallet';
+import { Psbt } from '@btc-vision/bitcoin';
 
 function formatPsbtHex(psbtHex: string) {
     let formatData = '';
     try {
         if (!/^[0-9a-fA-F]+$/.test(psbtHex)) {
-            formatData = bitcoin.Psbt.fromBase64(psbtHex).toHex();
+            formatData = Psbt.fromBase64(psbtHex).toHex();
         } else {
-            bitcoin.Psbt.fromHex(psbtHex);
+            Psbt.fromHex(psbtHex);
             formatData = psbtHex;
         }
     } catch (e) {
@@ -230,7 +229,7 @@ export class ProviderController {
         }
     ])
     sendBitcoin = async ({ approvalRes: { psbtHex } }: { approvalRes: { psbtHex: string } }) => {
-        const psbt = bitcoin.Psbt.fromHex(psbtHex);
+        const psbt = Psbt.fromHex(psbtHex);
         const tx = psbt.extractTransaction();
         const rawtx = tx.toHex();
         return await wallet.pushTx(rawtx);
@@ -243,7 +242,7 @@ export class ProviderController {
         }
     ])
     sendInscription = async ({ approvalRes: { psbtHex } }: { approvalRes: { psbtHex: string } }) => {
-        const psbt = bitcoin.Psbt.fromHex(psbtHex);
+        const psbt = Psbt.fromHex(psbtHex);
         const tx = psbt.extractTransaction();
         const rawtx = tx.toHex();
         return await wallet.pushTx(rawtx);
@@ -437,7 +436,7 @@ export class ProviderController {
 
         const networkType = wallet.getNetworkType();
         const psbtNetwork = toPsbtNetwork(networkType);
-        const psbt = bitcoin.Psbt.fromHex(psbtHex, { network: psbtNetwork });
+        const psbt = Psbt.fromHex(psbtHex, { network: psbtNetwork });
         const autoFinalized = !(options && !options.autoFinalized);
         const toSignInputs = await wallet.formatOptionsToSignInputs(psbtHex, options);
         await wallet.signPsbt(psbt, toSignInputs, autoFinalized);
@@ -483,7 +482,7 @@ export class ProviderController {
         data: { params: { psbtHex: string } };
     }) => {
         const hexData = formatPsbtHex(psbtHex);
-        const psbt = bitcoin.Psbt.fromHex(hexData);
+        const psbt = Psbt.fromHex(hexData);
         const tx = psbt.extractTransaction();
         const rawtx = tx.toHex();
         return await wallet.pushTx(rawtx);

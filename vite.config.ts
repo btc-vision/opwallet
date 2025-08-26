@@ -85,12 +85,6 @@ function fixBtcVisionImports(): PluginOption {
         name: 'fix-btc-vision-imports',
         enforce: 'pre', // Run before other plugins
         resolveId(source, importer) {
-            // Handle @btc-vision/wallet-sdk imports
-            if (source === '@btc-vision/wallet-sdk') {
-                // Main import should use lib/index.js
-                const resolvedPath = resolve(__dirname, 'node_modules/@btc-vision/wallet-sdk/lib/index.js');
-                return { id: resolvedPath, moduleSideEffects: false };
-            }
             if (source.startsWith('@btc-vision/wallet-sdk/')) {
                 // Subpath imports should map correctly
                 const subpath = source.replace('@btc-vision/wallet-sdk/', '');
@@ -102,22 +96,6 @@ function fixBtcVisionImports(): PluginOption {
                     if (fs.existsSync(fullPath + ext)) {
                         return { id: fullPath + ext, moduleSideEffects: false };
                     }
-                }
-            }
-            return null;
-        },
-        load(id) {
-            // If it's a @btc-vision/wallet-sdk file, load it
-            if (id.includes('@btc-vision/wallet-sdk')) {
-                try {
-                    const code = fs.readFileSync(id, 'utf-8');
-                    return {
-                        code,
-                        map: null
-                    };
-                } catch (e) {
-                    console.error(`Failed to load ${id}:`, e);
-                    return null;
                 }
             }
             return null;
@@ -295,15 +273,17 @@ export default defineConfig(({ mode }) => {
                         return `assets/[name][extname]`;
                     },
                     //inlineDynamicImports: true,
-                    manualChunks: undefined /*(id) => {
-                        if (id.includes('node_modules')) {
+                    manualChunks(id) {
+                        if (id.includes('crypto-browserify')) {
+                            return 'crypto-polyfill';
+                        } else if (id.includes('node_modules')) {
                             // Split vendor code
-                            if (id.includes('react') || id.includes('react-dom')) return 'react';
+                            //if (id.includes('react') || id.includes('react-dom')) return 'react';
                             if (id.includes('antd')) return 'antd';
-                            if (id.includes('@btc-vision')) return 'btc';
-                            return 'vendor';
+                            //if (id.includes('@btc-vision')) return 'btc';
+                            //return 'vendor';
                         }
-                    }*/
+                    }
                 }
             },
 
@@ -373,10 +353,10 @@ export default defineConfig(({ mode }) => {
                     find: '@',
                     replacement: resolve(__dirname, './src')
                 },
-                {
+                /*{
                     find: /^@btc-vision\/wallet-sdk$/,
                     replacement: resolve(__dirname, 'node_modules/@btc-vision/wallet-sdk/lib/index.js')
-                },
+                },*/
                 {
                     find: /^@btc-vision\/wallet-sdk\/(.*)/,
                     replacement: resolve(__dirname, 'node_modules/@btc-vision/wallet-sdk/$1')
@@ -384,6 +364,10 @@ export default defineConfig(({ mode }) => {
                 {
                     find: 'moment',
                     replacement: 'dayjs'
+                },
+                {
+                    find: 'crypto',
+                    replacement: 'crypto-browserify'
                 }
             ],
             extensions: ['.ts', '.tsx', '.js', '.jsx', '.json'],
@@ -397,6 +381,7 @@ export default defineConfig(({ mode }) => {
             'process.env.BUILD_ENV': JSON.stringify(isProd ? 'PRO' : 'DEV'),
             'process.env.DEBUG': JSON.stringify(!isProd),
             'process.env.NODE_ENV': JSON.stringify(mode),
+            'global.crypto': 'globalThis.crypto',
             global: 'globalThis'
         },
 
@@ -465,7 +450,8 @@ export default defineConfig(({ mode }) => {
                 'stream-browserify',
                 'crypto-browserify',
                 'bitcore-lib',
-                'bip-schnorr'
+                'bip-schnorr',
+                'crypto-browserify'
             ],
             exclude: ['@btc-vision/transaction']
         },

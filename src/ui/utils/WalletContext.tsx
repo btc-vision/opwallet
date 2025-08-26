@@ -25,7 +25,7 @@ import {
 import { ApprovalData, ApprovalResponse } from '@/shared/types/Approval';
 import { InteractionParametersWithoutSigner } from '@btc-vision/transaction';
 import { AddressType, UnspentOutput } from '@btc-vision/wallet-sdk';
-import { bitcoin } from '@btc-vision/wallet-sdk/lib/bitcoin-core';
+import { Psbt } from '@btc-vision/bitcoin';
 
 export interface WalletController {
     changePassword: (password: string, newPassword: string) => Promise<void>;
@@ -155,7 +155,7 @@ export interface WalletController {
 
     getCurrentKeyringAccounts(): Promise<Account[]>;
 
-    signTransaction(psbt: bitcoin.Psbt, inputs: ToSignInput[]): Promise<bitcoin.Psbt>;
+    signTransaction(psbt: Psbt, inputs: ToSignInput[]): Promise<Psbt>;
 
     signPsbtWithHex(psbtHex: string, toSignInputs: ToSignInput[], autoFinalized: boolean): Promise<string>;
 

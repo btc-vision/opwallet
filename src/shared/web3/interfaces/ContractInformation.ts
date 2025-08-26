@@ -4,4 +4,6 @@ export interface ContractInformation {
 
     readonly decimals: number;
     readonly logo: string;
+
+    readonly maximumSupply: bigint;
 }

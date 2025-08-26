@@ -66,20 +66,20 @@ import {
     RawChallenge,
     Wallet
 } from '@btc-vision/transaction';
-import { publicKeyToAddress, scriptPkToAddress } from '@btc-vision/wallet-sdk/lib/address';
-import { bitcoin, ECPair } from '@btc-vision/wallet-sdk/lib/bitcoin-core';
-import { KeystoneKeyring } from '@btc-vision/wallet-sdk/lib/keyring';
 import {
+    AbstractWallet,
+    ECPair,
     genPsbtOfBIP322Simple,
     getSignatureFromPsbtOfBIP322Simple,
-    signMessageOfBIP322Simple
-} from '@btc-vision/wallet-sdk/lib/message';
-import { toPsbtNetwork } from '@btc-vision/wallet-sdk/lib/network';
-import { toXOnly } from '@btc-vision/wallet-sdk/lib/utils';
-import { AbstractWallet } from '@btc-vision/wallet-sdk/lib/wallet';
+    KeystoneKeyring,
+    publicKeyToAddress,
+    scriptPkToAddress,
+    signMessageOfBIP322Simple,
+    toPsbtNetwork
+} from '@btc-vision/wallet-sdk';
 
 import { customNetworksManager } from '@/shared/utils/CustomNetworksManager';
-import { address as bitcoinAddress, Psbt } from '@btc-vision/bitcoin';
+import { address as bitcoinAddress, payments, Psbt, toXOnly, Transaction } from '@btc-vision/bitcoin';
 import { Buffer } from 'buffer';
 import { ContactBookItem, ContactBookStore } from '../service/contactBook';
 import { OpenApiService } from '../service/openapi';
@@ -834,7 +834,7 @@ export class WalletController {
     /**
      * Low-level convenience method for signing a transaction's PSBT.
      */
-    public signTransaction = (type: string, from: string, psbt: bitcoin.Psbt, inputs: ToSignInput[]): bitcoin.Psbt => {
+    public signTransaction = (type: string, from: string, psbt: Psbt, inputs: ToSignInput[]): Psbt => {
         const keyring = keyringService.getKeyringForAccount(from, type);
         return keyringService.signTransaction(keyring, psbt, inputs);
     };
@@ -844,7 +844,7 @@ export class WalletController {
      * @throws WalletControllerError
      */
     public formatOptionsToSignInputs = async (
-        _psbt: string | bitcoin.Psbt,
+        _psbt: string | Psbt,
         options?: SignPsbtOptions
     ): Promise<ToSignInput[]> => {
         const account = await this.getCurrentAccount();
@@ -889,14 +889,14 @@ export class WalletController {
             const networkType = this.getNetworkType();
             const psbtNetwork = toPsbtNetwork(networkType);
 
-            const psbt = typeof _psbt === 'string' ? bitcoin.Psbt.fromHex(_psbt, { network: psbtNetwork }) : _psbt;
+            const psbt = typeof _psbt === 'string' ? Psbt.fromHex(_psbt, { network: psbtNetwork }) : _psbt;
 
             psbt.data.inputs.forEach((v, idx) => {
                 let script: Buffer | null = null;
                 if (v.witnessUtxo) {
                     script = v.witnessUtxo.script;
                 } else if (v.nonWitnessUtxo) {
-                    const tx = bitcoin.Transaction.fromBuffer(v.nonWitnessUtxo);
+                    const tx = Transaction.fromBuffer(v.nonWitnessUtxo);
                     const output = tx.outs[psbt.txInputs[idx].index];
                     script = output.script;
                 }
@@ -920,11 +920,7 @@ export class WalletController {
      * Sign a psbt with a keyring and optionally finalize the inputs.
      * @throws WalletControllerError
      */
-    public signPsbt = async (
-        psbt: bitcoin.Psbt,
-        toSignInputs: ToSignInput[],
-        autoFinalized: boolean
-    ): Promise<bitcoin.Psbt> => {
+    public signPsbt = async (psbt: Psbt, toSignInputs: ToSignInput[], autoFinalized: boolean): Promise<Psbt> => {
         const account = await this.getCurrentAccount();
         if (!account) throw new WalletControllerError('No current account: signPsbt');
 
@@ -948,7 +944,7 @@ export class WalletController {
 
             if (isNotSigned && isP2TR && lostInternalPubkey) {
                 const tapInternalKey = toXOnly(Buffer.from(account.pubkey, 'hex'));
-                const { output } = bitcoin.payments.p2tr({
+                const { output } = payments.p2tr({
                     internalPubkey: tapInternalKey,
                     network: psbtNetwork
                 });
@@ -1007,7 +1003,7 @@ export class WalletController {
         toSignInputs: ToSignInput[],
         autoFinalized: boolean
     ): Promise<string> => {
-        const psbt = bitcoin.Psbt.fromHex(psbtHex);
+        const psbt = Psbt.fromHex(psbtHex);
         await this.signPsbt(psbt, toSignInputs, autoFinalized);
         return psbt.toHex();
     };
@@ -2148,7 +2144,7 @@ export class WalletController {
         const { keyring } = await this.checkKeyringMethod('parseSignPsbtUr');
         try {
             const psbtHex = await (keyring as KeystoneKeyring).parseSignPsbtUr(type, cbor);
-            const psbt = bitcoin.Psbt.fromHex(psbtHex);
+            const psbt = Psbt.fromHex(psbtHex);
             if (isFinalize) {
                 psbt.finalizeAllInputs();
             }
@@ -2208,7 +2204,7 @@ export class WalletController {
         if (msgType === 'bip322-simple') {
             try {
                 const res = await this.parseSignPsbtUr(type, cbor, false);
-                const psbt = bitcoin.Psbt.fromHex(res.psbtHex);
+                const psbt = Psbt.fromHex(res.psbtHex);
                 psbt.finalizeAllInputs();
                 return {
                     signature: getSignatureFromPsbtOfBIP322Simple(psbt)
