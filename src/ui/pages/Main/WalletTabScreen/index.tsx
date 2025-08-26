@@ -1,5 +1,5 @@
 import { Tooltip } from 'antd';
-import { CSSProperties, useEffect, useState } from 'react';
+import React, { CSSProperties, useEffect, useState } from 'react';
 
 import { AddressFlagType } from '@/shared/constant';
 import { checkAddressFlag } from '@/shared/utils';
@@ -11,7 +11,7 @@ import { NavTabBar } from '@/ui/components/NavTabBar';
 import { UpgradePopover } from '@/ui/components/UpgradePopover';
 import { BtcDisplay } from '@/ui/pages/Main/WalletTabScreen/components/BtcDisplay';
 import {
-    useAccountBalance,
+    useAccountBalance, useAccountPublicKey,
     useAddressSummary,
     useCurrentAccount,
     useFetchBalanceCallback
@@ -33,7 +33,7 @@ import { amountToSatoshis, useWallet } from '@/ui/utils';
 import {
     DownOutlined,
     ExclamationCircleOutlined,
-    ExperimentOutlined,
+    ExperimentOutlined, HistoryOutlined,
     InfoCircleOutlined,
     QrcodeOutlined,
     SendOutlined,
@@ -43,6 +43,9 @@ import {
 import { RouteTypes, useNavigate } from '../../MainRoute';
 import { SwitchChainModal } from '../../Settings/network/SwitchChainModal';
 import { OPNetList } from './OPNetList';
+import { Address } from '@btc-vision/transaction';
+import ActionButton from '../../../components/ActionButton/index';
+import ParticleField from '@/ui/components/ParticleField/ParticleField';
 
 const colors = {
     main: '#f37413',
@@ -56,7 +59,13 @@ const colors = {
     containerBorder: '#303030',
     success: '#4ade80',
     error: '#ef4444',
-    warning: '#fbbf24'
+    warning: '#fbbf24',
+
+
+    btcOrange: '#e9983d',
+
+    buttonBorder: '#444746',
+    buttonBorderHover: '#f37413'
 };
 
 const $noBreakStyle: CSSProperties = {
@@ -66,6 +75,12 @@ const $noBreakStyle: CSSProperties = {
 
 export default function WalletTabScreen() {
     const navigate = useNavigate();
+
+    const untweakedPublicKey = useAccountPublicKey();
+
+    const address = Address.fromString(untweakedPublicKey);
+    const tweakedPublicKey = address.toHex();
+    const explorerUrl = `https://opscan.org/accounts/${tweakedPublicKey}`;
 
     const accountBalance = useAccountBalance();
     const fetchBalance = useFetchBalanceCallback();
@@ -199,7 +214,7 @@ export default function WalletTabScreen() {
             />
 
             <Content style={{ padding: '12px' }}>
-                <Column gap="sm">
+                <Column >
                     {/* Status Messages */}
                     {(walletConfig.chainTip || walletConfig.statusMessage) && (
                         <div
@@ -248,6 +263,13 @@ export default function WalletTabScreen() {
 
                     <AccountSelect />
 
+                    <div style={{
+                        position: 'relative',
+                        margin: '-8px -12px -8px -12px',
+                        background: 'Linear-gradient(180deg, #2e2922 0%, rgba(0,0,0,0) 100%)',
+                    }}>
+                        <ParticleField speed={0.3}  />
+                    {/*
                     <AddressBar
                         csv75_total_amount={accountBalance.csv75_total_amount}
                         csv75_unlocked_amount={accountBalance.csv75_unlocked_amount}
@@ -256,16 +278,12 @@ export default function WalletTabScreen() {
                         csv1_unlocked_amount={accountBalance.csv1_unlocked_amount}
                         csv1_locked_amount={accountBalance.csv1_locked_amount}
                     />
+                    */}
 
                     {/* Balance Card */}
                     <div
                         style={{
-                            background: `linear-gradient(135deg, ${colors.main}15 0%, ${colors.main}08 100%)`,
-                            border: `1px solid ${colors.main}30`,
-                            borderRadius: '16px',
                             padding: '20px',
-                            marginTop: '8px',
-                            marginBottom: '12px',
                             textAlign: 'center',
                             position: 'relative',
                             overflow: 'hidden'
@@ -439,7 +457,7 @@ export default function WalletTabScreen() {
                                         color: colors.textFaded,
                                         textTransform: 'uppercase',
                                         letterSpacing: '0.5px',
-                                        marginBottom: '8px',
+                                        marginBottom: '3px',
                                         display: 'flex',
                                         alignItems: 'center',
                                         justifyContent: 'center',
@@ -454,16 +472,19 @@ export default function WalletTabScreen() {
 
                                 {/* Show CSV balances if they exist */}
                                 {hasCSVBalances() && (
-                                    <div
+                                    <span
                                         style={{
                                             fontSize: '10px',
-                                            color: colors.main,
-                                            marginTop: '6px',
+                                            color: colors.btcOrange,
+                                            backgroundColor: "rgba(233, 152, 61, 0.15)",
+                                            padding: '2px 6px',
+                                            borderRadius: '6px',
+                                            marginTop: '3px',
                                             textAlign: 'center',
                                             fontWeight: 500
                                         }}>
                                         + CSV Balances
-                                    </div>
+                                    </span>
                                 )}
 
                                 <BtcUsd
@@ -482,210 +503,41 @@ export default function WalletTabScreen() {
                     <div
                         style={{
                             display: 'grid',
-                            gridTemplateColumns: 'repeat(4, 1fr)',
-                            gap: '8px',
+                            gridTemplateColumns: 'repeat(5, 1fr)',
+                            gap: '6px',
+                            padding: '0 12px',
                             marginBottom: '12px'
                         }}>
-                        <button
-                            onClick={() => navigate(RouteTypes.ReceiveScreen)}
-                            style={{
-                                display: 'flex',
-                                flexDirection: 'column',
-                                alignItems: 'center',
-                                gap: '6px',
-                                padding: '12px 8px',
-                                background: colors.buttonHoverBg,
-                                border: `1px solid ${colors.containerBorder}`,
-                                borderRadius: '12px',
-                                cursor: 'pointer',
-                                transition: 'all 0.15s'
-                            }}
-                            onMouseEnter={(e) => {
-                                e.currentTarget.style.background = colors.buttonBg;
-                                e.currentTarget.style.borderColor = colors.main;
-                                e.currentTarget.style.transform = 'translateY(-2px)';
-                            }}
-                            onMouseLeave={(e) => {
-                                e.currentTarget.style.background = colors.buttonHoverBg;
-                                e.currentTarget.style.borderColor = colors.containerBorder;
-                                e.currentTarget.style.transform = 'translateY(0)';
-                            }}>
-                            <div
-                                style={{
-                                    width: '32px',
-                                    height: '32px',
-                                    borderRadius: '8px',
-                                    background: colors.main,
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center'
-                                }}>
-                                <QrcodeOutlined style={{ fontSize: 16, color: colors.background }} />
-                            </div>
-                            <span
-                                style={{
-                                    fontSize: '11px',
-                                    fontWeight: 500,
-                                    color: colors.text,
-                                    fontFamily: 'Inter-Regular, serif'
-                                }}>
-                                Receive
-                            </span>
-                        </button>
+                        <ActionButton label="Receive" icon={<QrcodeOutlined style={{ fontSize: 18, color: colors.text }} />} onClick={() => navigate(RouteTypes.ReceiveScreen)} />
 
-                        <button
-                            onClick={() => {
-                                resetUiTxCreateScreen();
-                                navigate(RouteTypes.TxCreateScreen);
-                            }}
-                            style={{
-                                display: 'flex',
-                                flexDirection: 'column',
-                                alignItems: 'center',
-                                gap: '6px',
-                                padding: '12px 8px',
-                                background: colors.buttonHoverBg,
-                                border: `1px solid ${colors.containerBorder}`,
-                                borderRadius: '12px',
-                                cursor: 'pointer',
-                                transition: 'all 0.15s'
-                            }}
-                            onMouseEnter={(e) => {
-                                e.currentTarget.style.background = colors.buttonBg;
-                                e.currentTarget.style.borderColor = colors.main;
-                                e.currentTarget.style.transform = 'translateY(-2px)';
-                            }}
-                            onMouseLeave={(e) => {
-                                e.currentTarget.style.background = colors.buttonHoverBg;
-                                e.currentTarget.style.borderColor = colors.containerBorder;
-                                e.currentTarget.style.transform = 'translateY(0)';
-                            }}>
-                            <div
-                                style={{
-                                    width: '32px',
-                                    height: '32px',
-                                    borderRadius: '8px',
-                                    background: colors.main,
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center'
-                                }}>
-                                <SendOutlined style={{ fontSize: 16, color: colors.background }} />
-                            </div>
-                            <span
-                                style={{
-                                    fontSize: '11px',
-                                    fontWeight: 500,
-                                    color: colors.text,
-                                    fontFamily: 'Inter-Regular, serif'
-                                }}>
-                                Send
-                            </span>
-                        </button>
+                        <ActionButton label="Send" icon={<SendOutlined style={{ fontSize: 18, color: colors.text }} />} onClick={() => {
+                            resetUiTxCreateScreen();
+                            navigate(RouteTypes.TxCreateScreen);
+                        }} />
 
-                        <button
-                            onClick={() => {
-                                window.open('https://motoswap.org', '_blank', 'noopener noreferrer');
-                            }}
-                            style={{
-                                display: 'flex',
-                                flexDirection: 'column',
-                                alignItems: 'center',
-                                gap: '6px',
-                                padding: '12px 8px',
-                                background: colors.buttonHoverBg,
-                                border: `1px solid ${colors.containerBorder}`,
-                                borderRadius: '12px',
-                                cursor: 'pointer',
-                                transition: 'all 0.15s'
-                            }}
-                            onMouseEnter={(e) => {
-                                e.currentTarget.style.background = colors.buttonBg;
-                                e.currentTarget.style.borderColor = colors.main;
-                                e.currentTarget.style.transform = 'translateY(-2px)';
-                            }}
-                            onMouseLeave={(e) => {
-                                e.currentTarget.style.background = colors.buttonHoverBg;
-                                e.currentTarget.style.borderColor = colors.containerBorder;
-                                e.currentTarget.style.transform = 'translateY(0)';
-                            }}>
-                            <div
-                                style={{
-                                    width: '32px',
-                                    height: '32px',
-                                    borderRadius: '8px',
-                                    background: colors.main,
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center'
-                                }}>
-                                <SwapOutlined style={{ fontSize: 16, color: colors.background }} />
-                            </div>
-                            <span
-                                style={{
-                                    fontSize: '11px',
-                                    fontWeight: 500,
-                                    color: colors.text,
-                                    fontFamily: 'Inter-Regular, serif'
-                                }}>
-                                Swap
-                            </span>
-                        </button>
+                        <ActionButton label="Swap" icon={<SwapOutlined style={{ fontSize: 18, color: colors.text }} />} onClick={() => {
+                            window.open('https://motoswap.org', '_blank', 'noopener noreferrer');
+                        }} />
 
-                        <button
-                            onClick={() => {
-                                window.open(faucetUrl || '', '_blank', 'noopener noreferrer');
+                        <ActionButton label="Faucet" icon={<ExperimentOutlined style={{ fontSize: 18, color: colors.text }} />} onClick={() => {
+                            window.open(faucetUrl || '', '_blank', 'noopener noreferrer');
+                        }} />
+
+                        <ActionButton
+                            label="History"
+                            icon={<HistoryOutlined style={{ fontSize: 18, color: colors.text }} />}
+                            onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
+                                e.stopPropagation();
+                                window.open(explorerUrl, '_blank');
                             }}
-                            style={{
-                                display: 'flex',
-                                flexDirection: 'column',
-                                alignItems: 'center',
-                                gap: '6px',
-                                padding: '12px 8px',
-                                background: colors.buttonHoverBg,
-                                border: `1px solid ${colors.containerBorder}`,
-                                borderRadius: '12px',
-                                cursor: 'pointer',
-                                transition: 'all 0.15s'
-                            }}
-                            onMouseEnter={(e) => {
-                                e.currentTarget.style.background = colors.buttonBg;
-                                e.currentTarget.style.borderColor = colors.main;
-                                e.currentTarget.style.transform = 'translateY(-2px)';
-                            }}
-                            onMouseLeave={(e) => {
-                                e.currentTarget.style.background = colors.buttonHoverBg;
-                                e.currentTarget.style.borderColor = colors.containerBorder;
-                                e.currentTarget.style.transform = 'translateY(0)';
-                            }}>
-                            <div
-                                style={{
-                                    width: '32px',
-                                    height: '32px',
-                                    borderRadius: '8px',
-                                    background: colors.main,
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center'
-                                }}>
-                                <ExperimentOutlined style={{ fontSize: 16, color: colors.background }} />
-                            </div>
-                            <span
-                                style={{
-                                    fontSize: '11px',
-                                    fontWeight: 500,
-                                    color: colors.text,
-                                    fontFamily: 'Inter-Regular, serif'
-                                }}>
-                                Faucet
-                            </span>
-                        </button>
+                        />
                     </div>
-
+                    </div>
                     {/* Tokens Section */}
                     <div style={{ marginTop: '4px' }}>
                         <OPNetList />
                     </div>
+
                 </Column>
 
                 {!versionInfo.skipped && (

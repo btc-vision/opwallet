@@ -7,12 +7,39 @@ import { BaseView } from '../BaseView';
 import { Column } from '../Column';
 import { Grid } from '../Grid';
 import { Icon, IconTypes } from '../Icon';
+import PartnerIcon from '@/ui/components/Icon/PartnerIcon';
 
 export function NavTabBar({ tab }: { tab: TabOption }) {
     return (
-        <Grid columns={2} style={{ width: '100%', height: '67.5px', backgroundColor: colors.bg2 }}>
-            <TabButton tabName="home" icon="wallet" isActive={tab === 'home'} />
-            <TabButton tabName="settings" icon="settings" isActive={tab === 'settings'} />
+        <Grid columns={2} style={{ width: '100%', height: '50px', backgroundColor: colors.bg2, borderTop: `1px solid ${colors.border}` }}>
+
+            <div style={{
+                display: 'flex',
+                alignItems: 'stretch',
+                justifyContent: 'flex-start',
+            }}>
+                <button
+                    style={{
+                        display: "flex",
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        aspectRatio: '1 / 1',
+                        color: colors.text,
+                        fill: colors.text,
+                    }}>
+                    <PartnerIcon icon="OPScan" size={16} />
+                </button>
+            </div>
+
+            <div style={{
+                display: 'flex',
+                alignItems: 'stretch',
+                justifyContent: 'flex-end',
+            }}>
+                <TabButton tabName="home" icon="wallet" isActive={tab === 'home'} />
+                <TabButton tabName="settings" icon="settings" isActive={tab === 'settings'} />
+            </div>
         </Grid>
     );
 }
@@ -22,9 +49,14 @@ function TabButton({ tabName, icon, isActive }: { tabName: TabOption; icon: Icon
     const unreadApp = useUnreadAppSummary();
     //const readTab = useReadTab();
     return (
-        <Column
-            justifyCenter
-            itemsCenter
+        <div
+            style={{
+                display: "flex",
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'center',
+                aspectRatio: '1 / 1'
+            }}
             onClick={(e) => {
                 if (tabName === 'home') {
                     navigate(RouteTypes.MainScreen);
@@ -50,6 +82,6 @@ function TabButton({ tabName, icon, isActive }: { tabName: TabOption; icon: Icon
                         }}></BaseView>
                 )}
             </BaseView>
-        </Column>
+        </div>
     );
 }
