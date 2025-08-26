@@ -362,7 +362,8 @@ class Web3API {
     public async getAllUTXOsForAddresses(
         addresses: string[],
         requiredAmount?: bigint,
-        olderThan?: bigint
+        olderThan?: bigint,
+        optimize?: boolean
     ): Promise<UTXO[]> {
         let finalUTXOs: UTXOs = [];
 
@@ -373,7 +374,7 @@ class Web3API {
                 if (!requiredAmount) {
                     utxos = await this.provider.utxoManager.getUTXOs({
                         address,
-                        optimize: true,
+                        optimize: optimize ?? true,
                         mergePendingUTXOs: true,
                         filterSpentUTXOs: true,
                         olderThan
@@ -382,7 +383,7 @@ class Web3API {
                     utxos = await this.provider.utxoManager.getUTXOsForAmount({
                         address,
                         amount: requiredAmount,
-                        optimize: true,
+                        optimize: optimize ?? true,
                         mergePendingUTXOs: true,
                         filterSpentUTXOs: true,
                         olderThan
@@ -409,8 +410,8 @@ class Web3API {
         const threshold = csvType === 'csv75' ? 75n : 1n;
 
         const [unlocked, all] = await Promise.all([
-            this.getAllUTXOsForAddresses([address], undefined, threshold),
-            this.getAllUTXOsForAddresses([address], undefined)
+            this.getAllUTXOsForAddresses([address], undefined, threshold, false),
+            this.getAllUTXOsForAddresses([address], undefined, undefined, false)
         ]);
 
         const key = (u: UTXO) => `${u.transactionId}:${u.outputIndex}`;
