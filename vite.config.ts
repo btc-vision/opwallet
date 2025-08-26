@@ -86,11 +86,11 @@ function fixBtcVisionImports(): PluginOption {
         enforce: 'pre', // Run before other plugins
         resolveId(source, importer) {
             // Handle @btc-vision/wallet-sdk imports
-            if (source === '@btc-vision/wallet-sdk') {
+            /*if (source === '@btc-vision/wallet-sdk') {
                 // Main import should use lib/index.js
                 const resolvedPath = resolve(__dirname, 'node_modules/@btc-vision/wallet-sdk/lib/index.js');
                 return { id: resolvedPath, moduleSideEffects: false };
-            }
+            }*/
             if (source.startsWith('@btc-vision/wallet-sdk/')) {
                 // Subpath imports should map correctly
                 const subpath = source.replace('@btc-vision/wallet-sdk/', '');
@@ -108,7 +108,7 @@ function fixBtcVisionImports(): PluginOption {
         },
         load(id) {
             // If it's a @btc-vision/wallet-sdk file, load it
-            if (id.includes('@btc-vision/wallet-sdk')) {
+            /*if (id.includes('@btc-vision/wallet-sdk')) {
                 try {
                     const code = fs.readFileSync(id, 'utf-8');
                     return {
@@ -119,7 +119,7 @@ function fixBtcVisionImports(): PluginOption {
                     console.error(`Failed to load ${id}:`, e);
                     return null;
                 }
-            }
+            }*/
             return null;
         }
     };
@@ -377,10 +377,10 @@ export default defineConfig(({ mode }) => {
                     find: '@',
                     replacement: resolve(__dirname, './src')
                 },
-                {
+                /*{
                     find: /^@btc-vision\/wallet-sdk$/,
                     replacement: resolve(__dirname, 'node_modules/@btc-vision/wallet-sdk/lib/index.js')
-                },
+                },*/
                 {
                     find: /^@btc-vision\/wallet-sdk\/(.*)/,
                     replacement: resolve(__dirname, 'node_modules/@btc-vision/wallet-sdk/$1')
