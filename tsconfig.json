@@ -1,5 +1,6 @@
 {
     "compilerOptions": {
+        "noEmit": true,
         "target": "ESNext",
         "lib": [
             "dom",
@@ -31,7 +32,7 @@
         "forceConsistentCasingInFileNames": true,
         "noFallthroughCasesInSwitch": true,
         "module": "esnext",
-        "moduleResolution": "node",
+        "moduleResolution": "bundler",
         "resolveJsonModule": true,
         "isolatedModules": false,
         "jsx": "react-jsx",

@@ -37,6 +37,7 @@ import {
 } from '@btc-vision/transaction';
 import BigNumber from 'bignumber.js';
 import {
+    AddressesInfo,
     Airdrop,
     BitcoinAbiTypes,
     BitcoinInterfaceAbi,
@@ -48,7 +49,6 @@ import {
     OP_20_ABI,
     TransactionParameters
 } from 'opnet';
-import { AddressesInfo } from 'opnet/src/providers/interfaces/PublicKeyInfo';
 import { Dispatch, SetStateAction, useCallback, useEffect, useState } from 'react';
 import { RouteTypes, useNavigate } from '../MainRoute';
 

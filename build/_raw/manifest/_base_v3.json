@@ -22,7 +22,8 @@
     },
     "author": "https://opnet.org",
     "background": {
-        "service_worker": "background.js"
+        "service_worker": "background.js",
+        "type": "module"
     },
     "homepage_url": "https://opnet.org",
     "permissions": ["storage", "unlimitedStorage", "activeTab"],
@@ -32,13 +33,12 @@
             "matches": ["<all_urls>"],
             "js": ["content-script.js"],
             "run_at": "document_start",
-            "all_frames": true,
-            "type": "module"
+            "all_frames": true
         }
     ],
     "web_accessible_resources": [
         {
-            "resources": ["pageProvider.js"],
+            "resources": ["pageProvider.js",  "js/*.js"],
             "matches": ["<all_urls>"],
             "type": "module"
         }

@@ -9,7 +9,6 @@ import eventBus from '@/shared/eventBus';
 import { Message } from '@/shared/utils';
 import { PriceProvider } from '@/ui/provider/PriceProvider';
 import AccountUpdater from '@/ui/state/accounts/updater';
-import '@/ui/styles/global.less';
 import browser from 'webextension-polyfill';
 
 import { RequestParams } from '@/shared/types/Request';
@@ -20,6 +19,7 @@ import store from './state';
 import { WalletController, WalletProvider } from './utils';
 import ChainUpdater from './state/settings/updater';
 
+import '@/ui/styles/global.less';
 import './template.css';
 import '../opnet/styles.css';
 

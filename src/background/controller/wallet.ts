@@ -1,4 +1,4 @@
-import { BroadcastedTransaction } from 'opnet';
+import { BroadcastedTransaction, UTXOs } from 'opnet';
 
 import {
     contactBookService,
@@ -62,6 +62,7 @@ import {
     IDeploymentParametersWithoutSigner,
     IInteractionParameters,
     InteractionParametersWithoutSigner,
+    InteractionResponse,
     RawChallenge,
     Wallet
 } from '@btc-vision/transaction';
@@ -79,9 +80,7 @@ import { AbstractWallet } from '@btc-vision/wallet-sdk/lib/wallet';
 
 import { customNetworksManager } from '@/shared/utils/CustomNetworksManager';
 import { address as bitcoinAddress, Psbt } from '@btc-vision/bitcoin';
-import { InteractionResponse } from '@btc-vision/transaction/src/transaction/TransactionFactory';
 import { Buffer } from 'buffer';
-import { UTXOs } from 'opnet/src/bitcoin/UTXOs';
 import { ContactBookItem, ContactBookStore } from '../service/contactBook';
 import { OpenApiService } from '../service/openapi';
 import { ConnectedSite } from '../service/permission';
@@ -2412,7 +2411,7 @@ export class WalletController {
 
                         utxos.push(f);
 
-                        if (utxos.reduce<bigint>((s, u) => s + u.value, 0n) >= BigInt(requiredMinimum)) return;
+                        if (utxos.reduce<bigint>((s: bigint, u) => s + u.value, 0n) >= BigInt(requiredMinimum)) return;
                     });
             }
         }

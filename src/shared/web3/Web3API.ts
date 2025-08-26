@@ -1,14 +1,13 @@
 import BigNumber from 'bignumber.js';
 import { CallResult, getContract, IOP20Contract, JSONRpcProvider, OP_20_ABI, UTXOs } from 'opnet';
 
-import { ChainType, ChainId as WalletChainId } from '@/shared/constant';
+import { ChainId as WalletChainId, ChainType } from '@/shared/constant';
 import { NetworkType } from '@/shared/types';
 import { customNetworksManager } from '@/shared/utils/CustomNetworksManager';
 import { contractLogoManager } from '@/shared/web3/contracts-logo/ContractLogoManager';
 import { ContractInformation } from '@/shared/web3/interfaces/ContractInformation';
 import { ContractNames } from '@/shared/web3/metadata/ContractNames';
-import { networks } from '@btc-vision/bitcoin';
-import { Network } from '@btc-vision/bitcoin/src/networks.js';
+import { Network, networks } from '@btc-vision/bitcoin';
 import {
     Address,
     AddressVerificator,

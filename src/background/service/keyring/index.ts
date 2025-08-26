@@ -6,8 +6,7 @@ import log from 'loglevel';
 
 import { ADDRESS_TYPES, KEYRING_TYPE } from '@/shared/constant';
 import { AddressType } from '@/shared/types';
-import { networks } from '@btc-vision/bitcoin';
-import { Network } from '@btc-vision/bitcoin/src/networks.js';
+import { Network, networks } from '@btc-vision/bitcoin';
 import * as encryptor from '@btc-vision/passworder';
 import {
     DeserializeOption,

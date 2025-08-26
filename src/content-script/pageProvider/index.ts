@@ -1,4 +1,3 @@
-// this script is injected into webpage's context
 import { EventEmitter } from 'events';
 import { BroadcastedTransaction } from 'opnet';
 
@@ -24,27 +23,28 @@ import PushEventHandlers from './pushEventHandlers';
 import ReadyPromise from './readyPromise';
 import { $, domReadyCall, isPushEventHandlerMethod } from './utils';
 
-/*declare global {
-    interface Window {
-        opnet?: Unisat;
-        unisat?: Unisat;
-    }
-}*/
-
 const log = (event: string, ...args: unknown[]) => {
     /*if (process && process.env.NODE_ENV !== 'production') {
-                            console.log(
-                               `%c [unisat] (${new Date().toTimeString().slice(0, 8)}) ${event}`,
-                               'font-weight: 600; background-color: #7d6ef9; color: white;',
-                               ...args
-                            );
-                          }*/
+        console.log(
+            `%c [opnet] (${new Date().toTimeString().slice(0, 8)}) ${event}`,
+            'font-weight: 600; background-color: #7d6ef9; color: white;',
+            ...args
+        );
+    }*/
 };
 
-//declare const window: any
+//const script = document.currentScript;
+const channelMeta: HTMLMetaElement | null = document.querySelector('meta[name="opnet-channel"]');
+if (!channelMeta) {
+    throw new Error('Meta tag "opnet-channel" not found');
+}
 
-const script = document.currentScript;
-const channelName = script?.getAttribute('channel') ?? 'OPNET';
+const channelName = channelMeta.content;
+if (!channelName) {
+    throw new Error('Meta tag "opnet-channel" has no content');
+}
+
+channelMeta.remove();
 
 interface StateProvider {
     accounts: string[] | null;
@@ -68,7 +68,7 @@ export interface OpnetProviderPrivate {
     _bcm: BroadcastChannelMessage;
 }
 
-const _opnetPrividerPrivate: OpnetProviderPrivate = {
+const opnetProviderPrivate: OpnetProviderPrivate = {
     _selectedAddress: null,
     _network: null,
     _isConnected: false,
@@ -95,7 +95,7 @@ export class OpnetProvider extends EventEmitter {
         super();
         this.setMaxListeners(maxListeners);
         void this.initialize();
-        _opnetPrividerPrivate._pushEventHandlers = new PushEventHandlers(this, _opnetPrividerPrivate);
+        opnetProviderPrivate._pushEventHandlers = new PushEventHandlers(this, opnetProviderPrivate);
     }
 
     public get isOPWallet(): boolean {
@@ -105,7 +105,7 @@ export class OpnetProvider extends EventEmitter {
     initialize = async () => {
         document.addEventListener('visibilitychange', this._requestPromiseCheckVisibility);
 
-        _opnetPrividerPrivate._bcm.connect().on('message', this._handleBackgroundMessage);
+        opnetProviderPrivate._bcm.connect().on('message', this._handleBackgroundMessage);
         domReadyCall(async () => {
             const origin = window.top?.location.origin || '';
 
@@ -119,7 +119,7 @@ export class OpnetProvider extends EventEmitter {
             const name =
                 document.title || (metaTitleElement instanceof HTMLMetaElement ? metaTitleElement.content : origin);
 
-            await _opnetPrividerPrivate._bcm.request({
+            await opnetProviderPrivate._bcm.request({
                 method: 'tabCheckin',
                 params: { icon, name, origin }
             });
@@ -134,21 +134,21 @@ export class OpnetProvider extends EventEmitter {
             })) as ProviderState;
 
             if (isUnlocked) {
-                _opnetPrividerPrivate._isUnlocked = true;
-                _opnetPrividerPrivate._state.isUnlocked = true;
+                opnetProviderPrivate._isUnlocked = true;
+                opnetProviderPrivate._state.isUnlocked = true;
             }
             this.emit('connect', {});
-            await _opnetPrividerPrivate._pushEventHandlers?.networkChanged({
+            await opnetProviderPrivate._pushEventHandlers?.networkChanged({
                 network,
                 chainType: chain
             });
 
-            _opnetPrividerPrivate._pushEventHandlers?.accountsChanged(accounts);
+            opnetProviderPrivate._pushEventHandlers?.accountsChanged(accounts);
         } catch {
             //
         } finally {
-            _opnetPrividerPrivate._initialized = true;
-            _opnetPrividerPrivate._state.initialized = true;
+            opnetProviderPrivate._initialized = true;
+            opnetProviderPrivate._state.initialized = true;
             this.emit('_initialized');
         }
 
@@ -162,11 +162,11 @@ export class OpnetProvider extends EventEmitter {
 
         this._requestPromiseCheckVisibility();
 
-        return _opnetPrividerPrivate._requestPromise
+        return opnetProviderPrivate._requestPromise
             .call(async () => {
                 log('[request]', JSON.stringify(data, null, 2));
 
-                const res = await _opnetPrividerPrivate._bcm.request(data).catch((err: unknown) => {
+                const res = await opnetProviderPrivate._bcm.request(data).catch((err: unknown) => {
                     // TODO (typing): Check if sending error without serialization cause any issues on the dApp side.
                     log('[request: error]', data.method, err);
                     throw err;
@@ -423,9 +423,9 @@ export class OpnetProvider extends EventEmitter {
 
     private _requestPromiseCheckVisibility = () => {
         if (document.visibilityState === 'visible') {
-            _opnetPrividerPrivate._requestPromise.check(1);
+            opnetProviderPrivate._requestPromise.check(1);
         } else {
-            _opnetPrividerPrivate._requestPromise.uncheck(1);
+            opnetProviderPrivate._requestPromise.uncheck(1);
         }
     };
 
@@ -436,10 +436,10 @@ export class OpnetProvider extends EventEmitter {
         // function, we are directly passing the data as unknown and all of the pushEventHandler's methods
         // have either one argument or none. So, it should be safe to cast it as below.
         if (
-            _opnetPrividerPrivate._pushEventHandlers &&
-            isPushEventHandlerMethod(_opnetPrividerPrivate._pushEventHandlers, params.event)
+            opnetProviderPrivate._pushEventHandlers &&
+            isPushEventHandlerMethod(opnetProviderPrivate._pushEventHandlers, params.event)
         ) {
-            return (_opnetPrividerPrivate._pushEventHandlers[params.event] as (data: unknown) => unknown)(params.data);
+            return (opnetProviderPrivate._pushEventHandlers[params.event] as (data: unknown) => unknown)(params.data);
         }
 
         this.emit(params.event, params.data);
