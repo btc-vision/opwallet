@@ -274,7 +274,6 @@ export default defineConfig(({ mode }) => {
                     pageProvider: resolve(__dirname, 'src/content-script/pageProvider/index.ts'),
                     ui: resolve(__dirname, 'src/ui/index.tsx')
                 },
-                //external: ['fs', 'path', 'crypto', 'stream'],
                 output: {
                     entryFileNames: '[name].js',
                     chunkFileNames: 'js/[name]-[hash].js',
