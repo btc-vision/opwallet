@@ -7,6 +7,7 @@ import {
     JSONRpcProvider,
     MetadataNFT,
     OP_20_ABI,
+    TokenOfOwnerByIndex,
     UTXOs
 } from 'opnet';
 
@@ -30,6 +31,11 @@ import {
 } from '@btc-vision/transaction';
 
 BigNumber.config({ EXPONENTIAL_AT: 256 });
+
+export interface OwnedNFT {
+    tokenId: bigint;
+    tokenURI: string;
+}
 
 export async function getOPNetChainType(chain: ChainType): Promise<ChainId> {
     // Get the chain configuration
@@ -314,6 +320,47 @@ class Web3API {
             };
         } catch (e) {
             console.warn(`Couldn't query name/symbol/decimals/logo for contract ${address}:`, e);
+            if ((e as Error).message.includes('not found')) {
+                return false;
+            }
+            return;
+        }
+    }
+
+    public async getOwnedNFTsForCollection(
+        collectionAddress: string,
+        ownerAddress: Address
+    ): Promise<OwnedNFT[] | undefined | false> {
+        try {
+            let addressP2OP: string = collectionAddress;
+            if (collectionAddress.startsWith('0x')) {
+                addressP2OP = Address.fromString(collectionAddress).p2op(this.network);
+            }
+
+            const nftContract: IExtendedOP721 = getContract<IExtendedOP721>(
+                addressP2OP,
+                EXTENDED_OP721_ABI,
+                this.provider,
+                this.network
+            );
+
+            const balance = await nftContract.balanceOf(ownerAddress);
+
+            const ownedNFTs: Promise<TokenOfOwnerByIndex>[] = [];
+            for (let i = 0n; i < balance.properties.balance; i++) {
+                ownedNFTs.push(nftContract.tokenOfOwnerByIndex(ownerAddress, i));
+            }
+
+            const results = await Promise.all(ownedNFTs);
+            const nfts = results.map((r) => r.properties.tokenId);
+            const uris = await Promise.all(nfts.map((n) => nftContract.tokenURI(n)));
+
+            return nfts.map((n, idx) => ({
+                tokenId: n,
+                tokenURI: uris[idx].properties.uri
+            }));
+        } catch (e) {
+            console.warn(`Couldn't query metadata for nft contract ${collectionAddress}:`, e);
             if ((e as Error).message.includes('not found')) {
                 return false;
             }
