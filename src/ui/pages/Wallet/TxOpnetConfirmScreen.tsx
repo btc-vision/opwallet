@@ -578,21 +578,19 @@ export default function TxOpnetConfirmScreen() {
 
             const contract: IExtendedOP721 = getContract<IExtendedOP721>(
                 addy,
-                EXTENDED_OP721_ABI, // You'll need to import this ABI
+                EXTENDED_OP721_ABI,
                 Web3API.provider,
                 Web3API.network,
                 userWallet.address
             );
 
-            // Get recipient's public key
             const recipientAddress = await getPubKey(parameters.to);
 
-            // Use safeTransferFrom for NFT transfer
             const transferData = await contract.safeTransferFrom(
                 userWallet.address,
                 recipientAddress,
                 parameters.tokenId,
-                new Uint8Array() // Empty data parameter
+                new Uint8Array()
             );
 
             const interactionParameters: TransactionParameters = {
