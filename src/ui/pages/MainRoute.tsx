@@ -51,6 +51,7 @@ import ImportNFTScreen from '@/ui/pages/Wallet/ImportNFTScreen';
 import NFTTabScreen from '@/ui/pages/Main/NFTTabScreen';
 import ImportSelectionScreen from '@/ui/pages/Wallet/ImportSelectionScreen';
 import NFTSendScreen from '@/ui/pages/Wallet/NFTSendScreen';
+import ImportTokenScreen from '@/ui/pages/Wallet/ImportOP20Screen';
 
 export enum RouteTypes {
     BoostScreen = 'BoostScreen',
@@ -92,7 +93,8 @@ export enum RouteTypes {
     ImportSelectionScreen = 'ImportSelectionScreen',
     ImportNFTScreen = 'ImportNFTScreen',
     NFTTabScreen = 'NFTTabScreen',
-    NFTSendScreen = 'NFTSendScreen'
+    NFTSendScreen = 'NFTSendScreen',
+    ImportTokenScreen = 'ImportTokenScreen'
 }
 
 type Routes = {
@@ -262,6 +264,10 @@ export const routes: Routes = {
     NFTSendScreen: {
         path: '/nft-send',
         element: <NFTSendScreen />
+    },
+    ImportTokenScreen: {
+        path: '/import-token',
+        element: <ImportTokenScreen />
     }
 };
 

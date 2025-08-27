@@ -26,12 +26,11 @@ export default function ImportSelectionScreen() {
     const handleSelection = (type: ImportType) => {
         if (type === ImportType.TOKEN) {
             // Go back and trigger token import modal
-            navigate(RouteTypes.MainScreen);
-            // You'll need to pass a flag or use state to open the token import modal
-            setTimeout(() => {
+            navigate(RouteTypes.ImportTokenScreen);
+            /*setTimeout(() => {
                 const importBtn = document.querySelector('[data-import-token-trigger]');
                 if (importBtn) (importBtn as HTMLElement).click();
-            }, 100);
+            }, 100);*/
         } else {
             navigate(RouteTypes.ImportNFTScreen);
         }
