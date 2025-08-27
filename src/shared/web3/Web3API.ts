@@ -5,6 +5,7 @@ import {
     IExtendedOP721,
     IOP20Contract,
     JSONRpcProvider,
+    MetadataNFT,
     OP_20_ABI,
     UTXOs
 } from 'opnet';
@@ -320,39 +321,25 @@ class Web3API {
         }
     }
 
-    public async queryNFTContractInformation(address: string): Promise<ContractInformation | undefined | false> {
+    public async queryNFTContractInformation(address: string): Promise<MetadataNFT['properties'] | undefined | false> {
         try {
             let addressP2OP: string = address;
             if (address.startsWith('0x')) {
                 addressP2OP = Address.fromString(address).p2op(this.network);
             }
 
-            const genericContract: IExtendedOP721 = getContract<IExtendedOP721>(
+            const nftContract: IExtendedOP721 = getContract<IExtendedOP721>(
                 addressP2OP,
                 EXTENDED_OP721_ABI,
                 this.provider,
                 this.network
             );
 
-            const results = await Promise.all([genericContract.contractLogoManager.getContractLogo(addressP2OP)]);
+            const metadata = await nftContract.metadata();
 
-            const metadata = results[0].properties;
-
-            const name = metadata.name ?? this.getContractName(addressP2OP);
-            const symbol = metadata.symbol ?? 'UNKNOWN';
-            const decimals = metadata.decimals ?? 0;
-            const maximumSupply = metadata.maximumSupply ?? 0n;
-
-            const logo = metadata.icon || results[1];
-            return {
-                name,
-                symbol,
-                decimals,
-                logo,
-                maximumSupply
-            };
+            return metadata.properties;
         } catch (e) {
-            console.warn(`Couldn't query name/symbol/decimals/logo for contract ${address}:`, e);
+            console.warn(`Couldn't query metadata for nft contract ${address}:`, e);
             if ((e as Error).message.includes('not found')) {
                 return false;
             }
