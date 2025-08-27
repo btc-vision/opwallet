@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import ImageService from '@/shared/services/ImageService';
 
 interface AsyncImageProps {
@@ -23,6 +23,7 @@ export function AsyncImage({
     onClick
 }: AsyncImageProps) {
     const elementRef = useRef<HTMLDivElement>(null);
+    const [isLoaded, setIsLoaded] = useState(false);
 
     useEffect(() => {
         if (!elementRef.current || !src) return;
@@ -35,6 +36,28 @@ export function AsyncImage({
         // Add to processing queue
         elementRef.current.classList.add('asyncImage');
 
+        // Create an observer to watch for class changes
+        const observer = new MutationObserver((mutations) => {
+            mutations.forEach((mutation) => {
+                if (mutation.type === 'attributes' && mutation.attributeName === 'class') {
+                    const element = mutation.target as HTMLElement;
+                    if (element.classList.contains('loaded')) {
+                        setIsLoaded(true);
+                        observer.disconnect();
+                    } else if (element.classList.contains('load-error')) {
+                        // Keep showing fallback on error
+                        observer.disconnect();
+                    }
+                }
+            });
+        });
+
+        // Start observing the element for class changes
+        observer.observe(elementRef.current, {
+            attributes: true,
+            attributeFilter: ['class']
+        });
+
         // Trigger processing
         setTimeout(() => {
             ImageService.processAllImages();
@@ -44,27 +67,31 @@ export function AsyncImage({
         ImageService.observeElement(elementRef.current);
 
         return () => {
-            // Cleanup if needed
+            // Cleanup
+            observer.disconnect();
             if (elementRef.current) {
                 elementRef.current.classList.remove('asyncImage', 'loaded');
             }
+            setIsLoaded(false);
         };
     }, [src, width, height]);
 
     return (
         <div
             ref={elementRef}
-            className={`asyncImage ${className}`}
+            className={`relative ${className}`}
             style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                background: '#434343',
-                ...style
+                ...style,
+                width: width,
+                height: height,
+                overflow: 'hidden'
             }}
-            onClick={onClick}
-            data-src={src}>
-            {fallback || <div style={{ fontSize: '24px', color: '#999' }}>⏳</div>}
+            onClick={onClick}>
+            {!isLoaded && (
+                <div className="absolute inset-0 flex items-center justify-center bg-gray-100">
+                    {fallback || <span>⏳</span>}
+                </div>
+            )}
         </div>
     );
 }

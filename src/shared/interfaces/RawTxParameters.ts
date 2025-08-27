@@ -43,7 +43,8 @@ export enum Action {
     DeployContract = 'deploy',
     Mint = 'mint',
     Swap = 'swap',
-    SendNFT = 'SendNFT'
+    SendNFT = 'SendNFT',
+    MintNFT = 'MintNFT'
 }
 
 export interface BaseRawTxInfo<T extends Action> {
@@ -84,6 +85,14 @@ export interface NFTMetadata {
         trait_type: string;
         value: string | number;
     }>;
+}
+
+export interface MintNFTParameters extends BaseRawTxInfo<Action.MintNFT> {
+    readonly collectionAddress: string;
+    readonly collectionName: string;
+    readonly quantity: bigint;
+    readonly mintPrice: bigint;
+    readonly totalCost: bigint;
 }
 
 export interface SendNFTParameters extends BaseRawTxInfo<Action.SendNFT> {

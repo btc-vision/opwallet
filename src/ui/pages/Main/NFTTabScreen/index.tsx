@@ -561,8 +561,8 @@ function NFTCard({ nft, onClick }: { nft: OwnedNFT; onClick: () => void }) {
                     <AsyncImage
                         src={metadata.image}
                         alt={metadata.name || `NFT #${nft.tokenId}`}
-                        width={300}
-                        height={300}
+                        width={150}
+                        height={150}
                         style={{
                             width: '100%',
                             height: '100%',
