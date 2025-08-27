@@ -32,11 +32,11 @@ export default function UnavailableUtxoScreen() {
                 setUtxos(res);
                 setLoading(false);
             })
-            .catch((err) => {
+            .catch((err: unknown) => {
                 console.error(err);
                 setLoading(false);
             });
-    }, []);
+    }, [wallet]);
 
     const setSpendUnavailableUtxos = useSetSpendUnavailableUtxosCallback();
     const selectedCount = useMemo(() => {

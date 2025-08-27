@@ -4,7 +4,6 @@ import { NavTabBar } from '@/ui/components/NavTabBar';
 import { RouteTypes, useNavigate } from '@/ui/pages/MainRoute';
 import { useCurrentAccount } from '@/ui/state/accounts/hooks';
 import { useChainType } from '@/ui/state/settings/hooks';
-import { useWallet } from '@/ui/utils';
 import Web3API, { OwnedNFT } from '@/shared/web3/Web3API';
 import { Address } from '@btc-vision/transaction';
 import { LoadingOutlined, PlusOutlined } from '@ant-design/icons';
@@ -21,7 +20,8 @@ const colors = {
     buttonHoverBg: 'rgba(85, 85, 85, 0.3)',
     containerBg: '#434343',
     containerBgFaded: '#292929',
-    containerBorder: '#303030'
+    containerBorder: '#303030',
+    error: '#e74c3c'
 };
 
 interface NFTCollection {
@@ -85,7 +85,6 @@ const nftCache = new NFTCache();
 
 export default function NFTTabScreen() {
     const navigate = useNavigate();
-    const wallet = useWallet();
     const currentAccount = useCurrentAccount();
     const chainType = useChainType();
 
@@ -95,6 +94,12 @@ export default function NFTTabScreen() {
     const [loadingNFTs, setLoadingNFTs] = useState(false);
 
     const storageKey = `opnet_nft_collections_${chainType}_${currentAccount.pubkey}`;
+
+    const handleDeleteCollection = (collectionAddress: string) => {
+        const updatedCollections = collections.filter((c) => c.address !== collectionAddress);
+        setCollections(updatedCollections);
+        localStorage.setItem(storageKey, JSON.stringify(updatedCollections));
+    };
 
     useEffect(() => {
         const storedCollections = localStorage.getItem(storageKey);
@@ -241,6 +246,7 @@ export default function NFTTabScreen() {
                                             key={collection.address}
                                             collection={collection}
                                             onClick={() => handleCollectionClick(collection)}
+                                            onDelete={() => handleDeleteCollection(collection.address)}
                                         />
                                     ))}
                                 </div>
@@ -295,8 +301,22 @@ export default function NFTTabScreen() {
     );
 }
 
-// Collection Card Component
-function CollectionCard({ collection, onClick }: { collection: NFTCollection; onClick: () => void }) {
+function CollectionCard({
+    collection,
+    onClick,
+    onDelete
+}: {
+    collection: NFTCollection;
+    onClick: () => void;
+    onDelete: () => void;
+}) {
+    const handleDelete = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        if (window.confirm(`Remove ${collection.name} from your collections?`)) {
+            onDelete();
+        }
+    };
+
     return (
         <div
             style={{
@@ -334,6 +354,41 @@ function CollectionCard({ collection, onClick }: { collection: NFTCollection; on
                     }}
                 />
             )}
+
+            {/* Delete Button */}
+            <button
+                style={{
+                    position: 'absolute',
+                    top: '6px',
+                    right: '6px',
+                    width: '24px',
+                    height: '24px',
+                    borderRadius: '50%',
+                    background: 'rgba(0, 0, 0, 0.7)',
+                    backdropFilter: 'blur(4px)',
+                    border: '1px solid rgba(255, 255, 255, 0.2)',
+                    color: 'white',
+                    fontSize: '12px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s',
+                    zIndex: 10
+                }}
+                onClick={handleDelete}
+                onMouseEnter={(e) => {
+                    e.currentTarget.style.background = colors.error;
+                    e.currentTarget.style.transform = 'scale(1.1)';
+                }}
+                onMouseLeave={(e) => {
+                    e.currentTarget.style.background = 'rgba(0, 0, 0, 0.7)';
+                    e.currentTarget.style.transform = 'scale(1)';
+                }}
+                title="Remove collection">
+                ✕
+            </button>
+
             <div
                 style={{
                     position: 'absolute',
@@ -386,7 +441,6 @@ function CollectionCard({ collection, onClick }: { collection: NFTCollection; on
     );
 }
 
-// Collection Header Component
 function CollectionHeader({ collection }: { collection: NFTCollection }) {
     return (
         <div

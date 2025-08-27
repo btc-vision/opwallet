@@ -103,7 +103,7 @@ export default function ImportSelectionScreen() {
 
     return (
         <Layout>
-            <Header title="Import Asset" onBack={() => window.history.go(-1)} />
+            <Header title="Import Asset" onBack={() => navigate(RouteTypes.MainScreen)} />
 
             <Content style={{ padding: '16px' }}>
                 <Column gap="lg">
