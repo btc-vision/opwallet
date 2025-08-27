@@ -6,8 +6,8 @@ interface AsyncImageProps {
     alt?: string;
     className?: string;
     style?: React.CSSProperties;
-    width?: number;
-    height?: number;
+    width?: number | string;
+    height?: number | string;
     fallback?: React.ReactNode;
     onClick?: () => void;
 }

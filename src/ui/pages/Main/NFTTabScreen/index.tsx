@@ -10,6 +10,8 @@ import { LoadingOutlined, PlusOutlined } from '@ant-design/icons';
 import { NFTMetadata } from '@/shared/interfaces/RawTxParameters';
 import { AsyncImage } from '@/ui/components/AsyncImage';
 import ImageService from '@/shared/services/ImageService';
+import { shortAddress } from '@/ui/utils';
+import { CopyableAddress } from '@/ui/components/CopyableAddress';
 
 const colors = {
     main: '#f37413',
@@ -166,18 +168,22 @@ export default function NFTTabScreen() {
             <Layout>
                 <Header title="NFT Collections" />
 
-                <Content style={{ padding: '12px' }}>
+                <Content style={{
+                    margin: 0,
+                    padding: 0
+                }}>
                     <Column>
                         {collections.length === 0 ? (
                             <div
                                 style={{
                                     display: 'flex',
-                                    flexDirection: 'column',
+                                    flexDirection: 'row',
                                     alignItems: 'center',
-                                    justifyContent: 'center',
+                                    justifyContent: 'space-between',
                                     minHeight: '300px',
                                     textAlign: 'center',
-                                    gap: '24px'
+                                    gap: '24px',
+                                    padding:' 12px'
                                 }}>
                                 <div>
                                     <div style={{ fontSize: '14px', color: colors.textFaded, marginBottom: '8px' }}>
@@ -217,8 +223,20 @@ export default function NFTTabScreen() {
                             </div>
                         ) : (
                             <>
-                                <Row justifyBetween style={{ marginBottom: '16px' }}>
-                                    <span style={{ fontSize: '16px', fontWeight: 600 }}>My Collections</span>
+                                <Row justifyBetween style={{
+                                    background: '#313131',
+                                    borderTop: `1px solid #444746`,
+                                    borderBottom: `1px solid #444746`,
+                                    padding: '12px',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'space-between'
+                                }}>
+                                    <span style={{
+                                        fontSize: '16px',
+                                        fontWeight: 600,
+                                        color: colors.text,
+                                    }}>My Collections</span>
                                     <button
                                         style={{
                                             padding: '6px 12px',
@@ -239,7 +257,8 @@ export default function NFTTabScreen() {
                                     style={{
                                         display: 'grid',
                                         gridTemplateColumns: 'repeat(3, 1fr)',
-                                        gap: '12px'
+                                        gap: '12px',
+                                        padding: '12px'
                                     }}>
                                     {collections.map((collection) => (
                                         <CollectionCard
@@ -269,7 +288,7 @@ export default function NFTTabScreen() {
 
             <CollectionHeader collection={selectedCollection} />
 
-            <Content style={{ padding: '0 12px 12px 12px' }}>
+            <Content style={{ padding: '0' }}>
                 {loadingNFTs ? (
                     <div style={{ textAlign: 'center', padding: '40px' }}>
                         <LoadingOutlined style={{ fontSize: 32, color: colors.main }} />
@@ -279,8 +298,12 @@ export default function NFTTabScreen() {
                     </div>
                 ) : (
                     <>
-                        <Row justifyBetween style={{ marginBottom: '12px' }}>
-                            <span style={{ fontSize: '14px', fontWeight: 600 }}>My NFTs</span>
+                        <Row justifyBetween style={{
+                            borderBottom: '1px solid #444746',
+                            padding: '12px',
+                            background: 'rgb(49, 49, 49)'
+                        }}>
+                            <span style={{ fontSize: '14px', fontWeight: 600, color: colors.text }}>My NFTs</span>
                             <span style={{ fontSize: '12px', color: colors.textFaded }}>{ownedNFTs.length} items</span>
                         </Row>
 
@@ -288,8 +311,12 @@ export default function NFTTabScreen() {
                             style={{
                                 display: 'grid',
                                 gridTemplateColumns: 'repeat(2, 1fr)',
-                                gap: '12px'
+                                gap: '12px',
+                                padding: '0 12px 12px 12px'
                             }}>
+                            {ownedNFTs.map((nft) => (
+                                <NFTCard key={nft.tokenId.toString()} nft={nft} onClick={() => handleNFTClick(nft)} />
+                            ))}
                             {ownedNFTs.map((nft) => (
                                 <NFTCard key={nft.tokenId.toString()} nft={nft} onClick={() => handleNFTClick(nft)} />
                             ))}
@@ -448,9 +475,14 @@ function CollectionHeader({ collection }: { collection: NFTCollection }) {
                 position: 'relative',
                 height: '120px',
                 overflow: 'hidden',
-                marginBottom: '16px'
+                borderTop: '1px solid rgb(68, 71, 70)',
             }}>
             {collection.banner && (
+                <div style={{
+                    width: '100%',
+                    height: '100%',
+                    position: 'absolute',
+                }}>
                 <img
                     src={collection.banner}
                     alt=""
@@ -461,6 +493,7 @@ function CollectionHeader({ collection }: { collection: NFTCollection }) {
                         filter: 'brightness(0.7)'
                     }}
                 />
+                </div>
             )}
             <div
                 style={{
@@ -469,8 +502,10 @@ function CollectionHeader({ collection }: { collection: NFTCollection }) {
                     left: 0,
                     right: 0,
                     padding: '12px',
-                    background: 'linear-gradient(to top, rgba(0,0,0,0.9) 0%, transparent 100%)',
-                    color: 'white'
+                    background: 'linear-gradient(to top, #212121 0%, transparent 100%)',
+                    color: 'white',
+                    zIndex: 1,
+                    borderBottom: '1px solid rgb(68, 71, 70)',
                 }}>
                 <Row gap="md" style={{ alignItems: 'center' }}>
                     {collection.icon && (
@@ -485,7 +520,9 @@ function CollectionHeader({ collection }: { collection: NFTCollection }) {
                             }}
                         />
                     )}
-                    <Column>
+                    <Column style={{
+                        gap: 0
+                    }}>
                         <div style={{ fontSize: '16px', fontWeight: 600 }}>{collection.name}</div>
                         {collection.description && (
                             <div style={{ fontSize: '11px', opacity: 0.9 }}>{collection.description}</div>
@@ -493,6 +530,19 @@ function CollectionHeader({ collection }: { collection: NFTCollection }) {
                     </Column>
                 </Row>
             </div>
+            <button
+                style={{
+                    position: 'absolute',
+                    top: "10px",
+                    right: '10px',
+                    background: '#212121',
+                    borderRadius: '5px',
+                    border: '1px solid #444746',
+                    color: 'white',
+                    padding: '3px 7px'
+                }}>
+                <CopyableAddress address={collection.address} />
+            </button>
         </div>
     );
 }
@@ -527,7 +577,7 @@ function NFTCard({ nft, onClick }: { nft: OwnedNFT; onClick: () => void }) {
         <div
             style={{
                 background: colors.containerBgFaded,
-                border: `1px solid ${colors.containerBorder}`,
+                border: `1px solid #444746`,
                 borderRadius: '12px',
                 overflow: 'hidden',
                 cursor: 'pointer',
@@ -560,9 +610,9 @@ function NFTCard({ nft, onClick }: { nft: OwnedNFT; onClick: () => void }) {
                 ) : metadata?.image ? (
                     <AsyncImage
                         src={metadata.image}
+                        width="100%"
+                        height="100%"
                         alt={metadata.name || `NFT #${nft.tokenId}`}
-                        width={150}
-                        height={150}
                         style={{
                             width: '100%',
                             height: '100%',
@@ -578,13 +628,13 @@ function NFTCard({ nft, onClick }: { nft: OwnedNFT; onClick: () => void }) {
                             alignItems: 'center',
                             justifyContent: 'center',
                             fontSize: '48px',
-                            background: colors.containerBg
+                            background: '#212121'
                         }}>
                         ❓
                     </div>
                 )}
             </div>
-            <div style={{ padding: '8px', background: colors.containerBg }}>
+            <div style={{ padding: '8px', background: '#212121' }}>
                 <div style={{ fontSize: '12px', fontWeight: 600, color: colors.text }}>
                     {metadata?.name || `#${nft.tokenId}`}
                 </div>
