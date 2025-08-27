@@ -3,9 +3,7 @@ import {
     AddressRecentHistory,
     AddressSummary,
     AppSummary,
-    BitcoinBalance,
     BtcPrice,
-    GroupAsset,
     UTXO,
     VersionDetail,
     WalletConfig
@@ -185,16 +183,6 @@ export class OpenApiService {
         };
     }
 
-    async getAddressBalance(_: string): Promise<BitcoinBalance> {
-        await Promise.resolve();
-        throw new Error('Method not implemented.');
-    }
-
-    async findGroupAssets(_: { type: number; address_arr: string[] }[]): Promise<GroupAsset[]> {
-        await Promise.resolve();
-        throw new Error('Method not implemented.');
-    }
-
     async getBTCUtxos(_: string): Promise<UTXO[]> {
         await Promise.resolve();
         throw new Error('Method not implemented.');
@@ -215,8 +203,7 @@ export class OpenApiService {
             // TODO: Remove this mock
 
             // const result: BtcPrice = await this.httpGet<BtcPrice>('/v5/default/btc-price', {});
-            // test
-            const result: BtcPrice = await Promise.resolve({ price: 10145.19716040577, updateTime: Date.now() });
+            const result: BtcPrice = await Promise.resolve({ price: 111_115, updateTime: Date.now() });
 
             this.btcPriceCache = result.price;
             this.btcPriceUpdateTime = Date.now();

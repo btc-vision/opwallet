@@ -1,6 +1,4 @@
 import { createContext, ReactNode, useContext } from 'react';
-
-import { AccountAsset } from '@/background/controller/wallet';
 import { ContactBookItem, ContactBookStore } from '@/background/service/contactBook';
 import { SavedVault, ToSignInput } from '@/background/service/keyring';
 import { ConnectedSite } from '@/background/service/permission';
@@ -39,7 +37,6 @@ export interface WalletController {
     }) => Promise<{ start: number; total: number; detail: TxHistoryItem[] }>;
 
     getAddressCacheHistory: (address: string) => Promise<TxHistoryItem[]>;
-    listChainAssets: (address: string) => Promise<AccountAsset[]>;
 
     boot(password: string): Promise<void>;
 
@@ -72,10 +69,6 @@ export interface WalletController {
     getAddressBalance(address: string, pubKey?: string): Promise<BitcoinBalance>;
 
     getMultiAddressAssets(addresses: string): Promise<AddressSummary[]>;
-
-    findGroupAssets(
-        groups: { type: number; address_arr: string[]; pubkey_arr: string[] }[]
-    ): Promise<{ type: number; address_arr: string[]; pubkey_arr: string[]; satoshis_arr: number[] }[]>;
 
     getLocale(): Promise<string>;
 

@@ -1,5 +1,13 @@
 import BigNumber from 'bignumber.js';
-import { getContract, IOP20Contract, JSONRpcProvider, OP_20_ABI, UTXOs } from 'opnet';
+import {
+    EXTENDED_OP721_ABI,
+    getContract,
+    IExtendedOP721,
+    IOP20Contract,
+    JSONRpcProvider,
+    OP_20_ABI,
+    UTXOs
+} from 'opnet';
 
 import { ChainId as WalletChainId, ChainType } from '@/shared/constant';
 import { NetworkType } from '@/shared/types';
@@ -287,6 +295,46 @@ class Web3API {
                 genericContract.metadata(),
                 contractLogoManager.getContractLogo(addressP2OP)
             ]);
+
+            const metadata = results[0].properties;
+
+            const name = metadata.name ?? this.getContractName(addressP2OP);
+            const symbol = metadata.symbol ?? 'UNKNOWN';
+            const decimals = metadata.decimals ?? 0;
+            const maximumSupply = metadata.maximumSupply ?? 0n;
+
+            const logo = metadata.icon || results[1];
+            return {
+                name,
+                symbol,
+                decimals,
+                logo,
+                maximumSupply
+            };
+        } catch (e) {
+            console.warn(`Couldn't query name/symbol/decimals/logo for contract ${address}:`, e);
+            if ((e as Error).message.includes('not found')) {
+                return false;
+            }
+            return;
+        }
+    }
+
+    public async queryNFTContractInformation(address: string): Promise<ContractInformation | undefined | false> {
+        try {
+            let addressP2OP: string = address;
+            if (address.startsWith('0x')) {
+                addressP2OP = Address.fromString(address).p2op(this.network);
+            }
+
+            const genericContract: IExtendedOP721 = getContract<IExtendedOP721>(
+                addressP2OP,
+                EXTENDED_OP721_ABI,
+                this.provider,
+                this.network
+            );
+
+            const results = await Promise.all([genericContract.contractLogoManager.getContractLogo(addressP2OP)]);
 
             const metadata = results[0].properties;
 

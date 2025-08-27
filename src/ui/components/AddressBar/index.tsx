@@ -36,7 +36,8 @@ export function AddressBar({
     csv75_locked_amount,
     csv1_total_amount,
     csv1_unlocked_amount,
-    csv1_locked_amount
+    csv1_locked_amount,
+    p2wda_total_amount
 }: {
     csv75_total_amount: string | undefined;
     csv75_unlocked_amount: string | undefined;
@@ -44,6 +45,7 @@ export function AddressBar({
     csv1_total_amount: string | undefined;
     csv1_unlocked_amount: string | undefined;
     csv1_locked_amount: string | undefined;
+    p2wda_total_amount: string | undefined;
 }) {
     const tools = useTools();
     const untweakedPublicKey = useAccountPublicKey();
@@ -53,6 +55,7 @@ export function AddressBar({
     const explorerUrl = `https://opscan.org/accounts/${tweakedPublicKey}`;
     const csv75Address = address.toCSV(75, Web3API.network).address;
     const csv1Address = address.toCSV(1, Web3API.network).address;
+    const p2wdaAddress = address.p2wda(Web3API.network).address;
 
     const [showModal, setShowModal] = useState(false);
     const [copiedMain, setCopiedMain] = useState(false);
@@ -80,18 +83,16 @@ export function AddressBar({
 
     const otherAddresses = [
         {
-            label: 'Untweaked Public Key',
+            label: 'Public Key',
             value: untweakedPublicKey,
             showBalance: false
         },
         {
-            label: 'CSV 75',
-            value: csv75Address,
-            info: 'Address used for SHA1 Mining reward payouts on OP_NET.',
+            label: 'Smart Contract Optimized',
+            value: p2wdaAddress,
+            info: 'Up to 75% cheaper fees for contract interactions (not for trading)',
             showBalance: true,
-            total: csv75_total_amount,
-            unlocked: csv75_unlocked_amount,
-            locked: csv75_locked_amount
+            total: p2wda_total_amount
         },
         {
             label: 'CSV 1',
@@ -100,7 +101,18 @@ export function AddressBar({
             showBalance: true,
             total: csv1_total_amount,
             unlocked: csv1_unlocked_amount,
-            locked: csv1_locked_amount
+            locked: csv1_locked_amount,
+            showLocked: true
+        },
+        {
+            label: 'CSV 75',
+            value: csv75Address,
+            info: 'Address used for SHA1 Mining reward payouts on OP_NET.',
+            showBalance: true,
+            total: csv75_total_amount,
+            unlocked: csv75_unlocked_amount,
+            locked: csv75_locked_amount,
+            showLocked: true
         }
     ];
 
@@ -472,62 +484,66 @@ export function AddressBar({
                                                         </span>
                                                     </div>
 
-                                                    {/* Unlocked */}
-                                                    <div
-                                                        style={{
-                                                            display: 'flex',
-                                                            justifyContent: 'space-between',
-                                                            alignItems: 'center',
-                                                            marginBottom: '6px'
-                                                        }}>
-                                                        <span
-                                                            style={{
-                                                                fontSize: '12px',
-                                                                color: colors.success,
-                                                                display: 'flex',
-                                                                alignItems: 'center',
-                                                                gap: '4px'
-                                                            }}>
-                                                            <UnlockOutlined style={{ fontSize: 11 }} />
-                                                            Unlocked:
-                                                        </span>
-                                                        <span
-                                                            style={{
-                                                                fontSize: '12px',
-                                                                color: colors.success,
-                                                                fontFamily: 'monospace'
-                                                            }}>
-                                                            {formatAmount(addr.unlocked)} BTC
-                                                        </span>
-                                                    </div>
+                                                    {addr.showLocked && (
+                                                        <div>
+                                                            {/* Unlocked */}
+                                                            <div
+                                                                style={{
+                                                                    display: 'flex',
+                                                                    justifyContent: 'space-between',
+                                                                    alignItems: 'center',
+                                                                    marginBottom: '6px'
+                                                                }}>
+                                                                <span
+                                                                    style={{
+                                                                        fontSize: '12px',
+                                                                        color: colors.success,
+                                                                        display: 'flex',
+                                                                        alignItems: 'center',
+                                                                        gap: '4px'
+                                                                    }}>
+                                                                    <UnlockOutlined style={{ fontSize: 11 }} />
+                                                                    Unlocked:
+                                                                </span>
+                                                                <span
+                                                                    style={{
+                                                                        fontSize: '12px',
+                                                                        color: colors.success,
+                                                                        fontFamily: 'monospace'
+                                                                    }}>
+                                                                    {formatAmount(addr.unlocked)} BTC
+                                                                </span>
+                                                            </div>
 
-                                                    {/* Locked */}
-                                                    <div
-                                                        style={{
-                                                            display: 'flex',
-                                                            justifyContent: 'space-between',
-                                                            alignItems: 'center'
-                                                        }}>
-                                                        <span
-                                                            style={{
-                                                                fontSize: '12px',
-                                                                color: colors.warning,
-                                                                display: 'flex',
-                                                                alignItems: 'center',
-                                                                gap: '4px'
-                                                            }}>
-                                                            <LockOutlined style={{ fontSize: 11 }} />
-                                                            Locked:
-                                                        </span>
-                                                        <span
-                                                            style={{
-                                                                fontSize: '12px',
-                                                                color: colors.warning,
-                                                                fontFamily: 'monospace'
-                                                            }}>
-                                                            {formatAmount(addr.locked)} BTC
-                                                        </span>
-                                                    </div>
+                                                            {/* Locked */}
+                                                            <div
+                                                                style={{
+                                                                    display: 'flex',
+                                                                    justifyContent: 'space-between',
+                                                                    alignItems: 'center'
+                                                                }}>
+                                                                <span
+                                                                    style={{
+                                                                        fontSize: '12px',
+                                                                        color: colors.warning,
+                                                                        display: 'flex',
+                                                                        alignItems: 'center',
+                                                                        gap: '4px'
+                                                                    }}>
+                                                                    <LockOutlined style={{ fontSize: 11 }} />
+                                                                    Locked:
+                                                                </span>
+                                                                <span
+                                                                    style={{
+                                                                        fontSize: '12px',
+                                                                        color: colors.warning,
+                                                                        fontFamily: 'monospace'
+                                                                    }}>
+                                                                    {formatAmount(addr.locked)} BTC
+                                                                </span>
+                                                            </div>
+                                                        </div>
+                                                    )}
                                                 </div>
                                             )}
                                         </div>

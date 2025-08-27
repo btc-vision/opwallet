@@ -21,8 +21,6 @@ import {
     CHAINS_ENUM,
     CHAINS_MAP,
     ChainType,
-    COIN_NAME,
-    COIN_SYMBOL,
     CustomNetwork,
     DEFAULT_LOCKTIME_ID,
     EVENTS,
@@ -41,7 +39,6 @@ import {
     AppSummary,
     BitcoinBalance,
     DecodedPsbt,
-    GroupAsset,
     NetworkType,
     PublicKeyUserToSignInput,
     SignPsbtOptions,
@@ -125,7 +122,7 @@ export class WalletController {
     public getConnectedSites = permissionService.getConnectedSites;
     // Cache properties
     private balanceCache: Map<string, BalanceCacheEntry> = new Map();
-    private readonly CACHE_DURATION = 10000; // 10 seconds in milliseconds
+    private readonly CACHE_DURATION = 1000; // 10 seconds in milliseconds
     private cacheCleanupTimer: NodeJS.Timeout | null = null;
 
     /**
@@ -340,16 +337,6 @@ export class WalletController {
         } catch (err) {
             throw new WalletControllerError(`Failed to get multi-address assets: ${String(err)}`, { addresses });
         }
-    };
-
-    /**
-     * Retrieve group assets (pass-through to openapiService).
-     */
-    public findGroupAssets = (
-        groups: { type: number; address_arr: string[]; pubkey_arr: string[] }[]
-    ): Promise<GroupAsset[]> => {
-        // Potentially wrap in try/catch if there's network logic
-        return openapiService.findGroupAssets(groups);
     };
 
     /**
@@ -1411,23 +1398,6 @@ export class WalletController {
     };
 
     /**
-     * Fetch chain assets for a given address.
-     * @throws WalletControllerError
-     */
-    public listChainAssets = async (pubkeyAddress: string): Promise<AccountAsset[]> => {
-        try {
-            const balance = await openapiService.getAddressBalance(pubkeyAddress);
-            return [
-                { name: COIN_NAME, symbol: COIN_SYMBOL, amount: balance.btc_total_amount, value: balance.usd_value }
-            ];
-        } catch (err) {
-            throw new WalletControllerError(`Failed to list chain assets: ${String(err)}`, {
-                pubkeyAddress
-            });
-        }
-    };
-
-    /**
      * Log an error or send it to a remote server.
      */
     public reportErrors = (error: string): void => {
@@ -2264,16 +2234,19 @@ export class WalletController {
     private getOpNetBalance = async (address: string, pubKey?: string): Promise<BitcoinBalance> => {
         let csv75Address = '';
         let csv1Address = '';
+        let p2wdaAddress = '';
 
         if (pubKey) {
             const addressInst = Address.fromString(pubKey);
 
             csv75Address = addressInst.toCSV(75, Web3API.network).address;
             csv1Address = addressInst.toCSV(1, Web3API.network).address;
+
+            p2wdaAddress = addressInst.p2wda(Web3API.network).address;
         }
 
         try {
-            if (!csv75Address || !csv1Address) {
+            if (!csv75Address || !csv1Address || !p2wdaAddress) {
                 const [allUTXOs, unspentUTXOs] = await Promise.all([
                     Web3API.getAllUTXOsForAddresses([address]),
                     Web3API.getUnspentUTXOsForAddresses([address])
@@ -2294,11 +2267,13 @@ export class WalletController {
                     usd_value: '0.00'
                 };
             } else {
-                const [allUTXOs, unspentUTXOs, csv75Data, csv1Data] = await Promise.all([
+                const [allUTXOs, unspentUTXOs, csv75Data, csv1Data, p2wdaUTXOs, unspentP2WDAUTXOs] = await Promise.all([
                     Web3API.getAllUTXOsForAddresses([address]),
                     Web3API.getUnspentUTXOsForAddresses([address]),
                     Web3API.getTotalLockedAndUnlockedUTXOs(csv75Address, 'csv75'),
-                    Web3API.getTotalLockedAndUnlockedUTXOs(csv1Address, 'csv1')
+                    Web3API.getTotalLockedAndUnlockedUTXOs(csv1Address, 'csv1'),
+                    Web3API.getAllUTXOsForAddresses([p2wdaAddress]),
+                    Web3API.getUnspentUTXOsForAddresses([p2wdaAddress])
                 ]);
 
                 const totalAll = allUTXOs.reduce((sum, u) => sum + u.value, 0n);
@@ -2318,13 +2293,21 @@ export class WalletController {
                     csv75Data.unlockedUTXOs.reduce((sum, u) => sum + u.value, 0n),
                     8
                 );
-                const csv75Locked = Number(csv75Total) - Number(csv75Unlocked);
 
+                const csv75Locked = Number(csv75Total) - Number(csv75Unlocked);
                 const csv1Unlocked = bigIntToDecimal(
                     csv1Data.unlockedUTXOs.reduce((sum, u) => sum + u.value, 0n),
                     8
                 );
+
                 const csv1Locked = Number(csv1Total) - Number(csv1Unlocked);
+
+                // p2wda
+                const totalP2WDA = p2wdaUTXOs.reduce((sum, u) => sum + u.value, 0n);
+                const totalUnspentP2WDA = unspentP2WDAUTXOs.reduce((sum, u) => sum + u.value, 0n);
+
+                const totalAmountP2WDA = bigIntToDecimal(totalP2WDA, 8);
+                const pendingAmountP2WDA = bigIntToDecimal(totalP2WDA - totalUnspentP2WDA, 8);
 
                 return {
                     btc_total_amount: totalAmount,
@@ -2338,6 +2321,9 @@ export class WalletController {
                     csv1_total_amount: csv1Total,
                     csv1_unlocked_amount: csv1Unlocked,
                     csv1_locked_amount: csv1Locked.toString(),
+
+                    p2wda_pending_amount: pendingAmountP2WDA,
+                    p2wda_total_amount: totalAmountP2WDA,
 
                     usd_value: '0.00'
                 };

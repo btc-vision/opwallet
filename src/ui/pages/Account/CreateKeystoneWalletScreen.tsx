@@ -102,13 +102,7 @@ function Step1({ onNext }: { onNext: () => void }) {
     );
 }
 
-function Step2({
-    onBack,
-    onNext
-}: {
-    onBack: () => void;
-    onNext: (data: { type: string; cbor: string }) => void;
-}) {
+function Step2({ onBack, onNext }: { onBack: () => void; onNext: (data: { type: string; cbor: string }) => void }) {
     const onSucceed = useCallback(
         ({ type, cbor }: { type: string; cbor: string }) => {
             onNext({ type, cbor });
@@ -194,8 +188,8 @@ function Step3({
             if (isWalletError(e)) {
                 setError(e.message);
             } else {
-                setError("An unexpected error occurred.");
-                console.error("Non-WalletError caught: ", e);
+                setError('An unexpected error occurred.');
+                console.error('Non-WalletError caught: ', e);
             }
             return;
         }
@@ -233,9 +227,9 @@ function Step3({
                     pubkey_arr: keyring.accounts.map((item) => item.pubkey),
                     satoshis_arr: keyring.accounts.map(() => 0)
                 });
-            }                
+            }
             groups2 = groups;
-            const res = await wallet.findGroupAssets(groups);
+            /*const res = await wallet.findGroupAssets(groups);
             res.forEach((item, index) => {
                 if (item.address_arr.length === 0) {
                     res[index].address_arr = groups[index].address_arr;
@@ -247,7 +241,7 @@ function Step3({
                 groups = res;
             } else {
                 groups = res.length > 0 ? res : groups;
-            }
+            }*/
             //   groups = res.length > 0 ? res : groups;
 
             groups.forEach((group, index) => {
@@ -277,7 +271,7 @@ function Step3({
             }
 
             // if res is empty and groups is empty, then only show the first wallet
-            if (res.length === 0 && groups.length === 0 && isScanned) {
+            if (groups.length === 0 && isScanned) {
                 for (const addressType of addressTypes) {
                     const keyring = await wallet.createTmpKeyringWithKeystone(
                         contextData.ur.type,
@@ -292,7 +286,7 @@ function Step3({
                         pubkey_arr: keyring.accounts.map((item) => item.pubkey),
                         satoshis_arr: keyring.accounts.map(() => 0)
                     });
-                }                
+                }
             }
             setGroups(groups);
         } catch (e) {
@@ -310,7 +304,7 @@ function Step3({
         if (!group) {
             return [];
         }
-        
+
         if (
             contextData.customHdPath !== null &&
             contextData.customHdPath !== '' &&

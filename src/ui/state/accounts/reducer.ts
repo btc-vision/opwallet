@@ -86,7 +86,10 @@ const slice = createSlice({
                     csv1_unlocked_amount,
                     csv1_locked_amount,
 
-                    usd_value
+                    usd_value,
+
+                    p2wda_pending_amount,
+                    p2wda_total_amount
                 }
             } = action;
             state.balanceMap[address] =
@@ -104,6 +107,9 @@ const slice = createSlice({
                     csv1_unlocked_amount: '0',
                     csv1_locked_amount: '0',
 
+                    p2wda_total_amount: '0',
+                    p2wda_pending_amount: '0',
+
                     usd_value: '0.00'
                 } as BitcoinBalance & { address: string });
             state.balanceMap[address].btc_total_amount = btc_total_amount;
@@ -117,6 +123,9 @@ const slice = createSlice({
             state.balanceMap[address].csv1_total_amount = csv1_total_amount;
             state.balanceMap[address].csv1_unlocked_amount = csv1_unlocked_amount;
             state.balanceMap[address].csv1_locked_amount = csv1_locked_amount;
+
+            state.balanceMap[address].p2wda_pending_amount = p2wda_pending_amount;
+            state.balanceMap[address].p2wda_total_amount = p2wda_total_amount;
 
             state.balanceMap[address].usd_value = usd_value;
         },

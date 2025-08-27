@@ -305,10 +305,10 @@ export class ProviderController {
             }
 
             // @ts-expect-error
-            interactionParams.priorityFee = BigInt(interactionParams.priorityFee);
+            interactionParams.priorityFee = BigInt(interactionParams.priorityFee as string);
 
             // @ts-expect-error
-            interactionParams.gasSatFee = BigInt(interactionParams.gasSatFee);
+            interactionParams.gasSatFee = BigInt(interactionParams.gasSatFee as string);
 
             // @ts-expect-error
             interactionParams.bytecode = objToBuffer(interactionParams.bytecode);
@@ -339,10 +339,10 @@ export class ProviderController {
         request.data.params.bytecode = objToBuffer(request.data.params.bytecode);
 
         // @ts-expect-error
-        request.data.params.priorityFee = BigInt(request.data.params.priorityFee);
+        request.data.params.priorityFee = BigInt(request.data.params.priorityFee as string);
 
         // @ts-expect-error
-        request.data.params.gasSatFee = BigInt(request.data.params.gasSatFee);
+        request.data.params.gasSatFee = BigInt(request.data.params.gasSatFee as string);
 
         // @ts-expect-error
         request.data.params.calldata = objToBuffer(request.data.params.calldata);

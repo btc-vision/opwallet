@@ -75,7 +75,7 @@ export default function SendOpNetScreen() {
             action: Action.Transfer,
             contractAddress: address,
             to: toInfo.address,
-            inputAmount: BigInt(BitcoinUtils.expandToDecimals(inputAmount, divisibility)),
+            inputAmount: BitcoinUtils.expandToDecimals(inputAmount, divisibility),
             feeRate,
             priorityFee: BigInt(priorityFee),
             tokens: [
