@@ -135,4 +135,6 @@ export type RawTxInfo =
     | SendBitcoinParameters
     | DeployContractParameters
     | MintParameters
-    | SwapParameters;
+    | SwapParameters
+    | SendNFTParameters
+    | MintNFTParameters;

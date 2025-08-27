@@ -5,6 +5,7 @@ import {
     MintParameters,
     RawTxInfo,
     SendBitcoinParameters,
+    SendNFTParameters,
     SourceType,
     SwapParameters,
     TransferParameters
@@ -29,6 +30,8 @@ import {
     ABIDataTypes,
     Address,
     AddressMap,
+    AddressTypes,
+    AddressVerificator,
     DeploymentResult,
     IDeploymentParameters,
     IFundingTransactionParameters,
@@ -41,7 +44,9 @@ import {
     BitcoinAbiTypes,
     BitcoinInterfaceAbi,
     BitcoinUtils,
+    EXTENDED_OP721_ABI,
     getContract,
+    IExtendedOP721,
     IMotoswapRouterContract,
     IOP20Contract,
     MOTOSWAP_ROUTER_ABI,
@@ -560,6 +565,75 @@ export default function TxOpnetConfirmScreen() {
         }
     };
 
+    const sendNFT = async (parameters: SendNFTParameters) => {
+        try {
+            const currentWalletAddress = await wallet.getCurrentAccount();
+            const userWallet = await getWallet();
+
+            const addy =
+                AddressVerificator.detectAddressType(parameters.collectionAddress, Web3API.network) ===
+                AddressTypes.P2OP
+                    ? parameters.collectionAddress
+                    : Address.fromString(parameters.collectionAddress);
+
+            const contract: IExtendedOP721 = getContract<IExtendedOP721>(
+                addy,
+                EXTENDED_OP721_ABI, // You'll need to import this ABI
+                Web3API.provider,
+                Web3API.network,
+                userWallet.address
+            );
+
+            // Get recipient's public key
+            const recipientAddress = await getPubKey(parameters.to);
+
+            // Use safeTransferFrom for NFT transfer
+            const transferData = await contract.safeTransferFrom(
+                userWallet.address,
+                recipientAddress,
+                parameters.tokenId,
+                new Uint8Array() // Empty data parameter
+            );
+
+            const interactionParameters: TransactionParameters = {
+                signer: userWallet.keypair,
+                refundTo: currentWalletAddress.address,
+                maximumAllowedSatToSpend: parameters.priorityFee,
+                feeRate: parameters.feeRate,
+                network: Web3API.network,
+                priorityFee: parameters.priorityFee,
+                note: parameters.note
+            };
+
+            const sendTransaction = await transferData.sendTransaction(interactionParameters);
+            if (!sendTransaction?.transactionId) {
+                setOpenLoading(false);
+                setDisabled(false);
+                tools.toastError('Could not send NFT transaction');
+                return;
+            }
+
+            tools.toastSuccess(`Successfully transferred NFT #${parameters.tokenId} from ${parameters.collectionName}`);
+
+            navigate(RouteTypes.TxSuccessScreen, {
+                txid: sendTransaction.transactionId,
+                nftTransfer: true,
+                tokenId: parameters.tokenId.toString(),
+                collectionName: parameters.collectionName
+            });
+        } catch (e) {
+            const error = e as Error;
+            setOpenLoading(false);
+            if (error.message.toLowerCase().includes('public key')) {
+                setDisabled(false);
+                navigate(RouteTypes.TxFailScreen, { error: Web3API.INVALID_PUBKEY_ERROR });
+            } else {
+                setDisabled(false);
+                navigate(RouteTypes.TxFailScreen, { error: error.message });
+            }
+        }
+    };
+
     // Get action label
     const getActionLabel = () => {
         switch (rawTxInfo.action) {
@@ -569,6 +643,8 @@ export default function TxOpnetConfirmScreen() {
                 return 'Send Bitcoin';
             case Action.DeployContract:
                 return 'Deploy Contract';
+            case Action.SendNFT:
+                return 'Send NFT';
             case Action.Mint:
                 return 'Mint Tokens';
             case Action.Airdrop:
@@ -594,6 +670,8 @@ export default function TxOpnetConfirmScreen() {
                 return '🎁';
             case Action.Transfer:
                 return '➡️';
+            case Action.SendNFT:
+                return '🖼️';
             default:
                 return '📝';
         }
@@ -951,6 +1029,9 @@ export default function TxOpnetConfirmScreen() {
                                     break;
                                 case Action.DeployContract:
                                     await deployContract(rawTxInfo);
+                                    break;
+                                case Action.SendNFT:
+                                    await sendNFT(rawTxInfo);
                                     break;
                                 case Action.Mint:
                                     await mint(rawTxInfo);
