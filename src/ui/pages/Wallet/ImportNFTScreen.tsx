@@ -70,8 +70,8 @@ export default function ImportNFTScreen() {
         if (!address) return;
 
         const type = AddressVerificator.detectAddressType(address, Web3API.network);
-        if (type !== AddressTypes.P2OP || AddressTypes.P2PK) {
-            setError('Invalid address format. Must be a valid contract address.');
+        if (type !== AddressTypes.P2OP && type !== AddressTypes.P2PK) {
+            setError(`Invalid address format. Must be a valid contract address. Detecting type: ${type}`);
             return;
         }
 
@@ -169,7 +169,7 @@ export default function ImportNFTScreen() {
                                 alignItems: 'center',
                                 gap: '6px'
                             }}>
-                            📍 Contract Address
+                            Contract Address
                         </div>
                         <Input
                             placeholder="Enter collection address (0x...)"
@@ -232,7 +232,10 @@ export default function ImportNFTScreen() {
                                         {collectionInfo.name}
                                     </div>
                                     <div style={{ fontSize: '12px', color: colors.textFaded, marginTop: '4px' }}>
-                                        {collectionInfo.symbol} • {collectionInfo.maximumSupply.toString()} Total Supply
+                                        {collectionInfo.symbol}
+                                    </div>
+                                    <div style={{ fontSize: '12px', color: colors.textFaded, marginTop: '4px' }}>
+                                        Total Supply: {collectionInfo.maximumSupply.toString()}
                                     </div>
                                     {collectionInfo.description && (
                                         <div style={{ fontSize: '11px', color: colors.textFaded, marginTop: '8px' }}>
