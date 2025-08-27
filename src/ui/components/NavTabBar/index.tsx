@@ -4,40 +4,48 @@ import { TabOption } from '@/ui/state/global/reducer';
 import { colors } from '@/ui/theme/colors';
 
 import { BaseView } from '../BaseView';
-import { Column } from '../Column';
 import { Grid } from '../Grid';
 import { Icon, IconTypes } from '../Icon';
 import PartnerIcon from '@/ui/components/Icon/PartnerIcon';
 
 export function NavTabBar({ tab }: { tab: TabOption }) {
     return (
-        <Grid columns={2} style={{ width: '100%', height: '50px', backgroundColor: colors.bg2, borderTop: `1px solid ${colors.border}` }}>
-
-            <div style={{
-                display: 'flex',
-                alignItems: 'stretch',
-                justifyContent: 'flex-start',
+        <Grid
+            columns={2}
+            style={{
+                width: '100%',
+                height: '50px',
+                backgroundColor: colors.bg2,
+                borderTop: `1px solid ${colors.border}`
             }}>
+            <div
+                style={{
+                    display: 'flex',
+                    alignItems: 'stretch',
+                    justifyContent: 'flex-start'
+                }}>
                 <button
                     style={{
-                        display: "flex",
+                        display: 'flex',
                         flexDirection: 'row',
                         alignItems: 'center',
                         justifyContent: 'center',
                         aspectRatio: '1 / 1',
                         color: colors.text,
-                        fill: colors.text,
+                        fill: colors.text
                     }}>
                     <PartnerIcon icon="OPScan" size={16} />
                 </button>
             </div>
 
-            <div style={{
-                display: 'flex',
-                alignItems: 'stretch',
-                justifyContent: 'flex-end',
-            }}>
+            <div
+                style={{
+                    display: 'flex',
+                    alignItems: 'stretch',
+                    justifyContent: 'flex-end'
+                }}>
                 <TabButton tabName="home" icon="wallet" isActive={tab === 'home'} />
+                <TabButton tabName="nft" icon="grid" isActive={tab === 'nft'} />
                 <TabButton tabName="settings" icon="settings" isActive={tab === 'settings'} />
             </div>
         </Grid>
@@ -47,11 +55,10 @@ export function NavTabBar({ tab }: { tab: TabOption }) {
 function TabButton({ tabName, icon, isActive }: { tabName: TabOption; icon: IconTypes; isActive: boolean }) {
     const navigate = useNavigate();
     const unreadApp = useUnreadAppSummary();
-    //const readTab = useReadTab();
     return (
         <div
             style={{
-                display: "flex",
+                display: 'flex',
                 flexDirection: 'row',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -60,10 +67,9 @@ function TabButton({ tabName, icon, isActive }: { tabName: TabOption; icon: Icon
             onClick={(e) => {
                 if (tabName === 'home') {
                     navigate(RouteTypes.MainScreen);
-                } /*else if (tabName === 'app') {
-                    navigate(RouteTypes.AppTabScrren);
-                    readTab('app');
-                }*/ else if (tabName === 'settings') {
+                } else if (tabName === 'nft') {
+                    navigate(RouteTypes.NFTTabScreen);
+                } else if (tabName === 'settings') {
                     navigate(RouteTypes.SettingsTabScreen);
                 }
             }}>

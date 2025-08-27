@@ -330,7 +330,7 @@ class Web3API {
     public async getOwnedNFTsForCollection(
         collectionAddress: string,
         ownerAddress: Address
-    ): Promise<OwnedNFT[] | undefined | false> {
+    ): Promise<OwnedNFT[] | undefined | boolean> {
         try {
             let addressP2OP: string = collectionAddress;
             if (collectionAddress.startsWith('0x')) {

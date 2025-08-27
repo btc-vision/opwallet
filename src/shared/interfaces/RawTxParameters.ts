@@ -42,7 +42,8 @@ export enum Action {
     SendBitcoin = 'sendBitcoin',
     DeployContract = 'deploy',
     Mint = 'mint',
-    Swap = 'swap'
+    Swap = 'swap',
+    SendNFT = 'SendNFT'
 }
 
 export interface BaseRawTxInfo<T extends Action> {
@@ -73,6 +74,23 @@ export enum SourceType {
     CSV75 = 'csv75',
     CSV1 = 'csv1',
     P2WDA = 'p2wda'
+}
+
+export interface NFTMetadata {
+    name?: string;
+    description?: string;
+    image?: string;
+    attributes?: Array<{
+        trait_type: string;
+        value: string | number;
+    }>;
+}
+
+export interface SendNFTParameters extends BaseRawTxInfo<Action.SendNFT> {
+    readonly to: string;
+    readonly tokenId: bigint;
+    readonly collectionAddress: string;
+    readonly collectionName: string;
 }
 
 export interface SendBitcoinParameters extends BaseRawTxInfo<Action.SendBitcoin> {
