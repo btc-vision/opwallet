@@ -37,7 +37,6 @@ import {
 } from '@btc-vision/transaction';
 import BigNumber from 'bignumber.js';
 import {
-    AddressesInfo,
     Airdrop,
     BitcoinAbiTypes,
     BitcoinInterfaceAbi,
@@ -281,16 +280,16 @@ export default function TxOpnetConfirmScreen() {
             swapParameters.amountIn,
             swapParameters.tokens[0].divisibility
         );
-        const slippageAmount = Number(swapParameters.amountOut) * Number(swapParameters.slippageTolerance / 100);
+        const slippageAmount = swapParameters.amountOut * (swapParameters.slippageTolerance / 100);
         const outPutAmountBigInt = BitcoinUtils.expandToDecimals(
             swapParameters.amountOut - slippageAmount,
             swapParameters.tokens[1].divisibility
         );
 
-        const addressOfContract = (await Web3API.provider.getPublicKeysInfo([
+        const addressOfContract = await Web3API.provider.getPublicKeysInfo([
             swapParameters.tokenIn,
             swapParameters.tokenOut
-        ])) as AddressesInfo;
+        ]);
 
         const block = await Web3API.provider.getBlockNumber();
         const contractData = await getSwap.swapExactTokensForTokensSupportingFeeOnTransferTokens(
@@ -321,8 +320,8 @@ export default function TxOpnetConfirmScreen() {
             return;
         }
 
-        const amountA = Number(swapParameters.amountIn).toLocaleString();
-        const amountB = Number(swapParameters.amountOut).toLocaleString();
+        const amountA = swapParameters.amountIn.toLocaleString();
+        const amountB = swapParameters.amountOut.toLocaleString();
         tools.toastSuccess(
             `You have successfully swapped ${amountA} ${swapParameters.tokens[0].symbol} for ${amountB} ${swapParameters.tokens[1].symbol}`
         );
@@ -339,6 +338,7 @@ export default function TxOpnetConfirmScreen() {
             let fromAddress = currentWalletAddress.address;
             let utxos: UTXO[] = [];
             let witnessScript: Buffer | undefined;
+            const feeMin = 10_000n;
 
             // Check if sending from a CSV address
             if (parameters.from && parameters.sourceType && parameters.sourceType !== SourceType.CURRENT) {
@@ -351,7 +351,7 @@ export default function TxOpnetConfirmScreen() {
 
                     utxos = await Web3API.getUnspentUTXOsForAddresses(
                         [fromAddress],
-                        BitcoinUtils.expandToDecimals(parameters.inputAmount, 8),
+                        BitcoinUtils.expandToDecimals(parameters.inputAmount, 8) + feeMin,
                         75n
                     );
                 } else if (parameters.sourceType === SourceType.CSV1) {
@@ -361,8 +361,17 @@ export default function TxOpnetConfirmScreen() {
 
                     utxos = await Web3API.getUnspentUTXOsForAddresses(
                         [fromAddress],
-                        BitcoinUtils.expandToDecimals(parameters.inputAmount, 8),
+                        BitcoinUtils.expandToDecimals(parameters.inputAmount, 8) + feeMin,
                         1n
+                    );
+                } else if (parameters.sourceType === SourceType.P2WDA) {
+                    const p2wdaAddress = currentAddress.p2wda(Web3API.network);
+                    fromAddress = p2wdaAddress.address;
+                    witnessScript = p2wdaAddress.witnessScript;
+
+                    utxos = await Web3API.getUnspentUTXOsForAddresses(
+                        [fromAddress],
+                        BitcoinUtils.expandToDecimals(parameters.inputAmount, 8) + feeMin
                     );
                 }
 
@@ -375,7 +384,7 @@ export default function TxOpnetConfirmScreen() {
             } else {
                 utxos = await Web3API.getUnspentUTXOsForAddresses(
                     [fromAddress],
-                    BitcoinUtils.expandToDecimals(parameters.inputAmount, 8)
+                    BitcoinUtils.expandToDecimals(parameters.inputAmount, 8) + feeMin
                 );
             }
 
@@ -407,7 +416,7 @@ export default function TxOpnetConfirmScreen() {
                 return;
             }
 
-            const amountA = Number(parameters.inputAmount).toLocaleString();
+            const amountA = parameters.inputAmount.toLocaleString();
             const sourceLabel =
                 parameters.sourceType === SourceType.CSV75
                     ? ' from CSV-75'
@@ -485,8 +494,8 @@ export default function TxOpnetConfirmScreen() {
                     updatedTokens = JSON.parse(tokensImported) as string[];
                 }
 
-                if (!updatedTokens.includes(sendTransact.contractAddress.toString())) {
-                    updatedTokens.push(sendTransact.contractAddress.toString());
+                if (!updatedTokens.includes(sendTransact.contractAddress)) {
+                    updatedTokens.push(sendTransact.contractAddress);
                     localStorage.setItem(key, JSON.stringify(updatedTokens));
                 }
 
@@ -525,7 +534,7 @@ export default function TxOpnetConfirmScreen() {
             );
 
             const value = BitcoinUtils.expandToDecimals(parameters.inputAmount, parameters.tokens[0].divisibility);
-            const mintData = await contract.mint(Address.fromString(parameters.to), BigInt(value));
+            const mintData = await contract.mint(Address.fromString(parameters.to), value);
 
             const interactionParameters: TransactionParameters = {
                 signer: userWallet.keypair, // The keypair that will sign the transaction
@@ -1039,13 +1048,11 @@ export default function TxOpnetConfirmScreen() {
                                             wordBreak: 'break-all',
                                             flex: 1
                                         }}>
-                                        {deploymentContract.contractAddress.toString()}
+                                        {deploymentContract.contractAddress}
                                     </span>
                                     <CopyOutlined
                                         onClick={async () => {
-                                            await navigator.clipboard.writeText(
-                                                deploymentContract.contractAddress.toString()
-                                            );
+                                            await navigator.clipboard.writeText(deploymentContract.contractAddress);
                                             tools.toastSuccess('Copied!');
                                         }}
                                         style={{

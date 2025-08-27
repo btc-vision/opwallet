@@ -49,6 +49,7 @@ export default function ReceiveScreen() {
                         csv1_total_amount={undefined}
                         csv1_unlocked_amount={undefined}
                         csv1_locked_amount={undefined}
+                        p2wda_total_amount={undefined}
                     />
                 </Column>
             </Content>

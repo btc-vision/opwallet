@@ -52,6 +52,7 @@ interface AddressBalance {
     available: boolean;
     lockTime?: number;
     description: string;
+    description2?: string;
 }
 
 export default function TxCreateScreen() {
@@ -97,8 +98,11 @@ export default function TxCreateScreen() {
                 // Get CSV addresses for display
                 const csv75Address = currentAddress.toCSV(75, Web3API.network);
                 const csv1Address = currentAddress.toCSV(1, Web3API.network);
+                const p2wdaAddress = currentAddress.p2wda(Web3API.network);
 
                 const balances: AddressBalance[] = [];
+
+                console.log('currentBalance', currentBalance);
 
                 // Always add current address
                 balances.push({
@@ -111,23 +115,21 @@ export default function TxCreateScreen() {
                     description: 'Standard wallet address'
                 });
 
-                // Check CSV75 balance from the response
-                if (currentBalance.csv75_total_amount && currentBalance.csv75_total_amount !== '0') {
-                    const csv75UnlockedAmount = currentBalance.csv75_unlocked_amount || '0';
-                    const csv75LockedAmount = currentBalance.csv75_locked_amount || '0';
-                    const hasUnlocked = csv75UnlockedAmount !== '0';
+                // Check P2WDA balance from the response
+                if (currentBalance.p2wda_total_amount && currentBalance.p2wda_total_amount !== '0') {
+                    const p2wdaAmount = currentBalance.p2wda_total_amount || '0';
+                    const satBal = BigInt(amountToSatoshis(p2wdaAmount));
+                    const hasBalance = satBal !== 0n;
 
                     balances.push({
-                        type: SourceType.CSV75,
-                        label: 'CSV-75 Mining Rewards',
-                        address: csv75Address.address,
-                        balance: csv75UnlockedAmount,
-                        totalBalance: currentBalance.csv75_total_amount,
-                        lockedBalance: csv75LockedAmount,
-                        satoshis: BigInt(amountToSatoshis(csv75UnlockedAmount)),
-                        available: hasUnlocked,
-                        lockTime: 75,
-                        description: 'SHA1 mining rewards (75 block lock)'
+                        type: SourceType.P2WDA,
+                        label: 'Smart Contract Optimized',
+                        address: p2wdaAddress.address,
+                        balance: p2wdaAmount,
+                        satoshis: satBal,
+                        available: hasBalance,
+                        description: 'Pay-to-Witness-Data-Authentication (P2WDA)',
+                        description2: 'Up to 75% cheaper fees for contract interactions (not for trading)'
                     });
                 }
 
@@ -148,6 +150,26 @@ export default function TxCreateScreen() {
                         available: hasUnlocked,
                         lockTime: 1,
                         description: 'Anti-pinning protection (1 block lock)'
+                    });
+                }
+
+                // Check CSV75 balance from the response
+                if (currentBalance.csv75_total_amount && currentBalance.csv75_total_amount !== '0') {
+                    const csv75UnlockedAmount = currentBalance.csv75_unlocked_amount || '0';
+                    const csv75LockedAmount = currentBalance.csv75_locked_amount || '0';
+                    const hasUnlocked = csv75UnlockedAmount !== '0';
+
+                    balances.push({
+                        type: SourceType.CSV75,
+                        label: 'CSV-75 Mining Rewards',
+                        address: csv75Address.address,
+                        balance: csv75UnlockedAmount,
+                        totalBalance: currentBalance.csv75_total_amount,
+                        lockedBalance: csv75LockedAmount,
+                        satoshis: BigInt(amountToSatoshis(csv75UnlockedAmount)),
+                        available: hasUnlocked,
+                        lockTime: 75,
+                        description: 'SHA1 mining rewards (75 block lock)'
                     });
                 }
 
@@ -376,6 +398,16 @@ export default function TxCreateScreen() {
                                                         }}>
                                                         {balance.description}
                                                     </div>
+
+                                                    {balance.description2 && (
+                                                        <div
+                                                            style={{
+                                                                fontSize: '11px',
+                                                                color: colors.textFaded
+                                                            }}>
+                                                            {balance.description2}
+                                                        </div>
+                                                    )}
                                                 </div>
 
                                                 {balance.type !== SourceType.CURRENT && (
@@ -496,20 +528,23 @@ export default function TxCreateScreen() {
                                     borderRadius: '10px',
                                     textAlign: 'center'
                                 }}>
-                                <InfoCircleOutlined
-                                    style={{
-                                        fontSize: 14,
-                                        color: colors.main,
-                                        marginBottom: '4px'
-                                    }}
-                                />
                                 <p
                                     style={{
-                                        fontSize: '12px',
+                                        fontSize: '14px',
                                         color: colors.main,
                                         margin: 0
                                     }}>
-                                    No CSV addresses with balance detected
+                                    No extra addresses with balance detected
+                                </p>
+
+                                <p
+                                    style={{
+                                        fontSize: '12px',
+                                        color: colors.textFaded,
+                                        margin: '8px 0 0 0'
+                                    }}>
+                                    If you have funds in other addresses types, they will show up here once they have
+                                    been detected on-chain.
                                 </p>
                             </div>
                         )}

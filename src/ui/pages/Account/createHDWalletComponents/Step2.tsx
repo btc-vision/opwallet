@@ -253,7 +253,7 @@ export function Step2({
         setScanned(true);
         tools.showLoading(true);
         try {
-            let groups: {
+            const groups: {
                 type: AddressType;
                 address_arr: string[];
                 satoshis_arr: number[];
@@ -289,7 +289,7 @@ export function Step2({
                 });
             }
 
-            groups = await wallet.findGroupAssets(groups);
+            //groups = await wallet.findGroupAssets(groups);
 
             setScannedGroups(groups);
             if (groups.length == 0) {

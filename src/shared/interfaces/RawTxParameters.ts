@@ -71,7 +71,8 @@ export interface AirdropParameters extends BaseRawTxInfo<Action.Airdrop> {
 export enum SourceType {
     CURRENT = 'current',
     CSV75 = 'csv75',
-    CSV1 = 'csv1'
+    CSV1 = 'csv1',
+    P2WDA = 'p2wda'
 }
 
 export interface SendBitcoinParameters extends BaseRawTxInfo<Action.SendBitcoin> {
