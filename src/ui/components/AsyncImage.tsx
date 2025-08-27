@@ -28,7 +28,7 @@ export function AsyncImage({
         if (!elementRef.current || !src) return;
 
         // Set data-src attribute
-        elementRef.current.dataset.src = src;
+        elementRef.current.dataset.src = ImageService.encrypt(src);
         elementRef.current.dataset.width = width.toString();
         elementRef.current.dataset.height = height.toString();
 

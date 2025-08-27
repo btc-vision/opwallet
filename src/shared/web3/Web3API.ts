@@ -72,9 +72,6 @@ export async function getOPNetChainType(chain: ChainType): Promise<ChainId> {
         return ChainId.Fractal;
     }
 
-    // Default to Bitcoin for all other chains
-    // This includes Dogecoin, Litecoin, Bitcoin Cash, Dash, etc.
-    // until OPNet officially supports them
     return ChainId.Bitcoin;
 }
 

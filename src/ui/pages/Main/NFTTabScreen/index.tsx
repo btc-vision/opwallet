@@ -568,7 +568,6 @@ function NFTCard({ nft, onClick }: { nft: OwnedNFT; onClick: () => void }) {
                             height: '100%',
                             objectFit: 'cover'
                         }}
-                        fallback={<div style={{ fontSize: '48px' }}>🎨</div>}
                     />
                 ) : (
                     <div
@@ -581,7 +580,7 @@ function NFTCard({ nft, onClick }: { nft: OwnedNFT; onClick: () => void }) {
                             fontSize: '48px',
                             background: colors.containerBg
                         }}>
-                        🎨
+                        ❓
                     </div>
                 )}
             </div>

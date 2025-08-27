@@ -217,7 +217,7 @@ export default function NFTSendScreen() {
                                         justifyContent: 'center',
                                         fontSize: '36px'
                                     }}>
-                                    🎨
+                                    ERROR
                                 </div>
                             )}
                         </div>

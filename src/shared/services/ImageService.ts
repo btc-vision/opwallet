@@ -1,3 +1,5 @@
+import base from 'base-x';
+
 interface LoadedImage {
     element: HTMLElement;
     url: string;
@@ -11,6 +13,9 @@ interface QueuedImage {
     src: string;
     priority: number;
 }
+
+const BASE58 = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz-.,';
+const bs58 = base(BASE58);
 
 class ImageService {
     private static instance: ImageService;
@@ -47,6 +52,58 @@ class ImageService {
         }
 
         return uri; // Return as-is if not IPFS
+    }
+
+    encrypt(imageUrl: string): string {
+        try {
+            let url = imageUrl;
+
+            // Handle IPFS URLs
+            if (url.includes('ipfs://')) {
+                url = url.replace('ipfs://', 'https://ipfs.opnet.org/ipfs/');
+            }
+
+            if (url.includes('ipfs.io')) {
+                url = url.replace('https://ipfs.io/', 'https://ipfs.opnet.org/');
+            } else if (url.includes('ipfs.moralis.io:2053')) {
+                url = url.replace('https://ipfs.moralis.io:2053/', 'https://ipfs.opnet.org/');
+            } else if (url.includes('gateway.pinata.cloud')) {
+                url = url.replace('https://gateway.pinata.cloud/', 'https://ipfs.opnet.org/');
+            } else if (url.includes('niftylabs.mypinata.cloud')) {
+                url = url.replace('https://niftylabs.mypinata.cloud/', 'https://ipfs.opnet.org/');
+            }
+
+            if (url.includes('/ipfs/')) {
+                const split = url.split('/ipfs/');
+                url = `https://ipfs.opnet.org/ipfs/${split[1]}`;
+            }
+
+            if (url.includes('/ipns/')) {
+                const split = url.split('/ipns/');
+                url = `https://ipfs.opnet.org/ipns/${split[1]}`;
+            }
+
+            // For IPFS URLs that are already on opnet, return modified format
+            if (url.startsWith('https://ipfs.opnet.org')) {
+                const imgSplit = url.split('https://ipfs.opnet.org/');
+                return `https://images.opnet.org/500/500/${imgSplit[1]}`;
+            }
+
+            // For other URLs, encode them with base58
+            const str = url.replace('https://', '').replace('http://', '');
+            const uriSplit = str.split('/');
+            const uriA = uriSplit[0]; // Domain part
+            const finalUriData = str.replace(uriA, ''); // Path part
+
+            // Encode the domain part with base58
+            const encodedDomain = bs58.encode(Buffer.from(uriA));
+
+            // Return the full encoded URL
+            return `https://images.opnet.org/v2/500/500/${encodedDomain}${finalUriData}`;
+        } catch (e) {
+            console.error('Encoding error:', e);
+            return 'somethingwentwrong';
+        }
     }
 
     /**
@@ -334,7 +391,7 @@ class ImageService {
         } else {
             element.style.backgroundImage = '';
             element.innerHTML =
-                '<div style="display:flex;align-items:center;justify-content:center;width:100%;height:100%;font-size:48px;">🎨</div>';
+                '<div style="display:flex;align-items:center;justify-content:center;width:100%;height:100%;font-size:48px;">ERROR</div>';
         }
     }
 
@@ -346,8 +403,7 @@ class ImageService {
         if (src === 'undefined' || src === 'null') return false;
         if (src === '/' || src === '/index' || src === 'index') return false;
         if (src.includes('google.com')) return false;
-        if (src.includes('raritysniffer.com/index')) return false;
-        return true;
+        return !src.includes('raritysniffer.com/index');
     }
 
     /**
@@ -383,7 +439,7 @@ class ImageService {
         }
 
         // Already optimized
-        if (originalUrl.includes('nft.opnet.org')) {
+        if (originalUrl.includes('images.opnet.org')) {
             return originalUrl;
         }
 
