@@ -81,6 +81,7 @@ export default function WalletTabScreen() {
 
     const address = Address.fromString(untweakedPublicKey);
     const tweakedPublicKey = address.toHex();
+    const publicKey = '0x' + address.originalPublicKeyBuffer().toString('hex');
     const explorerUrl = `https://opscan.org/accounts/${tweakedPublicKey}`;
 
     const accountBalance = useAccountBalance();
@@ -336,7 +337,7 @@ export default function WalletTabScreen() {
                                                 maxWidth: '120px'
                                             }}
                                             onClick={async () => {
-                                                await navigator.clipboard.writeText(tweakedPublicKey);
+                                                await navigator.clipboard.writeText(publicKey);
                                                 // You could add a toast notification here
                                             }}
                                             onMouseEnter={(e) => {
@@ -356,7 +357,7 @@ export default function WalletTabScreen() {
                                                     textOverflow: 'ellipsis',
                                                     whiteSpace: 'nowrap'
                                                 }}>
-                                                {tweakedPublicKey.slice(0, 6)}...{tweakedPublicKey.slice(-4)}
+                                                {publicKey.slice(0, 6)}...{publicKey.slice(-4)}
                                             </span>
                                             <svg
                                                 width="10"
