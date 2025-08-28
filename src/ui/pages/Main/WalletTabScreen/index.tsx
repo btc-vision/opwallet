@@ -29,7 +29,7 @@ import {
     useWalletConfig
 } from '@/ui/state/settings/hooks';
 import { useResetUiTxCreateScreen } from '@/ui/state/ui/hooks';
-import { amountToSatoshis, useWallet } from '@/ui/utils';
+import { amountToSatoshis, copyToClipboard, useWallet } from '@/ui/utils';
 
 import {
     DownOutlined,
@@ -48,6 +48,7 @@ import { OPNetList } from './OPNetList';
 import { Address } from '@btc-vision/transaction';
 import ActionButton from '../../../components/ActionButton/index';
 import ParticleField from '@/ui/components/ParticleField/ParticleField';
+import { useTools } from '@/ui/components/ActionComponent';
 
 const colors = {
     main: '#f37413',
@@ -147,6 +148,9 @@ export default function WalletTabScreen() {
         const csv1Total = parseFloat(accountBalance.csv1_total_amount || '0');
         return csv75Total > 0 || csv1Total > 0;
     };
+
+    const tools = useTools();
+
 
     return (
         <Layout>
@@ -313,70 +317,6 @@ export default function WalletTabScreen() {
                                         maxWidth: '280px'
                                     }
                                 }}>
-                                {/* Public Key Display */}
-                                <div
-                                    style={{
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        gap: '12px',
-                                        marginBottom: '8px'
-                                    }}>
-                                    <Tooltip title="Click to copy public key" placement="top">
-                                        <button
-                                            style={{
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                gap: '4px',
-                                                padding: '3px 8px',
-                                                background: 'rgba(243, 116, 19, 0.1)',
-                                                border: '1px solid rgba(243, 116, 19, 0.3)',
-                                                borderRadius: '6px',
-                                                cursor: 'pointer',
-                                                transition: 'all 0.15s',
-                                                maxWidth: '120px'
-                                            }}
-                                            onClick={async () => {
-                                                await navigator.clipboard.writeText(publicKey);
-                                                // You could add a toast notification here
-                                            }}
-                                            onMouseEnter={(e) => {
-                                                e.currentTarget.style.background = 'rgba(243, 116, 19, 0.2)';
-                                                e.currentTarget.style.borderColor = 'rgba(243, 116, 19, 0.5)';
-                                            }}
-                                            onMouseLeave={(e) => {
-                                                e.currentTarget.style.background = 'rgba(243, 116, 19, 0.1)';
-                                                e.currentTarget.style.borderColor = 'rgba(243, 116, 19, 0.3)';
-                                            }}>
-                                            <span
-                                                style={{
-                                                    fontSize: '10px',
-                                                    color: colors.main,
-                                                    fontFamily: 'monospace',
-                                                    overflow: 'hidden',
-                                                    textOverflow: 'ellipsis',
-                                                    whiteSpace: 'nowrap'
-                                                }}>
-                                                {publicKey.slice(0, 6)}...{publicKey.slice(-4)}
-                                            </span>
-                                            <svg
-                                                width="10"
-                                                height="10"
-                                                viewBox="0 0 24 24"
-                                                fill="none"
-                                                xmlns="http://www.w3.org/2000/svg"
-                                                style={{ flexShrink: 0 }}>
-                                                <path
-                                                    d="M8 4H6C5.46957 4 4.96086 4.21071 4.58579 4.58579C4.21071 4.96086 4 5.46957 4 6V18C4 18.5304 4.21071 19.0391 4.58579 19.4142C4.96086 19.7893 5.46957 20 6 20H18C18.5304 20 19.0391 19.7893 19.4142 19.4142C19.7893 19.0391 20 18.5304 20 18V16M16 4H20M20 4V8M20 4L10 14"
-                                                    stroke={colors.main}
-                                                    strokeWidth="2"
-                                                    strokeLinecap="round"
-                                                    strokeLinejoin="round"
-                                                />
-                                            </svg>
-                                        </button>
-                                    </Tooltip>
-                                </div>
 
                                 <Tooltip
                                     title={
@@ -580,7 +520,21 @@ export default function WalletTabScreen() {
 
                                 {/* Display the combined total */}
                                 <BtcDisplay balance={calculateTotalBalance()} />
-
+                                <BtcUsd
+                                    sats={amountToSatoshis(calculateTotalBalance())}
+                                    textCenter
+                                    size={'sm'}
+                                    style={{
+                                        marginBottom: '4px'
+                                    }}
+                                />
+                                <div style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    gap: '6px',
+                                    marginTop: '4px'
+                                }}>
                                 {/* Show CSV balances if they exist */}
                                 {hasCSVBalances() && (
                                     <span
@@ -590,7 +544,6 @@ export default function WalletTabScreen() {
                                             backgroundColor: 'rgba(233, 152, 61, 0.15)',
                                             padding: '2px 6px',
                                             borderRadius: '6px',
-                                            marginTop: '3px',
                                             textAlign: 'center',
                                             fontWeight: 500
                                         }}>
@@ -598,14 +551,73 @@ export default function WalletTabScreen() {
                                     </span>
                                 )}
 
-                                <BtcUsd
-                                    sats={amountToSatoshis(calculateTotalBalance())}
-                                    textCenter
-                                    size={'sm'}
+                                {/* Public Key Display */}
+                                <div
                                     style={{
-                                        marginTop: '8px'
-                                    }}
-                                />
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'space-between',
+                                        gap: '12px',
+                                    }}>
+                                    <Tooltip title="Click to copy public key" placement="top">
+                                        <button
+                                            style={{
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: '4px',
+                                                padding: '3px 8px',
+                                                background: 'rgba(243, 116, 19, 0.1)',
+                                                border: '1px solid rgba(243, 116, 19, 0.3)',
+                                                borderRadius: '6px',
+                                                cursor: 'pointer',
+                                                transition: 'all 0.15s',
+                                                maxWidth: '120px'
+                                            }}
+                                            onClick={async (e) => {
+                                                e.stopPropagation();
+                                                await copyToClipboard(publicKey);
+                                                tools.toastSuccess('Copied');
+                                            }}
+                                            onMouseEnter={(e) => {
+                                                e.currentTarget.style.background = 'rgba(243, 116, 19, 0.2)';
+                                                e.currentTarget.style.borderColor = 'rgba(243, 116, 19, 0.5)';
+                                            }}
+                                            onMouseLeave={(e) => {
+                                                e.currentTarget.style.background = 'rgba(243, 116, 19, 0.1)';
+                                                e.currentTarget.style.borderColor = 'rgba(243, 116, 19, 0.3)';
+                                            }}>
+                                            <span
+                                                style={{
+                                                    fontSize: '10px',
+                                                    color: colors.main,
+                                                    fontFamily: 'monospace',
+                                                    overflow: 'hidden',
+                                                    textOverflow: 'ellipsis',
+                                                    whiteSpace: 'nowrap'
+                                                }}>
+                                                {publicKey.slice(0, 6)}...{publicKey.slice(-4)}
+                                            </span>
+                                            <svg
+                                                width="10"
+                                                height="10"
+                                                viewBox="0 0 24 24"
+                                                fill="none"
+                                                xmlns="http://www.w3.org/2000/svg"
+                                                style={{ flexShrink: 0 }}>
+                                                <path
+                                                    d="M8 4H6C5.46957 4 4.96086 4.21071 4.58579 4.58579C4.21071 4.96086 4 5.46957 4 6V18C4 18.5304 4.21071 19.0391 4.58579 19.4142C4.96086 19.7893 5.46957 20 6 20H18C18.5304 20 19.0391 19.7893 19.4142 19.4142C19.7893 19.0391 20 18.5304 20 18V16M16 4H20M20 4V8M20 4L10 14"
+                                                    stroke={colors.main}
+                                                    strokeWidth="2"
+                                                    strokeLinecap="round"
+                                                    strokeLinejoin="round"
+                                                />
+                                            </svg>
+                                        </button>
+                                    </Tooltip>
+                                </div>
+
+                                </div>
+
                             </Tooltip>
                         </div>
 
@@ -613,7 +625,7 @@ export default function WalletTabScreen() {
                         <div
                             style={{
                                 display: 'grid',
-                                gridTemplateColumns: 'repeat(5, 1fr)',
+                                gridTemplateColumns: btcUnit == 'BTC' ? 'repeat(4, 1fr)' : 'repeat(5, 1fr)',
                                 gap: '6px',
                                 padding: '0 12px',
                                 marginBottom: '12px'
@@ -641,13 +653,15 @@ export default function WalletTabScreen() {
                                 }}
                             />
 
-                            <ActionButton
-                                label="Faucet"
-                                icon={<ExperimentOutlined style={{ fontSize: 18, color: colors.text }} />}
-                                onClick={() => {
-                                    window.open(faucetUrl || '', '_blank', 'noopener noreferrer');
-                                }}
-                            />
+                            {btcUnit !== 'BTC' && (
+                                <ActionButton
+                                    label="Faucet"
+                                    icon={<ExperimentOutlined style={{ fontSize: 18, color: colors.text }} />}
+                                    onClick={() => {
+                                        window.open(faucetUrl || '', '_blank', 'noopener noreferrer');
+                                    }}
+                                />
+                            )}
 
                             <ActionButton
                                 label="History"
