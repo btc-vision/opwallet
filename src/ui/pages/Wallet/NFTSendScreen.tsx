@@ -107,17 +107,8 @@ export default function NFTSendScreen() {
         if (!val) return;
 
         const type = AddressVerificator.detectAddressType(val, Web3API.network);
-
         if (type === null) {
             setError('Invalid recipient address');
-            return;
-        }
-
-        if (type === AddressTypes.P2PK) {
-            setShowP2PKWarning(true);
-            // Convert P2PK to P2TR
-            const convertedAddress = Address.fromString(val).p2tr(Web3API.network);
-            setToAddress(convertedAddress);
             return;
         }
 
@@ -279,7 +270,7 @@ export default function NFTSendScreen() {
                                 background: colors.inputBg,
                                 border: `1px solid ${colors.containerBorder}`,
                                 borderRadius: '8px',
-                                padding: '14px',
+                                padding: '14px'
                             }}
                         />
 
