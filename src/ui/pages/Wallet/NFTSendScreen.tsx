@@ -247,9 +247,7 @@ export default function NFTSendScreen() {
                     {/* Recipient Section */}
                     <div
                         style={{
-                            background: colors.containerBgFaded,
                             borderRadius: '12px',
-                            padding: '14px',
                             marginBottom: '12px'
                         }}>
                         <div
@@ -280,7 +278,8 @@ export default function NFTSendScreen() {
                             style={{
                                 background: colors.inputBg,
                                 border: `1px solid ${colors.containerBorder}`,
-                                borderRadius: '8px'
+                                borderRadius: '8px',
+                                padding: '14px',
                             }}
                         />
 
