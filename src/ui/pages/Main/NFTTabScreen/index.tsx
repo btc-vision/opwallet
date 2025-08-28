@@ -1,17 +1,16 @@
-import React, { useEffect, useState } from 'react';
+import { NFTMetadata } from '@/shared/interfaces/RawTxParameters';
+import ImageService from '@/shared/services/ImageService';
+import Web3API, { OwnedNFT } from '@/shared/web3/Web3API';
 import { Column, Content, Footer, Header, Layout, Row } from '@/ui/components';
+import { AsyncImage } from '@/ui/components/AsyncImage';
+import { CopyableAddress } from '@/ui/components/CopyableAddress';
 import { NavTabBar } from '@/ui/components/NavTabBar';
 import { RouteTypes, useNavigate } from '@/ui/pages/MainRoute';
 import { useCurrentAccount } from '@/ui/state/accounts/hooks';
 import { useChainType } from '@/ui/state/settings/hooks';
-import Web3API, { OwnedNFT } from '@/shared/web3/Web3API';
-import { Address } from '@btc-vision/transaction';
 import { LoadingOutlined, PlusOutlined } from '@ant-design/icons';
-import { NFTMetadata } from '@/shared/interfaces/RawTxParameters';
-import { AsyncImage } from '@/ui/components/AsyncImage';
-import ImageService from '@/shared/services/ImageService';
-import { shortAddress } from '@/ui/utils';
-import { CopyableAddress } from '@/ui/components/CopyableAddress';
+import { Address } from '@btc-vision/transaction';
+import React, { useEffect, useState } from 'react';
 
 const colors = {
     main: '#f37413',
@@ -168,10 +167,11 @@ export default function NFTTabScreen() {
             <Layout>
                 <Header title="NFT Collections" />
 
-                <Content style={{
-                    margin: 0,
-                    padding: 0
-                }}>
+                <Content
+                    style={{
+                        margin: 0,
+                        padding: 0
+                    }}>
                     <Column>
                         {collections.length === 0 ? (
                             <div
@@ -183,7 +183,7 @@ export default function NFTTabScreen() {
                                     minHeight: '300px',
                                     textAlign: 'center',
                                     gap: '24px',
-                                    padding:' 12px'
+                                    padding: ' 12px'
                                 }}>
                                 <div>
                                     <div style={{ fontSize: '14px', color: colors.textFaded, marginBottom: '8px' }}>
@@ -223,20 +223,25 @@ export default function NFTTabScreen() {
                             </div>
                         ) : (
                             <>
-                                <Row justifyBetween style={{
-                                    background: '#313131',
-                                    borderTop: `1px solid #444746`,
-                                    borderBottom: `1px solid #444746`,
-                                    padding: '12px',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'space-between'
-                                }}>
-                                    <span style={{
-                                        fontSize: '16px',
-                                        fontWeight: 600,
-                                        color: colors.text,
-                                    }}>My Collections</span>
+                                <Row
+                                    justifyBetween
+                                    style={{
+                                        background: '#313131',
+                                        borderTop: `1px solid #444746`,
+                                        borderBottom: `1px solid #444746`,
+                                        padding: '12px',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'space-between'
+                                    }}>
+                                    <span
+                                        style={{
+                                            fontSize: '16px',
+                                            fontWeight: 600,
+                                            color: colors.text
+                                        }}>
+                                        My Collections
+                                    </span>
                                     <button
                                         style={{
                                             padding: '6px 12px',
@@ -298,11 +303,13 @@ export default function NFTTabScreen() {
                     </div>
                 ) : (
                     <>
-                        <Row justifyBetween style={{
-                            borderBottom: '1px solid #444746',
-                            padding: '12px',
-                            background: 'rgb(49, 49, 49)'
-                        }}>
+                        <Row
+                            justifyBetween
+                            style={{
+                                borderBottom: '1px solid #444746',
+                                padding: '12px',
+                                background: 'rgb(49, 49, 49)'
+                            }}>
                             <span style={{ fontSize: '14px', fontWeight: 600, color: colors.text }}>My NFTs</span>
                             <span style={{ fontSize: '12px', color: colors.textFaded }}>{ownedNFTs.length} items</span>
                         </Row>
@@ -314,9 +321,6 @@ export default function NFTTabScreen() {
                                 gap: '12px',
                                 padding: '0 12px 12px 12px'
                             }}>
-                            {ownedNFTs.map((nft) => (
-                                <NFTCard key={nft.tokenId.toString()} nft={nft} onClick={() => handleNFTClick(nft)} />
-                            ))}
                             {ownedNFTs.map((nft) => (
                                 <NFTCard key={nft.tokenId.toString()} nft={nft} onClick={() => handleNFTClick(nft)} />
                             ))}
@@ -475,24 +479,25 @@ function CollectionHeader({ collection }: { collection: NFTCollection }) {
                 position: 'relative',
                 height: '120px',
                 overflow: 'hidden',
-                borderTop: '1px solid rgb(68, 71, 70)',
+                borderTop: '1px solid rgb(68, 71, 70)'
             }}>
             {collection.banner && (
-                <div style={{
-                    width: '100%',
-                    height: '100%',
-                    position: 'absolute',
-                }}>
-                <img
-                    src={collection.banner}
-                    alt=""
+                <div
                     style={{
                         width: '100%',
                         height: '100%',
-                        objectFit: 'cover',
-                        filter: 'brightness(0.7)'
-                    }}
-                />
+                        position: 'absolute'
+                    }}>
+                    <img
+                        src={collection.banner}
+                        alt=""
+                        style={{
+                            width: '100%',
+                            height: '100%',
+                            objectFit: 'cover',
+                            filter: 'brightness(0.7)'
+                        }}
+                    />
                 </div>
             )}
             <div
@@ -505,7 +510,7 @@ function CollectionHeader({ collection }: { collection: NFTCollection }) {
                     background: 'linear-gradient(to top, #212121 0%, transparent 100%)',
                     color: 'white',
                     zIndex: 1,
-                    borderBottom: '1px solid rgb(68, 71, 70)',
+                    borderBottom: '1px solid rgb(68, 71, 70)'
                 }}>
                 <Row gap="md" style={{ alignItems: 'center' }}>
                     {collection.icon && (
@@ -520,9 +525,10 @@ function CollectionHeader({ collection }: { collection: NFTCollection }) {
                             }}
                         />
                     )}
-                    <Column style={{
-                        gap: 0
-                    }}>
+                    <Column
+                        style={{
+                            gap: 0
+                        }}>
                         <div style={{ fontSize: '16px', fontWeight: 600 }}>{collection.name}</div>
                         {collection.description && (
                             <div style={{ fontSize: '11px', opacity: 0.9 }}>{collection.description}</div>
@@ -533,7 +539,7 @@ function CollectionHeader({ collection }: { collection: NFTCollection }) {
             <button
                 style={{
                     position: 'absolute',
-                    top: "10px",
+                    top: '10px',
                     right: '10px',
                     background: '#212121',
                     borderRadius: '5px',
