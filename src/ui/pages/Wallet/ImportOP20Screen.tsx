@@ -6,7 +6,7 @@ import { useCurrentAccount } from '@/ui/state/accounts/hooks';
 import { useChainType } from '@/ui/state/settings/hooks';
 import { useTools } from '@/ui/components/ActionComponent';
 import { LoadingOutlined } from '@ant-design/icons';
-import { AddressTypes, AddressVerificator } from '@btc-vision/transaction';
+import { Address, AddressTypes, AddressVerificator } from '@btc-vision/transaction';
 
 const colors = {
     main: '#f37413',
@@ -102,7 +102,7 @@ export default function ImportTokenScreen() {
                 setError('Token contract not found');
             } else if (info) {
                 setTokenInfo({
-                    address,
+                    address: type === AddressTypes.P2OP ? address : Address.fromString(address).p2op(Web3API.network),
                     name: info.name || 'Unknown Token',
                     symbol: info.symbol || 'UNKNOWN',
                     decimals: info.decimals || 18,

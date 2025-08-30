@@ -19,7 +19,6 @@ import { useChainType } from '@/ui/state/settings/hooks';
 import { faEye, faEyeSlash, faPencil, faPlus, faRefresh, faTrash } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { RouteTypes, useNavigate } from '../../MainRoute';
-import { AddOpNetToken } from '../../Wallet/AddOpNetToken';
 
 BigNumber.config({ EXPONENTIAL_AT: 256 });
 
@@ -91,7 +90,7 @@ export function OPNetList() {
     const [isInitializing, setIsInitializing] = useState(true);
 
     // UI state
-    const [importTokenBool, setImportTokenBool] = useState(false);
+    //const [importTokenBool, setImportTokenBool] = useState(false);
     const [hasHiddenTokens, setHasHiddenTokens] = useState(false);
     const [showModal, setShowModal] = useState(false);
     const [modalToken, setModalToken] = useState<string | null>(null);
@@ -177,7 +176,7 @@ export function OPNetList() {
             );
 
             // Reverse to show newest first
-            addresses.reverse();
+            //addresses.reverse();
 
             // Ensure default tokens are included
             addresses = ensureDefaultTokens(addresses);
@@ -656,7 +655,7 @@ export function OPNetList() {
             )}
 
             {/* Import Token Modal */}
-            {importTokenBool && (
+            {/*importTokenBool && (
                 <AddOpNetToken
                     currentPage={currentPage}
                     setImportTokenBool={setImportTokenBool}
@@ -667,7 +666,7 @@ export function OPNetList() {
                     }}
                     onClose={() => setImportTokenBool(false)}
                 />
-            )}
+            )*/}
 
             {/* Remove/Hide Modal */}
             <>
