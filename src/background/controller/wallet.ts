@@ -2453,7 +2453,7 @@ export class WalletController {
             if (currentTotal < BigInt(requiredMinimum)) {
                 const stillNeeded = BigInt(requiredMinimum) - currentTotal;
 
-                const fetched: UTXOs = await Web3API.getUnspentUTXOsForAddresses([account.address], stillNeeded);
+                const fetched: UTXOs = await Web3API.getAllUTXOsForAddresses([account.address], stillNeeded);
                 const alreadyUsed = new Set<string>(utxos.map((u) => `${u.transactionId}:${u.outputIndex}`));
 
                 fetched

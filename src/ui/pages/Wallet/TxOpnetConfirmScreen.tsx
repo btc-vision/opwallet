@@ -452,7 +452,7 @@ export default function TxOpnetConfirmScreen() {
             const currentWalletAddress = await wallet.getCurrentAccount();
             const userWallet = await getWallet();
 
-            const utxos: UTXO[] = await Web3API.getUnspentUTXOsForAddresses([currentWalletAddress.address], 1_000_000n); // maximum fee a contract can pay
+            const utxos: UTXO[] = await Web3API.getAllUTXOsForAddresses([currentWalletAddress.address], 1_000_000n); // maximum fee a contract can pay
 
             const arrayBuffer = await parameters.file.arrayBuffer();
             const uint8Array = new Uint8Array(arrayBuffer);
