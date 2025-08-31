@@ -105,8 +105,9 @@ export interface SendNFTParameters extends BaseRawTxInfo<Action.SendNFT> {
 export interface SendBitcoinParameters extends BaseRawTxInfo<Action.SendBitcoin> {
     readonly to: string;
     readonly inputAmount: number;
-    readonly from?: string; // Optional: source address (current, CSV75, or CSV1)
-    readonly sourceType?: SourceType; // Optional: type of source address
+    readonly from?: string;
+    readonly sourceType?: SourceType;
+    readonly includeSmallUTXOs: boolean;
 }
 
 export interface DeployContractParameters extends BaseRawTxInfo<Action.DeployContract> {

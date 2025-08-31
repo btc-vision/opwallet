@@ -357,7 +357,8 @@ export default function TxOpnetConfirmScreen() {
                     utxos = await Web3API.getUnspentUTXOsForAddresses(
                         [fromAddress],
                         BitcoinUtils.expandToDecimals(parameters.inputAmount, 8) + feeMin,
-                        75n
+                        75n,
+                        parameters.includeSmallUTXOs
                     );
                 } else if (parameters.sourceType === SourceType.CSV1) {
                     const csv1Address = currentAddress.toCSV(1, Web3API.network);
@@ -367,7 +368,8 @@ export default function TxOpnetConfirmScreen() {
                     utxos = await Web3API.getUnspentUTXOsForAddresses(
                         [fromAddress],
                         BitcoinUtils.expandToDecimals(parameters.inputAmount, 8) + feeMin,
-                        1n
+                        1n,
+                        parameters.includeSmallUTXOs
                     );
                 } else if (parameters.sourceType === SourceType.P2WDA) {
                     const p2wdaAddress = currentAddress.p2wda(Web3API.network);
@@ -376,20 +378,24 @@ export default function TxOpnetConfirmScreen() {
 
                     utxos = await Web3API.getUnspentUTXOsForAddresses(
                         [fromAddress],
-                        BitcoinUtils.expandToDecimals(parameters.inputAmount, 8) + feeMin
+                        BitcoinUtils.expandToDecimals(parameters.inputAmount, 8) + feeMin,
+                        undefined,
+                        parameters.includeSmallUTXOs
                     );
                 }
 
                 if (witnessScript && utxos.length > 0) {
                     utxos = utxos.map((utxo) => ({
                         ...utxo,
-                        witnessScript: witnessScript // Add the witness script to each UTXO
+                        witnessScript: witnessScript
                     }));
                 }
             } else {
                 utxos = await Web3API.getUnspentUTXOsForAddresses(
                     [fromAddress],
-                    BitcoinUtils.expandToDecimals(parameters.inputAmount, 8) + feeMin
+                    BitcoinUtils.expandToDecimals(parameters.inputAmount, 8) + feeMin,
+                    undefined,
+                    parameters.includeSmallUTXOs
                 );
             }
 
