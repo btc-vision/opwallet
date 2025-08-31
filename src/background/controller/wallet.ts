@@ -1,4 +1,4 @@
-import { BroadcastedTransaction, UTXOs } from 'opnet';
+import { BitcoinUtils, BroadcastedTransaction, UTXOs } from 'opnet';
 
 import {
     contactBookService,
@@ -50,7 +50,7 @@ import {
     WalletKeyring
 } from '@/shared/types';
 import { getChainInfo } from '@/shared/utils';
-import Web3API, { bigIntToDecimal, getBitcoinLibJSNetwork } from '@/shared/web3/Web3API';
+import Web3API, { getBitcoinLibJSNetwork } from '@/shared/web3/Web3API';
 import {
     Address,
     DeploymentResult,
@@ -120,9 +120,10 @@ export class WalletController {
     public getConnectedSite = permissionService.getConnectedSite;
     public getSite = permissionService.getSite;
     public getConnectedSites = permissionService.getConnectedSites;
+
     // Cache properties
     private balanceCache: Map<string, BalanceCacheEntry> = new Map();
-    private readonly CACHE_DURATION = 1000; // 10 seconds in milliseconds
+    private readonly CACHE_DURATION = 8000;
     private cacheCleanupTimer: NodeJS.Timeout | null = null;
 
     /**
@@ -271,47 +272,72 @@ export class WalletController {
         const now = Date.now();
         const cached = this.balanceCache.get(cacheKey);
 
-        // Check if we have a valid cached entry
-        if (cached && now - cached.timestamp < this.CACHE_DURATION) {
-            // If there's an ongoing fetch, wait for it
-            if (cached.fetchPromise) {
-                try {
-                    return await cached.fetchPromise;
-                } catch (err) {
-                    // If the ongoing fetch fails, continue to fetch again
-                    console.warn('Ongoing fetch failed, refetching:', err);
-                }
-            } else {
-                // Return cached balance
-                return cached.balance;
+        // Return valid cached data
+        if (cached && now - cached.timestamp < this.CACHE_DURATION && !cached.fetchPromise) {
+            return cached.balance;
+        }
+
+        // Wait for ongoing fetch if exists
+        if (cached?.fetchPromise) {
+            try {
+                return await cached.fetchPromise;
+            } catch (err) {
+                console.warn('Ongoing fetch failed, creating new fetch:', err);
             }
         }
+
+        // Create new fetch with error handling
+        const fetchPromise = this.fetchBalanceWithRetry(address, pubKey);
+
+        // Store promise immediately
+        this.balanceCache.set(cacheKey, {
+            balance: cached?.balance || this.getEmptyBalance(),
+            timestamp: now,
+            fetchPromise
+        });
+
+        try {
+            const balance = await fetchPromise;
+
+            // Update cache with successful result
+            this.balanceCache.set(cacheKey, {
+                balance,
+                timestamp: now,
+                fetchPromise: undefined
+            });
+
+            return balance;
+        } catch (err) {
+            // Keep stale data on error if available
+            if (cached?.balance && cached.balance.btc_total_amount !== '0') {
+                this.balanceCache.set(cacheKey, {
+                    balance: cached.balance,
+                    timestamp: now - (this.CACHE_DURATION - 5000), // Mark as almost expired
+                    fetchPromise: undefined
+                });
+                return cached.balance;
+            }
+
+            // No stale data available
+            this.balanceCache.delete(cacheKey);
+            throw err;
+        }
+    };
+    /*public getAddressBalance = async (address: string, pubKey?: string): Promise<BitcoinBalance> => {
 
         // Create a new fetch promise to prevent duplicate requests
         const fetchPromise = this.getOpNetBalance(address, pubKey).catch((err: unknown) => {
             // Remove failed fetch from cache
-            this.balanceCache.delete(cacheKey);
+            //this.balanceCache.delete(cacheKey);
             throw new WalletControllerError(`Failed to get address balance: ${String(err)}`, { address });
         });
 
-        // Store the promise in cache immediately to prevent race conditions
-        this.balanceCache.set(cacheKey, {
-            balance: cached?.balance || ({} as BitcoinBalance), // Keep old balance while fetching
-            timestamp: cached?.timestamp || now,
-            fetchPromise
-        });
 
         const balance = await fetchPromise;
 
-        // Update cache with successful result
-        this.balanceCache.set(cacheKey, {
-            balance,
-            timestamp: now,
-            fetchPromise: undefined
-        });
 
         return balance;
-    };
+    };*/
 
     /**
      * Fetch multiple addresses' balances.
@@ -324,11 +350,15 @@ export class WalletController {
 
             const addressList = addresses.split(',');
             const summaries: AddressSummary[] = [];
+
             for (const address of addressList) {
                 const addressBalance = await this.getAddressBalance(address);
+                // Convert formatted string back to satoshis using expandToDecimals
+                const totalSatoshis = BitcoinUtils.expandToDecimals(addressBalance.btc_total_amount, 8);
+
                 const summary: AddressSummary = {
                     address: address,
-                    totalSatoshis: Number(addressBalance.btc_total_amount) * 1e8,
+                    totalSatoshis: Number(totalSatoshis),
                     loading: false
                 };
                 summaries.push(summary);
@@ -2228,6 +2258,43 @@ export class WalletController {
         }, timeConfig.time) as unknown as number;
     };
 
+    private getEmptyBalance(): BitcoinBalance {
+        return {
+            btc_total_amount: '0',
+            btc_confirm_amount: '0',
+            btc_pending_amount: '0',
+            csv75_total_amount: '0',
+            csv75_unlocked_amount: '0',
+            csv75_locked_amount: '0',
+            csv1_total_amount: '0',
+            csv1_unlocked_amount: '0',
+            csv1_locked_amount: '0',
+            p2wda_pending_amount: '0',
+            p2wda_total_amount: '0',
+            usd_value: '0.00'
+        };
+    }
+
+    private async fetchBalanceWithRetry(address: string, pubKey?: string, maxRetries = 3): Promise<BitcoinBalance> {
+        let lastError: Error | undefined;
+
+        for (let attempt = 0; attempt < maxRetries; attempt++) {
+            try {
+                return await this.getOpNetBalance(address, pubKey);
+            } catch (err) {
+                lastError = err as Error;
+
+                if (attempt < maxRetries - 1) {
+                    // Exponential backoff with jitter
+                    const delay = Math.min(1000 * Math.pow(2, attempt) + Math.random() * 500, 5000);
+                    await new Promise((resolve) => setTimeout(resolve, delay));
+                }
+            }
+        }
+
+        throw lastError || new Error('Failed to fetch balance after retries');
+    }
+
     /**
      * @throws WalletControllerError
      */
@@ -2238,15 +2305,14 @@ export class WalletController {
 
         if (pubKey) {
             const addressInst = Address.fromString(pubKey);
-
             csv75Address = addressInst.toCSV(75, Web3API.network).address;
             csv1Address = addressInst.toCSV(1, Web3API.network).address;
-
             p2wdaAddress = addressInst.p2wda(Web3API.network).address;
         }
 
         try {
             if (!csv75Address || !csv1Address || !p2wdaAddress) {
+                // Simple balance fetch for non-CSV addresses
                 const [allUTXOs, unspentUTXOs] = await Promise.all([
                     Web3API.getAllUTXOsForAddresses([address]),
                     Web3API.getUnspentUTXOsForAddresses([address])
@@ -2254,80 +2320,88 @@ export class WalletController {
 
                 const totalAll = allUTXOs.reduce((sum, u) => sum + u.value, 0n);
                 const totalUnspent = unspentUTXOs.reduce((sum, u) => sum + u.value, 0n);
-
-                const totalAmount = bigIntToDecimal(totalAll, 8);
-                const confirmAmount = bigIntToDecimal(totalUnspent, 8);
-                const pendingAmount = bigIntToDecimal(totalAll - totalUnspent, 8);
+                const pendingAmount = totalAll - totalUnspent;
 
                 return {
-                    btc_total_amount: totalAmount,
-                    btc_confirm_amount: confirmAmount,
-                    btc_pending_amount: pendingAmount,
+                    btc_total_amount: BitcoinUtils.formatUnits(totalAll, 8),
+                    btc_confirm_amount: BitcoinUtils.formatUnits(totalUnspent, 8),
+                    btc_pending_amount: BitcoinUtils.formatUnits(pendingAmount, 8),
 
-                    usd_value: '0.00'
-                };
-            } else {
-                const [allUTXOs, unspentUTXOs, csv75Data, csv1Data, p2wdaUTXOs, unspentP2WDAUTXOs] = await Promise.all([
-                    Web3API.getAllUTXOsForAddresses([address]),
-                    Web3API.getUnspentUTXOsForAddresses([address]),
-                    Web3API.getTotalLockedAndUnlockedUTXOs(csv75Address, 'csv75'),
-                    Web3API.getTotalLockedAndUnlockedUTXOs(csv1Address, 'csv1'),
-                    Web3API.getAllUTXOsForAddresses([p2wdaAddress]),
-                    Web3API.getUnspentUTXOsForAddresses([p2wdaAddress])
-                ]);
+                    csv75_total_amount: '0',
+                    csv75_unlocked_amount: '0',
+                    csv75_locked_amount: '0',
 
-                const totalAll = allUTXOs.reduce((sum, u) => sum + u.value, 0n);
-                const totalUnspent = unspentUTXOs.reduce((sum, u) => sum + u.value, 0n);
+                    csv1_total_amount: '0',
+                    csv1_unlocked_amount: '0',
+                    csv1_locked_amount: '0',
 
-                const totalAmount = bigIntToDecimal(totalAll, 8);
-                const confirmAmount = bigIntToDecimal(totalUnspent, 8);
-                const pendingAmount = bigIntToDecimal(totalAll - totalUnspent, 8);
-
-                const totalCSV75 = csv75Data.utxos.reduce((sum, u) => sum + u.value, 0n);
-                const csv75Total = bigIntToDecimal(totalCSV75, 8);
-
-                const totalCSV1 = csv1Data.utxos.reduce((sum, u) => sum + u.value, 0n);
-                const csv1Total = bigIntToDecimal(totalCSV1, 8);
-
-                const csv75Unlocked = bigIntToDecimal(
-                    csv75Data.unlockedUTXOs.reduce((sum, u) => sum + u.value, 0n),
-                    8
-                );
-
-                const csv75Locked = Number(csv75Total) - Number(csv75Unlocked);
-                const csv1Unlocked = bigIntToDecimal(
-                    csv1Data.unlockedUTXOs.reduce((sum, u) => sum + u.value, 0n),
-                    8
-                );
-
-                const csv1Locked = Number(csv1Total) - Number(csv1Unlocked);
-
-                // p2wda
-                const totalP2WDA = p2wdaUTXOs.reduce((sum, u) => sum + u.value, 0n);
-                const totalUnspentP2WDA = unspentP2WDAUTXOs.reduce((sum, u) => sum + u.value, 0n);
-
-                const totalAmountP2WDA = bigIntToDecimal(totalP2WDA, 8);
-                const pendingAmountP2WDA = bigIntToDecimal(totalP2WDA - totalUnspentP2WDA, 8);
-
-                return {
-                    btc_total_amount: totalAmount,
-                    btc_confirm_amount: confirmAmount,
-                    btc_pending_amount: pendingAmount,
-
-                    csv75_total_amount: csv75Total,
-                    csv75_unlocked_amount: csv75Unlocked,
-                    csv75_locked_amount: csv75Locked.toString(),
-
-                    csv1_total_amount: csv1Total,
-                    csv1_unlocked_amount: csv1Unlocked,
-                    csv1_locked_amount: csv1Locked.toString(),
-
-                    p2wda_pending_amount: pendingAmountP2WDA,
-                    p2wda_total_amount: totalAmountP2WDA,
+                    p2wda_pending_amount: '0',
+                    p2wda_total_amount: '0',
 
                     usd_value: '0.00'
                 };
             }
+
+            // Full balance fetch with CSV addresses - using Promise.allSettled for better error handling
+            const results = await Promise.allSettled([
+                Web3API.getAllUTXOsForAddresses([address]),
+                Web3API.getUnspentUTXOsForAddresses([address]),
+                Web3API.getTotalLockedAndUnlockedUTXOs(csv75Address, 'csv75'),
+                Web3API.getTotalLockedAndUnlockedUTXOs(csv1Address, 'csv1'),
+                Web3API.getAllUTXOsForAddresses([p2wdaAddress]),
+                Web3API.getUnspentUTXOsForAddresses([p2wdaAddress])
+            ]);
+
+            // Extract results with fallbacks
+            const allUTXOs = results[0].status === 'fulfilled' ? results[0].value : [];
+            const unspentUTXOs = results[1].status === 'fulfilled' ? results[1].value : [];
+            const csv75Data =
+                results[2].status === 'fulfilled'
+                    ? results[2].value
+                    : { utxos: [], unlockedUTXOs: [], lockedUTXOs: [] };
+            const csv1Data =
+                results[3].status === 'fulfilled'
+                    ? results[3].value
+                    : { utxos: [], unlockedUTXOs: [], lockedUTXOs: [] };
+            const p2wdaUTXOs = results[4].status === 'fulfilled' ? results[4].value : [];
+            const unspentP2WDAUTXOs = results[5].status === 'fulfilled' ? results[5].value : [];
+
+            // Calculate all balances using BigInt
+            const totalAll = allUTXOs.reduce((sum, u) => sum + u.value, 0n);
+            const totalUnspent = unspentUTXOs.reduce((sum, u) => sum + u.value, 0n);
+            const pendingAmount = totalAll - totalUnspent;
+
+            const csv75Total = csv75Data.utxos.reduce((sum, u) => sum + u.value, 0n);
+            const csv75Unlocked = csv75Data.unlockedUTXOs.reduce((sum, u) => sum + u.value, 0n);
+            const csv75Locked = csv75Total - csv75Unlocked;
+
+            const csv1Total = csv1Data.utxos.reduce((sum, u) => sum + u.value, 0n);
+            const csv1Unlocked = csv1Data.unlockedUTXOs.reduce((sum, u) => sum + u.value, 0n);
+            const csv1Locked = csv1Total - csv1Unlocked;
+
+            const totalP2WDA = p2wdaUTXOs.reduce((sum, u) => sum + u.value, 0n);
+            const totalUnspentP2WDA = unspentP2WDAUTXOs.reduce((sum, u) => sum + u.value, 0n);
+            const pendingP2WDA = totalP2WDA - totalUnspentP2WDA;
+
+            // Convert all BigInt values to formatted strings using BitcoinUtils
+            return {
+                btc_total_amount: BitcoinUtils.formatUnits(totalAll, 8),
+                btc_confirm_amount: BitcoinUtils.formatUnits(totalUnspent, 8),
+                btc_pending_amount: BitcoinUtils.formatUnits(pendingAmount, 8),
+
+                csv75_total_amount: BitcoinUtils.formatUnits(csv75Total, 8),
+                csv75_unlocked_amount: BitcoinUtils.formatUnits(csv75Unlocked, 8),
+                csv75_locked_amount: BitcoinUtils.formatUnits(csv75Locked, 8),
+
+                csv1_total_amount: BitcoinUtils.formatUnits(csv1Total, 8),
+                csv1_unlocked_amount: BitcoinUtils.formatUnits(csv1Unlocked, 8),
+                csv1_locked_amount: BitcoinUtils.formatUnits(csv1Locked, 8),
+
+                p2wda_pending_amount: BitcoinUtils.formatUnits(pendingP2WDA, 8),
+                p2wda_total_amount: BitcoinUtils.formatUnits(totalP2WDA, 8),
+
+                usd_value: '0.00'
+            };
         } catch (err) {
             throw new WalletControllerError(`Failed to get OPNET balance: ${String(err)}`, { address });
         }
@@ -2467,7 +2541,18 @@ export class WalletController {
      */
     private _generateCacheKey = (address: string, pubKey?: string): string => {
         const chainType = this.getChainType();
-        return `${chainType}:${address}:${pubKey || 'no-pubkey'}`;
+
+        // If pubKey exists, include CSV addresses in the key
+        if (pubKey) {
+            const addressInst = Address.fromString(pubKey);
+            const csv75 = addressInst.toCSV(75, Web3API.network).address;
+            const csv1 = addressInst.toCSV(1, Web3API.network).address;
+            const p2wda = addressInst.p2wda(Web3API.network).address;
+            return `${chainType}:${address}:${csv75}:${csv1}:${p2wda}`;
+        }
+
+        // No pubKey = simple balance only
+        return `${chainType}:${address}:simple`;
     };
 
     /**
