@@ -323,6 +323,7 @@ export class WalletController {
             throw err;
         }
     };
+
     /*public getAddressBalance = async (address: string, pubKey?: string): Promise<BitcoinBalance> => {
 
         // Create a new fetch promise to prevent duplicate requests

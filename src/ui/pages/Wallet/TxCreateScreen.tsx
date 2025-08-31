@@ -19,7 +19,8 @@ import {
     LockOutlined,
     SendOutlined,
     ThunderboltOutlined,
-    UnlockOutlined
+    UnlockOutlined,
+    WarningOutlined
 } from '@ant-design/icons';
 import { Address, AddressTypes, AddressVerificator } from '@btc-vision/transaction';
 
@@ -71,6 +72,7 @@ export default function TxCreateScreen() {
     const [showP2OPWarning, setDisplayP2OPWarning] = useState(false);
     const [autoAdjust, setAutoAdjust] = useState(false);
     const [note, setNote] = useState<string>('');
+    const [includeSmallUTXOs, setIncludeSmallUTXOs] = useState(false);
 
     // Address selection states
     const [addressBalances, setAddressBalances] = useState<AddressBalance[]>([]);
@@ -224,7 +226,8 @@ export default function TxCreateScreen() {
             action: Action.SendBitcoin,
             note,
             from: selectedBalance.address,
-            sourceType: selectedBalance.type
+            sourceType: selectedBalance.type,
+            includeSmallUTXOs
         };
 
         navigate(RouteTypes.TxOpnetConfirmScreen, { rawTxInfo: event });
@@ -879,6 +882,107 @@ export default function TxCreateScreen() {
                         </div>
 
                         <FeeRateBar onChange={(val) => setUiState({ feeRate: val })} />
+                    </div>
+
+                    {/* Small UTXOs Consolidation Option */}
+                    <div
+                        style={{
+                            background: includeSmallUTXOs ? `${colors.warning}10` : colors.containerBgFaded,
+                            borderRadius: '12px',
+                            padding: '14px',
+                            marginBottom: '12px',
+                            border: includeSmallUTXOs ? `1px solid ${colors.warning}30` : 'none',
+                            transition: 'all 0.2s'
+                        }}>
+                        {/* Warning Message - Only show when enabled */}
+                        {includeSmallUTXOs && (
+                            <div
+                                style={{
+                                    display: 'flex',
+                                    alignItems: 'flex-start',
+                                    gap: '6px',
+                                    padding: '10px',
+                                    background: `${colors.warning}15`,
+                                    border: `1px solid ${colors.warning}25`,
+                                    borderRadius: '8px',
+                                    marginBottom: '12px'
+                                }}>
+                                <WarningOutlined
+                                    style={{
+                                        fontSize: 14,
+                                        color: colors.warning,
+                                        flexShrink: 0,
+                                        marginTop: '2px'
+                                    }}
+                                />
+                                <div>
+                                    <div
+                                        style={{
+                                            fontSize: '11px',
+                                            color: colors.warning,
+                                            fontWeight: 600,
+                                            marginBottom: '4px'
+                                        }}>
+                                        WARNING: ENABLING THIS WILL ALSO CONSOLIDATE YOUR ORDINALS!
+                                    </div>
+                                    <div
+                                        style={{
+                                            fontSize: '10px',
+                                            color: colors.textFaded,
+                                            lineHeight: '1.4'
+                                        }}>
+                                        Small UTXOs may contain ordinals, inscriptions, or other digital artifacts.
+                                        These will be included in the transaction and may be permanently moved or
+                                        consolidated.
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        <label
+                            style={{
+                                display: 'flex',
+                                alignItems: 'flex-start',
+                                gap: '12px',
+                                cursor: 'pointer'
+                            }}>
+                            <input
+                                type="checkbox"
+                                checked={includeSmallUTXOs}
+                                onChange={(e) => setIncludeSmallUTXOs(e.target.checked)}
+                                style={{
+                                    width: '18px',
+                                    height: '18px',
+                                    marginTop: '2px',
+                                    cursor: 'pointer',
+                                    accentColor: colors.warning
+                                }}
+                            />
+                            <div style={{ flex: 1 }}>
+                                <div
+                                    style={{
+                                        fontSize: '12px',
+                                        fontWeight: 600,
+                                        color: includeSmallUTXOs ? colors.warning : colors.textFaded,
+                                        textTransform: 'uppercase',
+                                        letterSpacing: '0.5px',
+                                        marginBottom: '6px'
+                                    }}>
+                                    Include UTXOs Smaller Than 20,000 SAT
+                                </div>
+
+                                {/* Additional Info */}
+                                <div
+                                    style={{
+                                        fontSize: '10px',
+                                        color: colors.textFaded,
+                                        lineHeight: '1.4'
+                                    }}>
+                                    This option helps reduce UTXO fragmentation and can lower future transaction fees,
+                                    but should be used with caution if you hold ordinals or inscriptions.
+                                </div>
+                            </div>
+                        </label>
                     </div>
 
                     {/* Note Section */}
