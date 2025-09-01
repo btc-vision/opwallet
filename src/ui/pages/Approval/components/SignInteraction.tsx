@@ -68,7 +68,7 @@ export default function SignInteraction(props: Props) {
     const totalCost =
         Number(gasSatFee) +
         Number(priorityFee) +
-        (optionalOutputs ?? []).reduce((sum, output) => sum + Number(output.value), 0);
+        (optionalOutputs ?? []).reduce((sum, output) => sum + output.value, 0);
 
     const handleCancel = async () => {
         await rejectApproval('User rejected the request.');

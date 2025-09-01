@@ -1,5 +1,5 @@
 import { SessionInfo as Session } from '@/background/service/session';
-import { IDeploymentParameters } from '@btc-vision/transaction';
+import { ICancelTransactionParametersWithoutSigner, IDeploymentParameters } from '@btc-vision/transaction';
 import { ChainType } from '../constant';
 import { NetworkType, RawTxInfo, SignPsbtOptions, TxType } from '../types';
 import { DetailedInteractionParameters } from '../web3/interfaces/DetailedInteractionParameters';
@@ -45,6 +45,7 @@ export enum ApprovalType {
     Connect = 'Connect',
     SignData = 'SignData',
     SignInteraction = 'SignInteraction',
+    CancelTransaction = 'CancelTransaction',
     SignPsbt = 'SignPsbt',
     SignText = 'SignText',
     SwitchChain = 'SwitchChain',
@@ -69,7 +70,9 @@ export type ApprovalComponentParams<T extends ApprovalType> = T extends Approval
                 ? SwitchNetworkApprovalParams
                 : T extends ApprovalType.SignDeployment
                   ? SignDeploymentApprovalParams
-                  : never;
+                  : T extends ApprovalType.CancelTransaction
+                    ? CancelApprovalParams
+                    : never;
 
 // UNION OF APPROVAL RESPONSES
 export type ApprovalResponse =
@@ -81,7 +84,8 @@ export type ApprovalResponse =
     | SignInteractionApprovalResponse
     | SignDeploymentApprovalResponse
     | SignTextApprovalResponse
-    | SignDataApprovalResponse;
+    | SignDataApprovalResponse
+    | SignCancellationApprovalResponse;
 
 // APPROVAL RESPONSES
 export interface BaseApprovalResponse {
@@ -104,6 +108,8 @@ export interface SignPsbtApprovalResponse extends BaseApprovalResponse {
 export type SignInteractionApprovalResponse = BaseApprovalResponse | undefined;
 
 export type SignDeploymentApprovalResponse = BaseApprovalResponse | undefined;
+
+export type SignCancellationApprovalResponse = BaseApprovalResponse | undefined;
 
 export interface SignTextApprovalResponse extends BaseApprovalResponse {
     signature?: string;
@@ -188,5 +194,11 @@ export interface SwitchNetworkApprovalParams {
 export interface SignDeploymentApprovalParams {
     method: string;
     data: IDeploymentParameters;
+    session: Session;
+}
+
+export interface CancelApprovalParams {
+    method: string;
+    data: ICancelTransactionParametersWithoutSigner;
     session: Session;
 }

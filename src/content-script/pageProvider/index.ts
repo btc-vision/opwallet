@@ -7,7 +7,9 @@ import BroadcastChannelMessage from '@/shared/utils/message/broadcastChannelMess
 import Web3API from '@/shared/web3/Web3API';
 import { ContractInformation } from '@/shared/web3/interfaces/ContractInformation';
 import {
+    CancelledTransaction,
     DeploymentResult,
+    ICancelTransactionParametersWithoutSigner,
     IDeploymentParametersWithoutSigner,
     InteractionParametersWithoutSigner,
     InteractionResponse,
@@ -314,6 +316,13 @@ export class OpnetProvider extends EventEmitter {
             method: 'deployContract',
             params: params
         })) as Promise<DeploymentResult>;
+    };
+
+    cancelTransaction = async (params: ICancelTransactionParametersWithoutSigner): Promise<CancelledTransaction> => {
+        return (await this._request({
+            method: 'cancelTransaction',
+            params: params
+        })) as Promise<CancelledTransaction>;
     };
 
     signInteraction = async (

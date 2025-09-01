@@ -12,7 +12,7 @@ import Web3API from '@/shared/web3/Web3API';
 import { DetailedInteractionParameters } from '@/shared/web3/interfaces/DetailedInteractionParameters';
 import { amountToSatoshis } from '@/ui/utils';
 import { Psbt } from '@btc-vision/bitcoin';
-import { IDeploymentParametersWithoutSigner } from '@btc-vision/transaction';
+import { ICancelTransactionParametersWithoutSigner, IDeploymentParametersWithoutSigner } from '@btc-vision/transaction';
 import { toPsbtNetwork, verifyMessageOfBIP322Simple } from '@btc-vision/wallet-sdk';
 import wallet from '../wallet';
 
@@ -286,6 +286,46 @@ export class ProviderController {
         if (approvalInteractionParametersToUse) wallet.clearApprovalInteractionParametersToUse(); // clear to avoid using them again
 
         return result;
+    };
+
+    @Reflect.metadata('APPROVAL', [
+        ApprovalType.CancelTransaction,
+        (_req: ProviderControllerRequest) => {
+            const interactionParams = _req.data.params as ICancelTransactionParametersWithoutSigner;
+            if (!interactionParams.utxos || !interactionParams.utxos.length) {
+                throw new Error('No utxos');
+            }
+
+            if (!interactionParams.from) {
+                throw new Error('No from address');
+            }
+
+            if (!interactionParams.compiledTargetScript) {
+                throw new Error('No compiledTargetScript');
+            }
+
+            if (!interactionParams.feeRate) {
+                throw new Error('No feeRate');
+            }
+        }
+    ])
+    cancelTransaction = async (request: {
+        approvalRes: boolean;
+        data: { params: ICancelTransactionParametersWithoutSigner };
+    }) => {
+        const feeRate = await Web3API.provider.gasParameters();
+        const minimumFeeRate = feeRate.bitcoin.recommended.low;
+
+        if (request.data.params.feeRate < minimumFeeRate) {
+            // @ts-expect-error
+            request.data.params.feeRate = minimumFeeRate;
+
+            console.warn(
+                'The fee rate is too low, the system will automatically adjust the fee rate to the minimum value'
+            );
+        }
+
+        return wallet.cancelTransaction(request.data.params);
     };
 
     @Reflect.metadata('APPROVAL', [

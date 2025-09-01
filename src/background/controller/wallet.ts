@@ -53,7 +53,10 @@ import { getChainInfo } from '@/shared/utils';
 import Web3API, { getBitcoinLibJSNetwork } from '@/shared/web3/Web3API';
 import {
     Address,
+    CancelledTransaction,
     DeploymentResult,
+    ICancelTransactionParameters,
+    ICancelTransactionParametersWithoutSigner,
     IDeploymentParameters,
     IDeploymentParametersWithoutSigner,
     IInteractionParameters,
@@ -1116,6 +1119,100 @@ export class WalletController {
             throw new WalletControllerError(`signAndBroadcastInteraction failed: ${String(err)}`, {
                 interactionParameters
             });
+        }
+    };
+
+    public cancelTransaction = async (
+        params: ICancelTransactionParametersWithoutSigner
+    ): Promise<CancelledTransaction> => {
+        const account = await this.getCurrentAccount();
+        if (!account) throw new WalletControllerError('No current account');
+
+        const wifWallet = this.getInternalPrivateKey({
+            pubkey: account.pubkey,
+            type: account.type
+        } as Account);
+
+        if (!wifWallet) throw new WalletControllerError('Could not retrieve internal private key');
+
+        try {
+            const utxos = params.utxos.map((u) => {
+                let nonWitnessUtxo: Buffer | undefined;
+
+                if (Buffer.isBuffer(u.nonWitnessUtxo)) {
+                    nonWitnessUtxo = u.nonWitnessUtxo;
+                } else if (typeof u.nonWitnessUtxo === 'string') {
+                    try {
+                        nonWitnessUtxo = Buffer.from(u.nonWitnessUtxo, 'base64');
+                    } catch {
+                        nonWitnessUtxo = undefined;
+                    }
+                } else if (u.nonWitnessUtxo && typeof u.nonWitnessUtxo === 'object') {
+                    try {
+                        const raw = u.nonWitnessUtxo as Record<string, number>;
+                        const len = Math.max(...Object.keys(raw).map((k) => +k)) + 1;
+                        const buf = Buffer.alloc(len);
+                        for (const [k, v] of Object.entries(raw)) buf[+k] = v;
+                        nonWitnessUtxo = buf;
+                    } catch {
+                        nonWitnessUtxo = undefined;
+                    }
+                }
+
+                return {
+                    ...u,
+                    value: typeof u.value === 'bigint' ? u.value : BigInt(u.value as unknown as string),
+                    nonWitnessUtxo
+                };
+            });
+
+            const optionalInputs =
+                params.optionalInputs?.map((u) => {
+                    let nonWitnessUtxo: Buffer | undefined;
+
+                    if (Buffer.isBuffer(u.nonWitnessUtxo)) {
+                        nonWitnessUtxo = u.nonWitnessUtxo;
+                    } else if (typeof u.nonWitnessUtxo === 'string') {
+                        try {
+                            nonWitnessUtxo = Buffer.from(u.nonWitnessUtxo, 'base64');
+                        } catch {
+                            nonWitnessUtxo = undefined;
+                        }
+                    } else if (u.nonWitnessUtxo && typeof u.nonWitnessUtxo === 'object') {
+                        try {
+                            const raw = u.nonWitnessUtxo as Record<string, number>;
+                            const len = Math.max(...Object.keys(raw).map((k) => +k)) + 1;
+                            const buf = Buffer.alloc(len);
+                            for (const [k, v] of Object.entries(raw)) buf[+k] = v;
+                            nonWitnessUtxo = buf;
+                        } catch {
+                            nonWitnessUtxo = undefined;
+                        }
+                    }
+
+                    return {
+                        ...u,
+                        value: typeof u.value === 'bigint' ? u.value : BigInt(u.value as unknown as string),
+                        nonWitnessUtxo
+                    };
+                }) || [];
+
+            const walletGet: Wallet = Wallet.fromWif(wifWallet.wif, Web3API.network);
+            const cancelParameters: ICancelTransactionParameters = {
+                ...params,
+                utxos,
+                signer: walletGet.keypair,
+                network: Web3API.network,
+                feeRate: Number(params.feeRate.toString()),
+                compiledTargetScript: params.compiledTargetScript,
+                optionalOutputs: params.optionalOutputs || [],
+                optionalInputs: optionalInputs,
+                note: params.note
+            };
+
+            return await Web3API.transactionFactory.createCancellableTransaction(cancelParameters);
+        } catch (err) {
+            throw new WalletControllerError(`Failed to deploy contract: ${String(err)}`, { params });
         }
     };
 

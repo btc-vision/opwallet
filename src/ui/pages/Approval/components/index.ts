@@ -7,17 +7,28 @@ import SignPsbt from './SignPsbt';
 import SignText from './SignText';
 import SwitchChain from './SwitchChain';
 import SwitchNetwork from './SwitchNetwork';
+import CancelTransaction from './CancelTransaction';
 
-export { Connect, SignData, SignDeployment, SignInteraction, SignPsbt, SignText, SwitchChain, SwitchNetwork };
+export {
+    Connect,
+    SignData,
+    SignDeployment,
+    SignInteraction,
+    SignPsbt,
+    SignText,
+    SwitchChain,
+    SwitchNetwork,
+    CancelTransaction
+};
 
 export const ApprovalComponents = {
     [ApprovalType.Connect]: Connect,
     [ApprovalType.SignData]: SignData,
     [ApprovalType.SignInteraction]: SignInteraction,
+    [ApprovalType.CancelTransaction]: CancelTransaction,
     [ApprovalType.SignPsbt]: SignPsbt,
     [ApprovalType.SignText]: SignText,
     [ApprovalType.SwitchChain]: SwitchChain,
     [ApprovalType.SwitchNetwork]: SwitchNetwork,
-    [ApprovalType.SignDeployment]: SignDeployment,
+    [ApprovalType.SignDeployment]: SignDeployment
 } as const;
-
