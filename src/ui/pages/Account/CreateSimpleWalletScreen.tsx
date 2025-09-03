@@ -1,4 +1,3 @@
-import { ECPairFactory } from 'ecpair';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { ADDRESS_TYPES } from '@/shared/constant';
@@ -10,13 +9,10 @@ import { AddressTypeCard } from '@/ui/components/AddressTypeCard';
 import { TabBar } from '@/ui/components/TabBar';
 import { satoshisToAmount, useWallet } from '@/ui/utils';
 import { ImportOutlined, InfoCircleOutlined, KeyOutlined, LoadingOutlined, WalletOutlined } from '@ant-design/icons';
-import * as ecc from '@bitcoinerlab/secp256k1';
 import { EcKeyPair, Wallet } from '@btc-vision/transaction';
 import { ethers } from 'ethers';
 
 import { RouteTypes, useNavigate } from '../MainRoute';
-
-const ECPair = ECPairFactory(ecc);
 
 const colors = {
     main: '#f37413',
@@ -85,7 +81,7 @@ function Step1({ updateContextData }: { updateContextData: (params: UpdateContex
         if (!keyKind && isLikelyHexPriv(raw)) {
             try {
                 const buf = Buffer.from(raw.replace(/^0x/, ''), 'hex');
-                ECPair.fromPrivateKey(buf, { network: bitcoinNetwork });
+                EcKeyPair.fromPrivateKey(buf, bitcoinNetwork);
                 keyKind = 'rawHex';
             } catch (e) {
                 console.error(e);

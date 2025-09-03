@@ -55,6 +55,7 @@ import {
     Address,
     CancelledTransaction,
     DeploymentResult,
+    EcKeyPair,
     ICancelTransactionParameters,
     ICancelTransactionParametersWithoutSigner,
     IDeploymentParameters,
@@ -67,7 +68,6 @@ import {
 } from '@btc-vision/transaction';
 import {
     AbstractWallet,
-    ECPair,
     genPsbtOfBIP322Simple,
     getSignatureFromPsbtOfBIP322Simple,
     KeystoneKeyring,
@@ -448,7 +448,7 @@ export class WalletController {
         const networkType = this.getNetworkType();
         const network = toPsbtNetwork(networkType);
 
-        const wif = ECPair.fromPrivateKey(Buffer.from(privateKey, 'hex'), { network }).toWIF();
+        const wif = EcKeyPair.fromPrivateKey(Buffer.from(privateKey, 'hex'), network).toWIF();
         return {
             hex: privateKey,
             wif
@@ -480,7 +480,7 @@ export class WalletController {
         const networkType = this.getNetworkType();
         const network = toPsbtNetwork(networkType);
 
-        const wif = ECPair.fromPrivateKey(Buffer.from(privateKey, 'hex'), { network }).toWIF();
+        const wif = EcKeyPair.fromPrivateKey(Buffer.from(privateKey, 'hex'), network).toWIF();
         return {
             hex: privateKey,
             wif
