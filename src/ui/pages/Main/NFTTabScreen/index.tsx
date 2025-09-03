@@ -177,9 +177,9 @@ export default function NFTTabScreen() {
                             <div
                                 style={{
                                     display: 'flex',
-                                    flexDirection: 'row',
+                                    flexDirection: 'column',
                                     alignItems: 'center',
-                                    justifyContent: 'space-between',
+                                    justifyContent: 'center',
                                     minHeight: '300px',
                                     textAlign: 'center',
                                     gap: '24px',
