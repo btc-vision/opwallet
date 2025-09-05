@@ -64,6 +64,7 @@ import {
     InteractionParametersWithoutSigner,
     InteractionResponse,
     RawChallenge,
+    UTXO as TransactionUTXO,
     Wallet
 } from '@btc-vision/transaction';
 import {
@@ -78,7 +79,16 @@ import {
 } from '@btc-vision/wallet-sdk';
 
 import { customNetworksManager } from '@/shared/utils/CustomNetworksManager';
-import { address as bitcoinAddress, payments, Psbt, toXOnly, Transaction } from '@btc-vision/bitcoin';
+import {
+    address as bitcoinAddress,
+    payments,
+    Psbt,
+    PsbtOutputExtended,
+    PsbtOutputExtendedAddress,
+    PsbtOutputExtendedScript,
+    toXOnly,
+    Transaction
+} from '@btc-vision/bitcoin';
 import { Buffer } from 'buffer';
 import { ContactBookItem, ContactBookStore } from '../service/contactBook';
 import { OpenApiService } from '../service/openapi';
@@ -1334,6 +1344,7 @@ export class WalletController {
             pubkey: account.pubkey,
             type: account.type
         } as Account);
+
         if (!wifWallet) throw new WalletControllerError('Could not retrieve internal private key');
 
         let interactionResponse: InteractionResponse | undefined;
@@ -2498,6 +2509,108 @@ export class WalletController {
         }
     };
 
+    private detectEncoding = (str: string): 'hex' | 'base64' => {
+        // Hex pattern: only 0-9, a-f, A-F characters, and even length
+        const hexPattern = /^[0-9a-fA-F]*$/;
+
+        // Base64 pattern: A-Z, a-z, 0-9, +, /, and optional = padding at the end
+        const base64Pattern = /^[A-Za-z0-9+/]*={0,2}$/;
+
+        // Check if it's valid hex (even length is important for hex)
+        if (hexPattern.test(str) && str.length % 2 === 0) {
+            return 'hex';
+        }
+
+        // Check if it's valid base64
+        if (base64Pattern.test(str) && str.length % 4 === 0) {
+            return 'base64';
+        }
+
+        // Default to hex if unclear (Bitcoin context usually uses hex)
+        return 'hex';
+    };
+
+    private convertToBuffer = (input: string | Buffer | Record<string, number> | undefined): Buffer | undefined => {
+        if (!input) return undefined;
+
+        // Already a Buffer
+        if (Buffer.isBuffer(input)) {
+            return input;
+        }
+
+        // String (assume hex)
+        if (typeof input === 'string') {
+            const encoding = this.detectEncoding(input);
+
+            try {
+                return Buffer.from(input, encoding);
+            } catch {
+                // If detected encoding fails, try the other one
+                const fallbackEncoding = encoding === 'hex' ? 'base64' : 'hex';
+                try {
+                    return Buffer.from(input, fallbackEncoding);
+                } catch {
+                    return undefined;
+                }
+            }
+        }
+
+        // Object with numeric keys (like { 0: 72, 1: 101, ... })
+        if (typeof input === 'object') {
+            try {
+                const raw: Record<string, number> = input;
+                const len = Math.max(...Object.keys(raw).map((k) => +k)) + 1;
+                const buf = Buffer.alloc(len);
+                for (const [k, v] of Object.entries(raw)) {
+                    buf[+k] = v;
+                }
+                return buf;
+            } catch {
+                return undefined;
+            }
+        }
+
+        return undefined;
+    };
+
+    /**
+     * Converts UTXO fields to proper format
+     */
+    private processUTXOFields = (
+        utxo: TransactionUTXO & { raw?: string | Buffer }
+    ): TransactionUTXO & { raw?: string | Buffer } => {
+        return {
+            ...utxo,
+            value: typeof utxo.value === 'bigint' ? utxo.value : BigInt(utxo.value as unknown as string),
+            nonWitnessUtxo: this.convertToBuffer(utxo.nonWitnessUtxo),
+            redeemScript: this.convertToBuffer(utxo.redeemScript),
+            witnessScript: this.convertToBuffer(utxo.witnessScript),
+            raw: this.convertToBuffer(utxo.raw)
+        };
+    };
+
+    private processOutputFields = (
+        output: PsbtOutputExtendedAddress | PsbtOutputExtendedScript
+    ): PsbtOutputExtended => {
+        const outputFinal: {
+            address?: string;
+            script?: Buffer;
+            value: number;
+        } = {
+            value: typeof output.value === 'number' ? output.value : Number(output.value as unknown as string)
+        };
+
+        if ((output as PsbtOutputExtendedAddress).address) {
+            outputFinal.address = (output as PsbtOutputExtendedAddress).address;
+        }
+
+        if ((output as PsbtOutputExtendedScript).script) {
+            outputFinal.script = this.convertToBuffer((output as PsbtOutputExtendedScript).script) as Buffer;
+        }
+
+        return outputFinal as PsbtOutputExtended;
+    };
+
     private signInteractionInternal = async (
         account: Account,
         wifWallet: { hex: string; wif: string },
@@ -2507,35 +2620,8 @@ export class WalletController {
         const wallet = Wallet.fromWif(wifWallet.wif, Web3API.network);
         const challenge = await Web3API.provider.getChallenge();
 
-        const utxos: UTXOs = interactionParameters.utxos.map((u) => {
-            let nonWitnessUtxo: Buffer | undefined;
-
-            if (Buffer.isBuffer(u.nonWitnessUtxo)) {
-                nonWitnessUtxo = u.nonWitnessUtxo;
-            } else if (typeof u.nonWitnessUtxo === 'string') {
-                try {
-                    nonWitnessUtxo = Buffer.from(u.nonWitnessUtxo, 'base64');
-                } catch {
-                    nonWitnessUtxo = undefined;
-                }
-            } else if (u.nonWitnessUtxo && typeof u.nonWitnessUtxo === 'object') {
-                try {
-                    const raw = u.nonWitnessUtxo as Record<string, number>;
-                    const len = Math.max(...Object.keys(raw).map((k) => +k)) + 1;
-                    const buf = Buffer.alloc(len);
-                    for (const [k, v] of Object.entries(raw)) buf[+k] = v;
-                    nonWitnessUtxo = buf;
-                } catch {
-                    nonWitnessUtxo = undefined;
-                }
-            }
-
-            return {
-                ...u,
-                value: typeof u.value === 'bigint' ? u.value : BigInt(u.value as unknown as string),
-                nonWitnessUtxo
-            };
-        });
+        // Process UTXOs using the new method
+        const utxos: UTXOs = interactionParameters.utxos.map(this.processUTXOFields);
 
         if (requiredMinimum !== 0) {
             const currentTotal = utxos.reduce<bigint>((s, u) => s + u.value, 0n);
@@ -2558,36 +2644,9 @@ export class WalletController {
             }
         }
 
-        const optionalInputs =
-            interactionParameters.optionalInputs?.map((u) => {
-                let nonWitnessUtxo: Buffer | undefined;
-
-                if (Buffer.isBuffer(u.nonWitnessUtxo)) {
-                    nonWitnessUtxo = u.nonWitnessUtxo;
-                } else if (typeof u.nonWitnessUtxo === 'string') {
-                    try {
-                        nonWitnessUtxo = Buffer.from(u.nonWitnessUtxo, 'base64');
-                    } catch {
-                        nonWitnessUtxo = undefined;
-                    }
-                } else if (u.nonWitnessUtxo && typeof u.nonWitnessUtxo === 'object') {
-                    try {
-                        const raw = u.nonWitnessUtxo as Record<string, number>;
-                        const len = Math.max(...Object.keys(raw).map((k) => +k)) + 1;
-                        const buf = Buffer.alloc(len);
-                        for (const [k, v] of Object.entries(raw)) buf[+k] = v;
-                        nonWitnessUtxo = buf;
-                    } catch {
-                        nonWitnessUtxo = undefined;
-                    }
-                }
-
-                return {
-                    ...u,
-                    value: typeof u.value === 'bigint' ? u.value : BigInt(u.value as unknown as string),
-                    nonWitnessUtxo
-                };
-            }) || [];
+        // Process optional inputs using the new method
+        const optionalInputs = interactionParameters.optionalInputs?.map(this.processUTXOFields) || [];
+        const optionalOutputs = interactionParameters.optionalOutputs?.map(this.processOutputFields) || [];
 
         const submit: IInteractionParameters = {
             from: interactionParameters.from,
@@ -2601,7 +2660,7 @@ export class WalletController {
             gasSatFee: BigInt((interactionParameters.gasSatFee as unknown as string) || 330n),
             calldata: Buffer.from(interactionParameters.calldata as unknown as string, 'hex'),
             optionalInputs,
-            optionalOutputs: interactionParameters.optionalOutputs || [],
+            optionalOutputs,
             contract: interactionParameters.contract,
             note: interactionParameters.note
         };
