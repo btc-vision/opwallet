@@ -197,7 +197,7 @@ export class ProviderController {
         const account = await wallet.getCurrentAccount();
         if (!account) return null;
 
-        const balance = await wallet.getAddressBalance(account.address);
+        const balance = await wallet.getAddressBalance(account.address, account.pubkey);
         return {
             total: amountToSatoshis(balance.btc_total_amount),
             confirmed: amountToSatoshis(balance.btc_confirm_amount),

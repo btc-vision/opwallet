@@ -84,13 +84,6 @@ import { ContactBookItem, ContactBookStore } from '../service/contactBook';
 import { OpenApiService } from '../service/openapi';
 import { ConnectedSite } from '../service/permission';
 
-export interface AccountAsset {
-    name: string;
-    symbol: string;
-    amount: string;
-    value: string;
-}
-
 export interface BalanceCacheEntry {
     balance: BitcoinBalance;
     timestamp: number;
@@ -270,7 +263,7 @@ export class WalletController {
      * Fetch an address's balance with caching
      * @throws WalletControllerError
      */
-    public getAddressBalance = async (address: string, pubKey?: string): Promise<BitcoinBalance> => {
+    public getAddressBalance = async (address: string, pubKey: string): Promise<BitcoinBalance> => {
         const cacheKey = this._generateCacheKey(address, pubKey);
         const now = Date.now();
         const cached = this.balanceCache.get(cacheKey);
@@ -356,7 +349,7 @@ export class WalletController {
             const summaries: AddressSummary[] = [];
 
             for (const address of addressList) {
-                const addressBalance = await this.getAddressBalance(address);
+                const addressBalance = await this.getAddressBalance(address, '');
                 // Convert formatted string back to satoshis using expandToDecimals
                 const totalSatoshis = BitcoinUtils.expandToDecimals(addressBalance.btc_total_amount, 8);
 
@@ -2373,7 +2366,7 @@ export class WalletController {
         };
     }
 
-    private async fetchBalanceWithRetry(address: string, pubKey?: string, maxRetries = 3): Promise<BitcoinBalance> {
+    private async fetchBalanceWithRetry(address: string, pubKey: string, maxRetries = 3): Promise<BitcoinBalance> {
         let lastError: Error | undefined;
 
         for (let attempt = 0; attempt < maxRetries; attempt++) {
@@ -2396,7 +2389,7 @@ export class WalletController {
     /**
      * @throws WalletControllerError
      */
-    private getOpNetBalance = async (address: string, pubKey?: string): Promise<BitcoinBalance> => {
+    private getOpNetBalance = async (address: string, pubKey: string): Promise<BitcoinBalance> => {
         let csv75Address = '';
         let csv1Address = '';
         let p2wdaAddress = '';

@@ -31,11 +31,11 @@ export interface BitcoinBalance {
     csv75_unlocked_amount?: string;
     csv75_locked_amount?: string;
 
-    csv1_total_amount?: string;
-    csv1_unlocked_amount?: string;
-    csv1_locked_amount?: string;
+    csv1_total_amount: string;
+    csv1_unlocked_amount: string;
+    csv1_locked_amount: string;
 
-    p2wda_total_amount?: string;
+    p2wda_total_amount: string;
     p2wda_pending_amount?: string;
 
     usd_value: string;
