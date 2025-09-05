@@ -35,18 +35,32 @@ const log = (event: string, ...args: unknown[]) => {
     }*/
 };
 
-//const script = document.currentScript;
-const channelMeta: HTMLMetaElement | null = document.querySelector('meta[name="opnet-channel"]');
-if (!channelMeta) {
-    throw new Error('Meta tag "opnet-channel" not found');
-}
+const getChannelName = (): string => {
+    // From sessionStorage
+    const stored = sessionStorage.getItem('__opnetChannel');
+    if (stored) {
+        sessionStorage.removeItem('__opnetChannel');
+        return stored;
+    }
 
-const channelName = channelMeta.content;
-if (!channelName) {
-    throw new Error('Meta tag "opnet-channel" has no content');
-}
+    // From the script tag that loaded us
+    const currentScript = document.currentScript as HTMLScriptElement;
+    if (currentScript?.dataset.channel) {
+        return currentScript.dataset.channel;
+    }
 
-channelMeta.remove();
+    // Find our script tag by src
+    const scripts = document.querySelectorAll('script[data-channel]');
+    for (const script of scripts) {
+        if ((script as HTMLScriptElement).src.includes('pageProvider.js')) {
+            return (script as HTMLScriptElement).dataset.channel || '';
+        }
+    }
+
+    throw new Error('OPNet: Channel name not found');
+};
+
+const channelName = getChannelName();
 
 interface StateProvider {
     accounts: string[] | null;

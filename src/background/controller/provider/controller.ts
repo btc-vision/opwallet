@@ -201,7 +201,10 @@ export class ProviderController {
         return {
             total: amountToSatoshis(balance.btc_total_amount),
             confirmed: amountToSatoshis(balance.btc_confirm_amount),
-            unconfirmed: amountToSatoshis(balance.btc_pending_amount)
+            unconfirmed: amountToSatoshis(balance.btc_pending_amount),
+            csv1_unlocked: amountToSatoshis(balance.csv1_unlocked_amount || '0'),
+            csv1_locked: amountToSatoshis(balance.csv1_locked_amount || '0'),
+            p2wda_total_amount: amountToSatoshis(balance.p2wda_total_amount || '0')
         };
     };
 
