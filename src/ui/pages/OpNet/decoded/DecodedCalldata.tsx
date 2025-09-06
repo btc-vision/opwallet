@@ -7,7 +7,7 @@ import {
     InteractionOP20,
     InteractionTypeNativeSwap,
     isInteractionType
-} from '@/ui/pages/OpNet/decoded/InteractionType';
+} from '@/shared/web3/decoder/types/InteractionType';
 import {
     AddLiquidityDecoded,
     AddLiquidityDecodedInfo

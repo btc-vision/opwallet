@@ -94,11 +94,17 @@ import { ContactBookItem, ContactBookStore } from '../service/contactBook';
 import { OpenApiService } from '../service/openapi';
 import { ConnectedSite } from '../service/permission';
 
-export interface BalanceCacheEntry {
-    balance: BitcoinBalance;
-    timestamp: number;
-    fetchPromise?: Promise<BitcoinBalance>;
-}
+// Import the new modular components
+import { 
+    AccountManager, 
+    BalanceManager, 
+    TransactionManager, 
+    AddressManager,
+    WalletControllerError as ModularWalletControllerError
+} from './modules';
+
+// Re-export types from modules for backward compatibility
+export { BalanceCacheEntry } from './modules/BalanceManager';
 
 /**
  * Custom error class for our WalletController.
@@ -127,51 +133,51 @@ export class WalletController {
     public getSite = permissionService.getSite;
     public getConnectedSites = permissionService.getConnectedSites;
 
-    // Cache properties
-    private balanceCache: Map<string, BalanceCacheEntry> = new Map();
-    private readonly CACHE_DURATION = 8000;
-    private cacheCleanupTimer: NodeJS.Timeout | null = null;
+    // Module instances
+    private accountManager = new AccountManager();
+    private balanceManager = new BalanceManager();
+    private transactionManager = new TransactionManager(this.accountManager);
+    private addressManager = new AddressManager();
+
+    // Legacy cache properties - now delegated to BalanceManager
+    private get balanceCache() { return this.balanceManager['balanceCache']; }
+    private get CACHE_DURATION() { return this.balanceManager['CACHE_DURATION']; }
+    private get cacheCleanupTimer() { return this.balanceManager['cacheCleanupTimer']; }
 
     /**
      * Unlock the keyring vault with a password.
      * @throws WalletControllerError if unlocking fails
      */
     public boot = async (password: string): Promise<void> => {
-        try {
-            await keyringService.boot(password);
-        } catch (err) {
-            throw new WalletControllerError(`Failed to boot keyringService: ${String(err)}`, {
-                passwordProvided: !!password
-            });
-        }
+        return this.accountManager.boot(password);
     };
 
     /**
      * Check whether the keyring vault is booted.
      */
     public isBooted = (): boolean => {
-        return keyringService.isBooted();
+        return this.accountManager.isBooted();
     };
 
     /**
      * Check whether a vault exists.
      */
     public hasVault = (): boolean => {
-        return keyringService.hasVault();
+        return this.accountManager.hasVault();
     };
 
     /**
      * Verify a given password against the vault.
      */
     public verifyPassword = (password: string): Promise<boolean> => {
-        return keyringService.verifyPassword(password);
+        return this.accountManager.verifyPassword(password);
     };
 
     /**
      * Change vault password.
      */
     public changePassword = (password: string, newPassword: string): Promise<void> => {
-        return keyringService.changePassword(password, newPassword);
+        return this.accountManager.changePassword(password, newPassword);
     };
 
     /**
@@ -1928,7 +1934,7 @@ export class WalletController {
                     readtime: undefined
                 },
                 {
-                    desc: 'Trade your Ordinals and Runes on the Fractal Marketplace, including brc-20 and runes assets.',
+                    desc: 'Trade assets on the Fractal Marketplace.',
                     id: 3,
                     logo: 'https://static.unisat.io/res/images/app-fractal-market.png',
                     new: false,

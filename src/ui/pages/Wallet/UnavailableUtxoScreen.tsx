@@ -86,8 +86,6 @@ export default function UnavailableUtxoScreen() {
                                             </Row>
 
                                             <Row>
-                                                {item.inscriptions.length > 0 ? <AssetTag type="Inscription" /> : null}
-                                                {item.atomicals.length > 0 ? <AssetTag type="ARC20" /> : null}
                                                 {item.height === UNCONFIRMED_HEIGHT ? (
                                                     <AssetTag type="Unconfirmed" />
                                                 ) : null}

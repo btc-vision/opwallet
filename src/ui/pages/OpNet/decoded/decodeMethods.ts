@@ -20,8 +20,8 @@ import {
     DecodedSwap,
     DecodedSafeTransfer,
     DecodedSafeTransferFrom
-} from './DecodedTypes';
-import { InteractionType } from './InteractionType';
+} from '@/shared/web3/decoder/types/DecodedTypes';
+import { InteractionType } from '@/shared/web3/decoder/types/InteractionType';
 
 /**
  * Helpers for reading custom data from a BinaryReader

@@ -19,8 +19,7 @@ export const DisableUnconfirmedsPopover = ({ onClose }: { onClose: () => void })
             {/* body copy */}
             <Text
                 text="For your safety, OP_WALLET will never touch UTXOs below 10 000 sats. Dust-sized
-              outputs—often holding Ordinals, Runes, or BRC-20 inscriptions—stay exactly where
-              they are."
+              outputs stay exactly where they are for security purposes."
                 size="sm"
                 textCenter
                 style={{ lineHeight: 1.4 }}
