@@ -7,7 +7,6 @@ import {
     SendBitcoinParameters,
     SendNFTParameters,
     SourceType,
-    SwapParameters,
     TransferParameters
 } from '@/shared/interfaces/RawTxParameters';
 import Web3API from '@/shared/web3/Web3API';
@@ -47,9 +46,7 @@ import {
     EXTENDED_OP721_ABI,
     getContract,
     IExtendedOP721,
-    IMotoswapRouterContract,
     IOP20Contract,
-    MOTOSWAP_ROUTER_ABI,
     OP_20_ABI,
     TransactionParameters
 } from 'opnet';
@@ -135,12 +132,10 @@ export default function TxOpnetConfirmScreen() {
     const btcUnit = useBTCUnit();
     const wallet = useWallet();
     const tools = useTools();
-    const [routerAddress, setRouterAddress] = useState<Address | null>(null);
 
     useEffect(() => {
         const setWallet = async () => {
             await Web3API.setNetwork(await wallet.getChainType());
-            setRouterAddress(Web3API.ROUTER_ADDRESS ? Web3API.ROUTER_ADDRESS : null);
         };
         void setWallet();
     });
@@ -264,76 +259,6 @@ export default function TxOpnetConfirmScreen() {
 
         tools.toastSuccess(`You have successfully airdropped tokens to ${addressMap.size} addresses`);
         navigate(RouteTypes.TxSuccessScreen, { txid: sendTransaction.transactionId, contractAddress: contractAddress });
-    };
-
-    const swap = async (swapParameters: SwapParameters) => {
-        if (!routerAddress) {
-            tools.toastError('Router address not found');
-            return;
-        }
-
-        const currentWalletAddress = await wallet.getCurrentAccount();
-        const userWallet = await getWallet();
-
-        const getSwap: IMotoswapRouterContract = getContract<IMotoswapRouterContract>(
-            routerAddress,
-            MOTOSWAP_ROUTER_ABI,
-            Web3API.provider,
-            Web3API.network,
-            userWallet.address
-        );
-
-        const inputAmountBigInt = BitcoinUtils.expandToDecimals(
-            swapParameters.amountIn,
-            swapParameters.tokens[0].divisibility
-        );
-        const slippageAmount = swapParameters.amountOut * (swapParameters.slippageTolerance / 100);
-        const outPutAmountBigInt = BitcoinUtils.expandToDecimals(
-            swapParameters.amountOut - slippageAmount,
-            swapParameters.tokens[1].divisibility
-        );
-
-        const addressOfContract = await Web3API.provider.getPublicKeysInfo([
-            swapParameters.tokenIn,
-            swapParameters.tokenOut
-        ]);
-
-        const block = await Web3API.provider.getBlockNumber();
-        const contractData = await getSwap.swapExactTokensForTokensSupportingFeeOnTransferTokens(
-            inputAmountBigInt,
-            outPutAmountBigInt,
-            [addressOfContract[swapParameters.tokenIn], addressOfContract[swapParameters.tokenOut]],
-            userWallet.address,
-            BigInt(swapParameters.deadline) + block
-        );
-
-        const interactionParameters: TransactionParameters = {
-            signer: userWallet.keypair, // The keypair that will sign the transaction
-            refundTo: currentWalletAddress.address, // Refund the rest of the funds to this address
-            maximumAllowedSatToSpend: swapParameters.priorityFee, // The maximum we want to allocate to this transaction in satoshis
-            feeRate: swapParameters.feeRate, // We need to provide a fee rate
-            network: Web3API.network, // The network we are operating on
-            priorityFee: swapParameters.priorityFee,
-            note: swapParameters.note
-        };
-
-        const sendTransaction = await contractData.sendTransaction(interactionParameters);
-
-        if (!sendTransaction?.transactionId) {
-            setOpenLoading(false);
-            setDisabled(false);
-
-            tools.toastError(`Could not send transaction`);
-            return;
-        }
-
-        const amountA = swapParameters.amountIn.toLocaleString();
-        const amountB = swapParameters.amountOut.toLocaleString();
-        tools.toastSuccess(
-            `You have successfully swapped ${amountA} ${swapParameters.tokens[0].symbol} for ${amountB} ${swapParameters.tokens[1].symbol}`
-        );
-
-        navigate(RouteTypes.TxSuccessScreen, { txid: sendTransaction.transactionId });
     };
 
     const sendBTC = async (parameters: SendBitcoinParameters) => {
@@ -644,8 +569,6 @@ export default function TxOpnetConfirmScreen() {
     // Get action label
     const getActionLabel = () => {
         switch (rawTxInfo.action) {
-            case Action.Swap:
-                return 'Token Swap';
             case Action.SendBitcoin:
                 return 'Send Bitcoin';
             case Action.DeployContract:
@@ -665,8 +588,6 @@ export default function TxOpnetConfirmScreen() {
 
     const getActionIcon = () => {
         switch (rawTxInfo.action) {
-            case Action.Swap:
-                return '🔄';
             case Action.SendBitcoin:
                 return '₿';
             case Action.DeployContract:
@@ -1023,14 +944,6 @@ export default function TxOpnetConfirmScreen() {
                         onClick={async () => {
                             setDisabled(true);
                             switch (rawTxInfo.action) {
-                                case Action.Swap:
-                                    console.log('Swap parameters:', rawTxInfo);
-                                    if (!('amountIn' in rawTxInfo)) {
-                                        throw new Error('Invalid swap parameters');
-                                    }
-
-                                    await swap(rawTxInfo);
-                                    break;
                                 case Action.SendBitcoin:
                                     await sendBTC(rawTxInfo);
                                     break;

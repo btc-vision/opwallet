@@ -11,7 +11,7 @@ import {
     UTXOs
 } from 'opnet';
 
-import { ChainId as WalletChainId, ChainType } from '@/shared/constant';
+import { ChainType, ChainId as WalletChainId } from '@/shared/constant';
 import { NetworkType } from '@/shared/types';
 import { customNetworksManager } from '@/shared/utils/CustomNetworksManager';
 import { contractLogoManager } from '@/shared/web3/contracts-logo/ContractLogoManager';
@@ -154,15 +154,6 @@ class Web3API {
         }
 
         return this._provider;
-    }
-
-    public get ROUTER_ADDRESS(): Address | null {
-        if (!this.currentChain) return null;
-
-        const chainConfig = customNetworksManager.getChain(this.currentChain);
-        if (!chainConfig?.contractAddresses?.router) return null;
-
-        return Address.fromString(chainConfig.contractAddresses.router);
     }
 
     public get motoAddress(): Address | null {

@@ -121,21 +121,11 @@ export interface MintParameters extends BaseRawTxInfo<Action.Mint> {
     readonly to: string;
 }
 
-export interface SwapParameters extends BaseRawTxInfo<Action.Swap> {
-    readonly amountIn: number;
-    readonly amountOut: number;
-    readonly tokenIn: string;
-    readonly tokenOut: string;
-    readonly slippageTolerance: number;
-    readonly deadline: string;
-}
-
 export type RawTxInfo =
     | TransferParameters
     | AirdropParameters
     | SendBitcoinParameters
     | DeployContractParameters
     | MintParameters
-    | SwapParameters
     | SendNFTParameters
     | MintNFTParameters;
