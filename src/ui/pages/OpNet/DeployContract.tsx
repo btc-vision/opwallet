@@ -399,7 +399,7 @@ export default function DeployContractOpnet() {
                                 />
                             </div>
 
-                            {/* Gas Fee */}
+                            {/* Priority Fee */}
                             <div>
                                 <div
                                     style={{
@@ -407,7 +407,7 @@ export default function DeployContractOpnet() {
                                         color: colors.textFaded,
                                         marginBottom: '8px'
                                     }}>
-                                    Gas Fee (sats)
+                                    Priority Fee (sats)
                                 </div>
                                 <PriorityFeeBar onChange={(val) => setPriorityFee(String(val))} />
                             </div>

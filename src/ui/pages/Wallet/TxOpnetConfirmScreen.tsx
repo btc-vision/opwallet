@@ -5,8 +5,8 @@ import {
     MintParameters,
     RawTxInfo,
     SendBitcoinParameters,
+    SendNFTParameters,
     SourceType,
-    SwapParameters,
     TransferParameters
 } from '@/shared/interfaces/RawTxParameters';
 import Web3API from '@/shared/web3/Web3API';
@@ -29,6 +29,8 @@ import {
     ABIDataTypes,
     Address,
     AddressMap,
+    AddressTypes,
+    AddressVerificator,
     DeploymentResult,
     IDeploymentParameters,
     IFundingTransactionParameters,
@@ -41,10 +43,10 @@ import {
     BitcoinAbiTypes,
     BitcoinInterfaceAbi,
     BitcoinUtils,
+    EXTENDED_OP721_ABI,
     getContract,
-    IMotoswapRouterContract,
+    IExtendedOP721,
     IOP20Contract,
-    MOTOSWAP_ROUTER_ABI,
     OP_20_ABI,
     TransactionParameters
 } from 'opnet';
@@ -130,12 +132,10 @@ export default function TxOpnetConfirmScreen() {
     const btcUnit = useBTCUnit();
     const wallet = useWallet();
     const tools = useTools();
-    const [routerAddress, setRouterAddress] = useState<Address | null>(null);
 
     useEffect(() => {
         const setWallet = async () => {
             await Web3API.setNetwork(await wallet.getChainType());
-            setRouterAddress(Web3API.ROUTER_ADDRESS ? Web3API.ROUTER_ADDRESS : null);
         };
         void setWallet();
     });
@@ -166,6 +166,7 @@ export default function TxOpnetConfirmScreen() {
             pubKey = await Web3API.provider.getPublicKeyInfo(to);
         }
 
+        if (!pubKey) throw new Error('public key not found');
         return pubKey;
     };
 
@@ -207,7 +208,8 @@ export default function TxOpnetConfirmScreen() {
             navigate(RouteTypes.TxSuccessScreen, { txid: sendTransaction.transactionId });
         } catch (e) {
             const error = e as Error;
-            if (error.message.toLowerCase().includes('public key')) {
+            console.error(e);
+            if (error.message.toLowerCase().includes('public key not found')) {
                 setDisabled(false);
                 navigate(RouteTypes.TxFailScreen, { error: Web3API.INVALID_PUBKEY_ERROR });
             } else {
@@ -259,76 +261,6 @@ export default function TxOpnetConfirmScreen() {
         navigate(RouteTypes.TxSuccessScreen, { txid: sendTransaction.transactionId, contractAddress: contractAddress });
     };
 
-    const swap = async (swapParameters: SwapParameters) => {
-        if (!routerAddress) {
-            tools.toastError('Router address not found');
-            return;
-        }
-
-        const currentWalletAddress = await wallet.getCurrentAccount();
-        const userWallet = await getWallet();
-
-        const getSwap: IMotoswapRouterContract = getContract<IMotoswapRouterContract>(
-            routerAddress,
-            MOTOSWAP_ROUTER_ABI,
-            Web3API.provider,
-            Web3API.network,
-            userWallet.address
-        );
-
-        const inputAmountBigInt = BitcoinUtils.expandToDecimals(
-            swapParameters.amountIn,
-            swapParameters.tokens[0].divisibility
-        );
-        const slippageAmount = swapParameters.amountOut * (swapParameters.slippageTolerance / 100);
-        const outPutAmountBigInt = BitcoinUtils.expandToDecimals(
-            swapParameters.amountOut - slippageAmount,
-            swapParameters.tokens[1].divisibility
-        );
-
-        const addressOfContract = await Web3API.provider.getPublicKeysInfo([
-            swapParameters.tokenIn,
-            swapParameters.tokenOut
-        ]);
-
-        const block = await Web3API.provider.getBlockNumber();
-        const contractData = await getSwap.swapExactTokensForTokensSupportingFeeOnTransferTokens(
-            inputAmountBigInt,
-            outPutAmountBigInt,
-            [addressOfContract[swapParameters.tokenIn], addressOfContract[swapParameters.tokenOut]],
-            userWallet.address,
-            BigInt(swapParameters.deadline) + block
-        );
-
-        const interactionParameters: TransactionParameters = {
-            signer: userWallet.keypair, // The keypair that will sign the transaction
-            refundTo: currentWalletAddress.address, // Refund the rest of the funds to this address
-            maximumAllowedSatToSpend: swapParameters.priorityFee, // The maximum we want to allocate to this transaction in satoshis
-            feeRate: swapParameters.feeRate, // We need to provide a fee rate
-            network: Web3API.network, // The network we are operating on
-            priorityFee: swapParameters.priorityFee,
-            note: swapParameters.note
-        };
-
-        const sendTransaction = await contractData.sendTransaction(interactionParameters);
-
-        if (!sendTransaction?.transactionId) {
-            setOpenLoading(false);
-            setDisabled(false);
-
-            tools.toastError(`Could not send transaction`);
-            return;
-        }
-
-        const amountA = swapParameters.amountIn.toLocaleString();
-        const amountB = swapParameters.amountOut.toLocaleString();
-        tools.toastSuccess(
-            `You have successfully swapped ${amountA} ${swapParameters.tokens[0].symbol} for ${amountB} ${swapParameters.tokens[1].symbol}`
-        );
-
-        navigate(RouteTypes.TxSuccessScreen, { txid: sendTransaction.transactionId });
-    };
-
     const sendBTC = async (parameters: SendBitcoinParameters) => {
         try {
             const currentWalletAddress = await wallet.getCurrentAccount();
@@ -349,42 +281,48 @@ export default function TxOpnetConfirmScreen() {
                     fromAddress = csv75Address.address;
                     witnessScript = csv75Address.witnessScript;
 
-                    utxos = await Web3API.getUnspentUTXOsForAddresses(
+                    utxos = await Web3API.getAllUTXOsForAddresses(
                         [fromAddress],
                         BitcoinUtils.expandToDecimals(parameters.inputAmount, 8) + feeMin,
-                        75n
+                        75n,
+                        parameters.includeSmallUTXOs
                     );
                 } else if (parameters.sourceType === SourceType.CSV1) {
                     const csv1Address = currentAddress.toCSV(1, Web3API.network);
                     fromAddress = csv1Address.address;
                     witnessScript = csv1Address.witnessScript;
 
-                    utxos = await Web3API.getUnspentUTXOsForAddresses(
+                    utxos = await Web3API.getAllUTXOsForAddresses(
                         [fromAddress],
                         BitcoinUtils.expandToDecimals(parameters.inputAmount, 8) + feeMin,
-                        1n
+                        1n,
+                        parameters.includeSmallUTXOs
                     );
                 } else if (parameters.sourceType === SourceType.P2WDA) {
                     const p2wdaAddress = currentAddress.p2wda(Web3API.network);
                     fromAddress = p2wdaAddress.address;
                     witnessScript = p2wdaAddress.witnessScript;
 
-                    utxos = await Web3API.getUnspentUTXOsForAddresses(
+                    utxos = await Web3API.getAllUTXOsForAddresses(
                         [fromAddress],
-                        BitcoinUtils.expandToDecimals(parameters.inputAmount, 8) + feeMin
+                        BitcoinUtils.expandToDecimals(parameters.inputAmount, 8) + feeMin,
+                        undefined,
+                        parameters.includeSmallUTXOs
                     );
                 }
 
                 if (witnessScript && utxos.length > 0) {
                     utxos = utxos.map((utxo) => ({
                         ...utxo,
-                        witnessScript: witnessScript // Add the witness script to each UTXO
+                        witnessScript: witnessScript
                     }));
                 }
             } else {
-                utxos = await Web3API.getUnspentUTXOsForAddresses(
+                utxos = await Web3API.getAllUTXOsForAddresses(
                     [fromAddress],
-                    BitcoinUtils.expandToDecimals(parameters.inputAmount, 8) + feeMin
+                    BitcoinUtils.expandToDecimals(parameters.inputAmount, 8) + feeMin,
+                    undefined,
+                    parameters.includeSmallUTXOs
                 );
             }
 
@@ -441,7 +379,7 @@ export default function TxOpnetConfirmScreen() {
             const currentWalletAddress = await wallet.getCurrentAccount();
             const userWallet = await getWallet();
 
-            const utxos: UTXO[] = await Web3API.getUnspentUTXOsForAddresses([currentWalletAddress.address], 1_000_000n); // maximum fee a contract can pay
+            const utxos: UTXO[] = await Web3API.getAllUTXOsForAddresses([currentWalletAddress.address], 1_000_000n); // maximum fee a contract can pay
 
             const arrayBuffer = await parameters.file.arrayBuffer();
             const uint8Array = new Uint8Array(arrayBuffer);
@@ -560,15 +498,83 @@ export default function TxOpnetConfirmScreen() {
         }
     };
 
+    const sendNFT = async (parameters: SendNFTParameters) => {
+        try {
+            const currentWalletAddress = await wallet.getCurrentAccount();
+            const userWallet = await getWallet();
+
+            const addy =
+                AddressVerificator.detectAddressType(parameters.collectionAddress, Web3API.network) ===
+                AddressTypes.P2OP
+                    ? parameters.collectionAddress
+                    : Address.fromString(parameters.collectionAddress);
+
+            const contract: IExtendedOP721 = getContract<IExtendedOP721>(
+                addy,
+                EXTENDED_OP721_ABI,
+                Web3API.provider,
+                Web3API.network,
+                userWallet.address
+            );
+
+            const recipientAddress = await getPubKey(parameters.to);
+
+            const transferData = await contract.safeTransferFrom(
+                userWallet.address,
+                recipientAddress,
+                parameters.tokenId,
+                new Uint8Array()
+            );
+
+            const interactionParameters: TransactionParameters = {
+                signer: userWallet.keypair,
+                refundTo: currentWalletAddress.address,
+                maximumAllowedSatToSpend: parameters.priorityFee,
+                feeRate: parameters.feeRate,
+                network: Web3API.network,
+                priorityFee: parameters.priorityFee,
+                note: parameters.note
+            };
+
+            const sendTransaction = await transferData.sendTransaction(interactionParameters);
+            if (!sendTransaction?.transactionId) {
+                setOpenLoading(false);
+                setDisabled(false);
+                tools.toastError('Could not send NFT transaction');
+                return;
+            }
+
+            tools.toastSuccess(`Successfully transferred NFT #${parameters.tokenId} from ${parameters.collectionName}`);
+
+            navigate(RouteTypes.TxSuccessScreen, {
+                txid: sendTransaction.transactionId,
+                nftTransfer: true,
+                tokenId: parameters.tokenId.toString(),
+                collectionName: parameters.collectionName
+            });
+        } catch (e) {
+            const error = e as Error;
+            setOpenLoading(false);
+            console.error(e);
+            if (error.message.toLowerCase().includes('public key not found')) {
+                setDisabled(false);
+                navigate(RouteTypes.TxFailScreen, { error: Web3API.INVALID_PUBKEY_ERROR });
+            } else {
+                setDisabled(false);
+                navigate(RouteTypes.TxFailScreen, { error: error.message });
+            }
+        }
+    };
+
     // Get action label
     const getActionLabel = () => {
         switch (rawTxInfo.action) {
-            case Action.Swap:
-                return 'Token Swap';
             case Action.SendBitcoin:
                 return 'Send Bitcoin';
             case Action.DeployContract:
                 return 'Deploy Contract';
+            case Action.SendNFT:
+                return 'Send NFT';
             case Action.Mint:
                 return 'Mint Tokens';
             case Action.Airdrop:
@@ -582,8 +588,6 @@ export default function TxOpnetConfirmScreen() {
 
     const getActionIcon = () => {
         switch (rawTxInfo.action) {
-            case Action.Swap:
-                return '🔄';
             case Action.SendBitcoin:
                 return '₿';
             case Action.DeployContract:
@@ -594,6 +598,8 @@ export default function TxOpnetConfirmScreen() {
                 return '🎁';
             case Action.Transfer:
                 return '➡️';
+            case Action.SendNFT:
+                return '🖼️';
             default:
                 return '📝';
         }
@@ -938,19 +944,14 @@ export default function TxOpnetConfirmScreen() {
                         onClick={async () => {
                             setDisabled(true);
                             switch (rawTxInfo.action) {
-                                case Action.Swap:
-                                    console.log('Swap parameters:', rawTxInfo);
-                                    if (!('amountIn' in rawTxInfo)) {
-                                        throw new Error('Invalid swap parameters');
-                                    }
-
-                                    await swap(rawTxInfo);
-                                    break;
                                 case Action.SendBitcoin:
                                     await sendBTC(rawTxInfo);
                                     break;
                                 case Action.DeployContract:
                                     await deployContract(rawTxInfo);
+                                    break;
+                                case Action.SendNFT:
+                                    await sendNFT(rawTxInfo);
                                     break;
                                 case Action.Mint:
                                     await mint(rawTxInfo);

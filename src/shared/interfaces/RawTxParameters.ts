@@ -42,7 +42,9 @@ export enum Action {
     SendBitcoin = 'sendBitcoin',
     DeployContract = 'deploy',
     Mint = 'mint',
-    Swap = 'swap'
+    Swap = 'swap',
+    SendNFT = 'SendNFT',
+    MintNFT = 'MintNFT'
 }
 
 export interface BaseRawTxInfo<T extends Action> {
@@ -75,11 +77,37 @@ export enum SourceType {
     P2WDA = 'p2wda'
 }
 
+export interface NFTMetadata {
+    name?: string;
+    description?: string;
+    image?: string;
+    attributes?: Array<{
+        trait_type: string;
+        value: string | number;
+    }>;
+}
+
+export interface MintNFTParameters extends BaseRawTxInfo<Action.MintNFT> {
+    readonly collectionAddress: string;
+    readonly collectionName: string;
+    readonly quantity: bigint;
+    readonly mintPrice: bigint;
+    readonly totalCost: bigint;
+}
+
+export interface SendNFTParameters extends BaseRawTxInfo<Action.SendNFT> {
+    readonly to: string;
+    readonly tokenId: bigint;
+    readonly collectionAddress: string;
+    readonly collectionName: string;
+}
+
 export interface SendBitcoinParameters extends BaseRawTxInfo<Action.SendBitcoin> {
     readonly to: string;
     readonly inputAmount: number;
-    readonly from?: string; // Optional: source address (current, CSV75, or CSV1)
-    readonly sourceType?: SourceType; // Optional: type of source address
+    readonly from?: string;
+    readonly sourceType?: SourceType;
+    readonly includeSmallUTXOs: boolean;
 }
 
 export interface DeployContractParameters extends BaseRawTxInfo<Action.DeployContract> {
@@ -93,19 +121,11 @@ export interface MintParameters extends BaseRawTxInfo<Action.Mint> {
     readonly to: string;
 }
 
-export interface SwapParameters extends BaseRawTxInfo<Action.Swap> {
-    readonly amountIn: number;
-    readonly amountOut: number;
-    readonly tokenIn: string;
-    readonly tokenOut: string;
-    readonly slippageTolerance: number;
-    readonly deadline: string;
-}
-
 export type RawTxInfo =
     | TransferParameters
     | AirdropParameters
     | SendBitcoinParameters
     | DeployContractParameters
     | MintParameters
-    | SwapParameters;
+    | SendNFTParameters
+    | MintNFTParameters;

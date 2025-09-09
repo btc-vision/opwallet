@@ -55,7 +55,7 @@ export default tseslint.config(
             '@typescript-eslint/no-unsafe-call': 'error',
             '@typescript-eslint/no-unsafe-argument': 'error',
             '@typescript-eslint/no-empty-interface': 'error',
-            '@typescript-eslint/no-inferrable-types': 'error',
+            '@typescript-eslint/no-inferrable-types': 'off',
             '@typescript-eslint/no-empty-function': 'error',
             '@typescript-eslint/no-floating-promises': 'off',
             '@typescript-eslint/restrict-plus-operands': 'error',
@@ -70,6 +70,7 @@ export default tseslint.config(
             '@typescript-eslint/no-redundant-type-constituents': 'error',
             '@typescript-eslint/no-useless-constructor': 'error',
             'react/prop-types': 'warn',
+            '@typescript-eslint/no-empty-function': 'off'
         }
     },
     {

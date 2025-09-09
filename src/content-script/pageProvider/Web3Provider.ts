@@ -2,7 +2,9 @@ import { BroadcastedTransaction } from 'opnet';
 
 import { OpnetProvider } from '@/content-script/pageProvider/index.js';
 import {
+    CancelledTransaction,
     DeploymentResult,
+    ICancelTransactionParametersWithoutSigner,
     IDeploymentParametersWithoutSigner,
     InteractionParametersWithoutSigner,
     InteractionResponse,
@@ -47,6 +49,10 @@ export class Web3Provider {
 
     public async deployContract(params: IDeploymentParametersWithoutSigner): Promise<DeploymentResult> {
         return this.provider.deployContract(params);
+    }
+
+    public async cancelTransaction(params: ICancelTransactionParametersWithoutSigner): Promise<CancelledTransaction> {
+        return this.provider.cancelTransaction(params);
     }
 
     public async broadcast(transactions: BroadcastTransactionOptions[]): Promise<BroadcastedTransaction[]> {

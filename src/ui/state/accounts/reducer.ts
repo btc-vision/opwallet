@@ -112,6 +112,7 @@ const slice = createSlice({
 
                     usd_value: '0.00'
                 } as BitcoinBalance & { address: string });
+
             state.balanceMap[address].btc_total_amount = btc_total_amount;
             state.balanceMap[address].btc_confirm_amount = btc_confirm_amount;
             state.balanceMap[address].btc_pending_amount = btc_pending_amount;

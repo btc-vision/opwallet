@@ -68,66 +68,6 @@ export type Keyring =
     | IKeyringBase<DeserializeOptionKeystone>
     | IKeyringBase<{ network: Network }>;
 
-/*export interface Keyring {
-    type: string;
-    mfp?: string;
-    accounts?: string[];
-
-    serialize(): Promise<any>;
-
-    deserialize(opts: any): Promise<void>;
-
-    addAccounts(n: number): Promise<string[]>;
-
-    getAccounts(): Promise<string[]>;
-
-    signTransaction(psbt: bitcoin.Psbt, inputs: ToSignInput[]): Promise<bitcoin.Psbt>;
-
-    signInteraction(interactionParameters: InteractionParametersWithoutSigner): Promise<any>;
-
-    wrap(IUnwrapParameters: IWrapParametersWithoutSigner): Promise<any>;
-
-    signAndBroadcastInteraction(interactionParameters: InteractionParametersWithoutSigner): Promise<any>;
-
-    signMessage(address: string, message: string | Buffer): Promise<string>;
-
-    signData(address: string, data: string, type: string): Promise<string>;
-
-    verifyMessage(address: string, message: string, sig: string): Promise<boolean>;
-
-    exportAccount(address: string): Promise<string>;
-
-    removeAccount(address: string): void;
-
-    unlock?(): Promise<void>;
-
-    getFirstPage?(): Promise<{ address: string; index: number }[]>;
-
-    getNextPage?(): Promise<{ address: string; index: number }[]>;
-
-    getPreviousPage?(): Promise<{ address: string; index: number }[]>;
-
-    getAddresses?(start: number, end: number): { address: string; index: number }[];
-
-    getIndexByAddress?(address: string): number;
-
-    getAccountsWithBrand?(): { address: string; index: number }[];
-
-    activeAccounts?(indexes: number[]): string[];
-
-    changeHdPath?(hdPath: string): void;
-
-    getAccountByHdPath?(hdPath: string, index: number): string;
-
-    genSignPsbtUr?(psbtHex: string): Promise<{ type: string; cbor: string }>;
-
-    parseSignPsbtUr?(type: string, cbor: string): Promise<string>;
-
-    genSignMsgUr?(publicKey: string, text: string): Promise<{ type: string; cbor: string; requestId: string }>;
-
-    parseSignMsgUr?(type: string, cbor: string): Promise<{ requestId: string; publicKey: string; signature: string }>;
-}*/
-
 // TODO (typing): signInteraction, wrap and signAndBroadcastInteraction functions of EmptyKeyring and KeyringService are not used explicity.
 // For now, removed those functions from both EmptyKeyring and KeyringService classes.
 // If there is any reason for keeping them we should undo removing.

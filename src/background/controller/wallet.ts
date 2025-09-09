@@ -1,4 +1,4 @@
-import { BroadcastedTransaction, UTXOs } from 'opnet';
+import { BitcoinUtils, BroadcastedTransaction, UTXOs } from 'opnet';
 
 import {
     contactBookService,
@@ -50,21 +50,25 @@ import {
     WalletKeyring
 } from '@/shared/types';
 import { getChainInfo } from '@/shared/utils';
-import Web3API, { bigIntToDecimal, getBitcoinLibJSNetwork } from '@/shared/web3/Web3API';
+import Web3API, { getBitcoinLibJSNetwork } from '@/shared/web3/Web3API';
 import {
     Address,
+    CancelledTransaction,
     DeploymentResult,
+    EcKeyPair,
+    ICancelTransactionParameters,
+    ICancelTransactionParametersWithoutSigner,
     IDeploymentParameters,
     IDeploymentParametersWithoutSigner,
     IInteractionParameters,
     InteractionParametersWithoutSigner,
     InteractionResponse,
     RawChallenge,
+    UTXO as TransactionUTXO,
     Wallet
 } from '@btc-vision/transaction';
 import {
     AbstractWallet,
-    ECPair,
     genPsbtOfBIP322Simple,
     getSignatureFromPsbtOfBIP322Simple,
     KeystoneKeyring,
@@ -75,18 +79,20 @@ import {
 } from '@btc-vision/wallet-sdk';
 
 import { customNetworksManager } from '@/shared/utils/CustomNetworksManager';
-import { address as bitcoinAddress, payments, Psbt, toXOnly, Transaction } from '@btc-vision/bitcoin';
+import {
+    address as bitcoinAddress,
+    payments,
+    Psbt,
+    PsbtOutputExtended,
+    PsbtOutputExtendedAddress,
+    PsbtOutputExtendedScript,
+    toXOnly,
+    Transaction
+} from '@btc-vision/bitcoin';
 import { Buffer } from 'buffer';
 import { ContactBookItem, ContactBookStore } from '../service/contactBook';
 import { OpenApiService } from '../service/openapi';
 import { ConnectedSite } from '../service/permission';
-
-export interface AccountAsset {
-    name: string;
-    symbol: string;
-    amount: string;
-    value: string;
-}
 
 export interface BalanceCacheEntry {
     balance: BitcoinBalance;
@@ -120,9 +126,10 @@ export class WalletController {
     public getConnectedSite = permissionService.getConnectedSite;
     public getSite = permissionService.getSite;
     public getConnectedSites = permissionService.getConnectedSites;
+
     // Cache properties
     private balanceCache: Map<string, BalanceCacheEntry> = new Map();
-    private readonly CACHE_DURATION = 1000; // 10 seconds in milliseconds
+    private readonly CACHE_DURATION = 8000;
     private cacheCleanupTimer: NodeJS.Timeout | null = null;
 
     /**
@@ -266,52 +273,78 @@ export class WalletController {
      * Fetch an address's balance with caching
      * @throws WalletControllerError
      */
-    public getAddressBalance = async (address: string, pubKey?: string): Promise<BitcoinBalance> => {
+    public getAddressBalance = async (address: string, pubKey: string): Promise<BitcoinBalance> => {
         const cacheKey = this._generateCacheKey(address, pubKey);
         const now = Date.now();
         const cached = this.balanceCache.get(cacheKey);
 
-        // Check if we have a valid cached entry
-        if (cached && now - cached.timestamp < this.CACHE_DURATION) {
-            // If there's an ongoing fetch, wait for it
-            if (cached.fetchPromise) {
-                try {
-                    return await cached.fetchPromise;
-                } catch (err) {
-                    // If the ongoing fetch fails, continue to fetch again
-                    console.warn('Ongoing fetch failed, refetching:', err);
-                }
-            } else {
-                // Return cached balance
-                return cached.balance;
+        // Return valid cached data
+        if (cached && now - cached.timestamp < this.CACHE_DURATION && !cached.fetchPromise) {
+            return cached.balance;
+        }
+
+        // Wait for ongoing fetch if exists
+        if (cached?.fetchPromise) {
+            try {
+                return await cached.fetchPromise;
+            } catch (err) {
+                console.warn('Ongoing fetch failed, creating new fetch:', err);
             }
         }
+
+        // Create new fetch with error handling
+        const fetchPromise = this.fetchBalanceWithRetry(address, pubKey);
+
+        // Store promise immediately
+        this.balanceCache.set(cacheKey, {
+            balance: cached?.balance || this.getEmptyBalance(),
+            timestamp: now,
+            fetchPromise
+        });
+
+        try {
+            const balance = await fetchPromise;
+
+            // Update cache with successful result
+            this.balanceCache.set(cacheKey, {
+                balance,
+                timestamp: now,
+                fetchPromise: undefined
+            });
+
+            return balance;
+        } catch (err) {
+            // Keep stale data on error if available
+            if (cached?.balance && cached.balance.btc_total_amount !== '0') {
+                this.balanceCache.set(cacheKey, {
+                    balance: cached.balance,
+                    timestamp: now - (this.CACHE_DURATION - 5000), // Mark as almost expired
+                    fetchPromise: undefined
+                });
+                return cached.balance;
+            }
+
+            // No stale data available
+            this.balanceCache.delete(cacheKey);
+            throw err;
+        }
+    };
+
+    /*public getAddressBalance = async (address: string, pubKey?: string): Promise<BitcoinBalance> => {
 
         // Create a new fetch promise to prevent duplicate requests
         const fetchPromise = this.getOpNetBalance(address, pubKey).catch((err: unknown) => {
             // Remove failed fetch from cache
-            this.balanceCache.delete(cacheKey);
+            //this.balanceCache.delete(cacheKey);
             throw new WalletControllerError(`Failed to get address balance: ${String(err)}`, { address });
         });
 
-        // Store the promise in cache immediately to prevent race conditions
-        this.balanceCache.set(cacheKey, {
-            balance: cached?.balance || ({} as BitcoinBalance), // Keep old balance while fetching
-            timestamp: cached?.timestamp || now,
-            fetchPromise
-        });
 
         const balance = await fetchPromise;
 
-        // Update cache with successful result
-        this.balanceCache.set(cacheKey, {
-            balance,
-            timestamp: now,
-            fetchPromise: undefined
-        });
 
         return balance;
-    };
+    };*/
 
     /**
      * Fetch multiple addresses' balances.
@@ -324,11 +357,15 @@ export class WalletController {
 
             const addressList = addresses.split(',');
             const summaries: AddressSummary[] = [];
+
             for (const address of addressList) {
-                const addressBalance = await this.getAddressBalance(address);
+                const addressBalance = await this.getAddressBalance(address, '');
+                // Convert formatted string back to satoshis using expandToDecimals
+                const totalSatoshis = BitcoinUtils.expandToDecimals(addressBalance.btc_total_amount, 8);
+
                 const summary: AddressSummary = {
                     address: address,
-                    totalSatoshis: Number(addressBalance.btc_total_amount) * 1e8,
+                    totalSatoshis: Number(totalSatoshis),
                     loading: false
                 };
                 summaries.push(summary);
@@ -414,7 +451,7 @@ export class WalletController {
         const networkType = this.getNetworkType();
         const network = toPsbtNetwork(networkType);
 
-        const wif = ECPair.fromPrivateKey(Buffer.from(privateKey, 'hex'), { network }).toWIF();
+        const wif = EcKeyPair.fromPrivateKey(Buffer.from(privateKey, 'hex'), network).toWIF();
         return {
             hex: privateKey,
             wif
@@ -446,7 +483,7 @@ export class WalletController {
         const networkType = this.getNetworkType();
         const network = toPsbtNetwork(networkType);
 
-        const wif = ECPair.fromPrivateKey(Buffer.from(privateKey, 'hex'), { network }).toWIF();
+        const wif = EcKeyPair.fromPrivateKey(Buffer.from(privateKey, 'hex'), network).toWIF();
         return {
             hex: privateKey,
             wif
@@ -1088,6 +1125,100 @@ export class WalletController {
         }
     };
 
+    public cancelTransaction = async (
+        params: ICancelTransactionParametersWithoutSigner
+    ): Promise<CancelledTransaction> => {
+        const account = await this.getCurrentAccount();
+        if (!account) throw new WalletControllerError('No current account');
+
+        const wifWallet = this.getInternalPrivateKey({
+            pubkey: account.pubkey,
+            type: account.type
+        } as Account);
+
+        if (!wifWallet) throw new WalletControllerError('Could not retrieve internal private key');
+
+        try {
+            const utxos = params.utxos.map((u) => {
+                let nonWitnessUtxo: Buffer | undefined;
+
+                if (Buffer.isBuffer(u.nonWitnessUtxo)) {
+                    nonWitnessUtxo = u.nonWitnessUtxo;
+                } else if (typeof u.nonWitnessUtxo === 'string') {
+                    try {
+                        nonWitnessUtxo = Buffer.from(u.nonWitnessUtxo, 'base64');
+                    } catch {
+                        nonWitnessUtxo = undefined;
+                    }
+                } else if (u.nonWitnessUtxo && typeof u.nonWitnessUtxo === 'object') {
+                    try {
+                        const raw = u.nonWitnessUtxo as Record<string, number>;
+                        const len = Math.max(...Object.keys(raw).map((k) => +k)) + 1;
+                        const buf = Buffer.alloc(len);
+                        for (const [k, v] of Object.entries(raw)) buf[+k] = v;
+                        nonWitnessUtxo = buf;
+                    } catch {
+                        nonWitnessUtxo = undefined;
+                    }
+                }
+
+                return {
+                    ...u,
+                    value: typeof u.value === 'bigint' ? u.value : BigInt(u.value as unknown as string),
+                    nonWitnessUtxo
+                };
+            });
+
+            const optionalInputs =
+                params.optionalInputs?.map((u) => {
+                    let nonWitnessUtxo: Buffer | undefined;
+
+                    if (Buffer.isBuffer(u.nonWitnessUtxo)) {
+                        nonWitnessUtxo = u.nonWitnessUtxo;
+                    } else if (typeof u.nonWitnessUtxo === 'string') {
+                        try {
+                            nonWitnessUtxo = Buffer.from(u.nonWitnessUtxo, 'base64');
+                        } catch {
+                            nonWitnessUtxo = undefined;
+                        }
+                    } else if (u.nonWitnessUtxo && typeof u.nonWitnessUtxo === 'object') {
+                        try {
+                            const raw = u.nonWitnessUtxo as Record<string, number>;
+                            const len = Math.max(...Object.keys(raw).map((k) => +k)) + 1;
+                            const buf = Buffer.alloc(len);
+                            for (const [k, v] of Object.entries(raw)) buf[+k] = v;
+                            nonWitnessUtxo = buf;
+                        } catch {
+                            nonWitnessUtxo = undefined;
+                        }
+                    }
+
+                    return {
+                        ...u,
+                        value: typeof u.value === 'bigint' ? u.value : BigInt(u.value as unknown as string),
+                        nonWitnessUtxo
+                    };
+                }) || [];
+
+            const walletGet: Wallet = Wallet.fromWif(wifWallet.wif, Web3API.network);
+            const cancelParameters: ICancelTransactionParameters = {
+                ...params,
+                utxos,
+                signer: walletGet.keypair,
+                network: Web3API.network,
+                feeRate: Number(params.feeRate.toString()),
+                compiledTargetScript: params.compiledTargetScript,
+                optionalOutputs: params.optionalOutputs || [],
+                optionalInputs: optionalInputs,
+                note: params.note
+            };
+
+            return await Web3API.transactionFactory.createCancellableTransaction(cancelParameters);
+        } catch (err) {
+            throw new WalletControllerError(`Failed to deploy contract: ${String(err)}`, { params });
+        }
+    };
+
     /**
      * Deploy a smart contract (OPNet).
      * @throws WalletControllerError
@@ -1213,6 +1344,7 @@ export class WalletController {
             pubkey: account.pubkey,
             type: account.type
         } as Account);
+
         if (!wifWallet) throw new WalletControllerError('Could not retrieve internal private key');
 
         let interactionResponse: InteractionResponse | undefined;
@@ -2228,25 +2360,61 @@ export class WalletController {
         }, timeConfig.time) as unknown as number;
     };
 
+    private getEmptyBalance(): BitcoinBalance {
+        return {
+            btc_total_amount: '0',
+            btc_confirm_amount: '0',
+            btc_pending_amount: '0',
+            csv75_total_amount: '0',
+            csv75_unlocked_amount: '0',
+            csv75_locked_amount: '0',
+            csv1_total_amount: '0',
+            csv1_unlocked_amount: '0',
+            csv1_locked_amount: '0',
+            p2wda_pending_amount: '0',
+            p2wda_total_amount: '0',
+            usd_value: '0.00'
+        };
+    }
+
+    private async fetchBalanceWithRetry(address: string, pubKey: string, maxRetries = 3): Promise<BitcoinBalance> {
+        let lastError: Error | undefined;
+
+        for (let attempt = 0; attempt < maxRetries; attempt++) {
+            try {
+                return await this.getOpNetBalance(address, pubKey);
+            } catch (err) {
+                lastError = err as Error;
+
+                if (attempt < maxRetries - 1) {
+                    // Exponential backoff with jitter
+                    const delay = Math.min(1000 * Math.pow(2, attempt) + Math.random() * 500, 5000);
+                    await new Promise((resolve) => setTimeout(resolve, delay));
+                }
+            }
+        }
+
+        throw lastError || new Error('Failed to fetch balance after retries');
+    }
+
     /**
      * @throws WalletControllerError
      */
-    private getOpNetBalance = async (address: string, pubKey?: string): Promise<BitcoinBalance> => {
+    private getOpNetBalance = async (address: string, pubKey: string): Promise<BitcoinBalance> => {
         let csv75Address = '';
         let csv1Address = '';
         let p2wdaAddress = '';
 
         if (pubKey) {
             const addressInst = Address.fromString(pubKey);
-
             csv75Address = addressInst.toCSV(75, Web3API.network).address;
             csv1Address = addressInst.toCSV(1, Web3API.network).address;
-
             p2wdaAddress = addressInst.p2wda(Web3API.network).address;
         }
 
         try {
             if (!csv75Address || !csv1Address || !p2wdaAddress) {
+                // Simple balance fetch for non-CSV addresses
                 const [allUTXOs, unspentUTXOs] = await Promise.all([
                     Web3API.getAllUTXOsForAddresses([address]),
                     Web3API.getUnspentUTXOsForAddresses([address])
@@ -2254,83 +2422,193 @@ export class WalletController {
 
                 const totalAll = allUTXOs.reduce((sum, u) => sum + u.value, 0n);
                 const totalUnspent = unspentUTXOs.reduce((sum, u) => sum + u.value, 0n);
-
-                const totalAmount = bigIntToDecimal(totalAll, 8);
-                const confirmAmount = bigIntToDecimal(totalUnspent, 8);
-                const pendingAmount = bigIntToDecimal(totalAll - totalUnspent, 8);
+                const pendingAmount = totalAll - totalUnspent;
 
                 return {
-                    btc_total_amount: totalAmount,
-                    btc_confirm_amount: confirmAmount,
-                    btc_pending_amount: pendingAmount,
+                    btc_total_amount: BitcoinUtils.formatUnits(totalAll, 8),
+                    btc_confirm_amount: BitcoinUtils.formatUnits(totalUnspent, 8),
+                    btc_pending_amount: BitcoinUtils.formatUnits(pendingAmount, 8),
 
-                    usd_value: '0.00'
-                };
-            } else {
-                const [allUTXOs, unspentUTXOs, csv75Data, csv1Data, p2wdaUTXOs, unspentP2WDAUTXOs] = await Promise.all([
-                    Web3API.getAllUTXOsForAddresses([address]),
-                    Web3API.getUnspentUTXOsForAddresses([address]),
-                    Web3API.getTotalLockedAndUnlockedUTXOs(csv75Address, 'csv75'),
-                    Web3API.getTotalLockedAndUnlockedUTXOs(csv1Address, 'csv1'),
-                    Web3API.getAllUTXOsForAddresses([p2wdaAddress]),
-                    Web3API.getUnspentUTXOsForAddresses([p2wdaAddress])
-                ]);
+                    csv75_total_amount: '0',
+                    csv75_unlocked_amount: '0',
+                    csv75_locked_amount: '0',
 
-                const totalAll = allUTXOs.reduce((sum, u) => sum + u.value, 0n);
-                const totalUnspent = unspentUTXOs.reduce((sum, u) => sum + u.value, 0n);
+                    csv1_total_amount: '0',
+                    csv1_unlocked_amount: '0',
+                    csv1_locked_amount: '0',
 
-                const totalAmount = bigIntToDecimal(totalAll, 8);
-                const confirmAmount = bigIntToDecimal(totalUnspent, 8);
-                const pendingAmount = bigIntToDecimal(totalAll - totalUnspent, 8);
-
-                const totalCSV75 = csv75Data.utxos.reduce((sum, u) => sum + u.value, 0n);
-                const csv75Total = bigIntToDecimal(totalCSV75, 8);
-
-                const totalCSV1 = csv1Data.utxos.reduce((sum, u) => sum + u.value, 0n);
-                const csv1Total = bigIntToDecimal(totalCSV1, 8);
-
-                const csv75Unlocked = bigIntToDecimal(
-                    csv75Data.unlockedUTXOs.reduce((sum, u) => sum + u.value, 0n),
-                    8
-                );
-
-                const csv75Locked = Number(csv75Total) - Number(csv75Unlocked);
-                const csv1Unlocked = bigIntToDecimal(
-                    csv1Data.unlockedUTXOs.reduce((sum, u) => sum + u.value, 0n),
-                    8
-                );
-
-                const csv1Locked = Number(csv1Total) - Number(csv1Unlocked);
-
-                // p2wda
-                const totalP2WDA = p2wdaUTXOs.reduce((sum, u) => sum + u.value, 0n);
-                const totalUnspentP2WDA = unspentP2WDAUTXOs.reduce((sum, u) => sum + u.value, 0n);
-
-                const totalAmountP2WDA = bigIntToDecimal(totalP2WDA, 8);
-                const pendingAmountP2WDA = bigIntToDecimal(totalP2WDA - totalUnspentP2WDA, 8);
-
-                return {
-                    btc_total_amount: totalAmount,
-                    btc_confirm_amount: confirmAmount,
-                    btc_pending_amount: pendingAmount,
-
-                    csv75_total_amount: csv75Total,
-                    csv75_unlocked_amount: csv75Unlocked,
-                    csv75_locked_amount: csv75Locked.toString(),
-
-                    csv1_total_amount: csv1Total,
-                    csv1_unlocked_amount: csv1Unlocked,
-                    csv1_locked_amount: csv1Locked.toString(),
-
-                    p2wda_pending_amount: pendingAmountP2WDA,
-                    p2wda_total_amount: totalAmountP2WDA,
+                    p2wda_pending_amount: '0',
+                    p2wda_total_amount: '0',
 
                     usd_value: '0.00'
                 };
             }
+
+            // Full balance fetch with CSV addresses - using Promise.allSettled for better error handling
+            const results = await Promise.allSettled([
+                Web3API.getAllUTXOsForAddresses([address]),
+                Web3API.getUnspentUTXOsForAddresses([address]),
+                Web3API.getTotalLockedAndUnlockedUTXOs(csv75Address, 'csv75'),
+                Web3API.getTotalLockedAndUnlockedUTXOs(csv1Address, 'csv1'),
+                Web3API.getAllUTXOsForAddresses([p2wdaAddress]),
+                Web3API.getUnspentUTXOsForAddresses([p2wdaAddress])
+            ]);
+
+            // Extract results with fallbacks
+            const allUTXOs = results[0].status === 'fulfilled' ? results[0].value : [];
+            const unspentUTXOs = results[1].status === 'fulfilled' ? results[1].value : [];
+            const csv75Data =
+                results[2].status === 'fulfilled'
+                    ? results[2].value
+                    : { utxos: [], unlockedUTXOs: [], lockedUTXOs: [] };
+            const csv1Data =
+                results[3].status === 'fulfilled'
+                    ? results[3].value
+                    : { utxos: [], unlockedUTXOs: [], lockedUTXOs: [] };
+            const p2wdaUTXOs = results[4].status === 'fulfilled' ? results[4].value : [];
+            const unspentP2WDAUTXOs = results[5].status === 'fulfilled' ? results[5].value : [];
+
+            // Calculate all balances using BigInt
+            const totalAll = allUTXOs.reduce((sum, u) => sum + u.value, 0n);
+            const totalUnspent = unspentUTXOs.reduce((sum, u) => sum + u.value, 0n);
+            const pendingAmount = totalAll - totalUnspent;
+
+            const csv75Total = csv75Data.utxos.reduce((sum, u) => sum + u.value, 0n);
+            const csv75Unlocked = csv75Data.unlockedUTXOs.reduce((sum, u) => sum + u.value, 0n);
+            const csv75Locked = csv75Total - csv75Unlocked;
+
+            const csv1Total = csv1Data.utxos.reduce((sum, u) => sum + u.value, 0n);
+            const csv1Unlocked = csv1Data.unlockedUTXOs.reduce((sum, u) => sum + u.value, 0n);
+            const csv1Locked = csv1Total - csv1Unlocked;
+
+            const totalP2WDA = p2wdaUTXOs.reduce((sum, u) => sum + u.value, 0n);
+            const totalUnspentP2WDA = unspentP2WDAUTXOs.reduce((sum, u) => sum + u.value, 0n);
+            const pendingP2WDA = totalP2WDA - totalUnspentP2WDA;
+
+            // Convert all BigInt values to formatted strings using BitcoinUtils
+            return {
+                btc_total_amount: BitcoinUtils.formatUnits(totalAll, 8),
+                btc_confirm_amount: BitcoinUtils.formatUnits(totalUnspent, 8),
+                btc_pending_amount: BitcoinUtils.formatUnits(pendingAmount, 8),
+
+                csv75_total_amount: BitcoinUtils.formatUnits(csv75Total, 8),
+                csv75_unlocked_amount: BitcoinUtils.formatUnits(csv75Unlocked, 8),
+                csv75_locked_amount: BitcoinUtils.formatUnits(csv75Locked, 8),
+
+                csv1_total_amount: BitcoinUtils.formatUnits(csv1Total, 8),
+                csv1_unlocked_amount: BitcoinUtils.formatUnits(csv1Unlocked, 8),
+                csv1_locked_amount: BitcoinUtils.formatUnits(csv1Locked, 8),
+
+                p2wda_pending_amount: BitcoinUtils.formatUnits(pendingP2WDA, 8),
+                p2wda_total_amount: BitcoinUtils.formatUnits(totalP2WDA, 8),
+
+                usd_value: '0.00'
+            };
         } catch (err) {
             throw new WalletControllerError(`Failed to get OPNET balance: ${String(err)}`, { address });
         }
+    };
+
+    private detectEncoding = (str: string): 'hex' | 'base64' => {
+        // Hex pattern: only 0-9, a-f, A-F characters, and even length
+        const hexPattern = /^[0-9a-fA-F]*$/;
+
+        // Base64 pattern: A-Z, a-z, 0-9, +, /, and optional = padding at the end
+        const base64Pattern = /^[A-Za-z0-9+/]*={0,2}$/;
+
+        // Check if it's valid hex (even length is important for hex)
+        if (hexPattern.test(str) && str.length % 2 === 0) {
+            return 'hex';
+        }
+
+        // Check if it's valid base64
+        if (base64Pattern.test(str) && str.length % 4 === 0) {
+            return 'base64';
+        }
+
+        // Default to hex if unclear (Bitcoin context usually uses hex)
+        return 'hex';
+    };
+
+    private convertToBuffer = (input: string | Buffer | Record<string, number> | undefined): Buffer | undefined => {
+        if (!input) return undefined;
+
+        // Already a Buffer
+        if (Buffer.isBuffer(input)) {
+            return input;
+        }
+
+        // String (assume hex)
+        if (typeof input === 'string') {
+            const encoding = this.detectEncoding(input);
+
+            try {
+                return Buffer.from(input, encoding);
+            } catch {
+                // If detected encoding fails, try the other one
+                const fallbackEncoding = encoding === 'hex' ? 'base64' : 'hex';
+                try {
+                    return Buffer.from(input, fallbackEncoding);
+                } catch {
+                    return undefined;
+                }
+            }
+        }
+
+        // Object with numeric keys (like { 0: 72, 1: 101, ... })
+        if (typeof input === 'object') {
+            try {
+                const raw: Record<string, number> = input;
+                const len = Math.max(...Object.keys(raw).map((k) => +k)) + 1;
+                const buf = Buffer.alloc(len);
+                for (const [k, v] of Object.entries(raw)) {
+                    buf[+k] = v;
+                }
+                return buf;
+            } catch {
+                return undefined;
+            }
+        }
+
+        return undefined;
+    };
+
+    /**
+     * Converts UTXO fields to proper format
+     */
+    private processUTXOFields = (
+        utxo: TransactionUTXO & { raw?: string | Buffer }
+    ): TransactionUTXO & { raw?: string | Buffer } => {
+        return {
+            ...utxo,
+            value: typeof utxo.value === 'bigint' ? utxo.value : BigInt(utxo.value as unknown as string),
+            nonWitnessUtxo: this.convertToBuffer(utxo.nonWitnessUtxo),
+            redeemScript: this.convertToBuffer(utxo.redeemScript),
+            witnessScript: this.convertToBuffer(utxo.witnessScript),
+            raw: this.convertToBuffer(utxo.raw)
+        };
+    };
+
+    private processOutputFields = (
+        output: PsbtOutputExtendedAddress | PsbtOutputExtendedScript
+    ): PsbtOutputExtended => {
+        const outputFinal: {
+            address?: string;
+            script?: Buffer;
+            value: number;
+        } = {
+            value: typeof output.value === 'number' ? output.value : Number(output.value as unknown as string)
+        };
+
+        if ((output as PsbtOutputExtendedAddress).address) {
+            outputFinal.address = (output as PsbtOutputExtendedAddress).address;
+        }
+
+        if ((output as PsbtOutputExtendedScript).script) {
+            outputFinal.script = this.convertToBuffer((output as PsbtOutputExtendedScript).script) as Buffer;
+        }
+
+        return outputFinal as PsbtOutputExtended;
     };
 
     private signInteractionInternal = async (
@@ -2342,35 +2620,8 @@ export class WalletController {
         const wallet = Wallet.fromWif(wifWallet.wif, Web3API.network);
         const challenge = await Web3API.provider.getChallenge();
 
-        const utxos: UTXOs = interactionParameters.utxos.map((u) => {
-            let nonWitnessUtxo: Buffer | undefined;
-
-            if (Buffer.isBuffer(u.nonWitnessUtxo)) {
-                nonWitnessUtxo = u.nonWitnessUtxo;
-            } else if (typeof u.nonWitnessUtxo === 'string') {
-                try {
-                    nonWitnessUtxo = Buffer.from(u.nonWitnessUtxo, 'base64');
-                } catch {
-                    nonWitnessUtxo = undefined;
-                }
-            } else if (u.nonWitnessUtxo && typeof u.nonWitnessUtxo === 'object') {
-                try {
-                    const raw = u.nonWitnessUtxo as Record<string, number>;
-                    const len = Math.max(...Object.keys(raw).map((k) => +k)) + 1;
-                    const buf = Buffer.alloc(len);
-                    for (const [k, v] of Object.entries(raw)) buf[+k] = v;
-                    nonWitnessUtxo = buf;
-                } catch {
-                    nonWitnessUtxo = undefined;
-                }
-            }
-
-            return {
-                ...u,
-                value: typeof u.value === 'bigint' ? u.value : BigInt(u.value as unknown as string),
-                nonWitnessUtxo
-            };
-        });
+        // Process UTXOs using the new method
+        const utxos: UTXOs = interactionParameters.utxos.map(this.processUTXOFields);
 
         if (requiredMinimum !== 0) {
             const currentTotal = utxos.reduce<bigint>((s, u) => s + u.value, 0n);
@@ -2378,7 +2629,7 @@ export class WalletController {
             if (currentTotal < BigInt(requiredMinimum)) {
                 const stillNeeded = BigInt(requiredMinimum) - currentTotal;
 
-                const fetched: UTXOs = await Web3API.getUnspentUTXOsForAddresses([account.address], stillNeeded);
+                const fetched: UTXOs = await Web3API.getAllUTXOsForAddresses([account.address], stillNeeded);
                 const alreadyUsed = new Set<string>(utxos.map((u) => `${u.transactionId}:${u.outputIndex}`));
 
                 fetched
@@ -2393,36 +2644,9 @@ export class WalletController {
             }
         }
 
-        const optionalInputs =
-            interactionParameters.optionalInputs?.map((u) => {
-                let nonWitnessUtxo: Buffer | undefined;
-
-                if (Buffer.isBuffer(u.nonWitnessUtxo)) {
-                    nonWitnessUtxo = u.nonWitnessUtxo;
-                } else if (typeof u.nonWitnessUtxo === 'string') {
-                    try {
-                        nonWitnessUtxo = Buffer.from(u.nonWitnessUtxo, 'base64');
-                    } catch {
-                        nonWitnessUtxo = undefined;
-                    }
-                } else if (u.nonWitnessUtxo && typeof u.nonWitnessUtxo === 'object') {
-                    try {
-                        const raw = u.nonWitnessUtxo as Record<string, number>;
-                        const len = Math.max(...Object.keys(raw).map((k) => +k)) + 1;
-                        const buf = Buffer.alloc(len);
-                        for (const [k, v] of Object.entries(raw)) buf[+k] = v;
-                        nonWitnessUtxo = buf;
-                    } catch {
-                        nonWitnessUtxo = undefined;
-                    }
-                }
-
-                return {
-                    ...u,
-                    value: typeof u.value === 'bigint' ? u.value : BigInt(u.value as unknown as string),
-                    nonWitnessUtxo
-                };
-            }) || [];
+        // Process optional inputs using the new method
+        const optionalInputs = interactionParameters.optionalInputs?.map(this.processUTXOFields) || [];
+        const optionalOutputs = interactionParameters.optionalOutputs?.map(this.processOutputFields) || [];
 
         const submit: IInteractionParameters = {
             from: interactionParameters.from,
@@ -2436,7 +2660,7 @@ export class WalletController {
             gasSatFee: BigInt((interactionParameters.gasSatFee as unknown as string) || 330n),
             calldata: Buffer.from(interactionParameters.calldata as unknown as string, 'hex'),
             optionalInputs,
-            optionalOutputs: interactionParameters.optionalOutputs || [],
+            optionalOutputs,
             contract: interactionParameters.contract,
             note: interactionParameters.note
         };
@@ -2467,7 +2691,18 @@ export class WalletController {
      */
     private _generateCacheKey = (address: string, pubKey?: string): string => {
         const chainType = this.getChainType();
-        return `${chainType}:${address}:${pubKey || 'no-pubkey'}`;
+
+        // If pubKey exists, include CSV addresses in the key
+        if (pubKey) {
+            const addressInst = Address.fromString(pubKey);
+            const csv75 = addressInst.toCSV(75, Web3API.network).address;
+            const csv1 = addressInst.toCSV(1, Web3API.network).address;
+            const p2wda = addressInst.p2wda(Web3API.network).address;
+            return `${chainType}:${address}:${csv75}:${csv1}:${p2wda}`;
+        }
+
+        // No pubKey = simple balance only
+        return `${chainType}:${address}:simple`;
     };
 
     /**

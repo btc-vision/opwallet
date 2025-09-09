@@ -47,6 +47,11 @@ import TxOpnetConfirmScreen from './Wallet/TxOpnetConfirmScreen';
 import TxSuccessScreen from './Wallet/TxSuccessScreen';
 import UnavailableUtxoScreen from './Wallet/UnavailableUtxoScreen';
 import './index.module.less';
+import ImportNFTScreen from '@/ui/pages/Wallet/ImportNFTScreen';
+import NFTTabScreen from '@/ui/pages/Main/NFTTabScreen';
+import ImportSelectionScreen from '@/ui/pages/Wallet/ImportSelectionScreen';
+import NFTSendScreen from '@/ui/pages/Wallet/NFTSendScreen';
+import ImportTokenScreen from '@/ui/pages/Wallet/ImportOP20Screen';
 
 export enum RouteTypes {
     BoostScreen = 'BoostScreen',
@@ -84,7 +89,12 @@ export enum RouteTypes {
     SendOpNetScreen = 'SendOpNetScreen',
     TxCreateScreen = 'TxCreateScreen',
     DeployContract = 'DeployContract',
-    Mint = 'Mint'
+    Mint = 'Mint',
+    ImportSelectionScreen = 'ImportSelectionScreen',
+    ImportNFTScreen = 'ImportNFTScreen',
+    NFTTabScreen = 'NFTTabScreen',
+    NFTSendScreen = 'NFTSendScreen',
+    ImportTokenScreen = 'ImportTokenScreen'
 }
 
 type Routes = {
@@ -238,6 +248,26 @@ export const routes: Routes = {
     Mint: {
         path: '/opnet/mint',
         element: <Mint />
+    },
+    ImportSelectionScreen: {
+        path: '/import-selection',
+        element: <ImportSelectionScreen />
+    },
+    ImportNFTScreen: {
+        path: '/import-nft',
+        element: <ImportNFTScreen />
+    },
+    NFTTabScreen: {
+        path: '/nft',
+        element: <NFTTabScreen />
+    },
+    NFTSendScreen: {
+        path: '/nft-send',
+        element: <NFTSendScreen />
+    },
+    ImportTokenScreen: {
+        path: '/import-token',
+        element: <ImportTokenScreen />
     }
 };
 
@@ -252,7 +282,7 @@ export function useNavigate<T extends RouteTypes>(): UseNavigate<T> {
         (routKey: T, state?: unknown) => {
             navigate(routes[routKey].path, { state });
         },
-        [useNavigateOrigin]
+        [navigate]
     ) as UseNavigate<T>;
 }
 

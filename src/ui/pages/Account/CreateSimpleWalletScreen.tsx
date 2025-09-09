@@ -1,4 +1,3 @@
-import { ECPairFactory } from 'ecpair';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { ADDRESS_TYPES } from '@/shared/constant';
@@ -10,13 +9,10 @@ import { AddressTypeCard } from '@/ui/components/AddressTypeCard';
 import { TabBar } from '@/ui/components/TabBar';
 import { satoshisToAmount, useWallet } from '@/ui/utils';
 import { ImportOutlined, InfoCircleOutlined, KeyOutlined, LoadingOutlined, WalletOutlined } from '@ant-design/icons';
-import * as ecc from '@bitcoinerlab/secp256k1';
 import { EcKeyPair, Wallet } from '@btc-vision/transaction';
 import { ethers } from 'ethers';
 
 import { RouteTypes, useNavigate } from '../MainRoute';
-
-const ECPair = ECPairFactory(ecc);
 
 const colors = {
     main: '#f37413',
@@ -75,17 +71,21 @@ function Step1({ updateContextData }: { updateContextData: (params: UpdateContex
 
         // try WIF first
         try {
-            ECPair.fromWIF(raw, bitcoinNetwork);
+            Wallet.fromWif(raw, bitcoinNetwork);
             keyKind = 'wif';
-        } catch {}
+        } catch (e) {
+            console.error(e);
+        }
 
         // then try raw 32-byte hex (ethereum-style)
         if (!keyKind && isLikelyHexPriv(raw)) {
             try {
                 const buf = Buffer.from(raw.replace(/^0x/, ''), 'hex');
-                ECPair.fromPrivateKey(buf, { network: bitcoinNetwork });
+                EcKeyPair.fromPrivateKey(buf, bitcoinNetwork);
                 keyKind = 'rawHex';
-            } catch {}
+            } catch (e) {
+                console.error(e);
+            }
         }
 
         if (!keyKind) {
@@ -347,7 +347,10 @@ function Step2({
                 if (t === AddressType.P2TR) return w.p2tr;
                 if (t === AddressType.P2SH_P2WPKH) return w.segwitLegacy;
                 if (t === AddressType.P2WPKH) return w.p2wpkh;
-                return EcKeyPair.getLegacyAddress(ECPair.fromWIF(contextData.wif, bitcoinNetwork), bitcoinNetwork);
+                return EcKeyPair.getLegacyAddress(
+                    Wallet.fromWif(contextData.wif, bitcoinNetwork).keypair,
+                    bitcoinNetwork
+                );
             } else {
                 const buf = Buffer.from(contextData.wif.replace(/^0x/, '').trim(), 'hex');
                 const kp = EcKeyPair.fromPrivateKey(buf, bitcoinNetwork);

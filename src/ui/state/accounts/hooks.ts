@@ -116,6 +116,9 @@ export function useFetchBalanceCallback() {
                 csv1_unlocked_amount: accountBalance.csv1_unlocked_amount ?? '0',
                 csv1_locked_amount: accountBalance.csv1_locked_amount ?? '0',
 
+                p2wda_pending_amount: accountBalance.p2wda_pending_amount ?? '0',
+                p2wda_total_amount: accountBalance.p2wda_total_amount ?? '0',
+
                 usd_value: accountBalance.usd_value
             })
         );

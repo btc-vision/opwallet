@@ -5,30 +5,43 @@ import { RequestParams } from '@/shared/types/Request.js';
 import { Message } from '@/shared/utils';
 import browser from 'webextension-polyfill';
 
-const channelName = nanoid();
-
-/**
- * Injects a script tag into the current document
- */
 function injectScript() {
     try {
-        const target = document.head || document.documentElement;
-        const metaTag = document.createElement('meta');
-        metaTag.name = 'opnet-channel';
-        metaTag.content = channelName;
+        const channelName = nanoid();
 
+        // Use sessionStorage (works across page context)
+        sessionStorage.setItem('__opnetChannel', channelName);
+
+        // Use a data attribute on the script tag itself
         const scriptTag = document.createElement('script');
-        scriptTag.setAttribute('async', 'false');
         scriptTag.setAttribute('type', 'module');
-        scriptTag.setAttribute('channel', channelName);
+        scriptTag.setAttribute('data-channel', channelName);
         scriptTag.src = browser.runtime.getURL('pageProvider.js');
-        scriptTag.onload = () => {
-            scriptTag.remove();
-        };
 
-        target.append(metaTag);
-        target.append(scriptTag);
+        // Use microtask
+        Promise.resolve().then(() => {
+            requestAnimationFrame(() => {
+                const target = document.head || document.documentElement;
+                if (target) {
+                    scriptTag.onload = () => {
+                        // Remove immediately after load
+                        scriptTag.remove();
+                    };
+                    scriptTag.onerror = () => {
+                        scriptTag.remove();
+                        console.warn('OPNet: Failed to load provider script');
+                    };
 
+                    target.appendChild(scriptTag);
+                } else {
+                    // Retry if no target available
+                    setTimeout(() => injectScript(), 10);
+                    return;
+                }
+            });
+        });
+
+        // Set up communication channels
         const { BroadcastChannelMessage, PortMessage } = Message;
 
         const pm = new PortMessage().connect();
@@ -36,7 +49,6 @@ function injectScript() {
             return pm.request(data);
         });
 
-        // background notification
         pm.on('message', (data: SendMessagePayload) => {
             bcm.send('message', data);
         });
@@ -135,5 +147,16 @@ function shouldInjectProvider(): boolean {
 }
 
 if (shouldInjectProvider()) {
-    injectScript();
+    if (document.readyState === 'loading' && !document.documentElement) {
+        // Very early, wait for documentElement
+        const observer = new MutationObserver((_mutations, obs) => {
+            if (document.documentElement) {
+                obs.disconnect();
+                injectScript();
+            }
+        });
+        observer.observe(document, { childList: true, subtree: true });
+    } else {
+        injectScript();
+    }
 }

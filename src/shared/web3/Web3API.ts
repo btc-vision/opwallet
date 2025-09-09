@@ -11,7 +11,7 @@ import {
     UTXOs
 } from 'opnet';
 
-import { ChainId as WalletChainId, ChainType } from '@/shared/constant';
+import { ChainType, ChainId as WalletChainId } from '@/shared/constant';
 import { NetworkType } from '@/shared/types';
 import { customNetworksManager } from '@/shared/utils/CustomNetworksManager';
 import { contractLogoManager } from '@/shared/web3/contracts-logo/ContractLogoManager';
@@ -72,9 +72,6 @@ export async function getOPNetChainType(chain: ChainType): Promise<ChainId> {
         return ChainId.Fractal;
     }
 
-    // Default to Bitcoin for all other chains
-    // This includes Dogecoin, Litecoin, Bitcoin Cash, Dash, etc.
-    // until OPNet officially supports them
     return ChainId.Bitcoin;
 }
 
@@ -157,15 +154,6 @@ class Web3API {
         }
 
         return this._provider;
-    }
-
-    public get ROUTER_ADDRESS(): Address | null {
-        if (!this.currentChain) return null;
-
-        const chainConfig = customNetworksManager.getChain(this.currentChain);
-        if (!chainConfig?.contractAddresses?.router) return null;
-
-        return Address.fromString(chainConfig.contractAddresses.router);
     }
 
     public get motoAddress(): Address | null {
@@ -330,7 +318,7 @@ class Web3API {
     public async getOwnedNFTsForCollection(
         collectionAddress: string,
         ownerAddress: Address
-    ): Promise<OwnedNFT[] | undefined | false> {
+    ): Promise<OwnedNFT[] | undefined | boolean> {
         try {
             let addressP2OP: string = collectionAddress;
             if (collectionAddress.startsWith('0x')) {
@@ -397,7 +385,8 @@ class Web3API {
     public async getUnspentUTXOsForAddresses(
         addresses: string[],
         requiredAmount?: bigint,
-        olderThan?: bigint
+        olderThan?: bigint,
+        includeSmallUTXOs?: boolean
     ): Promise<UTXO[]> {
         let finalUTXOs: UTXOs = [];
 
@@ -408,7 +397,7 @@ class Web3API {
                 if (!requiredAmount) {
                     utxos = await this.provider.utxoManager.getUTXOs({
                         address,
-                        optimize: true,
+                        optimize: !includeSmallUTXOs,
                         mergePendingUTXOs: false,
                         filterSpentUTXOs: true,
                         olderThan
@@ -417,7 +406,7 @@ class Web3API {
                     utxos = await this.provider.utxoManager.getUTXOsForAmount({
                         address,
                         amount: requiredAmount,
-                        optimize: true,
+                        optimize: !includeSmallUTXOs,
                         mergePendingUTXOs: false,
                         filterSpentUTXOs: true,
                         olderThan

@@ -319,21 +319,52 @@ button.op_action_button:hover {
     cursor: pointer;
 }
 
-.OP_token_button{
-    color:white;
-    font-size:14px;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    gap:8px;
-    height:32px;
-    padding:0 12px;
-    border:1px solid #444746;
+.OP_token_button {
+    color: white;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    height: 32px;
+    padding: 0 12px;
+    border: 1px solid #444746;
     background: #313131;
-    transition:background-color 0.3s, border 0.3s;
-    border-radius:8px;
+    transition: background-color 0.3s, border 0.3s;
+    border-radius: 8px;
 }
 
 .OP_token_button:hover {
-    background-color:#212121;
+    background-color: #212121;
+}
+
+.asyncImage {
+    transition: opacity 0.3s ease;
+    opacity: 0.5;
+    background: #434343;
+}
+
+.asyncImage.loaded {
+    opacity: 1;
+}
+
+.asyncImage.load-error {
+    opacity: 0.3;
+}
+
+/* Loading animation */
+@keyframes pulse {
+    0% {
+        opacity: 0.5;
+    }
+    50% {
+        opacity: 0.8;
+    }
+    100% {
+        opacity: 0.5;
+    }
+}
+
+.asyncImage:not(.loaded):not(.load-error) {
+    animation: pulse 1.5s infinite;
 }
