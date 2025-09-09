@@ -44,9 +44,9 @@ async function createPackage(): Promise<void> {
 
         archive.pipe(output);
 
-        // Add all files from dist directory except the zip file itself
+        // Only add files from the specific browser directory
         archive.glob('**/*', {
-            cwd: 'dist',
+            cwd: `dist/${options.browser}`, // Changed from 'dist' to 'dist/${options.browser}'
             ignore: ['*.zip']
         });
 
