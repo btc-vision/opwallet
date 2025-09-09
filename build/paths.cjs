@@ -26,8 +26,8 @@ function getBrowserPaths(browser) {
         proxySetup: rootResolve('src/setupProxy.js'),
         appNodeModules: rootResolve('node_modules'),
         appWebpackCache: rootResolve('node_modules/.cache'),
-        appTsBuildInfoFile: rootResolve('node_modules/.cache/tsconfig.tsbuildinfo')
-        // publicUrlOrPath,
+        appTsBuildInfoFile: rootResolve('node_modules/.cache/tsconfig.tsbuildinfo'),
+        publicUrlOrPath: '/'
     };
 }
 

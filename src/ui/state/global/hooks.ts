@@ -5,29 +5,10 @@ import { AddressType } from '@btc-vision/wallet-sdk';
 
 import { AppState } from '..';
 import { useAppDispatch, useAppSelector } from '../hooks';
-import { globalActions, TabOption } from './reducer';
+import { globalActions } from './reducer';
 
 export function useGlobalState(): AppState['global'] {
     return useAppSelector((state) => state.global);
-}
-
-export function useTab() {
-    const globalState = useGlobalState();
-    return globalState.tab;
-}
-
-export function useSetTabCallback() {
-    const dispatch = useAppDispatch();
-    return useCallback(
-        (tab: TabOption) => {
-            dispatch(
-                globalActions.update({
-                    tab
-                })
-            );
-        },
-        [dispatch]
-    );
 }
 
 export function useBooted() {
@@ -48,14 +29,14 @@ export function useIsReady() {
 export function useUnlockCallback() {
     const dispatch = useAppDispatch();
     const wallet = useWallet();
-    const [, resolveApproval] = useApproval();
+    const { resolveApproval } = useApproval();
     return useCallback(
         async (password: string) => {
             await wallet.unlock(password);
             dispatch(globalActions.update({ isUnlocked: true }));
             await resolveApproval();
         },
-        [dispatch, wallet]
+        [dispatch, resolveApproval, wallet]
     );
 }
 

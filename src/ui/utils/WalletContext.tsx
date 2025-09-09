@@ -1,18 +1,14 @@
 import { createContext, ReactNode, useContext } from 'react';
-
-import { AccountAsset } from '@/background/controller/wallet';
 import { ContactBookItem, ContactBookStore } from '@/background/service/contactBook';
-import { ToSignInput } from '@/background/service/keyring';
+import { SavedVault, ToSignInput } from '@/background/service/keyring';
 import { ConnectedSite } from '@/background/service/permission';
-import { AddressFlagType, ChainType } from '@/shared/constant';
+import { AddressFlagType, ChainId, ChainType, CustomNetwork } from '@/shared/constant';
 import {
     Account,
     AddressSummary,
     AppSummary,
     BitcoinBalance,
-    BtcChannelItem,
     DecodedPsbt,
-    FeeSummary,
     NetworkType,
     ParsedSignMsgUr,
     ParsedSignPsbtUr,
@@ -24,10 +20,9 @@ import {
     WalletKeyring
 } from '@/shared/types';
 import { ApprovalData, ApprovalResponse } from '@/shared/types/Approval';
+import { Psbt } from '@btc-vision/bitcoin';
 import { InteractionParametersWithoutSigner } from '@btc-vision/transaction';
 import { AddressType, UnspentOutput } from '@btc-vision/wallet-sdk';
-import { bitcoin } from '@btc-vision/wallet-sdk/lib/bitcoin-core';
-import { SavedVault } from '../../background/service/keyring';
 
 export interface WalletController {
     changePassword: (password: string, newPassword: string) => Promise<void>;
@@ -42,7 +37,6 @@ export interface WalletController {
     }) => Promise<{ start: number; total: number; detail: TxHistoryItem[] }>;
 
     getAddressCacheHistory: (address: string) => Promise<TxHistoryItem[]>;
-    listChainAssets: (address: string) => Promise<AccountAsset[]>;
 
     boot(password: string): Promise<void>;
 
@@ -72,15 +66,9 @@ export interface WalletController {
 
     isReady(): Promise<boolean>;
 
-    getAddressBalance(address: string): Promise<BitcoinBalance>;
-
-    getAddressCacheBalance(address: string): Promise<BitcoinBalance>;
+    getAddressBalance(address: string, pubKey?: string): Promise<BitcoinBalance>;
 
     getMultiAddressAssets(addresses: string): Promise<AddressSummary[]>;
-
-    findGroupAssets(
-        groups: { type: number; address_arr: string[]; pubkey_arr: string[] }[]
-    ): Promise<{ type: number; address_arr: string[]; pubkey_arr: string[]; satoshis_arr: number[] }[]>;
 
     getLocale(): Promise<string>;
 
@@ -159,7 +147,7 @@ export interface WalletController {
 
     getCurrentKeyringAccounts(): Promise<Account[]>;
 
-    signTransaction(psbt: bitcoin.Psbt, inputs: ToSignInput[]): Promise<bitcoin.Psbt>;
+    signTransaction(psbt: Psbt, inputs: ToSignInput[]): Promise<Psbt>;
 
     signPsbtWithHex(psbtHex: string, toSignInputs: ToSignInput[], autoFinalized: boolean): Promise<string>;
 
@@ -210,8 +198,6 @@ export interface WalletController {
     changeAddressType(addressType: AddressType): Promise<void>;
 
     setAccountAlianName(account: Account, name: string): Promise<Account>;
-
-    getFeeSummary(): Promise<FeeSummary>;
 
     getBtcPrice(): Promise<number>;
 
@@ -266,11 +252,22 @@ export interface WalletController {
 
     parseSignMsgUr(type: string, cbor: string, msgType?: string): Promise<ParsedSignMsgUr>;
 
-    // getEnableSignData(): Promise<boolean>;
+    addCustomNetwork(params: {
+        name: string;
+        networkType: NetworkType;
+        chainId: ChainId;
+        unit: string;
+        opnetUrl: string;
+        mempoolSpaceUrl: string;
+        faucetUrl?: string;
+        showPrice?: boolean;
+    }): Promise<CustomNetwork>;
 
-    // setEnableSignData(enable: boolean): Promise<void>;
+    deleteCustomNetwork(id: string): Promise<boolean>;
 
-    getBuyBtcChannelList(): Promise<BtcChannelItem[]>;
+    getAllCustomNetworks(): Promise<CustomNetwork[]>;
+
+    testRpcConnection(url: string): Promise<boolean>;
 
     setAutoLockTimeId(timeId: number): Promise<void>;
 

@@ -14,7 +14,7 @@ export default function SwitchNetwork({ params: { data, session } }: Props) {
     const from = NETWORK_TYPES[networkType];
     const to = NETWORK_TYPES[data.networkType];
 
-    const [getApproval, resolveApproval, rejectApproval] = useApproval();
+    const { resolveApproval, rejectApproval } = useApproval();
 
     const handleCancel = async () => {
         await rejectApproval('User rejected the request.');

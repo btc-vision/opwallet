@@ -1,103 +1,300 @@
 import { ECPairFactory } from 'ecpair';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { ADDRESS_TYPES } from '@/shared/constant';
 import { AddressAssets, AddressType } from '@/shared/types';
 import { getBitcoinLibJSNetwork } from '@/shared/web3/Web3API';
-import { Button, Column, Content, Header, Input, Layout, Row, Text } from '@/ui/components';
+import { Column, Content, Header, Layout, Row, Text } from '@/ui/components';
 import { useTools } from '@/ui/components/ActionComponent';
 import { AddressTypeCard } from '@/ui/components/AddressTypeCard';
-import { FooterButtonContainer } from '@/ui/components/FooterButtonContainer';
 import { TabBar } from '@/ui/components/TabBar';
 import { satoshisToAmount, useWallet } from '@/ui/utils';
+import { ImportOutlined, InfoCircleOutlined, KeyOutlined, LoadingOutlined, WalletOutlined } from '@ant-design/icons';
 import * as ecc from '@bitcoinerlab/secp256k1';
 import { EcKeyPair, Wallet } from '@btc-vision/transaction';
+import { ethers } from 'ethers';
 
 import { RouteTypes, useNavigate } from '../MainRoute';
 
 const ECPair = ECPairFactory(ecc);
 
-/*const _res = await wallet.createTmpKeyringWithPrivateKey(wif, AddressType.P2TR);
-if (_res.accounts.length == 0) {
-    throw new Error('Invalid PrivateKey');
-}*/
+const colors = {
+    main: '#f37413',
+    background: '#212121',
+    text: '#dbdbdb',
+    textFaded: 'rgba(219, 219, 219, 0.7)',
+    buttonBg: '#434343',
+    buttonHoverBg: 'rgba(85, 85, 85, 0.3)',
+    containerBg: '#434343',
+    containerBgFaded: '#292929',
+    containerBorder: '#303030',
+    inputBg: '#292828',
+    success: '#4ade80',
+    error: '#ef4444',
+    warning: '#fbbf24',
+    ethereum: '#627EEA'
+};
 
-/*const address = Wallet.fromWif(contextData.wif, bitcoinNetwork); //keyring.accounts[0].address;
-if (!address.p2tr) {
-    throw new Error('Invalid PrivateKey');
-}*/
-
-function Step1({
-    updateContextData
-}: {
-    contextData: ContextData;
-    updateContextData: (params: UpdateContextDataParams) => void;
-}) {
+function Step1({ updateContextData }: { updateContextData: (params: UpdateContextDataParams) => void }) {
     const [wif, setWif] = useState('');
     const [disabled, setDisabled] = useState(true);
+    const [inputType, setInputType] = useState<'auto' | 'wif' | 'ethereum'>('auto');
     const wallet = useWallet();
-    useEffect(() => {
-        setDisabled(true);
+    const tools = useTools();
 
-        if (!wif) {
+    useEffect(() => {
+        setDisabled(!wif.trim());
+    }, [wif]);
+
+    useEffect(() => {
+        const raw = wif.trim();
+        if (!raw) {
+            setInputType('auto');
             return;
         }
 
-        setDisabled(false);
+        if (isLikelyHexPriv(raw)) {
+            setInputType('ethereum');
+        } else {
+            setInputType('wif');
+        }
     }, [wif]);
 
-    const onChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const onChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
         const val = e.target.value;
         setWif(val);
         updateContextData({ step1Completed: !!val });
     };
 
-    const tools = useTools();
-
     const btnClick = async () => {
         const network = await wallet.getNetworkType();
         const bitcoinNetwork = getBitcoinLibJSNetwork(network);
 
-        let validWIF = false;
-        let validPrivateKey = false;
+        const raw = wif.trim();
+        let keyKind: KeyKind | null = null;
+
+        // try WIF first
         try {
-            ECPair.fromWIF(wif, bitcoinNetwork);
-            validWIF = true;
+            ECPair.fromWIF(raw, bitcoinNetwork);
+            keyKind = 'wif';
         } catch {}
 
-        try {
-            ECPair.fromPrivateKey(Buffer.from(wif.replace('0x', ''), 'hex'), { network: bitcoinNetwork });
-            validPrivateKey = true;
-        } catch {}
+        // then try raw 32-byte hex (ethereum-style)
+        if (!keyKind && isLikelyHexPriv(raw)) {
+            try {
+                const buf = Buffer.from(raw.replace(/^0x/, ''), 'hex');
+                ECPair.fromPrivateKey(buf, { network: bitcoinNetwork });
+                keyKind = 'rawHex';
+            } catch {}
+        }
 
-        if (!validWIF && !validPrivateKey) {
-            tools.toastError(`Invalid wif/private key (Are you on the right network?)`);
+        if (!keyKind) {
+            tools.toastError(`Invalid private key format`);
             return;
         }
 
         updateContextData({
-            wif,
+            wif: raw,
+            keyKind,
             tabType: TabType.STEP2
         });
     };
 
     return (
         <Column gap="lg">
-            <Text text="Private Key" textCenter preset="bold" />
+            {/* Header */}
+            <div style={{ textAlign: 'center', marginBottom: '20px' }}>
+                <div
+                    style={{
+                        width: '60px',
+                        height: '60px',
+                        borderRadius: '50%',
+                        background: `linear-gradient(135deg, ${colors.main}20 0%, ${colors.main}10 100%)`,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        margin: '0 auto 16px'
+                    }}>
+                    <KeyOutlined style={{ fontSize: 28, color: colors.main }} />
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'center' }}>
+                    <Text text="Import Private Key" preset="bold" size="lg" />
+                </div>
+                <div
+                    style={{
+                        fontSize: '13px',
+                        color: colors.textFaded,
+                        marginTop: '8px'
+                    }}>
+                    Enter your Bitcoin WIF/HEX or Ethereum private key
+                </div>
+            </div>
 
-            <Input
-                placeholder={'WIF Private Key or Hex Private Key'}
-                onKeyUp={(e: React.KeyboardEvent<HTMLInputElement>) => {
-                    if ('Enter' == e.key) {
-                        void btnClick();
+            {/* Input Area */}
+            <div style={{ position: 'relative' }}>
+                <div
+                    style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        marginBottom: '8px'
+                    }}>
+                    <label
+                        style={{
+                            fontSize: '12px',
+                            fontWeight: 600,
+                            color: colors.textFaded,
+                            textTransform: 'uppercase',
+                            letterSpacing: '0.5px'
+                        }}>
+                        Private Key
+                    </label>
+                    {inputType !== 'auto' && (
+                        <span
+                            style={{
+                                fontSize: '11px',
+                                padding: '2px 8px',
+                                background: inputType === 'ethereum' ? `${colors.ethereum}20` : `${colors.main}20`,
+                                color: inputType === 'ethereum' ? colors.ethereum : colors.main,
+                                borderRadius: '4px',
+                                fontWeight: 600
+                            }}>
+                            {inputType === 'ethereum' ? 'BTC/ETH Format' : 'BTC Format'}
+                        </span>
+                    )}
+                </div>
+
+                <textarea
+                    style={{
+                        width: '100%',
+                        minHeight: '100px',
+                        padding: '12px',
+                        background: colors.inputBg,
+                        border: `1px solid ${colors.containerBorder}`,
+                        borderRadius: '10px',
+                        color: colors.text,
+                        fontSize: '13px',
+                        fontFamily: 'monospace',
+                        resize: 'vertical',
+                        outline: 'none',
+                        transition: 'all 0.2s'
+                    }}
+                    placeholder="WIF format (c..., K..., L...) or 64-character hex"
+                    value={wif}
+                    onChange={onChange}
+                    onKeyDown={(e) => {
+                        if (e.key === 'Enter' && e.ctrlKey) {
+                            void btnClick();
+                        }
+                    }}
+                    onFocus={(e) => {
+                        e.currentTarget.style.borderColor = colors.main;
+                        e.currentTarget.style.background = colors.containerBgFaded;
+                    }}
+                    onBlur={(e) => {
+                        e.currentTarget.style.borderColor = colors.containerBorder;
+                        e.currentTarget.style.background = colors.inputBg;
+                    }}
+                    autoFocus
+                />
+            </div>
+
+            {/* Format Examples */}
+            <div
+                style={{
+                    background: colors.containerBgFaded,
+                    borderRadius: '10px',
+                    padding: '12px'
+                }}>
+                <div
+                    style={{
+                        fontSize: '11px',
+                        fontWeight: 600,
+                        color: colors.textFaded,
+                        marginBottom: '8px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px'
+                    }}>
+                    <InfoCircleOutlined style={{ fontSize: 12 }} />
+                    Supported Formats
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    <div
+                        style={{
+                            fontSize: '11px',
+                            color: colors.textFaded,
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '8px'
+                        }}>
+                        <span
+                            style={{
+                                padding: '1px 4px',
+                                background: `${colors.main}20`,
+                                color: colors.main,
+                                borderRadius: '3px',
+                                fontSize: '10px',
+                                fontWeight: 600
+                            }}>
+                            BTC
+                        </span>
+                        <span style={{ fontFamily: 'monospace' }}>cNvbw... C/K/L...</span>
+                    </div>
+                    <div
+                        style={{
+                            fontSize: '11px',
+                            color: colors.textFaded,
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '8px'
+                        }}>
+                        <span
+                            style={{
+                                padding: '1px 4px',
+                                background: `${colors.ethereum}20`,
+                                color: colors.ethereum,
+                                borderRadius: '3px',
+                                fontSize: '10px',
+                                fontWeight: 600
+                            }}>
+                            BTC/ETH
+                        </span>
+                        <span style={{ fontFamily: 'monospace' }}>64 hex chars</span>
+                    </div>
+                </div>
+            </div>
+
+            {/* Continue Button */}
+            <button
+                style={{
+                    width: '100%',
+                    padding: '14px',
+                    background: disabled ? colors.buttonBg : colors.main,
+                    border: 'none',
+                    borderRadius: '12px',
+                    color: disabled ? colors.textFaded : colors.background,
+                    fontSize: '14px',
+                    fontWeight: 600,
+                    cursor: disabled ? 'not-allowed' : 'pointer',
+                    transition: 'all 0.2s',
+                    marginTop: '8px',
+                    opacity: disabled ? 0.5 : 1
+                }}
+                disabled={disabled}
+                onClick={btnClick}
+                onMouseEnter={(e) => {
+                    if (!disabled) {
+                        e.currentTarget.style.transform = 'translateY(-2px)';
+                        e.currentTarget.style.boxShadow = '0 4px 12px rgba(243, 116, 19, 0.3)';
                     }
                 }}
-                onChange={onChange}
-                autoFocus={true}
-            />
-            <FooterButtonContainer>
-                <Button disabled={disabled} text="Continue" preset="primary" onClick={btnClick} />
-            </FooterButtonContainer>
+                onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = 'translateY(0)';
+                    e.currentTarget.style.boxShadow = 'none';
+                }}>
+                Continue
+            </button>
         </Column>
     );
 }
@@ -111,6 +308,7 @@ function Step2({
 }) {
     const wallet = useWallet();
     const tools = useTools();
+    const navigate = useNavigate();
 
     const hdPathOptions = useMemo(() => {
         return ADDRESS_TYPES.filter((v) => {
@@ -130,150 +328,258 @@ function Step2({
             });
     }, []);
 
-    const [previewAddresses, setPreviewAddresses] = useState<string[]>(hdPathOptions.map((v) => ''));
+    const [previewAddresses, setPreviewAddresses] = useState<string[]>(hdPathOptions.map(() => ''));
     const [addressAssets, setAddressAssets] = useState<Record<string, AddressAssets>>({});
+    const [ethAddress, setEthAddress] = useState<string | null>(null);
+    const [loading, setLoading] = useState(true);
 
-    const selfRef = useRef<{
-        maxSatoshis: number;
-        recommended: number;
-        count: number;
-        addressBalances: Record<string, AddressAssets>;
-    }>({
-        maxSatoshis: 0,
-        recommended: 0,
-        count: 0,
-        addressBalances: {}
-    });
-
-    const self = selfRef.current;
     const run = async () => {
-        const addresses: string[] = [];
+        setLoading(true);
         const network = await wallet.getNetworkType();
         const bitcoinNetwork = getBitcoinLibJSNetwork(network);
 
-        for (const options of hdPathOptions) {
+        const addresses: string[] = [];
+        const balancesMap: Record<string, AddressAssets> = {};
+
+        const getAddrForType = (t: AddressType) => {
+            if (contextData.keyKind === 'wif') {
+                const w = Wallet.fromWif(contextData.wif, bitcoinNetwork);
+                if (t === AddressType.P2TR) return w.p2tr;
+                if (t === AddressType.P2SH_P2WPKH) return w.segwitLegacy;
+                if (t === AddressType.P2WPKH) return w.p2wpkh;
+                return EcKeyPair.getLegacyAddress(ECPair.fromWIF(contextData.wif, bitcoinNetwork), bitcoinNetwork);
+            } else {
+                const buf = Buffer.from(contextData.wif.replace(/^0x/, '').trim(), 'hex');
+                const kp = EcKeyPair.fromPrivateKey(buf, bitcoinNetwork);
+                if (t === AddressType.P2TR) return EcKeyPair.getTaprootAddress(kp, bitcoinNetwork);
+                if (t === AddressType.P2SH_P2WPKH) return EcKeyPair.getLegacySegwitAddress(kp, bitcoinNetwork);
+                if (t === AddressType.P2WPKH) return EcKeyPair.getP2WPKHAddress(kp, bitcoinNetwork);
+                return EcKeyPair.getLegacyAddress(kp, bitcoinNetwork);
+            }
+        };
+
+        for (const opt of hdPathOptions) {
             try {
-                const address = Wallet.fromWif(contextData.wif, bitcoinNetwork);
-
-                if (options.addressType == AddressType.P2TR) {
-                    addresses.push(address.p2tr);
-                } else if (options.addressType == AddressType.P2SH_P2WPKH) {
-                    addresses.push(address.segwitLegacy);
-                } else if (options.addressType == AddressType.P2WPKH) {
-                    addresses.push(address.p2wpkh);
-                } else {
-                    addresses.push(
-                        EcKeyPair.getLegacyAddress(ECPair.fromWIF(contextData.wif, bitcoinNetwork), bitcoinNetwork)
-                    );
-                }
-            } catch (e) {}
-
-            try {
-                const bufferPrivateKey = Buffer.from(contextData.wif.replace('0x', ''), 'hex');
-                const keypair = EcKeyPair.fromPrivateKey(bufferPrivateKey, bitcoinNetwork);
-
-                if (options.addressType == AddressType.P2TR) {
-                    addresses.push(EcKeyPair.getTaprootAddress(keypair, bitcoinNetwork));
-                } else if (options.addressType == AddressType.P2SH_P2WPKH) {
-                    addresses.push(EcKeyPair.getLegacySegwitAddress(keypair, bitcoinNetwork));
-                } else if (options.addressType == AddressType.P2WPKH) {
-                    addresses.push(EcKeyPair.getP2WPKHAddress(keypair, bitcoinNetwork));
-                } else {
-                    addresses.push(EcKeyPair.getLegacyAddress(keypair, bitcoinNetwork));
-                }
-            } catch (e) {}
-        }
-
-        const balances = await wallet.getMultiAddressAssets(addresses.join(','));
-        for (let i = 0; i < addresses.length; i++) {
-            const address = addresses[i];
-
-            const balance = balances[i];
-            const satoshis = balance.totalSatoshis;
-            self.addressBalances[address] = {
-                total_btc: satoshisToAmount(balance.totalSatoshis),
-                satoshis
-            };
-
-            if (satoshis > self.maxSatoshis) {
-                self.maxSatoshis = satoshis;
-                self.recommended = i;
+                const addr = getAddrForType(opt.addressType);
+                addresses.push(addr);
+            } catch (e) {
+                addresses.push('');
             }
         }
 
-        let recommended: AddressType = hdPathOptions[self.recommended].addressType;
-        if (self.maxSatoshis == 0) {
+        const balances = await wallet.getMultiAddressAssets(addresses.join(','));
+        let maxSatoshis = 0;
+        let recommendedIndex = 0;
+
+        for (let i = 0; i < addresses.length; i++) {
+            const a = addresses[i];
+            if (!a) continue;
+            const b = balances[i];
+            const satoshis = b?.totalSatoshis ?? 0;
+            balancesMap[a] = { total_btc: satoshisToAmount(satoshis), satoshis };
+            if (satoshis > maxSatoshis) {
+                maxSatoshis = satoshis;
+                recommendedIndex = i;
+            }
+        }
+
+        let recommended: AddressType = hdPathOptions[recommendedIndex].addressType;
+        if (maxSatoshis === 0) {
             recommended = AddressType.P2TR;
         }
 
         updateContextData({ addressType: recommended });
-
-        setAddressAssets(self.addressBalances);
+        setAddressAssets(balancesMap);
         setPreviewAddresses(addresses);
+        setLoading(false);
     };
 
     useEffect(() => {
         void run();
     }, [contextData.wif]);
 
+    useEffect(() => {
+        const raw = contextData.wif?.trim();
+        if (contextData.keyKind !== 'rawHex' || !raw) {
+            setEthAddress(null);
+            return;
+        }
+        try {
+            const pk = raw.startsWith('0x') ? raw : '0x' + raw;
+            const addr = ethers.computeAddress(pk);
+            setEthAddress(addr);
+        } catch {
+            setEthAddress(null);
+        }
+    }, [contextData.wif, contextData.keyKind]);
+
     const pathIndex = useMemo(() => {
         return hdPathOptions.findIndex((v) => v.addressType === contextData.addressType);
     }, [hdPathOptions, contextData.addressType]);
 
-    const navigate = useNavigate();
-
     const onNext = async () => {
         try {
-            await wallet.createKeyringWithPrivateKey(contextData.wif, contextData.addressType);
+            const pk =
+                contextData.keyKind === 'rawHex' ? contextData.wif.replace(/^0x/, '').toLowerCase() : contextData.wif;
+
+            await wallet.createKeyringWithPrivateKey(pk, contextData.addressType);
             navigate(RouteTypes.MainScreen);
         } catch (e) {
             tools.toastError((e as Error).message);
         }
     };
+
+    if (loading) {
+        return (
+            <Column itemsCenter justifyCenter style={{ minHeight: 300 }}>
+                <LoadingOutlined style={{ fontSize: 24, color: colors.main }} />
+                <Text text="Loading addresses..." color="textDim" size="sm" style={{ marginTop: 12 }} />
+            </Column>
+        );
+    }
+
     return (
         <Column gap="lg">
-            <Text text="Address Type" preset="bold" />
+            {/* Header */}
+            <div style={{ textAlign: 'center', marginBottom: '16px' }}>
+                <div
+                    style={{
+                        width: '60px',
+                        height: '60px',
+                        borderRadius: '50%',
+                        background: `linear-gradient(135deg, ${colors.main}20 0%, ${colors.main}10 100%)`,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        margin: '0 auto 16px'
+                    }}>
+                    <WalletOutlined style={{ fontSize: 28, color: colors.main }} />
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'center' }}>
+                    <Text text="Select Address Type" preset="bold" size="lg" />
+                </div>
+                <div
+                    style={{
+                        fontSize: '13px',
+                        color: colors.textFaded,
+                        marginTop: '8px'
+                    }}>
+                    Choose the address format for your wallet
+                </div>
+            </div>
 
-            {hdPathOptions.map((item, index) => {
-                const address = previewAddresses[index];
-                const assets = addressAssets[address] || {
-                    total_btc: '--',
-                    satoshis: 0
-                };
+            {/* Ethereum Address Info */}
+            {ethAddress && (
+                <div
+                    style={{
+                        padding: '12px',
+                        background: `${colors.ethereum}10`,
+                        border: `1px solid ${colors.ethereum}30`,
+                        borderRadius: '10px',
+                        marginBottom: '12px'
+                    }}>
+                    <div
+                        style={{
+                            fontSize: '11px',
+                            fontWeight: 600,
+                            color: colors.ethereum,
+                            marginBottom: '4px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '6px'
+                        }}>
+                        <ImportOutlined style={{ fontSize: 12 }} />
+                        Linked Ethereum Address
+                    </div>
+                    <div
+                        style={{
+                            fontSize: '12px',
+                            color: colors.text,
+                            fontFamily: 'monospace',
+                            wordBreak: 'break-all'
+                        }}>
+                        {ethAddress}
+                    </div>
+                </div>
+            )}
 
-                const hasVault = assets.satoshis > 0;
-                if (item.isUnisatLegacy && !hasVault) {
-                    return null;
-                }
-                return (
-                    <AddressTypeCard
-                        key={index}
-                        label={item.label}
-                        address={address}
-                        assets={assets}
-                        checked={index == pathIndex}
-                        onClick={() => {
-                            updateContextData({ addressType: item.addressType });
-                        }}
-                    />
-                );
-            })}
+            {/* Address Type Cards */}
+            <div
+                style={{
+                    background: colors.containerBgFaded,
+                    borderRadius: '14px',
+                    padding: '8px'
+                }}>
+                {hdPathOptions.map((item, index) => {
+                    const address = previewAddresses[index];
+                    const assets = addressAssets[address] || {
+                        total_btc: '--',
+                        satoshis: 0
+                    };
 
-            <FooterButtonContainer>
-                <Button text="Continue" preset="primary" onClick={onNext} />
-            </FooterButtonContainer>
+                    const hasVault = assets.satoshis > 0;
+                    if (item.isUnisatLegacy && !hasVault) {
+                        return null;
+                    }
+
+                    const isRecommended = assets.satoshis > 0 && index === pathIndex;
+
+                    return (
+                        <div key={index} style={{ marginBottom: '8px' }}>
+                            <AddressTypeCard
+                                label={item.label}
+                                address={address}
+                                assets={assets}
+                                checked={index === pathIndex}
+                                onClick={() => {
+                                    updateContextData({ addressType: item.addressType });
+                                }}
+                            />
+                        </div>
+                    );
+                })}
+            </div>
+
+            {/* Import Button */}
+            <button
+                style={{
+                    width: '100%',
+                    padding: '14px',
+                    background: colors.main,
+                    border: 'none',
+                    borderRadius: '12px',
+                    color: colors.background,
+                    fontSize: '14px',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    transition: 'all 0.2s',
+                    marginTop: '8px'
+                }}
+                onClick={onNext}
+                onMouseEnter={(e) => {
+                    e.currentTarget.style.transform = 'translateY(-2px)';
+                    e.currentTarget.style.boxShadow = '0 4px 12px rgba(243, 116, 19, 0.3)';
+                }}
+                onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = 'translateY(0)';
+                    e.currentTarget.style.boxShadow = 'none';
+                }}>
+                Import Wallet
+            </button>
         </Column>
     );
 }
 
 enum TabType {
     STEP1 = 'STEP1',
-    STEP2 = 'STEP2',
-    STEP3 = 'STEP3'
+    STEP2 = 'STEP2'
 }
+
+type KeyKind = 'wif' | 'rawHex';
 
 interface ContextData {
     wif: string;
+    keyKind: KeyKind;
     addressType: AddressType;
     step1Completed: boolean;
     tabType: TabType;
@@ -281,14 +587,21 @@ interface ContextData {
 
 interface UpdateContextDataParams {
     wif?: string;
+    keyKind?: KeyKind;
     addressType?: AddressType;
     step1Completed?: boolean;
     tabType?: TabType;
 }
 
+function isLikelyHexPriv(s: string) {
+    const h = s.trim().toLowerCase().replace(/^0x/, '');
+    return /^[0-9a-f]{64}$/.test(h);
+}
+
 export default function CreateSimpleWalletScreen() {
     const [contextData, setContextData] = useState<ContextData>({
         wif: '',
+        keyKind: 'wif',
         addressType: AddressType.P2WPKH,
         step1Completed: false,
         tabType: TabType.STEP1
@@ -304,12 +617,12 @@ export default function CreateSimpleWalletScreen() {
     const items = [
         {
             key: TabType.STEP1,
-            label: 'Step 1',
-            children: <Step1 contextData={contextData} updateContextData={updateContextData} />
+            label: 'Private Key',
+            children: <Step1 updateContextData={updateContextData} />
         },
         {
             key: TabType.STEP2,
-            label: 'Step 2',
+            label: 'Address Type',
             children: <Step2 contextData={contextData} updateContextData={updateContextData} />
         }
     ];
@@ -322,10 +635,10 @@ export default function CreateSimpleWalletScreen() {
                 onBack={() => {
                     window.history.go(-1);
                 }}
-                title="Create Single Wallet"
+                title="Import Private Key"
             />
-            <Content>
-                <Row justifyCenter>
+            <Content style={{ padding: '12px' }}>
+                <Row justifyCenter style={{ marginBottom: '16px' }}>
                     <TabBar
                         progressEnabled
                         defaultActiveKey={TabType.STEP1}

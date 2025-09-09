@@ -22,7 +22,8 @@
     },
     "author": "https://opnet.org",
     "background": {
-        "service_worker": "background.js"
+        "service_worker": "background.js",
+        "type": "module"
     },
     "homepage_url": "https://opnet.org",
     "permissions": ["storage", "unlimitedStorage", "activeTab"],
@@ -37,8 +38,9 @@
     ],
     "web_accessible_resources": [
         {
-            "resources": ["pageProvider.js"],
-            "matches": ["<all_urls>"]
+            "resources": ["pageProvider.js",  "js/*.js", "crypto-polyfill.js"],
+            "matches": ["<all_urls>"],
+            "type": "module"
         }
     ],
     "content_security_policy": {

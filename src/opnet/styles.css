@@ -10,7 +10,7 @@
 
     /* Button colors */
     --opnet-button-background-color: #434343;
-    --opnet-button-hover-background-color: rgba(85, 85, 85, 0.3);
+    --opnet-button-hover-background-color: #313131;
     --opnet-button-text-color: #dbdbdb;
     --opnet-button-hover-text-color: rgba(219, 219, 219, 0.6);
 
@@ -39,120 +39,125 @@
 
 }
 
-body{
-    background:var(--opnet-background-color) !important;
+body {
+    background: var(--opnet-background-color) !important;
 }
 
 /* Header */
 
-.op_header{
+.op_header {
     background: rgba(33, 33, 33, 0.5);
-    display:block;
+    display: block;
     backdrop-filter: blur(5px);
 }
 
 
 /* User account */
 
-.rc-virtual-list-holder-inner{
-    gap:5px;
+.rc-virtual-list-holder-inner {
+    gap: 5px;
 }
 
-.op_account_bar{
-    display:flex;
-    align-items:center;
-    height:56px;
-    border-radius:var(--opnet-button-radius);
+.op_account_bar {
+    display: flex;
+    align-items: center;
+    height: 56px;
+    margin-left:-12px;
+    margin-right:-12px;
     background-color: var(--opnet-button-hover-background-color);
-    cursor:pointer;
-    position:relative;
-    transition:background 0.3s;
+    border-top:1px solid #444746;
+    border-bottom: 1px solid #444746;
+    cursor: pointer;
+    position: sticky;
+    top: 0;
+    z-index:9;
+    transition: background 0.3s;
 }
 
-.op_account_bar.op_address .op_account_wallet{
-    font-size:11px;
+.op_account_bar.op_address .op_account_wallet {
+    font-size: 11px;
 }
 
-.op_account_bar:hover{
+.op_account_bar:hover {
     background-color: var(--opnet-button-background-color);
 }
 
-.op_account_col_1{
+.op_account_col_1 {
     flex: 1;
-    display:flex;
+    display: flex;
     align-items: center;
 }
 
-.op_account_col_2{
+.op_account_col_2 {
     flex: 0 0 auto;
-    display:flex;
+    display: flex;
     align-items: center;
 }
 
-.op_account_name{
+.op_account_name {
     font-size: 14px;
     line-height: normal;
     font-family: Inter-Regular, serif;
     color: var(--opnet-text-color);
 }
 
-.op_account_wallet{
-    display:flex;
-    align-items:center;
-    gap:5px;
+.op_account_wallet {
+    display: flex;
+    align-items: center;
+    gap: 5px;
     font-size: 14px;
     line-height: normal;
     font-family: Inter-Regular, serif;
     color: var(--opnet-text-color-faded);
 }
 
-.op_account_wallet > span{
-    font-size:11px;
+.op_account_wallet > span {
+    font-size: 11px;
 }
 
-.op_account_icon_holder{
-    width:56px;
-    height:56px;
-    display:flex;
-    align-items:center;
-    justify-content:center;
+.op_account_icon_holder {
+    width: 56px;
+    height: 56px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
-.op_account_icon_holder:first-child{
-    border-top-left-radius:var(--opnet-button-radius);
-    border-bottom-left-radius:var(--opnet-button-radius);
+.op_account_icon_holder:first-child {
+    border-top-left-radius: var(--opnet-button-radius);
+    border-bottom-left-radius: var(--opnet-button-radius);
 }
 
-.op_account_icon_holder:last-child{
-    border-top-right-radius:var(--opnet-button-radius);
-    border-bottom-right-radius:var(--opnet-button-radius);
+.op_account_icon_holder:last-child {
+    border-top-right-radius: var(--opnet-button-radius);
+    border-bottom-right-radius: var(--opnet-button-radius);
 }
 
 /* Switch Account */
 
-.switch_options{
+.switch_options {
     background-color: var(--opnet-background-color);
     color: var(--opnet-text-color);
     border-radius: 10px;
     border: 1px solid var(--opnet-button-background-color);
-    width:200px;
+    width: 200px;
     position: absolute;
     right: 0;
-    top:30%;
+    top: 30%;
     z-index: 10;
-    overflow:clip;
+    overflow: clip;
 }
 
-.switch_option{
-    display:flex;
-    align-items:center;
-    padding:9px;
-    gap:5px;
-    font-size:13px;
+.switch_option {
+    display: flex;
+    align-items: center;
+    padding: 9px;
+    gap: 5px;
+    font-size: 13px;
     transition: background 0.3s;
 }
 
-.switch_option:hover{
+.switch_option:hover {
     background-color: var(--opnet-button-hover-background-color);
 }
 
@@ -172,7 +177,7 @@ body{
     justify-content: center;
     height: 60px;
     transition: background 0.3s, transform 0.3s, border 0.3s;
-    cursor:pointer;
+    cursor: pointer;
 }
 
 .op_action_button:hover {
@@ -190,91 +195,91 @@ body{
     align-items: center;
     justify-content: center;
     color: #222121;
-    position:relative;
-    top:0;
+    position: relative;
+    top: 0;
     transition: background 0.3s, top 0.1s;
 }
 
 .op_action_button:hover .op_icon_wrapper {
-    top:3px;
+    top: 3px;
 }
 
 /* Tokens View */
 
-.op_token_container{
+.op_token_container {
     display: flex;
     align-items: center;
     justify-content: space-between;
     background-color: transparent;
     color: var(--opnet-button-text-color);
-    border-radius:17px;
-    cursor:pointer;
+    border-radius: 17px;
+    cursor: pointer;
     transition: background 0.3s, color 0.3s;
 }
 
-.op_token_container:hover{
+.op_token_container:hover {
     background-color: #2d2c2c;
 }
 
-.op_token_col_1{
+.op_token_col_1 {
     flex: 1;
     display: flex;
     align-items: center;
 }
 
-.op_token_image{
-    height:42px;
-    width:42px;
-    display:flex;
+.op_token_image {
+    height: 42px;
+    width: 42px;
+    display: flex;
     align-items: center;
     justify-content: center;
 }
 
-.op_token_image > img{
+.op_token_image > img {
     border-radius: 50%;
     width: 100%;
     aspect-ratio: 1/1;
 }
 
-.op_token_title{
-    font-size:13px;
+.op_token_title {
+    font-size: 13px;
     font-weight: 500;
     color: var(--opnet-button-text-color);
 }
 
-.op_token_remove{
-    height:42px;
-    width:42px;
-    display:flex;
-    color:var(--opnet-button-background-color);
+.op_token_remove {
+    height: 42px;
+    width: 42px;
+    display: flex;
+    color: var(--opnet-button-background-color);
     align-items: center;
     justify-content: center;
     transition: background 0.3s, color 0.3s;
 }
 
-.op_token_remove:hover{
-    color:white;
+.op_token_remove:hover {
+    color: white;
 }
 
-.op_token_col_2{
+.op_token_col_2 {
     flex: 0 0 auto;
     display: flex;
     align-items: center;
 }
 
-.op_token_balance{
-    font-size:12px;
+.op_token_balance {
+    font-size: 12px;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
     font-weight: 550;
     color: var(--opnet-main-color);
-    cursor:pointer;
+    cursor: pointer;
 }
 
 /* Pagination */
 
-.op_pagination_controls{
+.op_pagination_controls {
     display: flex;
     align-items: center;
     justify-content: center;
@@ -282,7 +287,7 @@ body{
     margin-top: 10px;
 }
 
-.op_pagination_controls > button{
+.op_pagination_controls > button {
     background: var(--opnet-button-background-color);
     color: var(--opnet-button-text-color);
     border-radius: 17px;
@@ -291,19 +296,19 @@ body{
     font-weight: 500;
     border: 2px solid var(--opnet-button-background-color);
     transition: background 0.3s, color 0.3s, border 0.3s;
-    cursor:pointer;
+    cursor: pointer;
 }
 
-.op_pagination_controls > button:hover{
+.op_pagination_controls > button:hover {
     background: var(--opnet-button-hover-background-color);
     border: 2px solid var(--opnet-button-text-color);
 }
 
-.op_pagination_controls > button:disabled{
+.op_pagination_controls > button:disabled {
     background: var(--opnet-background-color);
     color: var(--opnet-text-color-faded);
     border: 2px solid var(--opnet-button-background-color);
-    cursor:not-allowed;
+    cursor: not-allowed;
 }
 
 /* Pubkey */
@@ -324,8 +329,7 @@ body{
 
 .pubkey_holder {
     flex: 1 1;
-    display: flex
-;
+    display: flex;
     align-items: center;
     gap: 7px;
 }
@@ -344,14 +348,14 @@ body{
     font-weight: 550;
     color: var(--opnet-main-color);
     cursor: pointer;
-    display:flex;
-    align-items:center;
-    gap:3px;
+    display: flex;
+    align-items: center;
+    gap: 3px;
 }
 
 /* Tooltip */
 
-.op_tooltip{
+.op_tooltip {
     background: rgba(33, 33, 33, 0.6);
     backdrop-filter: blur(10px);
     color: var(--opnet-button-text-color);
@@ -365,29 +369,29 @@ body{
 
 /* OPNet Tokens Panel */
 
-.op_tokens_action_buttons_container{
-    display:flex;
+.op_tokens_action_buttons_container {
+    display: flex;
     align-items: center;
     justify-content: space-between;
-    gap:10px;
-    cursor:default;
+    gap: 10px;
+    cursor: default;
 }
 
-.op_tokens_action_buttons{
+.op_tokens_action_buttons {
     display: flex;
     align-items: center;
     justify-content: flex-start;
     gap: 10px;
-    cursor:default;
+    cursor: default;
 }
 
-button.op_tokens_action_button{
-    flex:0 0 auto;
+button.op_tokens_action_button {
+    flex: 0 0 auto;
     display: flex;
     align-items: center;
     justify-content: flex-start;
-    gap:6px;
-    height:32px;
+    gap: 6px;
+    height: 32px;
     background: var(--opnet-button-background-color);
     color: var(--opnet-button-text-color);
     border-radius: 17px;
@@ -399,21 +403,21 @@ button.op_tokens_action_button{
     cursor: pointer;
 }
 
-button.op_tokens_action_button.icon{
+button.op_tokens_action_button.icon {
     width: 32px;
     height: 32px;
-    flex:0 0 32px;
+    flex: 0 0 32px;
     justify-content: center;
 }
 
-button.op_tokens_action_button:hover{
+button.op_tokens_action_button:hover {
     background: #2d2c2c;
     border: 2px solid var(--opnet-button-text-color);
 }
 
 /* OPNet Token Panel Buttons */
 
-.op_token_action_buttons_container{
+.op_token_action_buttons_container {
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -421,7 +425,7 @@ button.op_tokens_action_button:hover{
     cursor: default;
 }
 
-button.op_token_action_button{
+button.op_token_action_button {
     background: var(--opnet-button-background-color);
     color: var(--opnet-button-text-color);
     border-radius: 17px;
@@ -432,22 +436,22 @@ button.op_token_action_button{
     font-family: Inter-Regular, serif;
     border: 2px solid var(--opnet-button-background-color);
     transition: background 0.3s, color 0.3s, border 0.3s;
-    cursor:pointer;
+    cursor: pointer;
 }
 
 /* Fees */
 
-.op_fee_rates{
-    display:flex;
+.op_fee_rates {
+    display: flex;
     align-items: stretch;
     gap: 10px;
-    cursor:default;
-    margin-top:10px;
+    cursor: default;
+    margin-top: 10px;
 }
 
-.op_fee_rate{
+.op_fee_rate {
     flex: 0 0 calc(25% - 7px);
-    width:calc(25% - 7px);
+    width: calc(25% - 7px);
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -458,90 +462,89 @@ button.op_token_action_button{
     border-radius: 17px;
     font-size: 12px;
     font-weight: 500;
-    cursor:pointer;
+    cursor: pointer;
     transition: background 0.3s, color 0.3s, border 0.3s;
     user-select: none;
 }
 
-.op_fee_rate:hover{
+.op_fee_rate:hover {
     border: 2px solid var(--opnet-button-icon-background-color);
     color: var(--opnet-background-color);
 }
 
-.op_fee_rate.op_fee_selected{
-    cursor:default;
+.op_fee_rate.op_fee_selected {
+    cursor: default;
     border: 2px solid var(--opnet-button-icon-background-color);
     color: var(--opnet-background-color);
 }
 
-.op_fee_rate_rate{
-    display:flex;
+.op_fee_rate_rate {
+    display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
 }
 
-.op_fee_rate.op_fee_selected .op_fee_rate_rate{
+.op_fee_rate.op_fee_selected .op_fee_rate_rate {
     color: var(--opnet-background-color);
 }
 
-.op_fee_rate_title{
+.op_fee_rate_title {
     background-color: var(--opnet-button-icon-background-color);
     font-size: 10px;
-    padding:1px 3px;
-    font-weight:bold;
-    margin-top:-10px;
+    padding: 1px 3px;
+    font-weight: bold;
+    margin-top: -10px;
     border-radius: 12px;
-    text-align:center;
-    font-weight:bold;
-    width:calc(100% - 12px);
+    text-align: center;
+    font-weight: bold;
+    width: calc(100% - 12px);
     color: var(--opnet-background-color);
-    position:relative;
-    transition:top 0.2s;
-    top:0;
+    position: relative;
+    transition: top 0.2s;
+    top: 0;
 }
 
-.op_fee_rate:hover .op_fee_rate_title{
-    top:-3px;
+.op_fee_rate:hover .op_fee_rate_title {
+    top: -3px;
 }
 
 
-.op_fee_rate_amount{
+.op_fee_rate_amount {
     font-size: 14px;
-    line-height:normal;
+    line-height: normal;
     font-weight: 700;
     color: var(--opnet-button-text-color);
 }
 
-.op_fee_rate_units{
+.op_fee_rate_units {
     font-size: 12px;
-    line-height:normal;
+    line-height: normal;
     font-weight: 500;
     color: var(--opnet-text-color-faded);
-    margin-bottom:5px;
+    margin-bottom: 5px;
 }
-
 
 
 /* OPNet Tokens Panel - Token List */
 
 /* Inputs */
 
-.op_input_amount_container{
+.op_input_amount_container {
     height: 54px;
-    display:flex;
+    display: flex;
     align-items: center;
-    position:relative;
-    margin:10px 0;
+    position: relative;
+    margin: 10px 0;
 }
 
-.op_input_address{
+.op_input_address {
     font-size: 14px;
     line-height: normal;
     font-family: Inter-Regular;
     height: 54px;
-    width:100%;
-    display:block;
+    width: 100%;
+    display: block;
     background: var(--opnet-input-background-color);
     border: 2px solid var(--opnet-input-background-color);
     color: var(--opnet-button-text-color);
@@ -550,34 +553,34 @@ button.op_token_action_button{
     transition: background 0.3s, color 0.3s, border 0.3s;
 }
 
-.op_input_amount_container.with_max{
+.op_input_amount_container.with_max {
     padding-right: 70px;
 }
 
-.op_input_address:hover{
+.op_input_address:hover {
     outline: none;
     border: 2px solid var(--opnet-input-border-hover-color);
 }
 
-.op_input_address:focus{
+.op_input_address:focus {
     outline: none;
     border: 2px solid var(--opnet-input-border-active-color);
 }
 
 /** Max Button **/
 
-.op_input_amount_container > div{
-    position:absolute;
-    right:0;
-    top:0;
+.op_input_amount_container > div {
+    position: absolute;
+    right: 0;
+    top: 0;
     height: 54px;
     padding: 0 14px 0 0;
-    display:flex;
+    display: flex;
     align-items: center;
     justify-content: center;
 }
 
-.op_input_amount_container > div > button{
+.op_input_amount_container > div > button {
     background: var(--opnet-input-background-color);
     color: var(--opnet-button-text-color);
     border-radius: 17px;
@@ -588,181 +591,181 @@ button.op_token_action_button{
     font-family: Inter-Regular, serif;
     border: 2px solid var(--opnet-input-background-color);
     transition: background 0.3s, color 0.3s, border 0.3s;
-    cursor:pointer;
+    cursor: pointer;
 }
 
-.op_input_amount_container > div > button:hover{
+.op_input_amount_container > div > button:hover {
     background: var(--opnet-button-background-color);
     border: 2px solid var(--opnet-button-background-color);
 }
 
 /* OPNet Token Swap */
 
-.op_swap_container{
-    border:1px solid var(--opnet-container-border-color);
+.op_swap_container {
+    border: 1px solid var(--opnet-container-border-color);
     border-radius: 17px;
-    padding:7px;
+    padding: 7px;
 }
 
-.op_swap_token_inner_label{
+.op_swap_token_inner_label {
     font-size: 12px;
     font-weight: 500;
     color: var(--opnet-text-color-faded);
-    padding:0 5px;
+    padding: 0 5px;
     user-select: none;
     pointer-events: none;
 }
 
-.op_swap_token_details{
-    display:flex;
-    width:100%;
-    flex:0 0 100%;
-    padding-right:8px;
+.op_swap_token_details {
+    display: flex;
+    width: 100%;
+    flex: 0 0 100%;
+    padding-right: 8px;
     align-items: center;
     justify-content: space-between;
 }
 
-.op_swap_token_inner{
-    display:flex;
+.op_swap_token_inner {
+    display: flex;
     align-items: center;
-    gap:4px;
-    width:100%;
+    gap: 4px;
+    width: 100%;
     justify-content: space-between;
 }
 
-.op_swap_token_balance{
-    display:flex;
+.op_swap_token_balance {
+    display: flex;
     align-items: center;
-    gap:4px;
+    gap: 4px;
     color: var(--opnet-text-color-faded);
     font-size: 12px;
 }
 
-.op_swap_token_selector{
-    display:flex;
-    flex:0 0 auto;
+.op_swap_token_selector {
+    display: flex;
+    flex: 0 0 auto;
     align-items: center;
     background-color: var(--opnet-button-icon-background-color);
-    border:1px solid var(--opnet-button-icon-background-color);
+    border: 1px solid var(--opnet-button-icon-background-color);
     border-radius: 25px;
-    padding:5px 6px;
-    gap:4px;
-    line-height:normal;
-    font-size:12px;
+    padding: 5px 6px;
+    gap: 4px;
+    line-height: normal;
+    font-size: 12px;
     font-weight: 500;
-    transition:background 0.3s, color 0.3s, border 0.3s;
+    transition: background 0.3s, color 0.3s, border 0.3s;
     color: var(--opnet-background-color);
-    cursor:pointer;
-    height:34px;
+    cursor: pointer;
+    height: 34px;
 }
 
-.op_swap_token_selector_inner{
-    display:flex;
+.op_swap_token_selector_inner {
+    display: flex;
     align-items: center;
-    gap:4px;
-    font-weight:bold;
+    gap: 4px;
+    font-weight: bold;
 }
 
-.op_select_token_placeholder{
-    font-weight:bold;
-    padding-left:5px;
+.op_select_token_placeholder {
+    font-weight: bold;
+    padding-left: 5px;
 }
 
-.op_swap_token_selector:hover{
+.op_swap_token_selector:hover {
     background-color: var(--opnet-button-background-color);
-    border:1px solid var(--opnet-button-background-color);
+    border: 1px solid var(--opnet-button-background-color);
     color: var(--opnet-button-text-color);
 }
 
-.op_swap_token_selector > img{
-    display:block;
+.op_swap_token_selector > img {
+    display: block;
     width: 22px;
     height: 22px;
     border-radius: 50%;
 }
 
-.op_swap_amount{
-    display:flex;
-    border:1px solid var(--opnet-container-border-color);
+.op_swap_amount {
+    display: flex;
+    border: 1px solid var(--opnet-container-border-color);
     background-color: var(--opnet-container-background-color-faded);
-    width:100%;
+    width: 100%;
     height: 60px;
-    align-items:stretch;
+    align-items: stretch;
 }
 
-.op_swap_amount_in{
-    margin-top:4px;
+.op_swap_amount_in {
+    margin-top: 4px;
     border-top-left-radius: 10px;
     border-top-right-radius: 10px;
-    margin-bottom:4px;
+    margin-bottom: 4px;
 }
 
-.op_swap_amount_out{
+.op_swap_amount_out {
     border-bottom-left-radius: 10px;
     border-bottom-right-radius: 10px;
-    margin-bottom:4px;
+    margin-bottom: 4px;
 }
 
-.op_swap_input{
-    display:flex;
+.op_swap_input {
+    display: flex;
     align-items: center;
-    width:100%;
+    width: 100%;
     padding: 0 10px;
 }
 
-.op_swap_text_input{
-    width:100%;
+.op_swap_text_input {
+    width: 100%;
     height: 60px;
     background-color: transparent;
     color: var(--opnet-button-text-color);
-    border:0;
+    border: 0;
     padding: 0 10px;
-    outline:none;
-    font-size:14px;
+    outline: none;
+    font-size: 14px;
     font-weight: 500;
 }
 
-.op_swap_amount:hover{
-    border:1px solid var(--opnet-input-border-hover-color);
+.op_swap_amount:hover {
+    border: 1px solid var(--opnet-input-border-hover-color);
 }
 
-.op_swap_amount_in .op_swap_text_input{
+.op_swap_amount_in .op_swap_text_input {
     border-top-left-radius: 10px;
 }
 
-.op_swap_amount_out .op_swap_text_input{
+.op_swap_amount_out .op_swap_text_input {
     border-bottom-left-radius: 10px;
 }
 
 /* Ant Tabs Nav Bar */
 
-.ant-tabs-nav-list{
-    position:relative;
-    top:2px;
+.ant-tabs-nav-list {
+    position: relative;
+    top: 2px;
 }
 
-.ant-tabs.ant-tabs-top.ant-tabs-small{
+.ant-tabs.ant-tabs-top.ant-tabs-small {
     margin: 0 -24px;
 }
 
-.ant-tabs-small > .ant-tabs-nav .ant-tabs-tab{
+.ant-tabs-small > .ant-tabs-nav .ant-tabs-tab {
     padding: 8px 12px;
 }
 
-.ant-tabs > .ant-tabs-nav .ant-tabs-nav-wrap, .ant-tabs > div > .ant-tabs-nav .ant-tabs-nav-wrap{
-    overflow:visible;
+.ant-tabs > .ant-tabs-nav .ant-tabs-nav-wrap, .ant-tabs > div > .ant-tabs-nav .ant-tabs-nav-wrap {
+    overflow: visible;
 }
 
-.ant-tabs-nav-wrap{
+.ant-tabs-nav-wrap {
     padding: 0 24px;
-    border-bottom:2px solid var(--opnet-button-background-color);
+    border-bottom: 2px solid var(--opnet-button-background-color);
     background: var(--opnet-background-color);
     background: linear-gradient(180deg, rgba(34, 33, 33, 1) 0%, rgba(67, 67, 67, 0.5) 100%);
 }
 
-.ant-tabs-tab.ant-tabs-tab-active{
+.ant-tabs-tab.ant-tabs-tab-active {
     color: var(--opnet-main-color);
-    cursor:default;
+    cursor: default;
     background: linear-gradient(180deg, rgba(34, 33, 33, 0) 70%, rgba(238, 119, 27, 0.4) 100%);
 }
 
@@ -773,12 +776,12 @@ button.op_token_action_button{
     cursor: default;
 }
 
-.ant-tabs-ink-bar.ant-tabs-ink-bar-animated{
+.ant-tabs-ink-bar.ant-tabs-ink-bar-animated {
     background: var(--opnet-main-color);
-    z-index:5;
+    z-index: 5;
 }
 
-.ant-tabs-content-holder{
+.ant-tabs-content-holder {
     padding: 0 24px;
 }
 

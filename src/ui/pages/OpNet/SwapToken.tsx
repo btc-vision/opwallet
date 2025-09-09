@@ -1,13 +1,13 @@
 import BigNumber from 'bignumber.js';
 import {
+    AddressesInfo,
     BitcoinUtils,
     getContract,
     IMotoswapRouterContract,
-    IOP_20Contract,
+    IOP20Contract,
     MOTOSWAP_ROUTER_ABI,
     OP_20_ABI
 } from 'opnet';
-import { AddressesInfo } from 'opnet/src/providers/interfaces/PublicKeyInfo';
 import { CSSProperties, useEffect, useState } from 'react';
 
 import { OPTokenInfo } from '@/shared/types';
@@ -106,7 +106,7 @@ export default function Swap() {
                     const numericValue = new BigNumber(value);
                     // Check balance
                     if (numericValue.lt(maxBalance)) {
-                        setInputAmount(value.toString());
+                        setInputAmount(value);
                     } else {
                         setInputAmount(maxBalance.toString());
                     }
@@ -184,7 +184,7 @@ export default function Swap() {
                 setLoading(true);
                 // Use an account-specific storage key
                 const chain = await wallet.getChainType();
-                Web3API.setNetwork(chain);
+                await Web3API.setNetwork(chain);
 
                 const accountAddr = currentAccount.pubkey;
                 const storageKey = `opnetTokens_${chain}_${accountAddr}`;
@@ -217,12 +217,7 @@ export default function Swap() {
                             await Web3API.queryContractInformation(addr);
                         if (!contractInfo) continue;
 
-                        const contract = getContract<IOP_20Contract>(
-                            addr,
-                            OP_20_ABI,
-                            Web3API.provider,
-                            Web3API.network
-                        );
+                        const contract = getContract<IOP20Contract>(addr, OP_20_ABI, Web3API.provider, Web3API.network);
 
                         const balance = await contract.balanceOf(Address.fromString(accountAddr));
                         tokenBalances.push({

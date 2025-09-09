@@ -1,9 +1,7 @@
 import { permissionService, sessionService } from '@/background/service';
 import { CHAINS, CHAINS_MAP, ChainType, NETWORK_TYPES, VERSION } from '@/shared/constant';
-import 'reflect-metadata';
 
 import { Session } from '@/background/service/session';
-import { IDeploymentParametersWithoutSigner } from '@/content-script/pageProvider/Web3Provider';
 import { SessionEvent } from '@/shared/interfaces/SessionEvent';
 import { providerErrors } from '@/shared/lib/bitcoin-rpc-errors/errors';
 import { NetworkType } from '@/shared/types';
@@ -13,18 +11,18 @@ import { getChainInfo } from '@/shared/utils';
 import Web3API from '@/shared/web3/Web3API';
 import { DetailedInteractionParameters } from '@/shared/web3/interfaces/DetailedInteractionParameters';
 import { amountToSatoshis } from '@/ui/utils';
-import { bitcoin } from '@btc-vision/wallet-sdk/lib/bitcoin-core';
-import { verifyMessageOfBIP322Simple } from '@btc-vision/wallet-sdk/lib/message';
-import { toPsbtNetwork } from '@btc-vision/wallet-sdk/lib/network';
+import { Psbt } from '@btc-vision/bitcoin';
+import { IDeploymentParametersWithoutSigner } from '@btc-vision/transaction';
+import { toPsbtNetwork, verifyMessageOfBIP322Simple } from '@btc-vision/wallet-sdk';
 import wallet from '../wallet';
 
 function formatPsbtHex(psbtHex: string) {
     let formatData = '';
     try {
         if (!/^[0-9a-fA-F]+$/.test(psbtHex)) {
-            formatData = bitcoin.Psbt.fromBase64(psbtHex).toHex();
+            formatData = Psbt.fromBase64(psbtHex).toHex();
         } else {
-            bitcoin.Psbt.fromHex(psbtHex);
+            Psbt.fromHex(psbtHex);
             formatData = psbtHex;
         }
     } catch (e) {
@@ -152,6 +150,12 @@ export class ProviderController {
                 throw new Error(`the chain is invalid, supported chains: ${CHAINS.map((v) => v.enum).join(',')}`);
             }
 
+            // Check if chain is disabled and user doesn't have custom network
+            const chain = CHAINS_MAP[chainType];
+            if (chain?.disable) {
+                throw new Error(`${chain.label} is not available. Please add a custom RPC endpoint for this network.`);
+            }
+
             if (chainType == wallet.getChainType()) {
                 // skip approval
                 return true;
@@ -195,9 +199,9 @@ export class ProviderController {
 
         const balance = await wallet.getAddressBalance(account.address);
         return {
-            confirmed: amountToSatoshis(balance.confirm_amount),
-            unconfirmed: amountToSatoshis(balance.pending_amount),
-            total: amountToSatoshis(balance.amount)
+            total: amountToSatoshis(balance.btc_total_amount),
+            confirmed: amountToSatoshis(balance.btc_confirm_amount),
+            unconfirmed: amountToSatoshis(balance.btc_pending_amount)
         };
     };
 
@@ -225,7 +229,7 @@ export class ProviderController {
         }
     ])
     sendBitcoin = async ({ approvalRes: { psbtHex } }: { approvalRes: { psbtHex: string } }) => {
-        const psbt = bitcoin.Psbt.fromHex(psbtHex);
+        const psbt = Psbt.fromHex(psbtHex);
         const tx = psbt.extractTransaction();
         const rawtx = tx.toHex();
         return await wallet.pushTx(rawtx);
@@ -238,7 +242,7 @@ export class ProviderController {
         }
     ])
     sendInscription = async ({ approvalRes: { psbtHex } }: { approvalRes: { psbtHex: string } }) => {
-        const psbt = bitcoin.Psbt.fromHex(psbtHex);
+        const psbt = Psbt.fromHex(psbtHex);
         const tx = psbt.extractTransaction();
         const rawtx = tx.toHex();
         return await wallet.pushTx(rawtx);
@@ -301,10 +305,10 @@ export class ProviderController {
             }
 
             // @ts-expect-error
-            interactionParams.priorityFee = BigInt(interactionParams.priorityFee);
+            interactionParams.priorityFee = BigInt(interactionParams.priorityFee as string);
 
             // @ts-expect-error
-            interactionParams.gasSatFee = BigInt(interactionParams.gasSatFee);
+            interactionParams.gasSatFee = BigInt(interactionParams.gasSatFee as string);
 
             // @ts-expect-error
             interactionParams.bytecode = objToBuffer(interactionParams.bytecode);
@@ -319,12 +323,12 @@ export class ProviderController {
         approvalRes: boolean;
         data: { params: IDeploymentParametersWithoutSigner };
     }) => {
-        const feeRate = await wallet.getFeeSummary();
-        const rate = feeRate.list[2] || feeRate.list[1] || feeRate.list[0];
+        const feeRate = await Web3API.provider.gasParameters();
+        const minimumFeeRate = feeRate.bitcoin.recommended.low;
 
-        if (Number(request.data.params.feeRate) < Number(rate.feeRate)) {
+        if (request.data.params.feeRate < minimumFeeRate) {
             // @ts-expect-error
-            request.data.params.feeRate = Number(rate.feeRate);
+            request.data.params.feeRate = minimumFeeRate;
 
             console.warn(
                 'The fee rate is too low, the system will automatically adjust the fee rate to the minimum value'
@@ -335,10 +339,10 @@ export class ProviderController {
         request.data.params.bytecode = objToBuffer(request.data.params.bytecode);
 
         // @ts-expect-error
-        request.data.params.priorityFee = BigInt(request.data.params.priorityFee);
+        request.data.params.priorityFee = BigInt(request.data.params.priorityFee as string);
 
         // @ts-expect-error
-        request.data.params.gasSatFee = BigInt(request.data.params.gasSatFee);
+        request.data.params.gasSatFee = BigInt(request.data.params.gasSatFee as string);
 
         // @ts-expect-error
         request.data.params.calldata = objToBuffer(request.data.params.calldata);
@@ -432,7 +436,7 @@ export class ProviderController {
 
         const networkType = wallet.getNetworkType();
         const psbtNetwork = toPsbtNetwork(networkType);
-        const psbt = bitcoin.Psbt.fromHex(psbtHex, { network: psbtNetwork });
+        const psbt = Psbt.fromHex(psbtHex, { network: psbtNetwork });
         const autoFinalized = !(options && !options.autoFinalized);
         const toSignInputs = await wallet.formatOptionsToSignInputs(psbtHex, options);
         await wallet.signPsbt(psbt, toSignInputs, autoFinalized);
@@ -478,7 +482,7 @@ export class ProviderController {
         data: { params: { psbtHex: string } };
     }) => {
         const hexData = formatPsbtHex(psbtHex);
-        const psbt = bitcoin.Psbt.fromHex(hexData);
+        const psbt = Psbt.fromHex(hexData);
         const tx = psbt.extractTransaction();
         const rawtx = tx.toHex();
         return await wallet.pushTx(rawtx);

@@ -6,8 +6,7 @@ import log from 'loglevel';
 
 import { ADDRESS_TYPES, KEYRING_TYPE } from '@/shared/constant';
 import { AddressType } from '@/shared/types';
-import { networks } from '@btc-vision/bitcoin';
-import { Network } from '@btc-vision/bitcoin/src/networks.js';
+import { Network, networks, Psbt } from '@btc-vision/bitcoin';
 import * as encryptor from '@btc-vision/passworder';
 import {
     DeserializeOption,
@@ -19,16 +18,8 @@ import {
     SimpleKeyring,
     SimpleKeyringOptions
 } from '@btc-vision/wallet-sdk';
-import { bitcoin } from '@btc-vision/wallet-sdk/lib/bitcoin-core';
 import { ObservableStore } from '@metamask/obs-store';
 
-// TODO (typing): The below was the original version, how does this work although these files do not exist.
-// import {
-//     DeserializeOption,
-//     DeserializeOptionKeystone,
-//     KeyringOptions,
-//     SimpleKeyringOptions
-// } from '../../../../../wallet-sdk/src';
 import i18n from '../i18n';
 import preference from '../preference';
 import DisplayKeyring from './display';
@@ -157,7 +148,7 @@ class EmptyKeyring extends IKeyringBase<{ network: Network }> {
         return [];
     }
 
-    signTransaction(psbt: bitcoin.Psbt, inputs: ToSignInput[]): bitcoin.Psbt {
+    signTransaction(psbt: Psbt, inputs: ToSignInput[]): Psbt {
         throw new Error('Method not implemented.');
     }
 
@@ -681,7 +672,7 @@ class KeyringService extends EventEmitter {
      * @param fromAddress - The transaction 'from' address.
      * @returns  The signed transactio object.
      */
-    signTransaction = (keyring: Keyring, psbt: bitcoin.Psbt, inputs: ToSignInput[]) => {
+    signTransaction = (keyring: Keyring, psbt: Psbt, inputs: ToSignInput[]) => {
         return keyring.signTransaction(psbt, inputs);
     };
 

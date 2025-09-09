@@ -1,5 +1,3 @@
-import { PaymentChannelType } from './constant';
-
 export enum AddressType {
     P2PKH,
     P2WPKH,
@@ -25,21 +23,22 @@ export enum RestoreWalletType {
 }
 
 export interface BitcoinBalance {
-    amount: string;
-    confirm_amount: string;
-    pending_amount: string;
+    btc_total_amount: string;
+    btc_confirm_amount: string;
+    btc_pending_amount: string;
 
-    btc_amount: string;
-    confirm_btc_amount: string;
-    pending_btc_amount: string;
+    csv75_total_amount?: string;
+    csv75_unlocked_amount?: string;
+    csv75_locked_amount?: string;
 
-    inscription_amount: string;
-    confirm_inscription_amount: string;
-    pending_inscription_amount: string;
+    csv1_total_amount?: string;
+    csv1_unlocked_amount?: string;
+    csv1_locked_amount?: string;
+
+    p2wda_total_amount?: string;
+    p2wda_pending_amount?: string;
 
     usd_value: string;
-
-    expired?: boolean; // Indicates if the balance is expired
 }
 
 export interface AddressAssets {
@@ -85,14 +84,6 @@ export interface AppSummary {
     readTabTime?: number;
 }
 
-export interface FeeSummary {
-    list: {
-        title: string;
-        desc: string;
-        feeRate: number;
-    }[];
-}
-
 export interface BtcPrice {
     price: number;
     updateTime: number;
@@ -101,14 +92,6 @@ export interface BtcPrice {
 export interface UTXO {
     txid: string;
     vout: number;
-    satoshis: number;
-    scriptPk: string;
-    addressType: AddressType;
-}
-
-export interface UTXO_Detail {
-    txId: string;
-    outputIndex: number;
     satoshis: number;
     scriptPk: string;
     addressType: AddressType;
@@ -167,42 +150,6 @@ export interface Account {
     balance?: number;
     key: string;
     flag: number;
-}
-
-export interface TokenBalance {
-    availableBalance: string;
-    overallBalance: string;
-    ticker: string;
-    transferableBalance: string;
-    availableBalanceSafe: string;
-    availableBalanceUnSafe: string;
-    selfMint: boolean;
-}
-
-export interface TokenInfo {
-    totalSupply: string;
-    totalMinted: string;
-    decimal: number;
-    holder: string;
-    inscriptionId: string;
-    selfMint?: boolean;
-}
-
-export interface TokenTransfer {
-    ticker: string;
-    amount: string;
-    inscriptionId: string;
-    inscriptionNumber: number;
-    timestamp: number;
-    confirmations: number;
-    satoshi: number;
-}
-
-export interface AddressTokenSummary {
-    tokenInfo: TokenInfo;
-    tokenBalance: TokenBalance;
-    historyList: TokenTransfer[];
-    transferableList: TokenTransfer[];
 }
 
 export enum RiskType {
@@ -285,19 +232,9 @@ export interface OPTokenInfo {
     logo?: string;
 }
 
-export interface BtcChannelItem {
-    channel: PaymentChannelType;
-    quote: number;
-    payType: string[];
-}
-
 export interface TickPriceItem {
     curPrice: number;
     changePercent: number;
-}
-
-export interface BuyBtcChannel {
-    channel: string;
 }
 
 export interface GroupAsset {

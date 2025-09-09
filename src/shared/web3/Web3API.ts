@@ -1,13 +1,23 @@
 import BigNumber from 'bignumber.js';
-import { CallResult, getContract, IOP_20Contract, JSONRpcProvider, OP_20_ABI, UTXOs } from 'opnet';
+import {
+    EXTENDED_OP721_ABI,
+    getContract,
+    IExtendedOP721,
+    IOP20Contract,
+    JSONRpcProvider,
+    MetadataNFT,
+    OP_20_ABI,
+    TokenOfOwnerByIndex,
+    UTXOs
+} from 'opnet';
 
-import { CHAINS_MAP, ChainType } from '@/shared/constant';
+import { ChainId as WalletChainId, ChainType } from '@/shared/constant';
 import { NetworkType } from '@/shared/types';
+import { customNetworksManager } from '@/shared/utils/CustomNetworksManager';
 import { contractLogoManager } from '@/shared/web3/contracts-logo/ContractLogoManager';
 import { ContractInformation } from '@/shared/web3/interfaces/ContractInformation';
 import { ContractNames } from '@/shared/web3/metadata/ContractNames';
-import { networks } from '@btc-vision/bitcoin';
-import { Network } from '@btc-vision/bitcoin/src/networks.js';
+import { Network, networks } from '@btc-vision/bitcoin';
 import {
     Address,
     AddressVerificator,
@@ -22,17 +32,50 @@ import {
 
 BigNumber.config({ EXPONENTIAL_AT: 256 });
 
-export function getOPNetChainType(chain: ChainType): ChainId {
-    switch (chain) {
-        case ChainType.FRACTAL_BITCOIN_MAINNET: {
+export interface OwnedNFT {
+    tokenId: bigint;
+    tokenURI: string;
+}
+
+export async function getOPNetChainType(chain: ChainType): Promise<ChainId> {
+    // Get the chain configuration
+    const chainConfig = customNetworksManager.getChain(chain);
+
+    if (chainConfig) {
+        // Check if it's a fractal chain
+        if (chainConfig.isFractal || chain.includes('FRACTAL')) {
             return ChainId.Fractal;
         }
-        case ChainType.FRACTAL_BITCOIN_TESTNET: {
-            return ChainId.Fractal;
+
+        // For custom networks, try to determine from the chainId in the custom network data
+        if (chainConfig.isCustom) {
+            const customNetwork = await customNetworksManager.getCustomNetworkByChainType(chain);
+            if (customNetwork) {
+                // Map the ChainId enum from constants to the OPNet ChainId
+                switch (customNetwork.chainId) {
+                    case WalletChainId.Bitcoin:
+                        return ChainId.Bitcoin;
+                    case WalletChainId.Fractal:
+                        return ChainId.Fractal;
+                    default: {
+                        throw new Error(
+                            `Unsupported custom network chainId: ${customNetwork.chainId} for chain ${chain}`
+                        );
+                    }
+                }
+            }
         }
-        default:
-            return ChainId.Bitcoin;
     }
+
+    // Fallback to checking the chain type name
+    if (chain.includes('FRACTAL')) {
+        return ChainId.Fractal;
+    }
+
+    // Default to Bitcoin for all other chains
+    // This includes Dogecoin, Litecoin, Bitcoin Cash, Dash, etc.
+    // until OPNet officially supports them
+    return ChainId.Bitcoin;
 }
 
 export function getOPNetNetwork(network: NetworkType): OPNetNetwork {
@@ -48,8 +91,22 @@ export function getOPNetNetwork(network: NetworkType): OPNetNetwork {
     }
 }
 
-export function getBitcoinLibJSNetwork(network: NetworkType): Network {
-    switch (network) {
+export function getBitcoinLibJSNetwork(networkType: NetworkType, chainType?: ChainType): Network {
+    // If chainType is provided, check for special network configurations
+    if (chainType) {
+        const chainConfig = customNetworksManager.getChain(chainType);
+
+        // Fractal chains use bitcoin network parameters even for testnet
+        if (chainConfig?.isFractal || chainType.includes('FRACTAL')) {
+            return networks.bitcoin;
+        }
+
+        // Add custom network configurations here if needed
+        // For example, some chains might have their own network parameters
+    }
+
+    // Standard network type mapping
+    switch (networkType) {
         case NetworkType.MAINNET:
             return networks.bitcoin;
         case NetworkType.TESTNET:
@@ -78,9 +135,9 @@ class Web3API {
 
     private currentChain?: ChainType;
 
-    constructor() {
-        this.setProviderFromUrl('https://api.opnet.org');
-    }
+    //constructor() {
+    // Initialize with default, will be set properly when setNetwork is called
+    // }
 
     private _limitedProvider: OPNetLimitedProvider | undefined;
 
@@ -103,57 +160,30 @@ class Web3API {
     }
 
     public get ROUTER_ADDRESS(): Address | null {
-        const network = this.getOPNetNetwork();
+        if (!this.currentChain) return null;
 
-        switch (network) {
-            case OPNetNetwork.Mainnet: {
-                return null; // TODO: To be changed if needed
-            }
-            case OPNetNetwork.Testnet: {
-                return Address.fromString('0x9e14fc4c4cfca73a89e25e1216ae3a22302a12a7c6e1e3a568e05e8cb824112b');
-            }
-            case OPNetNetwork.Regtest: {
-                return null; // TODO: To be changed if needed
-            }
-            default:
-                throw new Error('Invalid network');
-        }
+        const chainConfig = customNetworksManager.getChain(this.currentChain);
+        if (!chainConfig?.contractAddresses?.router) return null;
+
+        return Address.fromString(chainConfig.contractAddresses.router);
     }
 
     public get motoAddress(): Address | null {
-        const network = this.getOPNetNetwork();
+        if (!this.currentChain) return null;
 
-        switch (network) {
-            case OPNetNetwork.Mainnet: {
-                return null; // TODO: To be changed if needed
-            }
-            case OPNetNetwork.Testnet: {
-                return Address.fromString('0xdb944e78cada1d705af892bb0560a4a9c4b9896d64ef23dfd3870ffd5004f4f2');
-            }
-            case OPNetNetwork.Regtest: {
-                return Address.fromString('0x97493c8f728f484151a8d498d1f94108826dedadd0dc9c1845285a180b7a478f');
-            }
-            default:
-                throw new Error('Invalid network');
-        }
+        const chainConfig = customNetworksManager.getChain(this.currentChain);
+        if (!chainConfig?.contractAddresses?.moto) return null;
+
+        return Address.fromString(chainConfig.contractAddresses.moto);
     }
 
     public get pillAddress(): Address | null {
-        const network = this.getOPNetNetwork();
+        if (!this.currentChain) return null;
 
-        switch (network) {
-            case OPNetNetwork.Mainnet: {
-                return null; // TODO: To be changed if needed
-            }
-            case OPNetNetwork.Testnet: {
-                return Address.fromString('0x7a0b58be893a250638cb2c95bf993ebe00b60779a4597b7c1ef0e76552c823ce');
-            }
-            case OPNetNetwork.Regtest: {
-                return Address.fromString('0x88d3642a7a7cb1be7cc49455084d08101fcebe56e9ea3c3c3c0d109796c9537f');
-            }
-            default:
-                throw new Error('Invalid network');
-        }
+        const chainConfig = customNetworksManager.getChain(this.currentChain);
+        if (!chainConfig?.contractAddresses?.pill) return null;
+
+        return Address.fromString(chainConfig.contractAddresses.pill);
     }
 
     public get motoAddressP2OP(): string | null {
@@ -180,30 +210,23 @@ class Web3API {
         return this._metadata;
     }
 
-    public setNetwork(chainType: ChainType): void {
-        switch (chainType) {
-            case ChainType.BITCOIN_MAINNET:
-                this.network = networks.bitcoin;
-                break;
-            case ChainType.BITCOIN_TESTNET:
-                this.network = networks.testnet;
-                break;
-            case ChainType.BITCOIN_REGTEST:
-                this.network = networks.regtest;
-                break;
-            case ChainType.FRACTAL_BITCOIN_MAINNET:
-                this.network = networks.bitcoin;
-                break;
-            case ChainType.FRACTAL_BITCOIN_TESTNET:
-                this.network = networks.bitcoin;
-                break;
-            default:
-                this.network = networks.bitcoin;
-                break;
+    public async setNetwork(chainType: ChainType): Promise<void> {
+        // Get chain configuration from customNetworksManager
+        const chainConfig = customNetworksManager.getChain(chainType);
+
+        if (!chainConfig) {
+            throw new Error(`Chain configuration not found for ${chainType}`);
         }
 
+        if (chainConfig.disable) {
+            throw new Error(`Chain ${chainType} is disabled`);
+        }
+
+        // Set the Bitcoin network based on the chain's network type and chain type
+        this.network = getBitcoinLibJSNetwork(chainConfig.networkType, chainType);
+
         if (chainType !== this.currentChain) {
-            const chainId = getOPNetChainType(chainType);
+            const chainId = await getOPNetChainType(chainType);
 
             this.currentChain = chainType;
             this.chainId = chainId;
@@ -211,7 +234,8 @@ class Web3API {
             try {
                 this._metadata = OPNetMetadata.getAddresses(this.getOPNetNetwork(), chainId);
             } catch (e) {
-                //
+                // Metadata might not be available for custom networks
+                console.warn(`Metadata not available for chain ${chainType}:`, e);
             }
 
             this.setProvider(chainType);
@@ -245,7 +269,7 @@ class Web3API {
     }
 
     public async queryDecimal(address: string): Promise<number> {
-        const genericContract: IOP_20Contract = getContract<IOP_20Contract>(
+        const genericContract: IOP20Contract = getContract<IOP20Contract>(
             address,
             OP_20_ABI,
             this.provider,
@@ -267,40 +291,32 @@ class Web3API {
                 addressP2OP = Address.fromString(address).p2op(this.network);
             }
 
-            const genericContract: IOP_20Contract = getContract<IOP_20Contract>(
+            const genericContract: IOP20Contract = getContract<IOP20Contract>(
                 addressP2OP,
                 OP_20_ABI,
                 this.provider,
                 this.network
             );
 
-            const promises: [
-                Promise<CallResult<{ name: string }>>,
-                Promise<
-                    CallResult<{
-                        symbol: string;
-                    }>
-                >,
-                Promise<CallResult<{ decimals: number }>>,
-                Promise<string>
-            ] = [
-                genericContract.name(),
-                genericContract.symbol(),
-                genericContract.decimals(),
+            const results = await Promise.all([
+                genericContract.metadata(),
                 contractLogoManager.getContractLogo(addressP2OP)
-            ];
+            ]);
 
-            const results = await Promise.all(promises);
-            const name = results[0].properties.name ?? this.getContractName(addressP2OP);
-            const symbol = results[1].properties.symbol;
-            const decimals = results[2].properties.decimals;
+            const metadata = results[0].properties;
 
-            const logo = results[3];
+            const name = metadata.name ?? this.getContractName(addressP2OP);
+            const symbol = metadata.symbol ?? 'UNKNOWN';
+            const decimals = metadata.decimals ?? 0;
+            const maximumSupply = metadata.maximumSupply ?? 0n;
+
+            const logo = metadata.icon || results[1];
             return {
                 name,
                 symbol,
                 decimals,
-                logo
+                logo,
+                maximumSupply
             };
         } catch (e) {
             console.warn(`Couldn't query name/symbol/decimals/logo for contract ${address}:`, e);
@@ -311,7 +327,78 @@ class Web3API {
         }
     }
 
-    public async getUnspentUTXOsForAddresses(addresses: string[], requiredAmount?: bigint): Promise<UTXO[]> {
+    public async getOwnedNFTsForCollection(
+        collectionAddress: string,
+        ownerAddress: Address
+    ): Promise<OwnedNFT[] | undefined | false> {
+        try {
+            let addressP2OP: string = collectionAddress;
+            if (collectionAddress.startsWith('0x')) {
+                addressP2OP = Address.fromString(collectionAddress).p2op(this.network);
+            }
+
+            const nftContract: IExtendedOP721 = getContract<IExtendedOP721>(
+                addressP2OP,
+                EXTENDED_OP721_ABI,
+                this.provider,
+                this.network
+            );
+
+            const balance = await nftContract.balanceOf(ownerAddress);
+
+            const ownedNFTs: Promise<TokenOfOwnerByIndex>[] = [];
+            for (let i = 0n; i < balance.properties.balance; i++) {
+                ownedNFTs.push(nftContract.tokenOfOwnerByIndex(ownerAddress, i));
+            }
+
+            const results = await Promise.all(ownedNFTs);
+            const nfts = results.map((r) => r.properties.tokenId);
+            const uris = await Promise.all(nfts.map((n) => nftContract.tokenURI(n)));
+
+            return nfts.map((n, idx) => ({
+                tokenId: n,
+                tokenURI: uris[idx].properties.uri
+            }));
+        } catch (e) {
+            console.warn(`Couldn't query metadata for nft contract ${collectionAddress}:`, e);
+            if ((e as Error).message.includes('not found')) {
+                return false;
+            }
+            return;
+        }
+    }
+
+    public async queryNFTContractInformation(address: string): Promise<MetadataNFT['properties'] | undefined | false> {
+        try {
+            let addressP2OP: string = address;
+            if (address.startsWith('0x')) {
+                addressP2OP = Address.fromString(address).p2op(this.network);
+            }
+
+            const nftContract: IExtendedOP721 = getContract<IExtendedOP721>(
+                addressP2OP,
+                EXTENDED_OP721_ABI,
+                this.provider,
+                this.network
+            );
+
+            const metadata = await nftContract.metadata();
+
+            return metadata.properties;
+        } catch (e) {
+            console.warn(`Couldn't query metadata for nft contract ${address}:`, e);
+            if ((e as Error).message.includes('not found')) {
+                return false;
+            }
+            return;
+        }
+    }
+
+    public async getUnspentUTXOsForAddresses(
+        addresses: string[],
+        requiredAmount?: bigint,
+        olderThan?: bigint
+    ): Promise<UTXO[]> {
         let finalUTXOs: UTXOs = [];
 
         for (const address of addresses) {
@@ -321,17 +408,19 @@ class Web3API {
                 if (!requiredAmount) {
                     utxos = await this.provider.utxoManager.getUTXOs({
                         address,
-                        optimize: false,
+                        optimize: true,
                         mergePendingUTXOs: false,
-                        filterSpentUTXOs: true
+                        filterSpentUTXOs: true,
+                        olderThan
                     });
                 } else {
                     utxos = await this.provider.utxoManager.getUTXOsForAmount({
                         address,
                         amount: requiredAmount,
-                        optimize: false,
+                        optimize: true,
                         mergePendingUTXOs: false,
-                        filterSpentUTXOs: true
+                        filterSpentUTXOs: true,
+                        olderThan
                     });
                 }
             } catch {
@@ -344,7 +433,12 @@ class Web3API {
         return finalUTXOs;
     }
 
-    public async getAllUTXOsForAddresses(addresses: string[], requiredAmount?: bigint): Promise<UTXO[]> {
+    public async getAllUTXOsForAddresses(
+        addresses: string[],
+        requiredAmount?: bigint,
+        olderThan?: bigint,
+        optimize?: boolean
+    ): Promise<UTXO[]> {
         let finalUTXOs: UTXOs = [];
 
         for (const address of addresses) {
@@ -354,17 +448,19 @@ class Web3API {
                 if (!requiredAmount) {
                     utxos = await this.provider.utxoManager.getUTXOs({
                         address,
-                        optimize: false,
+                        optimize: optimize ?? true,
                         mergePendingUTXOs: true,
-                        filterSpentUTXOs: true
+                        filterSpentUTXOs: true,
+                        olderThan
                     });
                 } else {
                     utxos = await this.provider.utxoManager.getUTXOsForAmount({
                         address,
                         amount: requiredAmount,
-                        optimize: false,
+                        optimize: optimize ?? true,
                         mergePendingUTXOs: true,
-                        filterSpentUTXOs: true
+                        filterSpentUTXOs: true,
+                        olderThan
                     });
                 }
             } catch {
@@ -375,6 +471,34 @@ class Web3API {
         }
 
         return finalUTXOs;
+    }
+
+    public async getTotalLockedAndUnlockedUTXOs(
+        address: string,
+        csvType: 'csv75' | 'csv1'
+    ): Promise<{
+        utxos: UTXO[];
+        unlockedUTXOs: UTXO[];
+        lockedUTXOs: UTXO[];
+    }> {
+        const threshold = csvType === 'csv75' ? 75n : 1n;
+
+        const [unlocked, all] = await Promise.all([
+            this.getAllUTXOsForAddresses([address], undefined, threshold, false),
+            this.getAllUTXOsForAddresses([address], undefined, undefined, false)
+        ]);
+
+        const key = (u: UTXO) => `${u.transactionId}:${u.outputIndex}`;
+        const unlockedSet = new Set(unlocked.map(key));
+
+        const unlockedUTXOs = all.filter((u) => unlockedSet.has(key(u)));
+        const lockedUTXOs = all.filter((u) => !unlockedSet.has(key(u)));
+
+        return {
+            utxos: all,
+            unlockedUTXOs,
+            lockedUTXOs
+        };
     }
 
     private getContractName(address: string): string | undefined {
@@ -382,13 +506,14 @@ class Web3API {
     }
 
     private setProvider(chainType: ChainType): void {
-        const chainMetadata = CHAINS_MAP[chainType];
+        const chainMetadata = customNetworksManager.getChain(chainType);
+
         if (!chainMetadata) {
             throw new Error(`Chain metadata not found for ${chainType}`);
         }
 
         if (!chainMetadata.opnetUrl) {
-            throw new Error('OPNet RPC URL not set');
+            throw new Error(`OPNet RPC URL not set for ${chainType}`);
         }
 
         this.setProviderFromUrl(chainMetadata.opnetUrl);

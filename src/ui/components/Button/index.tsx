@@ -4,7 +4,7 @@ import { colors } from '@/ui/theme/colors';
 import { spacing } from '@/ui/theme/spacing';
 
 import { Column } from '../Column';
-import { Icon, IconTypes } from '../Icon';
+import { Icon, ValidIconType } from '../Icon';
 import { Row } from '../Row';
 import { Text } from '../Text';
 
@@ -51,7 +51,7 @@ export interface ButtonProps {
      */
     children?: React.ReactNode;
     onClick?: React.MouseEventHandler<HTMLDivElement>;
-    icon?: IconTypes;
+    icon?: ValidIconType;
     disabled?: boolean;
     full?: boolean;
 }
@@ -147,7 +147,7 @@ const $hoverViewPresets: Record<Presets, CSSProperties> = {
         backgroundColor: '#383535'
     },
     primary: {
-        backgroundColor: 'rgba(238,119,27,0.85)',
+        backgroundColor: 'rgba(238,119,27,0.85)'
     },
     approval: {
         backgroundColor: colors.orange_dark

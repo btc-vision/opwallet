@@ -66,7 +66,7 @@ export default function MultiSignPsbt({
     handleCancel,
     handleConfirm
 }: Props) {
-    const [getApproval, resolveApproval, rejectApproval] = useApproval();
+    const { resolveApproval, rejectApproval } = useApproval();
     const [txInfo, setTxInfo] = useState<TxInfo>(initTxInfo);
     const [loading, setLoading] = useState(true);
     const [viewingPsbtIndex, setViewingPsbtIndex] = useState(-1);

@@ -5,16 +5,26 @@ import {
     MintParameters,
     RawTxInfo,
     SendBitcoinParameters,
+    SourceType,
     SwapParameters,
     TransferParameters
 } from '@/shared/interfaces/RawTxParameters';
 import Web3API from '@/shared/web3/Web3API';
-import { Button, Card, Column, Content, Footer, Header, Layout, Row, Text } from '@/ui/components';
+import { Column, Content, Footer, Header, Layout, Text } from '@/ui/components';
 import { ContextType, useTools } from '@/ui/components/ActionComponent';
 import { BottomModal } from '@/ui/components/BottomModal';
 import { useBTCUnit } from '@/ui/state/settings/hooks';
 import { useLocationState, useWallet } from '@/ui/utils';
-import { CopyOutlined, LoadingOutlined } from '@ant-design/icons';
+import {
+    CheckCircleOutlined,
+    CopyOutlined,
+    DollarOutlined,
+    LoadingOutlined,
+    RocketOutlined,
+    SafetyOutlined,
+    ThunderboltOutlined,
+    WarningOutlined
+} from '@ant-design/icons';
 import {
     ABIDataTypes,
     Address,
@@ -33,16 +43,31 @@ import {
     BitcoinUtils,
     getContract,
     IMotoswapRouterContract,
-    IOP_20Contract,
+    IOP20Contract,
     MOTOSWAP_ROUTER_ABI,
     OP_20_ABI,
     TransactionParameters
 } from 'opnet';
-import { AddressesInfo } from 'opnet/src/providers/interfaces/PublicKeyInfo';
-import React, { Dispatch, SetStateAction, useCallback, useEffect, useState } from 'react';
+import { Dispatch, SetStateAction, useCallback, useEffect, useState } from 'react';
 import { RouteTypes, useNavigate } from '../MainRoute';
 
 BigNumber.config({ EXPONENTIAL_AT: 256 });
+
+const colors = {
+    main: '#f37413',
+    background: '#212121',
+    text: '#dbdbdb',
+    textFaded: 'rgba(219, 219, 219, 0.7)',
+    buttonBg: '#434343',
+    buttonHoverBg: 'rgba(85, 85, 85, 0.3)',
+    containerBg: '#434343',
+    containerBgFaded: '#292929',
+    containerBorder: '#303030',
+    inputBg: '#292828',
+    success: '#4ade80',
+    error: '#ef4444',
+    warning: '#fbbf24'
+};
 
 interface LocationState {
     rawTxInfo: RawTxInfo;
@@ -50,7 +75,6 @@ interface LocationState {
 
 export const AIRDROP_ABI: BitcoinInterfaceAbi = [
     ...OP_20_ABI,
-
     {
         name: 'airdrop',
         inputs: [
@@ -59,17 +83,12 @@ export const AIRDROP_ABI: BitcoinInterfaceAbi = [
                 type: ABIDataTypes.ADDRESS_UINT256_TUPLE
             }
         ],
-        outputs: [
-            {
-                name: 'ok',
-                type: ABIDataTypes.BOOL
-            }
-        ],
+        outputs: [],
         type: BitcoinAbiTypes.Function
     }
 ];
 
-export interface AirdropInterface extends IOP_20Contract {
+export interface AirdropInterface extends IOP20Contract {
     airdrop(tuple: AddressMap<bigint>): Promise<Airdrop>;
 }
 
@@ -79,7 +98,7 @@ const waitForTransaction = async (
     tools: ContextType
 ) => {
     let attempts = 0;
-    const maxAttempts = 360; // 10 minutes max wait time
+    const maxAttempts = 360;
     setOpenLoading(true);
 
     while (attempts < maxAttempts) {
@@ -93,7 +112,7 @@ const waitForTransaction = async (
         } catch (error) {
             console.log('Error fetching transaction:', error);
         }
-        await new Promise((resolve) => setTimeout(resolve, 5000)); // Wait 10 seconds
+        await new Promise((resolve) => setTimeout(resolve, 5000));
         attempts++;
     }
     tools.toastError('Transaction not confirmed after 10 minutes');
@@ -106,42 +125,34 @@ export default function TxOpnetConfirmScreen() {
     const [openLoading, setOpenLoading] = useState<boolean>(false);
     const [loadingMessage, setLoadingMessage] = useState<string>(defaultMessage);
     const [deploymentContract, setDeploymentContract] = useState<DeploymentResult | null>(null);
-
     const [disabled, setDisabled] = useState<boolean>(false);
     const { rawTxInfo } = useLocationState<LocationState>();
-
     const btcUnit = useBTCUnit();
-
-    const handleCancel = () => {
-        window.history.go(-1);
-    };
-
+    const wallet = useWallet();
+    const tools = useTools();
     const [routerAddress, setRouterAddress] = useState<Address | null>(null);
 
     useEffect(() => {
         const setWallet = async () => {
-            Web3API.setNetwork(await wallet.getChainType());
-
+            await Web3API.setNetwork(await wallet.getChainType());
             setRouterAddress(Web3API.ROUTER_ADDRESS ? Web3API.ROUTER_ADDRESS : null);
         };
-
         void setWallet();
     });
-
-    const wallet = useWallet();
-    const tools = useTools();
 
     const getWallet = useCallback(async () => {
         const currentWalletAddress = await wallet.getCurrentAccount();
         const pubkey = currentWalletAddress.pubkey;
-
         const wifWallet = await wallet.getInternalPrivateKey({
             pubkey: pubkey,
             type: currentWalletAddress.type
         });
-
         return Wallet.fromWif(wifWallet.wif, Web3API.network);
     }, [wallet]);
+
+    const handleCancel = () => {
+        window.history.go(-1);
+    };
 
     const getPubKey = async (to: string) => {
         let pubKey: Address;
@@ -161,7 +172,7 @@ export default function TxOpnetConfirmScreen() {
     const transferToken = async (parameters: TransferParameters) => {
         const userWallet = await getWallet();
         const currentWalletAddress = await wallet.getCurrentAccount();
-        const contract: IOP_20Contract = getContract<IOP_20Contract>(
+        const contract: IOP20Contract = getContract<IOP20Contract>(
             parameters.contractAddress,
             OP_20_ABI,
             Web3API.provider,
@@ -171,7 +182,7 @@ export default function TxOpnetConfirmScreen() {
 
         try {
             const address = await getPubKey(parameters.to);
-            const transferSimulation = await contract.transfer(address, parameters.inputAmount);
+            const transferSimulation = await contract.safeTransfer(address, parameters.inputAmount, new Uint8Array());
 
             const interactionParameters: TransactionParameters = {
                 signer: userWallet.keypair, // The keypair that will sign the transaction
@@ -179,7 +190,8 @@ export default function TxOpnetConfirmScreen() {
                 maximumAllowedSatToSpend: parameters.priorityFee, // The maximum we want to allocate to this transaction in satoshis
                 feeRate: parameters.feeRate, // We need to provide a fee rate
                 network: Web3API.network, // The network we are operating on
-                priorityFee: parameters.priorityFee
+                priorityFee: parameters.priorityFee,
+                note: parameters.note
             };
 
             const symbol = await contract.symbol();
@@ -230,7 +242,8 @@ export default function TxOpnetConfirmScreen() {
             maximumAllowedSatToSpend: parameters.priorityFee, // The maximum we want to allocate to this transaction in satoshis
             feeRate: parameters.feeRate, // We need to provide a fee rate
             network: Web3API.network, // The network we are operating on
-            priorityFee: parameters.priorityFee
+            priorityFee: parameters.priorityFee,
+            note: parameters.note
         };
 
         const sendTransaction = await airdropData.sendTransaction(interactionParameters);
@@ -267,16 +280,16 @@ export default function TxOpnetConfirmScreen() {
             swapParameters.amountIn,
             swapParameters.tokens[0].divisibility
         );
-        const slippageAmount = Number(swapParameters.amountOut) * Number(swapParameters.slippageTolerance / 100);
+        const slippageAmount = swapParameters.amountOut * (swapParameters.slippageTolerance / 100);
         const outPutAmountBigInt = BitcoinUtils.expandToDecimals(
             swapParameters.amountOut - slippageAmount,
             swapParameters.tokens[1].divisibility
         );
 
-        const addressOfContract = (await Web3API.provider.getPublicKeysInfo([
+        const addressOfContract = await Web3API.provider.getPublicKeysInfo([
             swapParameters.tokenIn,
             swapParameters.tokenOut
-        ])) as AddressesInfo;
+        ]);
 
         const block = await Web3API.provider.getBlockNumber();
         const contractData = await getSwap.swapExactTokensForTokensSupportingFeeOnTransferTokens(
@@ -293,7 +306,8 @@ export default function TxOpnetConfirmScreen() {
             maximumAllowedSatToSpend: swapParameters.priorityFee, // The maximum we want to allocate to this transaction in satoshis
             feeRate: swapParameters.feeRate, // We need to provide a fee rate
             network: Web3API.network, // The network we are operating on
-            priorityFee: swapParameters.priorityFee
+            priorityFee: swapParameters.priorityFee,
+            note: swapParameters.note
         };
 
         const sendTransaction = await contractData.sendTransaction(interactionParameters);
@@ -306,8 +320,8 @@ export default function TxOpnetConfirmScreen() {
             return;
         }
 
-        const amountA = Number(swapParameters.amountIn).toLocaleString();
-        const amountB = Number(swapParameters.amountOut).toLocaleString();
+        const amountA = swapParameters.amountIn.toLocaleString();
+        const amountB = swapParameters.amountOut.toLocaleString();
         tools.toastSuccess(
             `You have successfully swapped ${amountA} ${swapParameters.tokens[0].symbol} for ${amountB} ${swapParameters.tokens[1].symbol}`
         );
@@ -320,10 +334,65 @@ export default function TxOpnetConfirmScreen() {
             const currentWalletAddress = await wallet.getCurrentAccount();
             const userWallet = await getWallet();
 
-            const utxos: UTXO[] = await Web3API.getUnspentUTXOsForAddresses(
-                [currentWalletAddress.address],
-                BitcoinUtils.expandToDecimals(parameters.inputAmount, 8) * 2n
-            );
+            // Determine which address to send from and get UTXOs
+            let fromAddress = currentWalletAddress.address;
+            let utxos: UTXO[] = [];
+            let witnessScript: Buffer | undefined;
+            const feeMin = 10_000n;
+
+            // Check if sending from a CSV address
+            if (parameters.from && parameters.sourceType && parameters.sourceType !== SourceType.CURRENT) {
+                const currentAddress = Address.fromString(currentWalletAddress.pubkey);
+
+                if (parameters.sourceType === SourceType.CSV75) {
+                    const csv75Address = currentAddress.toCSV(75, Web3API.network);
+                    fromAddress = csv75Address.address;
+                    witnessScript = csv75Address.witnessScript;
+
+                    utxos = await Web3API.getUnspentUTXOsForAddresses(
+                        [fromAddress],
+                        BitcoinUtils.expandToDecimals(parameters.inputAmount, 8) + feeMin,
+                        75n
+                    );
+                } else if (parameters.sourceType === SourceType.CSV1) {
+                    const csv1Address = currentAddress.toCSV(1, Web3API.network);
+                    fromAddress = csv1Address.address;
+                    witnessScript = csv1Address.witnessScript;
+
+                    utxos = await Web3API.getUnspentUTXOsForAddresses(
+                        [fromAddress],
+                        BitcoinUtils.expandToDecimals(parameters.inputAmount, 8) + feeMin,
+                        1n
+                    );
+                } else if (parameters.sourceType === SourceType.P2WDA) {
+                    const p2wdaAddress = currentAddress.p2wda(Web3API.network);
+                    fromAddress = p2wdaAddress.address;
+                    witnessScript = p2wdaAddress.witnessScript;
+
+                    utxos = await Web3API.getUnspentUTXOsForAddresses(
+                        [fromAddress],
+                        BitcoinUtils.expandToDecimals(parameters.inputAmount, 8) + feeMin
+                    );
+                }
+
+                if (witnessScript && utxos.length > 0) {
+                    utxos = utxos.map((utxo) => ({
+                        ...utxo,
+                        witnessScript: witnessScript // Add the witness script to each UTXO
+                    }));
+                }
+            } else {
+                utxos = await Web3API.getUnspentUTXOsForAddresses(
+                    [fromAddress],
+                    BitcoinUtils.expandToDecimals(parameters.inputAmount, 8) + feeMin
+                );
+            }
+
+            if (!utxos || utxos.length === 0) {
+                tools.toastError(`No UTXOs available for funding transaction`);
+                setDisabled(false);
+                return;
+            }
 
             const IFundingTransactionParameters: IFundingTransactionParameters = {
                 amount: BitcoinUtils.expandToDecimals(parameters.inputAmount, 8),
@@ -334,7 +403,8 @@ export default function TxOpnetConfirmScreen() {
                 priorityFee: 0n,
                 gasSatFee: 0n,
                 to: parameters.to,
-                from: currentWalletAddress.address
+                from: fromAddress,
+                note: parameters.note
             };
 
             const sendTransact = await Web3API.transactionFactory.createBTCTransfer(IFundingTransactionParameters);
@@ -346,10 +416,17 @@ export default function TxOpnetConfirmScreen() {
                 return;
             }
 
-            const amountA = Number(parameters.inputAmount).toLocaleString();
-            tools.toastSuccess(`You have successfully transferred ${amountA} ${btcUnit}`);
+            const amountA = parameters.inputAmount.toLocaleString();
+            const sourceLabel =
+                parameters.sourceType === SourceType.CSV75
+                    ? ' from CSV-75'
+                    : parameters.sourceType === SourceType.CSV1
+                      ? ' from CSV-1'
+                      : '';
+            tools.toastSuccess(`You have successfully transferred ${amountA} ${btcUnit}${sourceLabel}`);
 
-            Web3API.provider.utxoManager.spentUTXO(currentWalletAddress.address, utxos, sendTransact.nextUTXOs);
+            // Update UTXO manager for the correct address
+            Web3API.provider.utxoManager.spentUTXO(fromAddress, utxos, sendTransact.nextUTXOs);
 
             navigate(RouteTypes.TxSuccessScreen, { txid: sendTransaction.result });
         } catch (e) {
@@ -369,12 +446,12 @@ export default function TxOpnetConfirmScreen() {
             const arrayBuffer = await parameters.file.arrayBuffer();
             const uint8Array = new Uint8Array(arrayBuffer);
 
-            const preimage = await Web3API.provider.getPreimage();
+            const challenge = await Web3API.provider.getChallenge();
             const calldata = parameters.calldataHex ? Buffer.from(parameters.calldataHex, 'hex') : Buffer.from([]);
 
             // TODO: Add calldata support
             const deploymentParameters: IDeploymentParameters = {
-                preimage,
+                challenge,
                 utxos: utxos,
                 signer: userWallet.keypair,
                 network: Web3API.network,
@@ -385,7 +462,8 @@ export default function TxOpnetConfirmScreen() {
                 bytecode: Buffer.from(uint8Array),
                 calldata: calldata,
                 optionalInputs: [],
-                optionalOutputs: []
+                optionalOutputs: [],
+                note: parameters.note
             };
 
             const sendTransact: DeploymentResult =
@@ -416,8 +494,8 @@ export default function TxOpnetConfirmScreen() {
                     updatedTokens = JSON.parse(tokensImported) as string[];
                 }
 
-                if (!updatedTokens.includes(sendTransact.contractAddress.toString())) {
-                    updatedTokens.push(sendTransact.contractAddress.toString());
+                if (!updatedTokens.includes(sendTransact.contractAddress)) {
+                    updatedTokens.push(sendTransact.contractAddress);
                     localStorage.setItem(key, JSON.stringify(updatedTokens));
                 }
 
@@ -447,7 +525,7 @@ export default function TxOpnetConfirmScreen() {
             const currentWalletAddress = await wallet.getCurrentAccount();
             const userWallet = await getWallet();
 
-            const contract = getContract<IOP_20Contract>(
+            const contract = getContract<IOP20Contract>(
                 parameters.contractAddress,
                 OP_20_ABI,
                 Web3API.provider,
@@ -456,7 +534,7 @@ export default function TxOpnetConfirmScreen() {
             );
 
             const value = BitcoinUtils.expandToDecimals(parameters.inputAmount, parameters.tokens[0].divisibility);
-            const mintData = await contract.mint(Address.fromString(parameters.to), BigInt(value));
+            const mintData = await contract.mint(Address.fromString(parameters.to), value);
 
             const interactionParameters: TransactionParameters = {
                 signer: userWallet.keypair, // The keypair that will sign the transaction
@@ -464,7 +542,8 @@ export default function TxOpnetConfirmScreen() {
                 maximumAllowedSatToSpend: parameters.priorityFee, // The maximum we want to allocate to this transaction in satoshis
                 feeRate: parameters.feeRate, // We need to provide a fee rate
                 network: Web3API.network, // The network we are operating on
-                priorityFee: parameters.priorityFee
+                priorityFee: parameters.priorityFee,
+                note: parameters.note
             };
 
             const sendTransaction = await mintData.sendTransaction(interactionParameters);
@@ -480,92 +559,382 @@ export default function TxOpnetConfirmScreen() {
             console.log(e);
         }
     };
+
+    // Get action label
+    const getActionLabel = () => {
+        switch (rawTxInfo.action) {
+            case Action.Swap:
+                return 'Token Swap';
+            case Action.SendBitcoin:
+                return 'Send Bitcoin';
+            case Action.DeployContract:
+                return 'Deploy Contract';
+            case Action.Mint:
+                return 'Mint Tokens';
+            case Action.Airdrop:
+                return 'Airdrop Tokens';
+            case Action.Transfer:
+                return 'Token Transfer';
+            default:
+                return 'Transaction';
+        }
+    };
+
+    const getActionIcon = () => {
+        switch (rawTxInfo.action) {
+            case Action.Swap:
+                return '🔄';
+            case Action.SendBitcoin:
+                return '₿';
+            case Action.DeployContract:
+                return '🚀';
+            case Action.Mint:
+                return '🪙';
+            case Action.Airdrop:
+                return '🎁';
+            case Action.Transfer:
+                return '➡️';
+            default:
+                return '📝';
+        }
+    };
+
     return (
         <Layout>
-            <Header
-                onBack={() => {
-                    window.history.go(-1);
-                }}
-                title={rawTxInfo.header}
-            />
-            <Content>
-                <Column gap="xl">
-                    <Section title="Network Fee Rate:">
-                        <Text text={rawTxInfo.feeRate.toString()} />
+            <Header onBack={handleCancel} title={`Confirm ${getActionLabel()}`} />
 
-                        <Text text="sat/vB" color="textDim" />
-                    </Section>
+            <Content style={{ padding: '12px' }}>
+                <Column>
+                    {/* Transaction Type Card */}
+                    <div
+                        style={{
+                            background: `linear-gradient(135deg, ${colors.main}15 0%, ${colors.main}08 100%)`,
+                            border: `1px solid ${colors.main}30`,
+                            borderRadius: '12px',
+                            padding: '16px',
+                            marginBottom: '12px',
+                            textAlign: 'center'
+                        }}>
+                        <div
+                            style={{
+                                fontSize: '40px',
+                                marginBottom: '8px'
+                            }}>
+                            {getActionIcon()}
+                        </div>
+                        <div
+                            style={{
+                                fontSize: '16px',
+                                fontWeight: 600,
+                                color: colors.text,
+                                marginBottom: '4px'
+                            }}>
+                            {getActionLabel()}
+                        </div>
+                        <div
+                            style={{
+                                fontSize: '12px',
+                                color: colors.textFaded
+                            }}>
+                            Review transaction details below
+                        </div>
+                    </div>
 
-                    <Section title="Opnet Gas Fee:">
-                        <Text text={rawTxInfo.gasSatFee?.toString() || '0'} />
+                    {/* Fee Details */}
+                    <div
+                        style={{
+                            background: colors.containerBgFaded,
+                            borderRadius: '12px',
+                            padding: '14px',
+                            marginBottom: '12px'
+                        }}>
+                        <div
+                            style={{
+                                fontSize: '12px',
+                                fontWeight: 600,
+                                color: colors.textFaded,
+                                textTransform: 'uppercase',
+                                letterSpacing: '0.5px',
+                                marginBottom: '12px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '6px'
+                            }}>
+                            <DollarOutlined style={{ fontSize: 14, color: colors.main }} />
+                            Fee Details
+                        </div>
 
-                        <Text text="sat" color="textDim" />
-                    </Section>
-
-                    <Section title="Priority Fee:">
-                        <Text text={rawTxInfo.priorityFee.toString()} />
-
-                        <Text text="sat" color="textDim" />
-                    </Section>
-
-                    <Section title="Features:">
-                        <Row>
-                            {rawTxInfo.features.rbf ? (
-                                <Text
-                                    text="RBF"
-                                    color="white"
-                                    style={{ backgroundColor: 'green', padding: 5, borderRadius: 5 }}
-                                />
-                            ) : (
-                                <Text
-                                    text="RBF"
-                                    color="white"
+                        {/* Network Fee */}
+                        <div
+                            style={{
+                                display: 'flex',
+                                justifyContent: 'space-between',
+                                alignItems: 'center',
+                                padding: '10px',
+                                background: colors.inputBg,
+                                borderRadius: '8px',
+                                marginBottom: '8px'
+                            }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <ThunderboltOutlined style={{ fontSize: 14, color: colors.warning }} />
+                                <span style={{ fontSize: '13px', color: colors.text }}>Network Fee Rate</span>
+                            </div>
+                            <div style={{ textAlign: 'right' }}>
+                                <span
                                     style={{
-                                        backgroundColor: 'red',
-                                        padding: 5,
-                                        borderRadius: 5,
-                                        textDecoration: 'line-through'
-                                    }}
-                                />
+                                        fontSize: '14px',
+                                        fontWeight: 600,
+                                        color: colors.text
+                                    }}>
+                                    {rawTxInfo.feeRate}
+                                </span>
+                                <span
+                                    style={{
+                                        fontSize: '11px',
+                                        color: colors.textFaded,
+                                        marginLeft: '4px'
+                                    }}>
+                                    sat/vB
+                                </span>
+                            </div>
+                        </div>
+
+                        {/* OP_NET Gas Fee */}
+                        {rawTxInfo.gasSatFee && (
+                            <div
+                                style={{
+                                    display: 'flex',
+                                    justifyContent: 'space-between',
+                                    alignItems: 'center',
+                                    padding: '10px',
+                                    background: colors.inputBg,
+                                    borderRadius: '8px',
+                                    marginBottom: '8px'
+                                }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    <RocketOutlined style={{ fontSize: 14, color: colors.main }} />
+                                    <span style={{ fontSize: '13px', color: colors.text }}>OP_NET Gas Fee</span>
+                                </div>
+                                <div style={{ textAlign: 'right' }}>
+                                    <span
+                                        style={{
+                                            fontSize: '14px',
+                                            fontWeight: 600,
+                                            color: colors.text
+                                        }}>
+                                        {rawTxInfo.gasSatFee.toString()}
+                                    </span>
+                                    <span
+                                        style={{
+                                            fontSize: '11px',
+                                            color: colors.textFaded,
+                                            marginLeft: '4px'
+                                        }}>
+                                        sat
+                                    </span>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Priority Fee */}
+                        <div
+                            style={{
+                                display: 'flex',
+                                justifyContent: 'space-between',
+                                alignItems: 'center',
+                                padding: '10px',
+                                background: colors.inputBg,
+                                borderRadius: '8px'
+                            }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <RocketOutlined style={{ fontSize: 14, color: colors.success }} />
+                                <span style={{ fontSize: '13px', color: colors.text }}>Priority Fee</span>
+                            </div>
+                            <div style={{ textAlign: 'right' }}>
+                                <span
+                                    style={{
+                                        fontSize: '14px',
+                                        fontWeight: 600,
+                                        color: colors.text
+                                    }}>
+                                    {rawTxInfo.priorityFee.toString()}
+                                </span>
+                                <span
+                                    style={{
+                                        fontSize: '11px',
+                                        color: colors.textFaded,
+                                        marginLeft: '4px'
+                                    }}>
+                                    sat
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Features */}
+                    <div
+                        style={{
+                            background: colors.containerBgFaded,
+                            borderRadius: '12px',
+                            padding: '14px',
+                            marginBottom: '12px'
+                        }}>
+                        <div
+                            style={{
+                                fontSize: '12px',
+                                fontWeight: 600,
+                                color: colors.textFaded,
+                                textTransform: 'uppercase',
+                                letterSpacing: '0.5px',
+                                marginBottom: '12px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '6px'
+                            }}>
+                            <SafetyOutlined style={{ fontSize: 14, color: colors.main }} />
+                            Transaction Features
+                        </div>
+
+                        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                            {rawTxInfo.features.rbf && (
+                                <div
+                                    style={{
+                                        padding: '6px 12px',
+                                        background: `${colors.success}20`,
+                                        border: `1px solid ${colors.success}40`,
+                                        borderRadius: '8px',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '6px'
+                                    }}>
+                                    <CheckCircleOutlined style={{ fontSize: 12, color: colors.success }} />
+                                    <span
+                                        style={{
+                                            fontSize: '12px',
+                                            color: colors.success,
+                                            fontWeight: 600
+                                        }}>
+                                        RBF Enabled
+                                    </span>
+                                </div>
                             )}
-                        </Row>
-                    </Section>
-                    {/*
-                         <Column gap="xl">
-                        <Column>
-                            <Text text={`Data: (${rawTxInfo.inputInfos.length})`} preset="bold" />
-                            <Card>
-                                <Column full justifyCenter>
-                                    <Row>
-                                        <Column justifyCenter>
-                                            <Text text={'TOKENS'} color={rawTxInfo.isToSign ? 'white' : 'textDim'} />
-                                            <Row overflowX gap="lg" style={{ width: 280 }} pb="lg">
-                                                {rawTxInfo.opneTokens.map((w, index) => (
-                                                    <RunesPreviewCard
-                                                        key={index}
-                                                        balance={w}
-                                                        price={{ curPrice: 0, changePercent: 0 }}
-                                                    />
-                                                ))}
-                                            </Row>
-                                        </Column>
-                                    </Row>
-                                </Column>
-                            </Card>
-                        </Column>
-                    </Column>
-                         */}
+
+                            {rawTxInfo.features.taproot && (
+                                <div
+                                    style={{
+                                        padding: '6px 12px',
+                                        background: `${colors.main}20`,
+                                        border: `1px solid ${colors.main}40`,
+                                        borderRadius: '8px',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '6px'
+                                    }}>
+                                    <CheckCircleOutlined style={{ fontSize: 12, color: colors.main }} />
+                                    <span
+                                        style={{
+                                            fontSize: '12px',
+                                            color: colors.main,
+                                            fontWeight: 600
+                                        }}>
+                                        Taproot
+                                    </span>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Security Notice */}
+                    <div
+                        style={{
+                            display: 'flex',
+                            gap: '8px',
+                            padding: '10px',
+                            background: `${colors.warning}10`,
+                            border: `1px solid ${colors.warning}25`,
+                            borderRadius: '10px',
+                            marginBottom: '80px'
+                        }}>
+                        <WarningOutlined
+                            style={{
+                                fontSize: 14,
+                                color: colors.warning,
+                                flexShrink: 0,
+                                marginTop: '2px'
+                            }}
+                        />
+                        <div>
+                            <div
+                                style={{
+                                    fontSize: '12px',
+                                    color: colors.warning,
+                                    fontWeight: 600,
+                                    marginBottom: '4px'
+                                }}>
+                                Security Check
+                            </div>
+                            <div
+                                style={{
+                                    fontSize: '11px',
+                                    color: colors.textFaded,
+                                    lineHeight: '1.4'
+                                }}>
+                                Verify all transaction details before signing. This action cannot be undone.
+                            </div>
+                        </div>
+                    </div>
                 </Column>
             </Content>
 
-            <Footer>
-                <Row full>
-                    <Button preset="default" text="Reject" onClick={handleCancel} full />
-                    <Button
-                        preset="primary"
+            {/* Fixed Footer */}
+            <Footer
+                style={{
+                    position: 'fixed',
+                    bottom: 0,
+                    left: 0,
+                    right: 0,
+                    padding: '12px',
+                    background: colors.background,
+                    borderTop: `1px solid ${colors.containerBorder}`
+                }}>
+                <div style={{ display: 'flex', gap: '10px' }}>
+                    <button
+                        style={{
+                            flex: 1,
+                            padding: '12px',
+                            background: colors.buttonHoverBg,
+                            border: `1px solid ${colors.containerBorder}`,
+                            borderRadius: '10px',
+                            color: colors.text,
+                            fontSize: '14px',
+                            fontWeight: 600,
+                            cursor: 'pointer',
+                            transition: 'all 0.15s'
+                        }}
+                        onClick={handleCancel}
+                        onMouseEnter={(e) => {
+                            e.currentTarget.style.background = colors.buttonBg;
+                        }}
+                        onMouseLeave={(e) => {
+                            e.currentTarget.style.background = colors.buttonHoverBg;
+                        }}>
+                        Reject
+                    </button>
+                    <button
+                        style={{
+                            flex: 1,
+                            padding: '12px',
+                            background: disabled ? colors.buttonBg : colors.main,
+                            border: 'none',
+                            borderRadius: '10px',
+                            color: disabled ? colors.textFaded : colors.background,
+                            fontSize: '14px',
+                            fontWeight: 600,
+                            cursor: disabled ? 'not-allowed' : 'pointer',
+                            opacity: disabled ? 0.5 : 1,
+                            transition: 'all 0.15s'
+                        }}
                         disabled={disabled}
-                        icon={undefined}
-                        text={'Sign'}
                         onClick={async () => {
                             setDisabled(true);
                             switch (rawTxInfo.action) {
@@ -609,10 +978,22 @@ export default function TxOpnetConfirmScreen() {
                                 }
                             }
                         }}
-                        full
-                    />
-                </Row>
+                        onMouseEnter={(e) => {
+                            if (!disabled) {
+                                e.currentTarget.style.transform = 'translateY(-1px)';
+                                e.currentTarget.style.boxShadow = `0 4px 12px ${colors.main}40`;
+                            }
+                        }}
+                        onMouseLeave={(e) => {
+                            e.currentTarget.style.transform = 'translateY(0)';
+                            e.currentTarget.style.boxShadow = 'none';
+                        }}>
+                        Sign & Send
+                    </button>
+                </div>
             </Footer>
+
+            {/* Loading Modal */}
             {openLoading && (
                 <BottomModal
                     onClose={() => {
@@ -620,67 +1001,72 @@ export default function TxOpnetConfirmScreen() {
                         setOpenLoading(false);
                     }}>
                     <Column
-                        fullX
-                        itemsCenter
                         style={{
-                            padding: '24px 16px',
-                            gap: 16
+                            padding: '24px',
+                            alignItems: 'center',
+                            textAlign: 'center'
                         }}>
-                        {/* loading message */}
-                        <Text text={loadingMessage} textCenter size="lg" />
-
-                        {/* deployment contract */}
-
-                        {deploymentContract && (
-                            <Row itemsCenter gap={'sm'}>
-                                <Text
-                                    text={`Contract Address: ${deploymentContract.contractAddress}`}
-                                    size="xs"
-                                    style={{ wordBreak: 'break-all' }}
-                                />
-
-                                {/* copy icon button */}
-                                <CopyOutlined
-                                    onClick={async () => {
-                                        await navigator.clipboard.writeText(
-                                            deploymentContract.contractAddress.toString()
-                                        );
-                                        tools.toastSuccess('Contract address copied to clipboard');
-                                    }}
-                                    style={{
-                                        fontSize: 14,
-                                        cursor: 'pointer',
-                                        color: '#ffa640'
-                                    }}
-                                />
-                            </Row>
-                        )}
-
-                        {/* spinner */}
                         <LoadingOutlined
                             spin
                             style={{
-                                fontSize: 28,
-                                color: '#ffa640',
-                                filter: 'drop-shadow(0 0 4px rgba(255, 165, 64, 0.75))'
+                                fontSize: 32,
+                                color: colors.main,
+                                marginBottom: '16px'
                             }}
                         />
+
+                        <Text text={loadingMessage} size="md" style={{ marginBottom: '16px' }} />
+
+                        {deploymentContract && (
+                            <div
+                                style={{
+                                    padding: '12px',
+                                    background: colors.containerBgFaded,
+                                    borderRadius: '10px',
+                                    width: '100%',
+                                    marginTop: '12px'
+                                }}>
+                                <div
+                                    style={{
+                                        fontSize: '11px',
+                                        color: colors.textFaded,
+                                        marginBottom: '6px'
+                                    }}>
+                                    Contract Address
+                                </div>
+                                <div
+                                    style={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '8px'
+                                    }}>
+                                    <span
+                                        style={{
+                                            fontSize: '12px',
+                                            color: colors.text,
+                                            fontFamily: 'monospace',
+                                            wordBreak: 'break-all',
+                                            flex: 1
+                                        }}>
+                                        {deploymentContract.contractAddress}
+                                    </span>
+                                    <CopyOutlined
+                                        onClick={async () => {
+                                            await navigator.clipboard.writeText(deploymentContract.contractAddress);
+                                            tools.toastSuccess('Copied!');
+                                        }}
+                                        style={{
+                                            fontSize: 14,
+                                            cursor: 'pointer',
+                                            color: colors.main
+                                        }}
+                                    />
+                                </div>
+                            </div>
+                        )}
                     </Column>
                 </BottomModal>
             )}
         </Layout>
-    );
-}
-
-function Section({ title, children }: { title: string; children?: React.ReactNode }) {
-    return (
-        <Column>
-            <Text text={title} preset="bold" />
-            <Card>
-                <Row full justifyBetween itemsCenter>
-                    {children}
-                </Row>
-            </Card>
-        </Column>
     );
 }

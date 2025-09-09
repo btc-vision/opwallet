@@ -22,20 +22,46 @@ export function BtcDisplay({ balance }: { balance: string | number }) {
     if (chainType === ChainType.FRACTAL_BITCOIN_MAINNET || ChainType.FRACTAL_BITCOIN_TESTNET) {
         //   show 3 decimal places for fractal bitcoin
         return (
-            <Row style={{ alignItems: 'flex-end', marginBottom: '10px' }} justifyCenter gap={'zero'}>
-                <Text text={intPart} preset="title-bold" size="xxxl" />
+            <>
+            <Row style={{ alignItems: 'flex-end', marginBottom: '3px' }} justifyCenter gap={'zero'}>
+                <span style={{
+                    background: 'linear-gradient(180deg, #e4e6eb, #f7931a)', // pick your gradient
+                    WebkitBackgroundClip: 'text',
+                    WebkitTextFillColor: 'transparent',
+                    fontSize: 30,
+                    fontWeight: 'bold',
+                }}>{intPart}</span>
                 {decPart && (
-                    <Text
-                        text={'.' + decPart}
-                        preset="title-bold"
-                        style={{
-                            color: '#8a8a8a',
-                            fontSize: 28
-                        }}
-                    />
+                    <span style={{
+                        background: 'linear-gradient(180deg, #e4e6eb, #f7931a)', // pick your gradient
+                        WebkitBackgroundClip: 'text',
+                        WebkitTextFillColor: 'transparent',
+                        fontSize: 30,
+                        fontWeight: 'bold',
+                    }}>{'.' + decPart}</span>
                 )}
-                <Text text={btcUnit} preset="title-bold" size="xxxl" style={{ marginLeft: '0.25em' }} />
+                {decPart && (
+                    <span style={{
+                        background: 'linear-gradient(180deg, #e4e6eb, #f7931a)', // pick your gradient
+                        WebkitBackgroundClip: 'text',
+                        WebkitTextFillColor: 'transparent',
+                        fontSize: 30,
+                        fontWeight: 'bold',
+                        marginLeft: '0.25em'
+                    }}>{btcUnit}</span>
+                )}
+
             </Row>
+                <Row style={{ alignItems: 'flex-end', marginBottom: '10px' }} justifyCenter gap={'zero'}>
+                    <span style={{
+                        background: 'linear-gradient(180deg, #d0d0d0, #d0d0d0)',
+                        WebkitBackgroundClip: 'text',
+                        WebkitTextFillColor: 'transparent',
+                        fontSize: 17,
+                        fontWeight: 'bold',
+                    }}>$1352.05</span>
+                </Row>
+            </>
         );
     }
 

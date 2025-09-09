@@ -1,9 +1,9 @@
 import { nanoid } from 'nanoid';
-import browser from 'webextension-polyfill';
 
 import { SendMessagePayload } from '@/shared/types/Message';
 import { RequestParams } from '@/shared/types/Request.js';
 import { Message } from '@/shared/utils';
+import browser from 'webextension-polyfill';
 
 const channelName = nanoid();
 
@@ -12,13 +12,22 @@ const channelName = nanoid();
  */
 function injectScript() {
     try {
-        const container = document.head || document.documentElement;
+        const target = document.head || document.documentElement;
+        const metaTag = document.createElement('meta');
+        metaTag.name = 'opnet-channel';
+        metaTag.content = channelName;
+
         const scriptTag = document.createElement('script');
         scriptTag.setAttribute('async', 'false');
+        scriptTag.setAttribute('type', 'module');
         scriptTag.setAttribute('channel', channelName);
         scriptTag.src = browser.runtime.getURL('pageProvider.js');
-        container.insertBefore(scriptTag, container.children[0]);
-        container.removeChild(scriptTag);
+        scriptTag.onload = () => {
+            scriptTag.remove();
+        };
+
+        target.append(metaTag);
+        target.append(scriptTag);
 
         const { BroadcastChannelMessage, PortMessage } = Message;
 
@@ -37,7 +46,7 @@ function injectScript() {
             pm.dispose();
         });
     } catch (error) {
-        console.error('Unisat: Provider injection failed.', error);
+        console.warn('OPNet: Provider injection failed.', error);
     }
 }
 
@@ -70,7 +79,7 @@ function suffixCheck(): boolean {
         if (prohibitedType.test(currentUrl)) {
             return false;
         }
-    }    
+    }
     return true;
 }
 
@@ -107,7 +116,7 @@ function blockedDomainCheck(): boolean {
         if (!currentRegex.test(currentUrl)) {
             return true;
         }
-    }    
+    }
 
     return false;
 }

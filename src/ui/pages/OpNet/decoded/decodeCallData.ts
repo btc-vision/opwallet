@@ -15,8 +15,10 @@ import {
     decodeAddLiquidity,
     decodeAirdrop,
     decodeAirdropWithAmount,
-    decodeApprove,
-    decodeApproveFrom,
+    decodeIncreaseAllowance,
+    decodeDecreaseAllowance,
+    decodeIncreaseAllowanceBySignature,
+    decodeDecreaseAllowanceBySignature,
     decodeBurn,
     decodeCancelListing,
     decodeCreatePool,
@@ -27,8 +29,8 @@ import {
     decodeReserve,
     decodeSetFees,
     decodeSwap,
-    decodeTransfer,
-    decodeTransferFrom
+    decodeSafeTransfer,
+    decodeSafeTransferFrom
 } from './decodeMethods';
 import { decodeDepositMotoChef } from './motochef/DepositDecodedInfo';
 import { decodeHarvestMotoChef } from './motochef/HarvestDecodedInfo';
@@ -59,14 +61,18 @@ export function decodeCallData(calldata: string): Decoded | null {
     // Switch: OP_20 + NativeSwap
     switch (selector) {
         // OP_20
-        case InteractionOP20.Transfer:
-            return decodeTransfer(selector, reader);
-        case InteractionOP20.TransferFrom:
-            return decodeTransferFrom(selector, reader);
-        case InteractionOP20.Approve:
-            return decodeApprove(selector, reader);
-        case InteractionOP20.ApproveFrom:
-            return decodeApproveFrom(selector, reader);
+        case InteractionOP20.SafeTransfer:
+            return decodeSafeTransfer(selector, reader);
+        case InteractionOP20.SafeTransferFrom:
+            return decodeSafeTransferFrom(selector, reader);
+        case InteractionOP20.IncreaseAllowance:
+            return decodeIncreaseAllowance(selector, reader);
+        case InteractionOP20.DecreaseAllowance:
+            return decodeDecreaseAllowance(selector, reader);
+        case InteractionOP20.IncreaseAllowanceBySignature:
+            return decodeIncreaseAllowanceBySignature(selector, reader);
+        case InteractionOP20.DecreaseAllowanceBySignature:
+            return decodeDecreaseAllowanceBySignature(selector, reader);
         case InteractionOP20.Burn:
             return decodeBurn(selector, reader);
         case InteractionOP20.Mint:

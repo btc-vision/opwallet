@@ -18,7 +18,6 @@ const $contentStyle = {
     flexDirection: 'column',
     justifyItems: 'center',
     gap: spacingGap.lg,
-
     alignSelf: 'stretch',
     overflowY: 'auto',
     overflowX: 'hidden'

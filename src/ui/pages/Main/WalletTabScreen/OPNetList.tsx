@@ -1,23 +1,22 @@
 import { CloseOutlined, LoadingOutlined } from '@ant-design/icons';
 import { Modal } from 'antd';
 import BigNumber from 'bignumber.js';
-import { CSSProperties, useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import browser from 'webextension-polyfill';
 
 import Web3API from '@/shared/web3/Web3API';
-import { getContract, IOP_20Contract, OP_20_ABI } from 'opnet';
+import { getContract, IOP20Contract, OP_20_ABI } from 'opnet';
 
 import { OPTokenInfo } from '@/shared/types';
-import { Address } from '@btc-vision/transaction';
+import { Address, AddressTypes, AddressVerificator } from '@btc-vision/transaction';
 
-import { Button, Column, Row, Text } from '@/ui/components';
+import { Column, Text } from '@/ui/components';
 import { useTools } from '@/ui/components/ActionComponent';
-import { BaseView } from '@/ui/components/BaseView';
 import OpNetBalanceCard from '@/ui/components/OpNetBalanceCard';
 import { useCurrentAccount } from '@/ui/state/accounts/hooks';
 import { useChainType } from '@/ui/state/settings/hooks';
 
-import { faPencil, faRefresh, faUpload } from '@fortawesome/free-solid-svg-icons';
+import { faEye, faEyeSlash, faPencil, faPlus, faRefresh, faTrash } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { RouteTypes, useNavigate } from '../../MainRoute';
 import { AddOpNetToken } from '../../Wallet/AddOpNetToken';
@@ -25,15 +24,58 @@ import { AddOpNetToken } from '../../Wallet/AddOpNetToken';
 BigNumber.config({ EXPONENTIAL_AT: 256 });
 
 const TOKENS_PER_PAGE = 3;
-const balanceCache = new Map<string, OPTokenInfo>();
 
 interface StoredToken {
     address: string;
     hidden: boolean;
 }
 
-// Session-only failure tracking to avoid permanent false positives
-const sessionFailureTracker = new Map<string, number>();
+interface TokenWithBalance extends OPTokenInfo {
+    loadError?: boolean;
+    isLoading?: boolean;
+}
+
+const colors = {
+    main: '#f37413',
+    background: '#212121',
+    text: '#dbdbdb',
+    textFaded: 'rgba(219, 219, 219, 0.7)',
+    buttonBg: '#434343',
+    buttonHoverBg: 'rgba(85, 85, 85, 0.3)',
+    containerBg: '#434343',
+    containerBgFaded: '#292929',
+    containerBorder: '#303030',
+    success: '#4ade80',
+    error: '#ef4444',
+
+    headerBG: '#313131',
+    headerBorder: '#444746'
+};
+
+const tokenButtonStyle: React.CSSProperties = {
+    color: "white",
+    fontSize: "12px",
+    display: "flex",
+    alignItems: "center",
+    flex: "1",
+    justifyContent: "center",
+    gap: "8px",
+    height: "32px",
+    padding: "0 12px",
+    border: "1px solid #444746",
+    background: "#313131",
+    transition: "background-color 0.3s, border 0.3s",
+    borderRadius: "8px",
+    cursor: "pointer",
+    fontFamily: "Inter-Regular, serif",
+};
+
+const tokenRefreshButtonStyle: React.CSSProperties = {
+    ...tokenButtonStyle,
+    width: "32px",
+    padding: "0",
+    flex: "0 0 32px",
+}
 
 export function OPNetList() {
     const navigate = useNavigate();
@@ -41,414 +83,727 @@ export function OPNetList() {
     const chainType = useChainType();
     const tools = useTools();
 
-    const [tokens, setTokens] = useState<string[] | null>(null);
-    const [tokenBalances, setTokenBalances] = useState<OPTokenInfo[]>([]);
-    const [total, setTotal] = useState(-1);
+    // Core state
+    const [allTokenAddresses, setAllTokenAddresses] = useState<string[]>([]);
+    const [tokenBalancesMap, setTokenBalancesMap] = useState<Map<string, TokenWithBalance>>(new Map());
     const [currentPage, setCurrentPage] = useState(1);
+    const [isLoading, setIsLoading] = useState(false);
+    const [isInitializing, setIsInitializing] = useState(true);
+
+    // UI state
     const [importTokenBool, setImportTokenBool] = useState(false);
-    const [isTokenHidden, setIsTokenHidden] = useState(false);
+    const [hasHiddenTokens, setHasHiddenTokens] = useState(false);
     const [showModal, setShowModal] = useState(false);
     const [modalToken, setModalToken] = useState<string | null>(null);
-    const [isLoading, setIsLoading] = useState(false);
 
-    // Track if default tokens have been checked this session
-    const defaultTokensCheckedRef = useRef(false);
-    const fetchVersionRef = useRef(0);
+    // Track if default tokens have been checked
+    const defaultTokensCheckedRef = useRef<Set<string>>(new Set());
 
-    const fetchTokensBalances = useCallback(
-        async (page: number) => {
-            setIsLoading(true);
-            const myVersion = ++fetchVersionRef.current;
+    const storageKey = `opnetTokens_${chainType}_${currentAccount.pubkey}`;
 
-            try {
-                Web3API.setNetwork(chainType);
+    // Ensure default tokens are always included
+    const ensureDefaultTokens = useCallback(
+        (addresses: string[]): string[] => {
+            const result = [...addresses];
+            const accountKey = `${chainType}_${currentAccount.pubkey}`;
 
-                // Get stored tokens
-                const key = `opnetTokens_${chainType}_${currentAccount.pubkey}`;
-                const raw = localStorage.getItem(key) ?? '[]';
-                const parsed = JSON.parse(raw) as (StoredToken | string)[];
-                const dead = Address.dead().p2op(Web3API.network);
+            // Check if we've already added defaults for this account/chain combo
+            if (!defaultTokensCheckedRef.current.has(accountKey)) {
+                defaultTokensCheckedRef.current.add(accountKey);
 
-                let fullList = parsed
-                    .filter((t) => (typeof t === 'string' ? t !== dead : t.address !== dead))
-                    .filter((t) => typeof t === 'string' || !t.hidden)
-                    .map((t) => (typeof t === 'string' ? t : t.address))
-                    .reverse();
+                const moto = Web3API.motoAddressP2OP;
+                const pill = Web3API.pillAddressP2OP;
 
-                fullList = Array.from(new Set(fullList));
-
-                // Only add default tokens once per session and only if they haven't failed multiple times
-                if (!defaultTokensCheckedRef.current) {
-                    defaultTokensCheckedRef.current = true;
-
-                    const moto = Web3API.motoAddressP2OP;
-                    const pill = Web3API.pillAddressP2OP;
-
-                    // Check session failure count before adding
-                    const motoFailures = sessionFailureTracker.get(moto || '') || 0;
-                    const pillFailures = sessionFailureTracker.get(pill || '') || 0;
-
-                    if (moto && !fullList.includes(moto) && motoFailures < 3) {
-                        fullList.unshift(moto);
-                    }
-                    if (pill && !fullList.includes(pill) && pillFailures < 3) {
-                        fullList.unshift(pill);
-                    }
+                // Always add MOTO and PILL if they exist and aren't already in the list
+                if (moto && !result.includes(moto)) {
+                    console.log('Adding MOTO token:', moto);
+                    result.unshift(moto); // Add to beginning
+                }
+                if (pill && !result.includes(pill)) {
+                    console.log('Adding PILL token:', pill);
+                    result.unshift(pill); // Add to beginning
                 }
 
-                setTokens(fullList);
-                setTotal(fullList.length);
-                setCurrentPage(page);
+                // Save to storage if we added any
+                if ((moto && !addresses.includes(moto)) || (pill && !addresses.includes(pill))) {
+                    try {
+                        const stored = JSON.parse(localStorage.getItem(storageKey) || '[]') as (StoredToken | string)[];
+                        const updatedStored = [...stored];
 
-                const start = (page - 1) * TOKENS_PER_PAGE;
-                const pageList = fullList.slice(start, start + TOKENS_PER_PAGE);
-
-                const infos = await Promise.all(
-                    pageList.map(async (addr) => {
-                        try {
-                            // Check cache first
-                            const cached = balanceCache.get(addr);
-                            if (cached) {
-                                return cached;
-                            }
-
-                            const ci = await Web3API.queryContractInformation(addr);
-                            if (!ci || ci.name === 'Generic Contract') {
-                                // Increment session failure count
-                                const currentFailures = sessionFailureTracker.get(addr) || 0;
-                                sessionFailureTracker.set(addr, currentFailures + 1);
-                                return null;
-                            }
-
-                            const c = getContract<IOP_20Contract>(addr, OP_20_ABI, Web3API.provider, Web3API.network);
-                            const bal = await c.balanceOf(Address.fromString(currentAccount.pubkey));
-
-                            const ti: OPTokenInfo = {
-                                address: addr,
-                                name: ci.name || '',
-                                amount: bal.properties.balance,
-                                divisibility: 'divisibility' in ci ? (ci.divisibility as number) : (ci.decimals ?? 8),
-                                symbol: ci.symbol,
-                                logo: ci.logo
-                            };
-
-                            // Cache successful result and reset failure count
-                            balanceCache.set(addr, ti);
-                            sessionFailureTracker.delete(addr);
-
-                            return ti;
-                        } catch (error) {
-                            console.error(`Failed to load token ${addr}:`, error);
-
-                            // Increment session failure count
-                            const currentFailures = sessionFailureTracker.get(addr) || 0;
-                            sessionFailureTracker.set(addr, currentFailures + 1);
-
-                            return null;
+                        if (moto && !stored.some((t) => (typeof t === 'string' ? t : t.address) === moto)) {
+                            updatedStored.push(moto);
                         }
-                    })
-                );
+                        if (pill && !stored.some((t) => (typeof t === 'string' ? t : t.address) === pill)) {
+                            updatedStored.push(pill);
+                        }
 
-                if (myVersion !== fetchVersionRef.current) return;
-
-                const validInfos = infos.filter((x): x is OPTokenInfo => !!x);
-                setTokenBalances(validInfos);
-
-                // Auto-remove tokens that have failed too many times this session
-                const failedTokens = pageList.filter((addr) => {
-                    const failures = sessionFailureTracker.get(addr) || 0;
-                    return failures >= 3;
-                });
-
-                if (failedTokens.length > 0) {
-                    // Remove failed tokens from storage
-                    const updatedStored = parsed.filter((t) => {
-                        const address = typeof t === 'string' ? t : t.address;
-                        return !failedTokens.includes(address);
-                    });
-
-                    localStorage.setItem(key, JSON.stringify(updatedStored));
-
-                    // Clear them from cache
-                    failedTokens.forEach((addr) => {
-                        balanceCache.delete(addr);
-                    });
-
-                    tools.toastError(
-                        `${failedTokens.length} token(s) failed to load and were removed. You can re-add them later if needed.`
-                    );
-
-                    // Refresh the list if we removed tokens
-                    if (myVersion === fetchVersionRef.current) {
-                        setTimeout(() => fetchTokensBalances(1), 100);
+                        localStorage.setItem(storageKey, JSON.stringify(updatedStored));
+                    } catch (e) {
+                        console.error('Failed to save default tokens:', e);
                     }
                 }
-            } catch (e) {
-                tools.toastError(`Error loading tokens: ${(e as Error).message}`);
-            } finally {
-                setIsLoading(false);
             }
+
+            return result;
         },
-        [chainType, currentAccount.pubkey, tools]
+        [chainType, currentAccount.pubkey, storageKey]
     );
 
-    // Reset default tokens check when chain or account changes
-    useEffect(() => {
-        defaultTokensCheckedRef.current = false;
-        sessionFailureTracker.clear();
-        fetchTokensBalances(1).catch(console.error);
-    }, [fetchTokensBalances, chainType, currentAccount.pubkey]);
+    // Get all token addresses from storage
+    const loadTokenAddresses = useCallback((): string[] => {
+        try {
+            const stored = JSON.parse(localStorage.getItem(storageKey) || '[]') as (StoredToken | string)[];
+            const dead = Address.dead().p2op(Web3API.network);
 
-    useEffect(() => {
-        function checkHiddenTokens() {
-            const storageKey = `opnetTokens_${chainType}_${currentAccount.pubkey}`;
-            const storedTokens = JSON.parse(localStorage.getItem(storageKey) || '[]') as (StoredToken | string)[];
-            const hasHidden = storedTokens.some((t) => typeof t === 'object' && t.hidden);
-            setIsTokenHidden(hasHidden);
+            // Check for hidden tokens
+            const hasHidden = stored.some((t) => typeof t === 'object' && t.hidden);
+            setHasHiddenTokens(hasHidden);
+
+            // Get visible tokens only
+            let addresses = stored
+                .filter((t) => {
+                    const addr = typeof t === 'string' ? t : t.address;
+                    return addr !== dead;
+                })
+                .filter((t) => typeof t === 'string' || !t.hidden)
+                .map((t) => (typeof t === 'string' ? t : t.address));
+
+            // Remove duplicates
+            addresses = Array.from(new Set(addresses));
+
+            // Remove non P2OP addresses
+            addresses = addresses.filter(
+                (addr) => AddressVerificator.detectAddressType(addr, Web3API.network) === AddressTypes.P2OP
+            );
+
+            // Reverse to show newest first
+            addresses.reverse();
+
+            // Ensure default tokens are included
+            addresses = ensureDefaultTokens(addresses);
+
+            return addresses;
+        } catch (error) {
+            console.error('Failed to load tokens:', error);
+            // Return at least the default tokens
+            return ensureDefaultTokens([]);
         }
+    }, [storageKey, ensureDefaultTokens]);
 
-        checkHiddenTokens();
-    }, [currentAccount.pubkey, chainType, tokens]);
+    // Fetch balance for a single token
+    const fetchTokenBalance = async (address: string): Promise<TokenWithBalance | null> => {
+        try {
+            // Set loading state for this token
+            setTokenBalancesMap((prev) => {
+                const newMap = new Map(prev);
+                newMap.set(address, {
+                    address,
+                    name: 'Loading...',
+                    amount: 0n,
+                    divisibility: 8,
+                    symbol: '...',
+                    isLoading: true
+                });
+                return newMap;
+            });
 
-    const handleRemoveToken = (address: string) => {
-        setModalToken(address);
-        setShowModal(true);
+            await Web3API.setNetwork(chainType);
+
+            const ci = await Web3API.queryContractInformation(address);
+            if (!ci || ci.name === 'Generic Contract') {
+                console.warn(`No contract info found for ${address}, skipping...`);
+                return {
+                    address,
+                    name: 'Unknown',
+                    amount: 0n,
+                    divisibility: 8,
+                    symbol: '???',
+                    isLoading: false
+                };
+            }
+
+            const contract = getContract<IOP20Contract>(address, OP_20_ABI, Web3API.provider, Web3API.network);
+
+            const balance = await contract.balanceOf(Address.fromString(currentAccount.pubkey));
+
+            return {
+                address,
+                name: ci.name || 'Unknown',
+                amount: balance.properties.balance,
+                divisibility: 'divisibility' in ci ? (ci.divisibility as number) : (ci.decimals ?? 8),
+                symbol: ci.symbol || '???',
+                logo: ci.logo,
+                isLoading: false
+            };
+        } catch (error) {
+            console.error(`Failed to fetch token ${address}:`, error);
+            return {
+                address,
+                name: 'Failed to load',
+                amount: 0n,
+                divisibility: 8,
+                symbol: '???',
+                loadError: true,
+                isLoading: false
+            };
+        }
     };
 
+    // Load balances for tokens on current page
+    const loadPageBalances = async (addresses: string[], page: number) => {
+        setIsLoading(true);
+
+        try {
+            const start = (page - 1) * TOKENS_PER_PAGE;
+            const end = start + TOKENS_PER_PAGE;
+            const pageAddresses = addresses.slice(start, end);
+
+            // Fetch balances for this page
+            const balances = await Promise.all(pageAddresses.map((addr) => fetchTokenBalance(addr)));
+
+            // Update the map with new balances
+            setTokenBalancesMap((prev) => {
+                const newMap = new Map(prev);
+                balances.forEach((balance) => {
+                    if (balance) {
+                        newMap.set(balance.address, balance);
+                    }
+                });
+                return newMap;
+            });
+        } catch (error) {
+            console.error('Failed to load page balances:', error);
+            tools.toastError('Failed to load token balances');
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    // Initialize tokens and load first page
+    const initialize = async () => {
+        setIsInitializing(true);
+
+        try {
+            await Web3API.setNetwork(chainType);
+            const addresses = loadTokenAddresses();
+            console.log('Loaded addresses:', addresses.length, addresses);
+            setAllTokenAddresses(addresses);
+
+            if (addresses.length > 0) {
+                await loadPageBalances(addresses, 1);
+            }
+        } catch (error) {
+            console.error('Initialization error:', error);
+        } finally {
+            setIsInitializing(false);
+        }
+    };
+
+    // Handle page change
+    const goToPage = async (page: number) => {
+        const totalPages = Math.ceil(allTokenAddresses.length / TOKENS_PER_PAGE);
+        const safePage = Math.min(Math.max(1, page), totalPages || 1);
+
+        setCurrentPage(safePage);
+        await loadPageBalances(allTokenAddresses, safePage);
+    };
+
+    // Refresh current page
+    const refreshCurrentPage = async () => {
+        // Clear cache for current page tokens
+        const start = (currentPage - 1) * TOKENS_PER_PAGE;
+        const end = start + TOKENS_PER_PAGE;
+        const pageAddresses = allTokenAddresses.slice(start, end);
+
+        pageAddresses.forEach((addr) => {
+            tokenBalancesMap.delete(addr);
+        });
+
+        await loadPageBalances(allTokenAddresses, currentPage);
+    };
+
+    // Handle token removal/hiding
     const handleModalAction = (action: 'remove' | 'hide') => {
         if (!modalToken) return;
 
         try {
-            const storageKey = `opnetTokens_${chainType}_${currentAccount.pubkey}`;
-            const storedTokens = JSON.parse(localStorage.getItem(storageKey) || '[]') as (StoredToken | string)[];
+            const stored = JSON.parse(localStorage.getItem(storageKey) || '[]') as (StoredToken | string)[];
+            let updated: (StoredToken | string)[];
 
-            let updatedTokens: (StoredToken | string)[];
             if (action === 'remove') {
-                updatedTokens = storedTokens.filter((t) =>
-                    typeof t === 'object' ? t.address !== modalToken : t !== modalToken
-                );
-                balanceCache.delete(modalToken);
-                sessionFailureTracker.delete(modalToken);
+                updated = stored.filter((t) => {
+                    const addr = typeof t === 'string' ? t : t.address;
+                    return addr !== modalToken;
+                });
             } else {
-                updatedTokens = storedTokens.map((t) => {
-                    if (
-                        (typeof t === 'object' && t.address === modalToken) ||
-                        (typeof t === 'string' && t === modalToken)
-                    ) {
+                updated = stored.map((t) => {
+                    const addr = typeof t === 'string' ? t : t.address;
+                    if (addr === modalToken) {
                         return { address: modalToken, hidden: true };
                     }
                     return t;
                 });
             }
 
-            localStorage.setItem(storageKey, JSON.stringify(updatedTokens));
-            tools.toastSuccess(`Token ${action === 'remove' ? 'removed' : 'hidden'} successfully!`);
-        } catch (err) {
-            tools.toastError(`Failed to ${action} the token.`);
+            localStorage.setItem(storageKey, JSON.stringify(updated));
+            tools.toastSuccess(`Token ${action === 'remove' ? 'removed' : 'hidden'} successfully`);
+
+            // Reload everything
+            const newAddresses = loadTokenAddresses();
+            setAllTokenAddresses(newAddresses);
+
+            // Remove from map if removed
+            if (action === 'remove') {
+                setTokenBalancesMap((prev) => {
+                    const newMap = new Map(prev);
+                    newMap.delete(modalToken);
+                    return newMap;
+                });
+            }
+
+            // Calculate new page
+            const totalPages = Math.ceil(newAddresses.length / TOKENS_PER_PAGE);
+            const newPage = Math.min(currentPage, totalPages || 1);
+
+            setCurrentPage(newPage);
+            loadPageBalances(newAddresses, newPage);
+        } catch (error) {
+            console.error(`Failed to ${action} token:`, error);
+            tools.toastError(`Failed to ${action} token`);
         } finally {
             setShowModal(false);
             setModalToken(null);
-            fetchTokensBalances(1).catch(console.error);
         }
     };
 
+    // Show hidden tokens
     const showHiddenTokens = () => {
         try {
-            const storageKey = `opnetTokens_${chainType}_${currentAccount.pubkey}`;
-            const storedTokens = JSON.parse(localStorage.getItem(storageKey) || '[]') as (StoredToken | string)[];
-            const hasHidden = storedTokens.some((t) => typeof t === 'object' && t.hidden);
-            if (!hasHidden) {
-                tools.toastSuccess('No hidden tokens');
-                return;
-            }
-            const unhidden = storedTokens.map((t) => (typeof t === 'object' && t.hidden ? { ...t, hidden: false } : t));
-            localStorage.setItem(storageKey, JSON.stringify(unhidden));
-            tools.toastSuccess('Hidden tokens are now visible!');
-            fetchTokensBalances(1).catch(console.error);
-        } catch (err) {
+            const stored = JSON.parse(localStorage.getItem(storageKey) || '[]') as (StoredToken | string)[];
+            const updated = stored.map((t) => {
+                if (typeof t === 'object' && t.hidden) {
+                    return { ...t, hidden: false };
+                }
+                return t;
+            });
+
+            localStorage.setItem(storageKey, JSON.stringify(updated));
+            tools.toastSuccess('Hidden tokens are now visible');
+
+            // Reload everything
+            const newAddresses = loadTokenAddresses();
+            setAllTokenAddresses(newAddresses);
+            setCurrentPage(1);
+            loadPageBalances(newAddresses, 1);
+        } catch (error) {
+            console.error('Failed to show hidden tokens:', error);
             tools.toastError('Failed to show hidden tokens');
         }
     };
 
-    const totalPages = Math.ceil(total / TOKENS_PER_PAGE);
-    const handlePageChange = (direction: 'next' | 'prev') => {
-        setCurrentPage((prev) => {
-            const next = direction === 'next' ? prev + 1 : prev - 1;
-            fetchTokensBalances(next).catch(console.error);
-            return next;
-        });
-    };
+    // When account or chain changes, reset everything
+    useEffect(() => {
+        // Clear the default tokens check for new account/chain
+        defaultTokensCheckedRef.current.clear();
+        setCurrentPage(1);
+        setTokenBalancesMap(new Map());
+        initialize();
+    }, [currentAccount.pubkey, chainType]);
 
-    if (total === -1) {
+    // Calculate current page tokens
+    const start = (currentPage - 1) * TOKENS_PER_PAGE;
+    const end = start + TOKENS_PER_PAGE;
+    const currentPageAddresses = allTokenAddresses.slice(start, end);
+    const currentPageBalances = currentPageAddresses
+        .map((addr) => tokenBalancesMap.get(addr))
+        .filter((balance): balance is TokenWithBalance => !!balance && !balance.loadError);
+
+    const totalPages = Math.ceil(allTokenAddresses.length / TOKENS_PER_PAGE);
+
+    // Loading state
+    if (isInitializing) {
         return (
             <Column style={{ minHeight: 150 }} itemsCenter justifyCenter>
-                <LoadingOutlined />
+                <LoadingOutlined style={{ fontSize: 24, color: colors.main }} />
+                <Text text="Loading tokens..." color="textDim" size="sm" style={{ marginTop: 8 }} />
             </Column>
         );
     }
 
-    const $footerBaseStyle: CSSProperties = {
-        display: 'block',
-        minHeight: 20,
-        paddingBottom: 10,
-        fontSize: 12,
-        cursor: 'pointer'
-    };
-
-    const $opnet: CSSProperties = {
-        display: 'block',
-        marginBottom: 10
-    };
-
     return (
         <div>
-            <BaseView style={$footerBaseStyle}>
-                <div className="op_tokens_action_buttons_container">
-                    <div className="op_tokens_action_buttons">
-                        <button className="op_tokens_action_button" onClick={() => setImportTokenBool(true)}>
-                            <div className="op_token_action_icon">
-                                <FontAwesomeIcon icon={faUpload} />
-                            </div>
-                            <span>Import Token</span>
-                        </button>
-                        <button
-                            className="op_tokens_action_button"
-                            onClick={async () => {
-                                await browser.tabs.create({
-                                    url: browser.runtime.getURL('/index.html#/opnet/deploy-contract')
-                                });
-                            }}>
-                            <div className="op_tokens_action_icon">
-                                <FontAwesomeIcon icon={faPencil} />
-                            </div>
-                            <span>Deploy</span>
-                        </button>
-                    </div>
-                    <div className="op_tokens_action_buttons">
-                        <button
-                            className="op_tokens_action_button icon"
-                            onClick={() => fetchTokensBalances(currentPage)}
-                            disabled={isLoading}>
-                            <div className="op_tokens_action_icon">
-                                <FontAwesomeIcon icon={faRefresh} spin={isLoading} />
-                            </div>
-                        </button>
-                    </div>
-                </div>
-            </BaseView>
+            {/* Action Buttons */}
+            <div
+                style={{
+                    display: 'flex',
+                    gap: '8px',
+                    width: 'calc(100% + 24px)',
+                    borderBottom: `1px solid ${colors.headerBorder}`,
+                    borderTop: `1px solid ${colors.headerBorder}`,
+                    padding: `12px`,
+                    margin: '0 -12px 12px -12px',
+                    background: colors.headerBG
+                }}>
+                <button
+                    style={tokenButtonStyle}
+                    onClick={() => setImportTokenBool(true)}
+                    onMouseOver={(e) => (e.currentTarget.style.background = "#212121")}
+                    onMouseOut={(e) => (e.currentTarget.style.background = "#313131")}
+                >
+                    <FontAwesomeIcon icon={faPlus} style={{ fontSize: 12 }} />
+                    <span>Import</span>
+                </button>
 
-            {total > 0 && (
-                <BaseView style={$opnet}>
-                    {tokenBalances.map((data) => (
-                        <OpNetBalanceCard
-                            key={data.address}
-                            tokenInfo={data}
-                            onClick={() => {
-                                navigate(RouteTypes.OpNetTokenScreen, {
-                                    address: data.address
-                                });
-                            }}
-                            handleRemoveToken={handleRemoveToken}
-                        />
-                    ))}
+                <button
+                    style={tokenButtonStyle}
+                    onClick={async () => {
+                        await browser.tabs.create({
+                            url: browser.runtime.getURL("/index.html#/opnet/deploy-contract"),
+                        });
+                    }}
+                    onMouseOver={(e) => (e.currentTarget.style.background = "#212121")}
+                    onMouseOut={(e) => (e.currentTarget.style.background = "#313131")}
+                >
+                    <FontAwesomeIcon icon={faPencil} style={{ fontSize: 12 }} />
+                    <span>Deploy</span>
+                </button>
 
+                <button
+                    style={tokenRefreshButtonStyle}
+                    onClick={refreshCurrentPage}
+                    disabled={isLoading}
+                    onMouseOver={(e) => {
+                        if (!isLoading) e.currentTarget.style.background = "#212121";
+                    }}
+                    onMouseOut={(e) => (e.currentTarget.style.background = "#313131")}
+                >
+                    <FontAwesomeIcon
+                        icon={faRefresh}
+                        spin={isLoading}
+                        style={{
+                            fontSize: 14,
+                            color: isLoading ? colors.main : "white",
+                        }}
+                    />
+                </button>
+
+            </div>
+
+            {/* Token List */}
+            {allTokenAddresses.length > 0 ? (
+                <div
+                >
+                    {currentPageBalances.length === 0 && currentPageAddresses.length > 0 ? (
+                        <Column style={{ padding: 30 }} itemsCenter justifyCenter>
+                            <LoadingOutlined style={{ fontSize: 20, color: colors.main }} />
+                            <Text text="Loading balances..." color="textDim" size="sm" style={{ marginTop: 8 }} />
+                        </Column>
+                    ) : (
+                        <>
+                            {currentPageBalances.map((data, index) => (
+                                <div
+                                    key={data.address}
+                                    style={{ marginBottom: index < currentPageBalances.length - 1 ? '6px' : 0 }}>
+                                    <OpNetBalanceCard
+                                        tokenInfo={data}
+                                        onClick={() => {
+                                            navigate(RouteTypes.OpNetTokenScreen, {
+                                                address: data.address
+                                            });
+                                        }}
+                                        handleRemoveToken={(address) => {
+                                            setModalToken(address);
+                                            setShowModal(true);
+                                        }}
+                                    />
+                                </div>
+                            ))}
+                        </>
+                    )}
+
+                    {/* Pagination */}
                     {totalPages > 1 && (
-                        <div className="op_pagination_controls">
+                        <div
+                            style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                marginTop: '12px',
+                                padding: '8px 4px'
+                            }}>
                             <button
-                                className="op_pagination_next"
-                                onClick={() => handlePageChange('prev')}
-                                disabled={currentPage === 1}>
-                                Prev
+                                style={{
+                                    padding: '6px 12px',
+                                    fontSize: '12px',
+                                    fontWeight: 600,
+                                    color: currentPage === 1 ? colors.textFaded : colors.text,
+                                    background: 'transparent',
+                                    border: `1px solid ${currentPage === 1 ? colors.containerBorder : colors.main}`,
+                                    borderRadius: '8px',
+                                    cursor: currentPage === 1 ? 'not-allowed' : 'pointer',
+                                    transition: 'all 0.2s',
+                                    opacity: currentPage === 1 ? 0.5 : 1
+                                }}
+                                onClick={() => goToPage(currentPage - 1)}
+                                disabled={currentPage === 1 || isLoading}>
+                                Previous
                             </button>
-                            {Array.from({ length: totalPages }, (_, idx) => {
-                                const pageNumber = idx + 1;
-                                const shouldShow =
-                                    pageNumber === 1 ||
-                                    pageNumber === totalPages ||
-                                    (pageNumber >= currentPage - 2 && pageNumber <= currentPage + 2);
-                                if (shouldShow) {
+
+                            <div
+                                style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '4px'
+                                }}>
+                                {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => {
+                                    const isActive = page === currentPage;
+                                    const showPage =
+                                        page === 1 || page === totalPages || Math.abs(page - currentPage) <= 1;
+
+                                    if (!showPage) {
+                                        if (page === currentPage - 2 || page === currentPage + 2) {
+                                            return (
+                                                <span key={page} style={{ color: colors.textFaded, fontSize: '12px' }}>
+                                                    •
+                                                </span>
+                                            );
+                                        }
+                                        return null;
+                                    }
+
                                     return (
                                         <button
-                                            onClick={() => {
-                                                fetchTokensBalances(pageNumber).catch(console.error);
-                                                setCurrentPage(pageNumber);
+                                            key={page}
+                                            style={{
+                                                width: '28px',
+                                                height: '28px',
+                                                fontSize: '12px',
+                                                fontWeight: isActive ? 700 : 500,
+                                                color: isActive ? colors.background : colors.text,
+                                                background: isActive ? colors.main : 'transparent',
+                                                border: `1px solid ${isActive ? colors.main : colors.containerBorder}`,
+                                                borderRadius: '6px',
+                                                cursor: isActive ? 'default' : 'pointer',
+                                                transition: 'all 0.2s'
                                             }}
-                                            className="op_pagination_button"
-                                            key={pageNumber}
-                                            style={
-                                                currentPage === pageNumber ? { fontWeight: 'bold', scale: 1.15 } : {}
-                                            }>
-                                            {pageNumber.toString()}
+                                            onClick={() => !isActive && goToPage(page)}
+                                            disabled={isActive || isLoading}>
+                                            {page}
                                         </button>
                                     );
-                                }
-                                if (pageNumber === currentPage - 3 || pageNumber === currentPage + 3) {
-                                    return (
-                                        <span key={pageNumber} style={{ padding: '5px' }}>
-                                            ...
-                                        </span>
-                                    );
-                                }
-                                return null;
-                            })}
+                                })}
+                            </div>
+
                             <button
-                                className="op_pagination_next"
-                                onClick={() => handlePageChange('next')}
-                                disabled={currentPage === totalPages}>
+                                style={{
+                                    padding: '6px 12px',
+                                    fontSize: '12px',
+                                    fontWeight: 600,
+                                    color: currentPage === totalPages ? colors.textFaded : colors.text,
+                                    background: 'transparent',
+                                    border: `1px solid ${currentPage === totalPages ? colors.containerBorder : colors.main}`,
+                                    borderRadius: '8px',
+                                    cursor: currentPage === totalPages ? 'not-allowed' : 'pointer',
+                                    transition: 'all 0.2s',
+                                    opacity: currentPage === totalPages ? 0.5 : 1
+                                }}
+                                onClick={() => goToPage(currentPage + 1)}
+                                disabled={currentPage === totalPages || isLoading}>
                                 Next
                             </button>
                         </div>
                     )}
-                </BaseView>
+                </div>
+            ) : (
+                <div
+                    style={{
+                        background: colors.containerBgFaded,
+                        borderRadius: '14px',
+                        padding: '40px 20px',
+                        textAlign: 'center',
+                        marginBottom: '12px'
+                    }}>
+                    <Text text="No tokens found" color="text" size="md" style={{ marginBottom: 8 }} />
+                    <Text text="Import or deploy a token to get started" color="textDim" size="sm" />
+                </div>
             )}
 
-            {isTokenHidden && (
-                <BaseView style={$opnet}>
-                    <Row style={{ marginTop: '12px' }}>
-                        <Button
-                            style={{ width: '100%', fontSize: '10px' }}
-                            text="Show Hidden Tokens"
-                            preset="fontsmall"
-                            onClick={showHiddenTokens}
-                        />
-                    </Row>
-                </BaseView>
+            {/* Hidden Tokens Button */}
+            {hasHiddenTokens && (
+                <button
+                    style={{
+                        width: '100%',
+                        padding: '10px',
+                        fontSize: '12px',
+                        fontWeight: 600,
+                        color: colors.main,
+                        background: 'transparent',
+                        border: `1px solid ${colors.main}`,
+                        borderRadius: '10px',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '6px'
+                    }}
+                    onClick={showHiddenTokens}
+                    onMouseOver={(e) => {
+                        e.currentTarget.style.background = `${colors.main}15`;
+                    }}
+                    onMouseOut={(e) => {
+                        e.currentTarget.style.background = 'transparent';
+                    }}>
+                    <FontAwesomeIcon icon={faEye} />
+                    Show Hidden Tokens
+                </button>
             )}
 
+            {/* Import Token Modal */}
             {importTokenBool && (
                 <AddOpNetToken
                     currentPage={currentPage}
                     setImportTokenBool={setImportTokenBool}
-                    fetchData={fetchTokensBalances}
+                    fetchData={async () => {
+                        const newAddresses = loadTokenAddresses();
+                        setAllTokenAddresses(newAddresses);
+                        await loadPageBalances(newAddresses, currentPage);
+                    }}
                     onClose={() => setImportTokenBool(false)}
                 />
             )}
 
-            <Modal
-                open={showModal}
-                onCancel={() => setShowModal(false)}
-                footer={null}
-                closeIcon={<CloseOutlined style={{ fontSize: '24px' } as CSSProperties} />}>
-                <Row>
-                    <Text text="Remove or Hide Token" preset="title-bold" size="xxl" />
-                </Row>
-                <Row style={{ marginTop: '12px' }}>
-                    <Text
-                        text="You can either remove or hide this token. Removing the token will permanently delete it from the list (you will need to manually import it in the future). Hiding the token only temporarily removes it from the list, but you can bring it back by clicking 'Show Hidden Tokens' later."
-                        size="md"
-                    />
-                </Row>
-                <Row
-                    style={{
-                        display: 'flex',
-                        gap: '10px',
-                        justifyContent: 'center',
-                        marginTop: '20px'
-                    }}>
-                    <Button text="Hide" onClick={() => handleModalAction('hide')} />
-                    <Button text="Remove" onClick={() => handleModalAction('remove')} />
-                </Row>
-            </Modal>
+            {/* Remove/Hide Modal */}
+            <>
+                {/* Add styles to override Ant Design */}
+                <style>{`
+            .custom-token-modal .ant-modal-content {
+                background: ${colors.containerBg} !important;
+                border: 1px solid ${colors.containerBorder} !important;
+                border-radius: 14px !important;
+            }
+            
+            .custom-token-modal .ant-modal-header {
+                background: ${colors.containerBg} !important;
+                border-bottom: 1px solid ${colors.containerBorder} !important;
+                border-radius: 14px 14px 0 0 !important;
+            }
+            
+            .custom-token-modal .ant-modal-title {
+                color: ${colors.text} !important;
+                font-weight: 600 !important;
+                font-size: 18px !important;
+            }
+            
+            .custom-token-modal .ant-modal-body {
+                background: ${colors.containerBg} !important;
+                color: ${colors.text} !important;
+                padding: 8px !important;
+            }
+            
+            .custom-token-modal .ant-modal-close {
+                color: ${colors.textFaded} !important;
+            }
+            
+            .custom-token-modal .ant-modal-close:hover {
+                color: ${colors.text} !important;
+                background: ${colors.buttonHoverBg} !important;
+            }
+            
+            .custom-token-modal .ant-modal-mask {
+                background: rgba(0, 0, 0, 0.6) !important;
+                backdrop-filter: blur(4px) !important;
+            }
+        `}</style>
+
+                {/* Updated Modal with className */}
+                <Modal
+                    open={showModal}
+                    onCancel={() => {
+                        setShowModal(false);
+                        setModalToken(null);
+                    }}
+                    footer={null}
+                    closeIcon={<CloseOutlined style={{ fontSize: '16px' }} />}
+                    centered
+                    className="custom-token-modal"
+                    title="Token Options">
+                    <div style={{ padding: '8px 0' }}>
+                        <Text
+                            text="What would you like to do with this token?"
+                            color="textDim"
+                            size="sm"
+                            style={{ marginBottom: 24 }}
+                        />
+
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                            <button
+                                style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '10px',
+                                    padding: '12px',
+                                    background: colors.buttonHoverBg,
+                                    border: `1px solid ${colors.containerBorder}`,
+                                    borderRadius: '10px',
+                                    cursor: 'pointer',
+                                    transition: 'all 0.2s'
+                                }}
+                                onClick={() => handleModalAction('hide')}
+                                onMouseOver={(e) => {
+                                    e.currentTarget.style.background = colors.buttonBg;
+                                    e.currentTarget.style.borderColor = colors.main;
+                                }}
+                                onMouseOut={(e) => {
+                                    e.currentTarget.style.background = colors.buttonHoverBg;
+                                    e.currentTarget.style.borderColor = colors.containerBorder;
+                                }}>
+                                <FontAwesomeIcon icon={faEyeSlash} style={{ color: colors.main, fontSize: 16 }} />
+                                <div style={{ textAlign: 'left' }}>
+                                    <div style={{ color: colors.text, fontSize: '14px', fontWeight: 600 }}>
+                                        Hide Token
+                                    </div>
+                                    <div style={{ color: colors.textFaded, fontSize: '11px', marginTop: '2px' }}>
+                                        Temporarily hide from list (can be shown later)
+                                    </div>
+                                </div>
+                            </button>
+
+                            <button
+                                style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '10px',
+                                    padding: '12px',
+                                    background: colors.buttonHoverBg,
+                                    border: `1px solid ${colors.containerBorder}`,
+                                    borderRadius: '10px',
+                                    cursor: 'pointer',
+                                    transition: 'all 0.2s'
+                                }}
+                                onClick={() => handleModalAction('remove')}
+                                onMouseOver={(e) => {
+                                    e.currentTarget.style.background = `${colors.error}15`;
+                                    e.currentTarget.style.borderColor = colors.error;
+                                }}
+                                onMouseOut={(e) => {
+                                    e.currentTarget.style.background = colors.buttonHoverBg;
+                                    e.currentTarget.style.borderColor = colors.containerBorder;
+                                }}>
+                                <FontAwesomeIcon icon={faTrash} style={{ color: colors.error, fontSize: 16 }} />
+                                <div style={{ textAlign: 'left' }}>
+                                    <div style={{ color: colors.text, fontSize: '14px', fontWeight: 600 }}>
+                                        Remove Token
+                                    </div>
+                                    <div style={{ color: colors.textFaded, fontSize: '11px', marginTop: '2px' }}>
+                                        Permanently delete (must re-import to add back)
+                                    </div>
+                                </div>
+                            </button>
+                        </div>
+                    </div>
+                </Modal>
+            </>
         </div>
     );
 }

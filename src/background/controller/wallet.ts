@@ -1,4 +1,4 @@
-import { BroadcastedTransaction } from 'opnet';
+import { BroadcastedTransaction, UTXOs } from 'opnet';
 
 import {
     contactBookService,
@@ -11,21 +11,17 @@ import {
 } from '@/background/service';
 import { DisplayedKeyring, Keyring, SavedVault } from '@/background/service/keyring';
 import { WalletSaveList } from '@/background/service/preference';
-import {
-    BroadcastTransactionOptions,
-    IDeploymentParametersWithoutSigner,
-    InteractionParametersWithoutSigner
-} from '@/content-script/pageProvider/Web3Provider.js';
+import { BroadcastTransactionOptions } from '@/content-script/pageProvider/Web3Provider.js';
 import {
     ADDRESS_TYPES,
     AddressFlagType,
     AUTO_LOCKTIMES,
     BRAND_ALIAN_TYPE_TEXT,
+    ChainId,
     CHAINS_ENUM,
     CHAINS_MAP,
     ChainType,
-    COIN_NAME,
-    COIN_SYMBOL,
+    CustomNetwork,
     DEFAULT_LOCKTIME_ID,
     EVENTS,
     KEYRING_TYPE,
@@ -42,10 +38,7 @@ import {
     AddressUserToSignInput,
     AppSummary,
     BitcoinBalance,
-    BuyBtcChannel,
     DecodedPsbt,
-    FeeSummary,
-    GroupAsset,
     NetworkType,
     PublicKeyUserToSignInput,
     SignPsbtOptions,
@@ -58,23 +51,32 @@ import {
 } from '@/shared/types';
 import { getChainInfo } from '@/shared/utils';
 import Web3API, { bigIntToDecimal, getBitcoinLibJSNetwork } from '@/shared/web3/Web3API';
-import { DeploymentResult, IDeploymentParameters, IInteractionParameters, Wallet } from '@btc-vision/transaction';
-import { publicKeyToAddress, scriptPkToAddress } from '@btc-vision/wallet-sdk/lib/address';
-import { bitcoin, ECPair } from '@btc-vision/wallet-sdk/lib/bitcoin-core';
-import { KeystoneKeyring } from '@btc-vision/wallet-sdk/lib/keyring';
 import {
+    Address,
+    DeploymentResult,
+    IDeploymentParameters,
+    IDeploymentParametersWithoutSigner,
+    IInteractionParameters,
+    InteractionParametersWithoutSigner,
+    InteractionResponse,
+    RawChallenge,
+    Wallet
+} from '@btc-vision/transaction';
+import {
+    AbstractWallet,
+    ECPair,
     genPsbtOfBIP322Simple,
     getSignatureFromPsbtOfBIP322Simple,
-    signMessageOfBIP322Simple
-} from '@btc-vision/wallet-sdk/lib/message';
-import { toPsbtNetwork } from '@btc-vision/wallet-sdk/lib/network';
-import { toXOnly } from '@btc-vision/wallet-sdk/lib/utils';
-import { AbstractWallet } from '@btc-vision/wallet-sdk/lib/wallet';
+    KeystoneKeyring,
+    publicKeyToAddress,
+    scriptPkToAddress,
+    signMessageOfBIP322Simple,
+    toPsbtNetwork
+} from '@btc-vision/wallet-sdk';
 
-import { address as bitcoinAddress, Psbt } from '@btc-vision/bitcoin';
-import { InteractionResponse } from '@btc-vision/transaction/src/transaction/TransactionFactory';
+import { customNetworksManager } from '@/shared/utils/CustomNetworksManager';
+import { address as bitcoinAddress, payments, Psbt, toXOnly, Transaction } from '@btc-vision/bitcoin';
 import { Buffer } from 'buffer';
-import { UTXOs } from 'opnet/src/bitcoin/UTXOs';
 import { ContactBookItem, ContactBookStore } from '../service/contactBook';
 import { OpenApiService } from '../service/openapi';
 import { ConnectedSite } from '../service/permission';
@@ -84,6 +86,12 @@ export interface AccountAsset {
     symbol: string;
     amount: string;
     value: string;
+}
+
+export interface BalanceCacheEntry {
+    balance: BitcoinBalance;
+    timestamp: number;
+    fetchPromise?: Promise<BitcoinBalance>;
 }
 
 /**
@@ -103,9 +111,7 @@ const stashKeyrings: Record<string, Keyring> = {};
 
 export class WalletController {
     public openapi: OpenApiService = openapiService;
-
     public timer: string | number | null = null;
-
     public getApproval = notificationService.getApproval;
     public getApprovalInteractionParametersToUse = notificationService.getApprovalInteractionParametersToUse;
     public clearApprovalInteractionParametersToUse = notificationService.clearApprovalInteractionParametersToUse;
@@ -114,6 +120,10 @@ export class WalletController {
     public getConnectedSite = permissionService.getConnectedSite;
     public getSite = permissionService.getSite;
     public getConnectedSites = permissionService.getConnectedSites;
+    // Cache properties
+    private balanceCache: Map<string, BalanceCacheEntry> = new Map();
+    private readonly CACHE_DURATION = 1000; // 10 seconds in milliseconds
+    private cacheCleanupTimer: NodeJS.Timeout | null = null;
 
     /**
      * Unlock the keyring vault with a password.
@@ -209,6 +219,9 @@ export class WalletController {
                 await this.initAlianNames();
             }
             this._resetTimeout();
+
+            // Start cache cleanup timer
+            this._startCacheCleanup();
         } catch (err) {
             throw new WalletControllerError(`Unlock failed: ${String(err)}`, { passwordProvided: !!password });
         }
@@ -234,6 +247,9 @@ export class WalletController {
                 method: 'lock',
                 params: {}
             });
+
+            // Clear cache and stop cleanup timer
+            this._clearBalanceCache();
         } catch (err) {
             throw new WalletControllerError(`Lock wallet failed: ${String(err)}`);
         }
@@ -247,17 +263,54 @@ export class WalletController {
     };
 
     /**
-     * Fetch an address's balance from the OPNet or fallback service, then cache it.
+     * Fetch an address's balance with caching
      * @throws WalletControllerError
      */
-    public getAddressBalance = async (address: string): Promise<BitcoinBalance> => {
-        try {
-            const data: BitcoinBalance = await this.getOpNetBalance(address);
-            preferenceService.updateAddressBalance(address, data);
-            return data;
-        } catch (err) {
-            throw new WalletControllerError(`Failed to get address balance: ${String(err)}`, { address });
+    public getAddressBalance = async (address: string, pubKey?: string): Promise<BitcoinBalance> => {
+        const cacheKey = this._generateCacheKey(address, pubKey);
+        const now = Date.now();
+        const cached = this.balanceCache.get(cacheKey);
+
+        // Check if we have a valid cached entry
+        if (cached && now - cached.timestamp < this.CACHE_DURATION) {
+            // If there's an ongoing fetch, wait for it
+            if (cached.fetchPromise) {
+                try {
+                    return await cached.fetchPromise;
+                } catch (err) {
+                    // If the ongoing fetch fails, continue to fetch again
+                    console.warn('Ongoing fetch failed, refetching:', err);
+                }
+            } else {
+                // Return cached balance
+                return cached.balance;
+            }
         }
+
+        // Create a new fetch promise to prevent duplicate requests
+        const fetchPromise = this.getOpNetBalance(address, pubKey).catch((err: unknown) => {
+            // Remove failed fetch from cache
+            this.balanceCache.delete(cacheKey);
+            throw new WalletControllerError(`Failed to get address balance: ${String(err)}`, { address });
+        });
+
+        // Store the promise in cache immediately to prevent race conditions
+        this.balanceCache.set(cacheKey, {
+            balance: cached?.balance || ({} as BitcoinBalance), // Keep old balance while fetching
+            timestamp: cached?.timestamp || now,
+            fetchPromise
+        });
+
+        const balance = await fetchPromise;
+
+        // Update cache with successful result
+        this.balanceCache.set(cacheKey, {
+            balance,
+            timestamp: now,
+            fetchPromise: undefined
+        });
+
+        return balance;
     };
 
     /**
@@ -267,7 +320,7 @@ export class WalletController {
     public getMultiAddressAssets = async (addresses: string): Promise<AddressSummary[]> => {
         try {
             const network = this.getChainType();
-            Web3API.setNetwork(network);
+            await Web3API.setNetwork(network);
 
             const addressList = addresses.split(',');
             const summaries: AddressSummary[] = [];
@@ -275,7 +328,7 @@ export class WalletController {
                 const addressBalance = await this.getAddressBalance(address);
                 const summary: AddressSummary = {
                     address: address,
-                    totalSatoshis: Number(addressBalance.amount) * 1e8,
+                    totalSatoshis: Number(addressBalance.btc_total_amount) * 1e8,
                     loading: false
                 };
                 summaries.push(summary);
@@ -284,39 +337,6 @@ export class WalletController {
         } catch (err) {
             throw new WalletControllerError(`Failed to get multi-address assets: ${String(err)}`, { addresses });
         }
-    };
-
-    /**
-     * Retrieve group assets (pass-through to openapiService).
-     */
-    public findGroupAssets = (
-        groups: { type: number; address_arr: string[]; pubkey_arr: string[] }[]
-    ): Promise<GroupAsset[]> => {
-        // Potentially wrap in try/catch if there's network logic
-        return openapiService.findGroupAssets(groups);
-    };
-
-    /**
-     * Get a cached balance for the address, or a default if none found.
-     */
-    public getAddressCacheBalance = (address: string | undefined): BitcoinBalance => {
-        const defaultBalance: BitcoinBalance = {
-            amount: '0',
-            confirm_amount: '0',
-            pending_amount: '0',
-
-            btc_amount: '0',
-            confirm_btc_amount: '0',
-            pending_btc_amount: '0',
-
-            inscription_amount: '0',
-            confirm_inscription_amount: '0',
-            pending_inscription_amount: '0',
-
-            usd_value: '0.00'
-        };
-        if (!address) return defaultBalance;
-        return preferenceService.getAddressBalance(address) ?? defaultBalance;
     };
 
     /**
@@ -456,14 +476,14 @@ export class WalletController {
         if (!('hdPath' in serialized) || serialized.hdPath === undefined || serialized.hdPath === null) {
             throw new WalletControllerError('No hdPath found in keyring');
         }
-        if (!('passphrase' in serialized) || serialized.passphrase === undefined || serialized.passphrase === null) {
-            throw new WalletControllerError('No passphrase found in keyring');
-        }
+
+        const passphrase =
+            serialized.passphrase !== undefined && serialized.passphrase !== null ? serialized.passphrase : undefined;
 
         return {
             mnemonic: serialized.mnemonic,
             hdPath: serialized.hdPath,
-            passphrase: serialized.passphrase
+            passphrase
         };
     };
 
@@ -495,10 +515,12 @@ export class WalletController {
             addressType,
             keyringService.keyrings.length - 1
         );
-        const walletKeyring = this.displayedKeyringToWalletKeyring(
+
+        const walletKeyring = await this.displayedKeyringToWalletKeyring(
             displayedKeyring,
             keyringService.keyrings.length - 1
         );
+
         this.changeKeyring(walletKeyring);
     };
 
@@ -540,12 +562,15 @@ export class WalletController {
                 addressType,
                 keyringService.keyrings.length - 1
             );
-            const walletKeyring = this.displayedKeyringToWalletKeyring(
+
+            const walletKeyring = await this.displayedKeyringToWalletKeyring(
                 displayedKeyring,
                 keyringService.keyrings.length - 1
             );
+
             this.changeKeyring(walletKeyring);
-            preferenceService.setShowSafeNotice(true);
+
+            await preferenceService.setShowSafeNotice(true);
         } catch (err) {
             throw new WalletControllerError(`Could not create keyring from mnemonics: ${String(err)}`);
         }
@@ -554,13 +579,13 @@ export class WalletController {
     /**
      * Create a temporary HD Keyring in memory with given mnemonic info.
      */
-    public createTmpKeyringWithMnemonics = (
+    public createTmpKeyringWithMnemonics = async (
         mnemonic: string,
         hdPath: string,
         passphrase: string,
         addressType: AddressType,
         accountCount = 1
-    ): WalletKeyring => {
+    ): Promise<WalletKeyring> => {
         const activeIndexes: number[] = [];
         for (let i = 0; i < accountCount; i++) {
             activeIndexes.push(i);
@@ -576,22 +601,26 @@ export class WalletController {
         });
 
         const displayedKeyring = keyringService.displayForKeyring(originKeyring, addressType, -1);
-        return this.displayedKeyringToWalletKeyring(displayedKeyring, -1, false);
+        return await this.displayedKeyringToWalletKeyring(displayedKeyring, -1, false);
     };
 
     /**
      * Create a temporary keyring in memory with a single private key.
      */
-    public createTmpKeyringWithPrivateKey = (privateKey: string, addressType: AddressType): WalletKeyring => {
+    public createTmpKeyringWithPrivateKey = async (
+        privateKey: string,
+        addressType: AddressType
+    ): Promise<WalletKeyring> => {
         const network = this.getNetworkType();
         const originKeyring = keyringService.createTmpKeyring(KEYRING_TYPE.SimpleKeyring, {
             privateKeys: [privateKey],
             network: getBitcoinLibJSNetwork(network)
         });
+
         const displayedKeyring = keyringService.displayForKeyring(originKeyring, addressType, -1);
 
-        preferenceService.setShowSafeNotice(true);
-        return this.displayedKeyringToWalletKeyring(displayedKeyring, -1, false);
+        await preferenceService.setShowSafeNotice(true);
+        return await this.displayedKeyringToWalletKeyring(displayedKeyring, -1, false);
     };
 
     /**
@@ -652,17 +681,20 @@ export class WalletController {
                     }
                 });
             }
+
             const displayedKeyring = keyringService.displayForKeyring(
                 originKeyring,
                 addressType,
                 keyringService.keyrings.length - 1
             );
-            const walletKeyring = this.displayedKeyringToWalletKeyring(
+
+            const walletKeyring = await this.displayedKeyringToWalletKeyring(
                 displayedKeyring,
                 keyringService.keyrings.length - 1
             );
+
             this.changeKeyring(walletKeyring);
-            preferenceService.setShowSafeNotice(false);
+            await preferenceService.setShowSafeNotice(false);
         } catch (err) {
             throw new WalletControllerError(`Could not create keyring with Keystone data: ${String(err)}`, {
                 urType,
@@ -788,7 +820,7 @@ export class WalletController {
     /**
      * Low-level convenience method for signing a transaction's PSBT.
      */
-    public signTransaction = (type: string, from: string, psbt: bitcoin.Psbt, inputs: ToSignInput[]): bitcoin.Psbt => {
+    public signTransaction = (type: string, from: string, psbt: Psbt, inputs: ToSignInput[]): Psbt => {
         const keyring = keyringService.getKeyringForAccount(from, type);
         return keyringService.signTransaction(keyring, psbt, inputs);
     };
@@ -798,7 +830,7 @@ export class WalletController {
      * @throws WalletControllerError
      */
     public formatOptionsToSignInputs = async (
-        _psbt: string | bitcoin.Psbt,
+        _psbt: string | Psbt,
         options?: SignPsbtOptions
     ): Promise<ToSignInput[]> => {
         const account = await this.getCurrentAccount();
@@ -810,7 +842,7 @@ export class WalletController {
         if (options?.toSignInputs) {
             // Validate user-provided inputs
             toSignInputs = options.toSignInputs.map((input) => {
-                const index = Number(input.index);
+                const index = Number(input.index as unknown as string);
                 if (isNaN(index)) throw new Error('invalid index in toSignInput');
 
                 const addrInput = input as AddressUserToSignInput;
@@ -843,14 +875,14 @@ export class WalletController {
             const networkType = this.getNetworkType();
             const psbtNetwork = toPsbtNetwork(networkType);
 
-            const psbt = typeof _psbt === 'string' ? bitcoin.Psbt.fromHex(_psbt, { network: psbtNetwork }) : _psbt;
+            const psbt = typeof _psbt === 'string' ? Psbt.fromHex(_psbt, { network: psbtNetwork }) : _psbt;
 
             psbt.data.inputs.forEach((v, idx) => {
                 let script: Buffer | null = null;
                 if (v.witnessUtxo) {
                     script = v.witnessUtxo.script;
                 } else if (v.nonWitnessUtxo) {
-                    const tx = bitcoin.Transaction.fromBuffer(v.nonWitnessUtxo);
+                    const tx = Transaction.fromBuffer(v.nonWitnessUtxo);
                     const output = tx.outs[psbt.txInputs[idx].index];
                     script = output.script;
                 }
@@ -874,11 +906,7 @@ export class WalletController {
      * Sign a psbt with a keyring and optionally finalize the inputs.
      * @throws WalletControllerError
      */
-    public signPsbt = async (
-        psbt: bitcoin.Psbt,
-        toSignInputs: ToSignInput[],
-        autoFinalized: boolean
-    ): Promise<bitcoin.Psbt> => {
+    public signPsbt = async (psbt: Psbt, toSignInputs: ToSignInput[], autoFinalized: boolean): Promise<Psbt> => {
         const account = await this.getCurrentAccount();
         if (!account) throw new WalletControllerError('No current account: signPsbt');
 
@@ -902,7 +930,7 @@ export class WalletController {
 
             if (isNotSigned && isP2TR && lostInternalPubkey) {
                 const tapInternalKey = toXOnly(Buffer.from(account.pubkey, 'hex'));
-                const { output } = bitcoin.payments.p2tr({
+                const { output } = payments.p2tr({
                     internalPubkey: tapInternalKey,
                     network: psbtNetwork
                 });
@@ -961,7 +989,7 @@ export class WalletController {
         toSignInputs: ToSignInput[],
         autoFinalized: boolean
     ): Promise<string> => {
-        const psbt = bitcoin.Psbt.fromHex(psbtHex);
+        const psbt = Psbt.fromHex(psbtHex);
         await this.signPsbt(psbt, toSignInputs, autoFinalized);
         return psbt.toHex();
     };
@@ -985,7 +1013,9 @@ export class WalletController {
      */
     public signAndBroadcastInteraction = async (
         interactionParameters: InteractionParametersWithoutSigner
-    ): Promise<[BroadcastedTransaction, BroadcastedTransaction, import('@btc-vision/transaction').UTXO[], string]> => {
+    ): Promise<
+        [BroadcastedTransaction, BroadcastedTransaction, import('@btc-vision/transaction').UTXO[], RawChallenge]
+    > => {
         const account = await this.getCurrentAccount();
         if (!account) throw new WalletControllerError('No current account');
 
@@ -1036,6 +1066,10 @@ export class WalletController {
         try {
             const { response, utxos } = signed;
 
+            if (!response?.fundingTransaction) {
+                throw new WalletControllerError('No funding transaction found');
+            }
+
             const fundingTx = await Web3API.provider.sendRawTransaction(response.fundingTransaction, false);
             if (!fundingTx) throw new WalletControllerError('No result from funding transaction broadcast');
             if (fundingTx.error) throw new WalletControllerError(fundingTx.error);
@@ -1046,7 +1080,7 @@ export class WalletController {
 
             Web3API.provider.utxoManager.spentUTXO(account.address, utxos, response.nextUTXOs);
 
-            return [fundingTx, interTx, response.nextUTXOs, response.preimage];
+            return [fundingTx, interTx, response.nextUTXOs, response.challenge];
         } catch (err) {
             throw new WalletControllerError(`signAndBroadcastInteraction failed: ${String(err)}`, {
                 interactionParameters
@@ -1131,17 +1165,20 @@ export class WalletController {
                     };
                 }) || [];
 
-            const preimage = await Web3API.provider.getPreimage();
+            const challenge = await Web3API.provider.getChallenge();
             const walletGet: Wallet = Wallet.fromWif(wifWallet.wif, Web3API.network);
             const deployContractParameters: IDeploymentParameters = {
                 ...params,
                 utxos,
-                preimage,
+                challenge,
                 signer: walletGet.keypair,
                 network: Web3API.network,
                 feeRate: Number(params.feeRate.toString()),
-                gasSatFee: BigInt(params.gasSatFee || 0n) < 330n ? 330n : BigInt(params.gasSatFee || 0n),
-                priorityFee: BigInt(params.priorityFee || 0n),
+                gasSatFee:
+                    BigInt((params.gasSatFee as unknown as string) || 0n) < 330n
+                        ? 330n
+                        : BigInt((params.gasSatFee as unknown as string) || 0n),
+                priorityFee: BigInt((params.priorityFee as unknown as string) || 0n),
                 bytecode:
                     typeof params.bytecode === 'string'
                         ? Buffer.from(params.bytecode, 'hex')
@@ -1152,7 +1189,8 @@ export class WalletController {
                         : Buffer.from(params.calldata)
                     : undefined,
                 optionalOutputs: params.optionalOutputs || [],
-                optionalInputs: optionalInputs
+                optionalInputs: optionalInputs,
+                note: params.note
             };
 
             return await Web3API.transactionFactory.signDeployment(deployContractParameters);
@@ -1347,31 +1385,16 @@ export class WalletController {
         return preferenceService.getInitAlianNameStatus();
     };
 
-    public updateInitAlianNameStatus = (): void => {
-        preferenceService.changeInitAlianNameStatus();
+    public updateInitAlianNameStatus = (): Promise<void> => {
+        return preferenceService.changeInitAlianNameStatus();
     };
 
-    public getIsFirstOpen = (): boolean => {
+    public getIsFirstOpen = (): Promise<boolean> => {
         return preferenceService.getIsFirstOpen();
     };
 
-    public updateIsFirstOpen = (): void => {
-        preferenceService.updateIsFirstOpen();
-    };
-
-    /**
-     * Fetch chain assets for a given address.
-     * @throws WalletControllerError
-     */
-    public listChainAssets = async (pubkeyAddress: string): Promise<AccountAsset[]> => {
-        try {
-            const balance = await openapiService.getAddressBalance(pubkeyAddress);
-            return [{ name: COIN_NAME, symbol: COIN_SYMBOL, amount: balance.amount, value: balance.usd_value }];
-        } catch (err) {
-            throw new WalletControllerError(`Failed to list chain assets: ${String(err)}`, {
-                pubkeyAddress
-            });
-        }
+    public updateIsFirstOpen = (): Promise<void> => {
+        return preferenceService.updateIsFirstOpen();
     };
 
     /**
@@ -1383,17 +1406,59 @@ export class WalletController {
 
     public getNetworkType = (): NetworkType => {
         const chainType = this.getChainType();
-        return CHAINS_MAP[chainType].networkType;
+        const chain = CHAINS_MAP[chainType];
+        if (!chain) {
+            throw new WalletControllerError(`Chain ${chainType} not found in CHAINS_MAP`);
+        }
+        return chain.networkType;
     };
 
     public setNetworkType = async (networkType: NetworkType): Promise<void> => {
-        if (networkType === NetworkType.MAINNET) {
-            await this.setChainType(ChainType.BITCOIN_MAINNET);
-        } else if (networkType === NetworkType.REGTEST) {
-            await this.setChainType(ChainType.BITCOIN_REGTEST);
-        } else {
-            await this.setChainType(ChainType.BITCOIN_TESTNET);
+        // Get current chain to determine the base chain type (Bitcoin, Litecoin, etc.)
+        const currentChainType = this.getChainType();
+        let baseChain = 'BITCOIN'; // default
+
+        if (currentChainType.includes('BITCOIN')) baseChain = 'BITCOIN';
+        else if (currentChainType.includes('FRACTAL')) baseChain = 'FRACTAL_BITCOIN';
+        else if (currentChainType.includes('DOGECOIN')) baseChain = 'DOGECOIN';
+        else if (currentChainType.includes('LITECOIN')) baseChain = 'LITECOIN';
+        else if (currentChainType.includes('BITCOINCASH')) baseChain = 'BITCOINCASH';
+        else if (currentChainType.includes('DASH')) baseChain = 'DASH';
+
+        let newChainType: ChainType;
+
+        switch (networkType) {
+            case NetworkType.MAINNET:
+                newChainType = `${baseChain}_MAINNET` as ChainType;
+                break;
+            case NetworkType.TESTNET:
+                // Special cases for testnet
+                if (baseChain === 'BITCOIN' && currentChainType === ChainType.BITCOIN_TESTNET4) {
+                    newChainType = ChainType.BITCOIN_TESTNET4;
+                } else if (baseChain === 'BITCOIN' && currentChainType === ChainType.BITCOIN_SIGNET) {
+                    newChainType = ChainType.BITCOIN_SIGNET;
+                } else {
+                    newChainType = `${baseChain}_TESTNET` as ChainType;
+                }
+                break;
+            case NetworkType.REGTEST:
+                newChainType = `${baseChain}_REGTEST` as ChainType;
+                break;
+            default:
+                throw new WalletControllerError(`Invalid network type: ${networkType}`);
         }
+
+        // Check if the chain exists and is not disabled
+        const targetChain = CHAINS_MAP[newChainType];
+        if (!targetChain) {
+            throw new WalletControllerError(`Chain ${newChainType} not found`);
+        }
+
+        if (targetChain.disable) {
+            throw new WalletControllerError(`Chain ${newChainType} is disabled. Please add a custom RPC endpoint.`);
+        }
+
+        await this.setChainType(newChainType);
     };
 
     public getNetworkName = (): string => {
@@ -1403,7 +1468,11 @@ export class WalletController {
 
     public getLegacyNetworkName = (): string => {
         const chainType = this.getChainType();
-        return NETWORK_TYPES[CHAINS_MAP[chainType].networkType].name;
+        const chain = CHAINS_MAP[chainType];
+        if (!chain) {
+            throw new WalletControllerError(`Chain ${chainType} not found in CHAINS_MAP`);
+        }
+        return NETWORK_TYPES[chain.networkType].name;
     };
 
     /**
@@ -1412,9 +1481,23 @@ export class WalletController {
      */
     public setChainType = async (chainType: ChainType): Promise<void> => {
         try {
-            Web3API.setNetwork(chainType);
-            preferenceService.setChainType(chainType);
-            await this.openapi.setEndpoints(CHAINS_MAP[chainType].endpoints);
+            // Clear balance cache when switching chains
+            this._clearBalanceCache();
+
+            // Ensure custom networks are loaded
+            await customNetworksManager.reload();
+
+            // This will use the updated CHAINS_MAP
+            await Web3API.setNetwork(chainType);
+
+            await preferenceService.setChainType(chainType);
+
+            const chain = CHAINS_MAP[chainType];
+            if (!chain) {
+                throw new WalletControllerError(`Chain ${chainType} not found in CHAINS_MAP`);
+            }
+
+            await this.openapi.setEndpoints(chain.endpoints);
 
             const currentAccount = await this.getCurrentAccount();
             const keyring = await this.getCurrentKeyring();
@@ -1435,9 +1518,56 @@ export class WalletController {
                 network,
                 chainType
             });
+
+            // Start cache cleanup timer
+            this._startCacheCleanup();
         } catch (err) {
             throw new WalletControllerError(`Failed to set chain type: ${String(err)}`, { chainType });
         }
+    };
+
+    public addCustomNetwork = async (params: {
+        name: string;
+        networkType: NetworkType;
+        chainId: ChainId;
+        unit: string;
+        opnetUrl: string;
+        mempoolSpaceUrl: string;
+        faucetUrl?: string;
+        showPrice?: boolean;
+    }): Promise<CustomNetwork> => {
+        try {
+            // The network will be added and validated by customNetworksManager
+            const network = await customNetworksManager.addCustomNetwork(params);
+
+            // Force reload of chains to ensure background service is aware
+            await customNetworksManager.reload();
+
+            return network;
+        } catch (err) {
+            throw new WalletControllerError(`Failed to add custom network: ${String(err)}`, params);
+        }
+    };
+
+    public deleteCustomNetwork = async (id: string): Promise<boolean> => {
+        try {
+            const success = await customNetworksManager.deleteCustomNetwork(id);
+            if (success) {
+                // Force reload of chains
+                await customNetworksManager.reload();
+            }
+            return success;
+        } catch (err) {
+            throw new WalletControllerError(`Failed to delete custom network: ${String(err)}`, { id });
+        }
+    };
+
+    public getAllCustomNetworks = async (): Promise<CustomNetwork[]> => {
+        return customNetworksManager.getAllCustomNetworks();
+    };
+
+    public testRpcConnection = async (url: string): Promise<boolean> => {
+        return customNetworksManager.testRpcConnection(url);
     };
 
     public getChainType = (): ChainType => {
@@ -1467,11 +1597,11 @@ export class WalletController {
     /**
      * Convert a displayedKeyring to a typed WalletKeyring.
      */
-    public displayedKeyringToWalletKeyring = (
+    public displayedKeyringToWalletKeyring = async (
         displayedKeyring: DisplayedKeyring,
         index: number,
         initName = true
-    ): WalletKeyring => {
+    ): Promise<WalletKeyring> => {
         const networkType = this.getNetworkType();
         const addressType = displayedKeyring.addressType;
         const key = `keyring_${index}`;
@@ -1483,7 +1613,7 @@ export class WalletController {
             const address = publicKeyToAddress(pubkey, addressType, networkType);
             const accountKey = `${key}#${j}`;
             const defaultName = this.getAlianName(pubkey) ?? this._generateAlianName(type, j + 1);
-            const alianName = preferenceService.getAccountAlianName(accountKey, defaultName);
+            const alianName = await preferenceService.getAccountAlianName(accountKey, defaultName);
             const flag = preferenceService.getAddressFlag(address);
             accounts.push({
                 type,
@@ -1499,11 +1629,12 @@ export class WalletController {
             type === KEYRING_TYPE.HdKeyring || type === KEYRING_TYPE.KeystoneKeyring
                 ? displayedKeyring.keyring.hdPath
                 : '';
-        const alianName = preferenceService.getKeyringAlianName(
+        const alianName = await preferenceService.getKeyringAlianName(
             key,
             initName ? `${KEYRING_TYPES[type].alianName} #${index + 1}` : ''
         );
-        const walletKeyring: WalletKeyring = {
+
+        return {
             index,
             key,
             type,
@@ -1512,7 +1643,6 @@ export class WalletController {
             alianName,
             hdPath
         };
-        return walletKeyring;
     };
 
     /**
@@ -1526,7 +1656,8 @@ export class WalletController {
             if (displayedKeyring.type === KEYRING_TYPE.Empty) {
                 continue;
             }
-            const walletKeyring = this.displayedKeyringToWalletKeyring(displayedKeyring, displayedKeyring.index);
+
+            const walletKeyring = await this.displayedKeyringToWalletKeyring(displayedKeyring, displayedKeyring.index);
             keyrings.push(walletKeyring);
         }
         return keyrings;
@@ -1607,23 +1738,23 @@ export class WalletController {
         return this.displayedKeyringToWalletKeyring(displayedKeyring, editingKeyringIndex);
     };
 
-    public setEditingKeyring = (index: number): void => {
-        preferenceService.setEditingKeyringIndex(index);
+    public setEditingKeyring = async (index: number): Promise<void> => {
+        await preferenceService.setEditingKeyringIndex(index);
     };
 
     public getEditingAccount = (): Account | undefined | null => {
         return preferenceService.getEditingAccount();
     };
 
-    public setEditingAccount = (account: Account): void => {
-        preferenceService.setEditingAccount(account);
+    public setEditingAccount = async (account: Account): Promise<void> => {
+        await preferenceService.setEditingAccount(account);
     };
 
     /**
      * Get the app summary (list of recommended apps, etc.) from openapi, with read/unread flags.
      */
     public getAppSummary = async (): Promise<AppSummary> => {
-        const appTab = preferenceService.getAppTab();
+        /*const appTab = preferenceService.getAppTab();
         try {
             const data = await openapiService.getAppSummary();
             const readTabTime = appTab.readTabTime;
@@ -1640,20 +1771,71 @@ export class WalletController {
                 }
             });
             data.readTabTime = readTabTime;
-            preferenceService.setAppSummary(data);
+            await preferenceService.setAppSummary(data);
             return data;
         } catch (e) {
             console.log('getAppSummary error:', e);
             return appTab.summary;
-        }
+        }*/
+
+        const appTab = preferenceService.getAppTab();
+        const readTabTime = appTab.readTabTime;
+
+        const opWalletAppSummaryResponse: AppSummary = {
+            apps: [
+                {
+                    desc: 'Easily and smoothly create your inscriptions.',
+                    id: 1,
+                    logo: 'https://static.unisat.io/res/images/app-fractal-inscribe.png',
+                    new: false,
+                    tag: 'Inscription Service',
+                    tagColor: 'rgba(34,249,128,0.6)',
+                    title: 'Fractal Inscribe',
+                    url: 'https://fractal-testnet.unisat.io/inscribe',
+                    time: 0, // Adding required field
+                    readtime: undefined
+                },
+                {
+                    desc: 'Trade your Ordinals and Runes on the Fractal Marketplace, including brc-20 and runes assets.',
+                    id: 3,
+                    logo: 'https://static.unisat.io/res/images/app-fractal-market.png',
+                    new: false,
+                    tag: 'Marketplace',
+                    tagColor: 'rgba(249,192,34,0.8)',
+                    title: 'Fractal Marketplace',
+                    url: 'https://fractal-testnet.unisat.io/market',
+                    time: 0, // Adding required field
+                    readtime: undefined
+                },
+                {
+                    desc: 'Seamless asset swapping and management across chains on Fractal',
+                    id: 4,
+                    logo: 'https://static.unisat.io/res/images/app-fractal-swap.png',
+                    new: false,
+                    tag: 'Marketplace',
+                    tagColor: 'rgba(249,192,34,0.8)',
+                    title: 'Bridge & PizzaSwap',
+                    url: 'https://fractal-testnet.unisat.io/apps',
+                    time: 0, // Adding required field
+                    readtime: undefined
+                }
+            ],
+            readTabTime: 1
+        };
+
+        opWalletAppSummaryResponse.readTabTime = readTabTime;
+
+        await preferenceService.setAppSummary(opWalletAppSummaryResponse);
+
+        return opWalletAppSummaryResponse;
     };
 
-    public readTab = (): void => {
-        return preferenceService.setReadTabTime(Date.now());
+    public readTab = async (): Promise<void> => {
+        return await preferenceService.setReadTabTime(Date.now());
     };
 
-    public readApp = (appid: number): void => {
-        return preferenceService.setReadAppTime(appid, Date.now());
+    public readApp = async (appid: number): Promise<void> => {
+        return await preferenceService.setReadAppTime(appid, Date.now());
     };
 
     /**
@@ -1754,8 +1936,8 @@ export class WalletController {
     /**
      * Add a flag to an account's address.
      */
-    public addAddressFlag = (account: Account, flag: AddressFlagType): Account => {
-        account.flag = preferenceService.addAddressFlag(account.address, flag);
+    public addAddressFlag = async (account: Account, flag: AddressFlagType): Promise<Account> => {
+        account.flag = await preferenceService.addAddressFlag(account.address, flag);
         openapiService.setClientAddress(account.address, account.flag);
         return account;
     };
@@ -1763,14 +1945,10 @@ export class WalletController {
     /**
      * Remove a flag from an account's address.
      */
-    public removeAddressFlag = (account: Account, flag: AddressFlagType): Account => {
-        account.flag = preferenceService.removeAddressFlag(account.address, flag);
+    public removeAddressFlag = async (account: Account, flag: AddressFlagType): Promise<Account> => {
+        account.flag = await preferenceService.removeAddressFlag(account.address, flag);
         openapiService.setClientAddress(account.address, account.flag);
         return account;
-    };
-
-    public getFeeSummary = async (): Promise<FeeSummary> => {
-        return openapiService.getFeeSummary();
     };
 
     public getBtcPrice = async (): Promise<number> => {
@@ -1792,7 +1970,7 @@ export class WalletController {
 
             if (inputData.witnessUtxo?.script) {
                 try {
-                    address = bitcoinAddress.fromOutputScript(inputData.witnessUtxo.script, network).toString();
+                    address = bitcoinAddress.fromOutputScript(inputData.witnessUtxo.script, network);
                 } catch {
                     address = 'unknown';
                 }
@@ -1931,7 +2109,7 @@ export class WalletController {
         const { keyring } = await this.checkKeyringMethod('parseSignPsbtUr');
         try {
             const psbtHex = await (keyring as KeystoneKeyring).parseSignPsbtUr(type, cbor);
-            const psbt = bitcoin.Psbt.fromHex(psbtHex);
+            const psbt = Psbt.fromHex(psbtHex);
             if (isFinalize) {
                 psbt.finalizeAllInputs();
             }
@@ -1991,7 +2169,7 @@ export class WalletController {
         if (msgType === 'bip322-simple') {
             try {
                 const res = await this.parseSignPsbtUr(type, cbor, false);
-                const psbt = bitcoin.Psbt.fromHex(res.psbtHex);
+                const psbt = Psbt.fromHex(res.psbtHex);
                 psbt.finalizeAllInputs();
                 return {
                     signature: getSignatureFromPsbtOfBIP322Simple(psbt)
@@ -2017,18 +2195,6 @@ export class WalletController {
             });
         }
     };
-
-    public getBuyBtcChannelList = async (): Promise<BuyBtcChannel[]> => {
-        return openapiService.getBuyBtcChannelList();
-    };
-
-    // public getEnableSignData = (): boolean => {
-    //     return preferenceService.getEnableSignData();
-    // };
-
-    // public setEnableSignData = (enable: boolean): void => {
-    //     preferenceService.setEnableSignData(enable);
-    // };
 
     public getAutoLockTimeId = (): number => {
         return preferenceService.getAutoLockTimeId();
@@ -2065,35 +2231,103 @@ export class WalletController {
     /**
      * @throws WalletControllerError
      */
-    private getOpNetBalance = async (address: string): Promise<BitcoinBalance> => {
+    private getOpNetBalance = async (address: string, pubKey?: string): Promise<BitcoinBalance> => {
+        let csv75Address = '';
+        let csv1Address = '';
+        let p2wdaAddress = '';
+
+        if (pubKey) {
+            const addressInst = Address.fromString(pubKey);
+
+            csv75Address = addressInst.toCSV(75, Web3API.network).address;
+            csv1Address = addressInst.toCSV(1, Web3API.network).address;
+
+            p2wdaAddress = addressInst.p2wda(Web3API.network).address;
+        }
+
         try {
-            const [unspentUTXOs, allUTXOs] = await Promise.all([
-                Web3API.getUnspentUTXOsForAddresses([address]),
-                Web3API.getAllUTXOsForAddresses([address])
-            ]);
+            if (!csv75Address || !csv1Address || !p2wdaAddress) {
+                const [allUTXOs, unspentUTXOs] = await Promise.all([
+                    Web3API.getAllUTXOsForAddresses([address]),
+                    Web3API.getUnspentUTXOsForAddresses([address])
+                ]);
 
-            const totalAll = allUTXOs.reduce((sum, u) => sum + u.value, 0n);
-            const totalUnspent = unspentUTXOs.reduce((sum, u) => sum + u.value, 0n);
+                const totalAll = allUTXOs.reduce((sum, u) => sum + u.value, 0n);
+                const totalUnspent = unspentUTXOs.reduce((sum, u) => sum + u.value, 0n);
 
-            const totalAmount = bigIntToDecimal(totalAll, 8);
-            const confirmAmount = bigIntToDecimal(totalUnspent, 8);
-            const pendingAmount = bigIntToDecimal(totalAll - totalUnspent, 8);
+                const totalAmount = bigIntToDecimal(totalAll, 8);
+                const confirmAmount = bigIntToDecimal(totalUnspent, 8);
+                const pendingAmount = bigIntToDecimal(totalAll - totalUnspent, 8);
 
-            return {
-                amount: totalAmount, // TODO: To change later when inscriptions are supported
-                confirm_amount: confirmAmount, // TODO: To change later when inscriptions are supported
-                pending_amount: pendingAmount, // TODO: To change later when inscriptions are supported
+                return {
+                    btc_total_amount: totalAmount,
+                    btc_confirm_amount: confirmAmount,
+                    btc_pending_amount: pendingAmount,
 
-                btc_amount: totalAmount,
-                confirm_btc_amount: confirmAmount,
-                pending_btc_amount: pendingAmount,
+                    usd_value: '0.00'
+                };
+            } else {
+                const [allUTXOs, unspentUTXOs, csv75Data, csv1Data, p2wdaUTXOs, unspentP2WDAUTXOs] = await Promise.all([
+                    Web3API.getAllUTXOsForAddresses([address]),
+                    Web3API.getUnspentUTXOsForAddresses([address]),
+                    Web3API.getTotalLockedAndUnlockedUTXOs(csv75Address, 'csv75'),
+                    Web3API.getTotalLockedAndUnlockedUTXOs(csv1Address, 'csv1'),
+                    Web3API.getAllUTXOsForAddresses([p2wdaAddress]),
+                    Web3API.getUnspentUTXOsForAddresses([p2wdaAddress])
+                ]);
 
-                inscription_amount: '0', // TODO: Add support later
-                confirm_inscription_amount: '0', // TODO: Add support later
-                pending_inscription_amount: '0', // TODO: Add support later
+                const totalAll = allUTXOs.reduce((sum, u) => sum + u.value, 0n);
+                const totalUnspent = unspentUTXOs.reduce((sum, u) => sum + u.value, 0n);
 
-                usd_value: '0.00'
-            };
+                const totalAmount = bigIntToDecimal(totalAll, 8);
+                const confirmAmount = bigIntToDecimal(totalUnspent, 8);
+                const pendingAmount = bigIntToDecimal(totalAll - totalUnspent, 8);
+
+                const totalCSV75 = csv75Data.utxos.reduce((sum, u) => sum + u.value, 0n);
+                const csv75Total = bigIntToDecimal(totalCSV75, 8);
+
+                const totalCSV1 = csv1Data.utxos.reduce((sum, u) => sum + u.value, 0n);
+                const csv1Total = bigIntToDecimal(totalCSV1, 8);
+
+                const csv75Unlocked = bigIntToDecimal(
+                    csv75Data.unlockedUTXOs.reduce((sum, u) => sum + u.value, 0n),
+                    8
+                );
+
+                const csv75Locked = Number(csv75Total) - Number(csv75Unlocked);
+                const csv1Unlocked = bigIntToDecimal(
+                    csv1Data.unlockedUTXOs.reduce((sum, u) => sum + u.value, 0n),
+                    8
+                );
+
+                const csv1Locked = Number(csv1Total) - Number(csv1Unlocked);
+
+                // p2wda
+                const totalP2WDA = p2wdaUTXOs.reduce((sum, u) => sum + u.value, 0n);
+                const totalUnspentP2WDA = unspentP2WDAUTXOs.reduce((sum, u) => sum + u.value, 0n);
+
+                const totalAmountP2WDA = bigIntToDecimal(totalP2WDA, 8);
+                const pendingAmountP2WDA = bigIntToDecimal(totalP2WDA - totalUnspentP2WDA, 8);
+
+                return {
+                    btc_total_amount: totalAmount,
+                    btc_confirm_amount: confirmAmount,
+                    btc_pending_amount: pendingAmount,
+
+                    csv75_total_amount: csv75Total,
+                    csv75_unlocked_amount: csv75Unlocked,
+                    csv75_locked_amount: csv75Locked.toString(),
+
+                    csv1_total_amount: csv1Total,
+                    csv1_unlocked_amount: csv1Unlocked,
+                    csv1_locked_amount: csv1Locked.toString(),
+
+                    p2wda_pending_amount: pendingAmountP2WDA,
+                    p2wda_total_amount: totalAmountP2WDA,
+
+                    usd_value: '0.00'
+                };
+            }
         } catch (err) {
             throw new WalletControllerError(`Failed to get OPNET balance: ${String(err)}`, { address });
         }
@@ -2106,7 +2340,7 @@ export class WalletController {
         requiredMinimum = 0
     ): Promise<{ response: InteractionResponse; utxos: UTXOs }> => {
         const wallet = Wallet.fromWif(wifWallet.wif, Web3API.network);
-        const preimage = await Web3API.provider.getPreimage();
+        const challenge = await Web3API.provider.getChallenge();
 
         const utxos: UTXOs = interactionParameters.utxos.map((u) => {
             let nonWitnessUtxo: Buffer | undefined;
@@ -2154,7 +2388,7 @@ export class WalletController {
 
                         utxos.push(f);
 
-                        if (utxos.reduce<bigint>((s, u) => s + u.value, 0n) >= BigInt(requiredMinimum)) return;
+                        if (utxos.reduce<bigint>((s: bigint, u) => s + u.value, 0n) >= BigInt(requiredMinimum)) return;
                     });
             }
         }
@@ -2193,17 +2427,18 @@ export class WalletController {
         const submit: IInteractionParameters = {
             from: interactionParameters.from,
             to: interactionParameters.to,
-            preimage,
+            challenge,
             utxos,
             signer: wallet.keypair,
             network: Web3API.network,
             feeRate: interactionParameters.feeRate,
-            priorityFee: BigInt(interactionParameters.priorityFee || 0n),
-            gasSatFee: BigInt(interactionParameters.gasSatFee || 330n),
+            priorityFee: BigInt((interactionParameters.priorityFee as unknown as string) || 0n),
+            gasSatFee: BigInt((interactionParameters.gasSatFee as unknown as string) || 330n),
             calldata: Buffer.from(interactionParameters.calldata as unknown as string, 'hex'),
             optionalInputs,
             optionalOutputs: interactionParameters.optionalOutputs || [],
-            contract: interactionParameters.contract
+            contract: interactionParameters.contract,
+            note: interactionParameters.note
         };
 
         const response = await Web3API.transactionFactory.signInteraction(submit);
@@ -2225,6 +2460,64 @@ export class WalletController {
      */
     private _generateAlianName = (type: string, index: number): string => {
         return `${BRAND_ALIAN_TYPE_TEXT[type]} ${index}`;
+    };
+
+    /**
+     * Private method to generate cache key
+     */
+    private _generateCacheKey = (address: string, pubKey?: string): string => {
+        const chainType = this.getChainType();
+        return `${chainType}:${address}:${pubKey || 'no-pubkey'}`;
+    };
+
+    /**
+     * Private method to clear balance cache and stop cleanup timer
+     */
+    private _clearBalanceCache = (): void => {
+        this.balanceCache.clear();
+
+        if (this.cacheCleanupTimer) {
+            clearInterval(this.cacheCleanupTimer);
+            this.cacheCleanupTimer = null;
+        }
+    };
+
+    /**
+     * Start periodic cache cleanup to remove expired entries
+     */
+    private _startCacheCleanup = (): void => {
+        // Clear any existing timer
+        if (this.cacheCleanupTimer) {
+            clearInterval(this.cacheCleanupTimer);
+        }
+
+        // Run cleanup every 30 seconds
+        this.cacheCleanupTimer = setInterval(() => {
+            this._cleanupExpiredCache();
+        }, 30000);
+    };
+
+    /**
+     * Remove expired entries from cache
+     */
+    private _cleanupExpiredCache = (): void => {
+        const now = Date.now();
+        const expiredKeys: string[] = [];
+
+        this.balanceCache.forEach((entry, key) => {
+            // Remove entries older than twice the cache duration
+            if (now - entry.timestamp > this.CACHE_DURATION * 2) {
+                expiredKeys.push(key);
+            }
+        });
+
+        expiredKeys.forEach((key) => {
+            this.balanceCache.delete(key);
+        });
+
+        if (expiredKeys.length > 0) {
+            console.log(`Cleaned up ${expiredKeys.length} expired balance cache entries`);
+        }
     };
 }
 

@@ -1,0 +1,448 @@
+@import "tailwindcss";
+@import "tailwindcss/utilities";
+
+/* Custom theme configuration for Tailwind v4 */
+@theme {
+    /* Colors */
+    --color-primary: rgb(234, 202, 68);
+    --color-primary-active: #383535;
+    --color-hard-black: #222121;
+    --color-soft-black: #2A2626;
+    --color-soft-white: #AAAAAA;
+    --color-custom-green: #4BB21A;
+    --color-custom-green-rgba: rgba(75, 178, 26, 0.05);
+    --color-warn: #FA701A;
+    --color-warning: #FA701A;
+    --color-error: #CC3333;
+    --color-dark-error: #BB3333;
+
+    /* Custom spacing values */
+    --spacing-0_5: 0.25rem;
+    --spacing-1_25: 0.3125rem;
+    --spacing-2_5: 0.625rem;
+    --spacing-3_75: 0.9375rem;
+    --spacing-4_5: 1.125rem;
+    --spacing-4_75: 1.1875rem;
+    --spacing-4_8: 1.2rem;
+    --spacing-5: 1.25rem;
+    --spacing-7_5: 1.875rem;
+    --spacing-8_5: 2.125rem;
+    --spacing-10: 2.5rem;
+    --spacing-12_5: 3.125rem;
+    --spacing-13: 3.25rem;
+    --spacing-15: 3.75rem;
+    --spacing-15_5: 3.875rem;
+    --spacing-24_5: 6.125rem;
+    --spacing-33_75: 8.4375rem;
+    --spacing-37_5: 9.375rem;
+    --spacing-45: 11.25rem;
+    --spacing-50: 12.5rem;
+    --spacing-52_5: 13.125rem;
+    --spacing-70: 17.5rem;
+    --spacing-85: 21.75rem;
+    --spacing-95: 23.75rem;
+    --spacing-110: 27.5rem;
+    --spacing-115: 28.5rem;
+    --spacing-116: 29rem;
+    --spacing-121_25: 30.3125rem;
+    --spacing-125: 31.25rem;
+    --spacing-150: 37.5rem;
+    --spacing-200: 50rem;
+
+    /* Font sizes */
+    --font-size-4_5: 1.125rem;
+    --font-size-11: 2.75rem;
+
+    /* Line heights */
+    --line-height-4_5: 1.125rem;
+    --line-height-5_5: 1.375rem;
+    --line-height-6_5: 1.625rem;
+
+    /* Border radius */
+    --radius: 0.3rem;
+
+    /* Transition duration */
+    --duration-80: 80ms;
+
+    /* Drop shadow */
+    --shadow-footer: 0px -10px 20px rgba(0, 0, 0, 0.2);
+}
+
+/* Custom utilities using Tailwind v4 syntax */
+@utility transitionDuration-80 {
+    transition-duration: var(--duration-80);
+}
+
+@utility dropShadow-footer {
+    filter: drop-shadow(var(--shadow-footer));
+}
+
+/* Height utilities */
+@utility h-2_5 {
+    height: var(--spacing-2_5);
+}
+
+@utility h-3_75 {
+    height: var(--spacing-3_75);
+}
+
+@utility h-4_5 {
+    height: var(--spacing-4_5);
+}
+
+@utility h-4_8 {
+    height: var(--spacing-4_8);
+}
+
+@utility h-5 {
+    height: var(--spacing-5);
+}
+
+@utility h-7_5 {
+    height: var(--spacing-7_5);
+}
+
+@utility h-8_5 {
+    height: var(--spacing-8_5);
+}
+
+@utility h-12_5 {
+    height: var(--spacing-12_5);
+}
+
+@utility h-13 {
+    height: var(--spacing-13);
+}
+
+@utility h-15 {
+    height: var(--spacing-15);
+}
+
+@utility h-15_5 {
+    height: var(--spacing-15_5);
+}
+
+@utility h-24_5 {
+    height: var(--spacing-24_5);
+}
+
+@utility h-37_5 {
+    height: var(--spacing-37_5);
+}
+
+@utility h-50 {
+    height: var(--spacing-50);
+}
+
+@utility h-95 {
+    height: var(--spacing-95);
+}
+
+@utility h-121_25 {
+    height: var(--spacing-121_25);
+}
+
+@utility h-125 {
+    height: var(--spacing-125);
+}
+
+@utility h-150 {
+    height: var(--spacing-150);
+}
+
+@utility h-200 {
+    height: var(--spacing-200);
+}
+
+/* Width utilities */
+@utility w-2_5 {
+    width: var(--spacing-2_5);
+}
+
+@utility w-4_5 {
+    width: var(--spacing-4_5);
+}
+
+@utility w-4_8 {
+    width: var(--spacing-4_8);
+}
+
+@utility w-5 {
+    width: var(--spacing-5);
+}
+
+@utility w-15 {
+    width: var(--spacing-15);
+}
+
+@utility w-37_5 {
+    width: var(--spacing-37_5);
+}
+
+@utility w-50 {
+    width: var(--spacing-50);
+}
+
+@utility w-70 {
+    width: var(--spacing-70);
+}
+
+@utility w-85 {
+    width: var(--spacing-85);
+}
+
+@utility w-95 {
+    width: var(--spacing-95);
+}
+
+@utility w-110 {
+    width: var(--spacing-110);
+}
+
+@utility w-115 {
+    width: var(--spacing-115);
+}
+
+@utility w-116 {
+    width: var(--spacing-116);
+}
+
+@utility w-125 {
+    width: var(--spacing-125);
+}
+
+/* Padding utilities */
+@utility p-1_25 {
+    padding: var(--spacing-1_25);
+}
+
+@utility p-2_5 {
+    padding: var(--spacing-2_5);
+}
+
+@utility p-3_75 {
+    padding: var(--spacing-3_75);
+}
+
+@utility p-4_75 {
+    padding: var(--spacing-4_75);
+}
+
+@utility p-15 {
+    padding: var(--spacing-15);
+}
+
+@utility p-33_75 {
+    padding: var(--spacing-33_75);
+}
+
+@utility p-45 {
+    padding: var(--spacing-45);
+}
+
+@utility p-52_5 {
+    padding: var(--spacing-52_5);
+}
+
+/* Margin utilities */
+@utility m-0_5 {
+    margin: var(--spacing-0_5);
+}
+
+@utility m-1_25 {
+    margin: var(--spacing-1_25);
+}
+
+@utility m-2_5 {
+    margin: var(--spacing-2_5);
+}
+
+@utility m-3_75 {
+    margin: var(--spacing-3_75);
+}
+
+@utility m-12_5 {
+    margin: var(--spacing-12_5);
+}
+
+@utility m-15 {
+    margin: var(--spacing-15);
+}
+
+/* Gap utilities */
+@utility gap-2_5 {
+    gap: var(--spacing-2_5);
+}
+
+@utility gap-3_75 {
+    gap: var(--spacing-3_75);
+}
+
+@utility gap-10 {
+    gap: var(--spacing-10);
+}
+
+/* Inset utilities */
+@utility inset-15 {
+    inset: var(--spacing-15);
+}
+
+/* Text utilities */
+@utility text-4_5 {
+    font-size: var(--font-size-4_5);
+}
+
+@utility text-11 {
+    font-size: var(--font-size-11);
+}
+
+@utility leading-4_5 {
+    line-height: var(--line-height-4_5);
+}
+
+@utility leading-5_5 {
+    line-height: var(--line-height-5_5);
+}
+
+@utility leading-6_5 {
+    line-height: var(--line-height-6_5);
+}
+
+/* Color utilities */
+@utility text-primary {
+    color: var(--color-primary);
+}
+
+@utility text-primary-active {
+    color: var(--color-primary-active);
+}
+
+@utility text-hard-black {
+    color: var(--color-hard-black);
+}
+
+@utility text-soft-black {
+    color: var(--color-soft-black);
+}
+
+@utility text-soft-white {
+    color: var(--color-soft-white);
+}
+
+@utility text-custom-green {
+    color: var(--color-custom-green);
+}
+
+@utility text-warn {
+    color: var(--color-warn);
+}
+
+@utility text-warning {
+    color: var(--color-warning);
+}
+
+@utility text-error {
+    color: var(--color-error);
+}
+
+@utility text-dark-error {
+    color: var(--color-dark-error);
+}
+
+/* Background utilities */
+@utility bg-primary {
+    background-color: var(--color-primary);
+}
+
+@utility bg-primary-active {
+    background-color: var(--color-primary-active);
+}
+
+@utility bg-hard-black {
+    background-color: var(--color-hard-black);
+}
+
+@utility bg-soft-black {
+    background-color: var(--color-soft-black);
+}
+
+@utility bg-soft-white {
+    background-color: var(--color-soft-white);
+}
+
+@utility bg-custom-green {
+    background-color: var(--color-custom-green);
+}
+
+@utility bg-custom-green-rgba {
+    background-color: var(--color-custom-green-rgba);
+}
+
+@utility bg-warn {
+    background-color: var(--color-warn);
+}
+
+@utility bg-warning {
+    background-color: var(--color-warning);
+}
+
+@utility bg-error {
+    background-color: var(--color-error);
+}
+
+@utility bg-dark-error {
+    background-color: var(--color-dark-error);
+}
+
+/* Animation utilities */
+@keyframes fadein {
+    0% {
+        background-color: rgba(0, 0, 0, 0);
+    }
+    100% {
+        background-color: rgba(0, 0, 0, 0.6);
+    }
+}
+
+@keyframes fadeout {
+    0% {
+        background-color: rgba(0, 0, 0, 0.6);
+    }
+    100% {
+        background-color: rgba(0, 0, 0, 0);
+    }
+}
+
+@keyframes slideup {
+    0% {
+        top: 100%;
+    }
+    100% {
+        top: 20%;
+    }
+}
+
+@keyframes slidedown {
+    0% {
+        top: 20%;
+    }
+    100% {
+        top: 100%;
+    }
+}
+
+@utility animate-fade-in {
+    animation: fadein 1s cubic-bezier(0.19, 1, 0.22, 1) forwards infinite;
+}
+
+@utility animate-fade-out {
+    animation: fadeout 1s cubic-bezier(0.19, 1, 0.22, 1) forwards infinite;
+}
+
+@utility animate-slide-up {
+    animation: slideup 1s cubic-bezier(0.19, 1, 0.22, 1) forwards infinite;
+}
+
+@utility animate-slide-down {
+    animation: slidedown 1s cubic-bezier(0.19, 1, 0.22, 1) forwards infinite;
+}

@@ -1,6 +1,6 @@
 {
   "externally_connectable": {
-    "matches": ["https://unisat.io/*"],
+    "matches": ["https://opnet.org/*"],
     "ids": ["*"]
   },
   "minimum_chrome_version": "88"

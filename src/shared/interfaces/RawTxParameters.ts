@@ -52,6 +52,7 @@ export interface BaseRawTxInfo<T extends Action> {
     readonly feeRate: number;
     readonly priorityFee: bigint;
     readonly gasSatFee?: bigint; // TODO: Implement this.
+    readonly note?: string | Buffer; // Optional note for the transaction
 
     readonly action: T;
 }
@@ -67,9 +68,18 @@ export interface AirdropParameters extends BaseRawTxInfo<Action.Airdrop> {
     readonly amounts: { [key: string]: string };
 }
 
+export enum SourceType {
+    CURRENT = 'current',
+    CSV75 = 'csv75',
+    CSV1 = 'csv1',
+    P2WDA = 'p2wda'
+}
+
 export interface SendBitcoinParameters extends BaseRawTxInfo<Action.SendBitcoin> {
     readonly to: string;
     readonly inputAmount: number;
+    readonly from?: string; // Optional: source address (current, CSV75, or CSV1)
+    readonly sourceType?: SourceType; // Optional: type of source address
 }
 
 export interface DeployContractParameters extends BaseRawTxInfo<Action.DeployContract> {

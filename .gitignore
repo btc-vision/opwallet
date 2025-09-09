@@ -24,3 +24,4 @@ dist/
 .idea
 .yarn
 *.lock
+tsconfig.tsbuildinfo
