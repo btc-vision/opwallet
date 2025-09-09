@@ -273,7 +273,7 @@ export const DEFAULT_CHAINS_MAP: { [key in ChainType]?: TypeChain<key> } = {
         unit: 'tBTC',
         icon: './images/artifacts/bitcoin-testnet.svg',
         networkType: NetworkType.TESTNET,
-        opnetUrl: 'https://testnet2.opnet.org',
+        opnetUrl: 'https://testnet.opnet.org',
         endpoints: ['https://wallet.opnet.org'],
         mempoolSpaceUrl: 'https://mempool.space/testnet',
         faucetUrl: 'https://faucet.opnet.org/',
