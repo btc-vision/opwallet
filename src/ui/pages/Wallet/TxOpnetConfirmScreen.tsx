@@ -171,6 +171,7 @@ export default function TxOpnetConfirmScreen() {
             pubKey = await Web3API.provider.getPublicKeyInfo(to);
         }
 
+        if (!pubKey) throw new Error('public key not found');
         return pubKey;
     };
 
@@ -212,7 +213,8 @@ export default function TxOpnetConfirmScreen() {
             navigate(RouteTypes.TxSuccessScreen, { txid: sendTransaction.transactionId });
         } catch (e) {
             const error = e as Error;
-            if (error.message.toLowerCase().includes('public key')) {
+            console.error(e);
+            if (error.message.toLowerCase().includes('public key not found')) {
                 setDisabled(false);
                 navigate(RouteTypes.TxFailScreen, { error: Web3API.INVALID_PUBKEY_ERROR });
             } else {
@@ -628,7 +630,8 @@ export default function TxOpnetConfirmScreen() {
         } catch (e) {
             const error = e as Error;
             setOpenLoading(false);
-            if (error.message.toLowerCase().includes('public key')) {
+            console.error(e);
+            if (error.message.toLowerCase().includes('public key not found')) {
                 setDisabled(false);
                 navigate(RouteTypes.TxFailScreen, { error: Web3API.INVALID_PUBKEY_ERROR });
             } else {
