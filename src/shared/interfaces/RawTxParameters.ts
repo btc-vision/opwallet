@@ -107,7 +107,7 @@ export interface SendBitcoinParameters extends BaseRawTxInfo<Action.SendBitcoin>
     readonly inputAmount: number;
     readonly from?: string;
     readonly sourceType?: SourceType;
-    readonly includeSmallUTXOs: boolean;
+    readonly optimize: boolean;
 }
 
 export interface DeployContractParameters extends BaseRawTxInfo<Action.DeployContract> {

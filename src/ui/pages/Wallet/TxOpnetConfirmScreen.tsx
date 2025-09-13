@@ -285,7 +285,7 @@ export default function TxOpnetConfirmScreen() {
                         [fromAddress],
                         BitcoinUtils.expandToDecimals(parameters.inputAmount, 8) + feeMin,
                         75n,
-                        parameters.includeSmallUTXOs
+                        parameters.optimize
                     );
                 } else if (parameters.sourceType === SourceType.CSV1) {
                     const csv1Address = currentAddress.toCSV(1, Web3API.network);
@@ -296,7 +296,7 @@ export default function TxOpnetConfirmScreen() {
                         [fromAddress],
                         BitcoinUtils.expandToDecimals(parameters.inputAmount, 8) + feeMin,
                         1n,
-                        parameters.includeSmallUTXOs
+                        parameters.optimize
                     );
                 } else if (parameters.sourceType === SourceType.P2WDA) {
                     const p2wdaAddress = currentAddress.p2wda(Web3API.network);
@@ -307,7 +307,7 @@ export default function TxOpnetConfirmScreen() {
                         [fromAddress],
                         BitcoinUtils.expandToDecimals(parameters.inputAmount, 8) + feeMin,
                         undefined,
-                        parameters.includeSmallUTXOs
+                        parameters.optimize
                     );
                 }
 
@@ -322,7 +322,7 @@ export default function TxOpnetConfirmScreen() {
                     [fromAddress],
                     BitcoinUtils.expandToDecimals(parameters.inputAmount, 8) + feeMin,
                     undefined,
-                    parameters.includeSmallUTXOs
+                    parameters.optimize
                 );
             }
 

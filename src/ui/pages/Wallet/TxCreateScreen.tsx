@@ -72,7 +72,7 @@ export default function TxCreateScreen() {
     const [showP2OPWarning, setDisplayP2OPWarning] = useState(false);
     const [autoAdjust, setAutoAdjust] = useState(false);
     const [note, setNote] = useState<string>('');
-    const [includeSmallUTXOs, setIncludeSmallUTXOs] = useState(false);
+    const [checked, setChecked] = useState(false);
 
     // Address selection states
     const [addressBalances, setAddressBalances] = useState<AddressBalance[]>([]);
@@ -227,7 +227,7 @@ export default function TxCreateScreen() {
             note,
             from: selectedBalance.address,
             sourceType: selectedBalance.type,
-            includeSmallUTXOs
+            optimize: !checked
         };
 
         navigate(RouteTypes.TxOpnetConfirmScreen, { rawTxInfo: event });
@@ -887,15 +887,15 @@ export default function TxCreateScreen() {
                     {/* Small UTXOs Consolidation Option */}
                     <div
                         style={{
-                            background: includeSmallUTXOs ? `${colors.warning}10` : colors.containerBgFaded,
+                            background: checked ? `${colors.warning}10` : colors.containerBgFaded,
                             borderRadius: '12px',
                             padding: '14px',
                             marginBottom: '12px',
-                            border: includeSmallUTXOs ? `1px solid ${colors.warning}30` : 'none',
+                            border: checked ? `1px solid ${colors.warning}30` : 'none',
                             transition: 'all 0.2s'
                         }}>
                         {/* Warning Message - Only show when enabled */}
-                        {includeSmallUTXOs && (
+                        {checked && (
                             <div
                                 style={{
                                     display: 'flex',
@@ -948,8 +948,8 @@ export default function TxCreateScreen() {
                             }}>
                             <input
                                 type="checkbox"
-                                checked={includeSmallUTXOs}
-                                onChange={(e) => setIncludeSmallUTXOs(e.target.checked)}
+                                checked={checked}
+                                onChange={(e) => setChecked(e.target.checked)}
                                 style={{
                                     width: '18px',
                                     height: '18px',
@@ -963,7 +963,7 @@ export default function TxCreateScreen() {
                                     style={{
                                         fontSize: '12px',
                                         fontWeight: 600,
-                                        color: includeSmallUTXOs ? colors.warning : colors.textFaded,
+                                        color: checked ? colors.warning : colors.textFaded,
                                         textTransform: 'uppercase',
                                         letterSpacing: '0.5px',
                                         marginBottom: '6px'
