@@ -46,11 +46,9 @@ export const ChangePriorityFee = ({
                 onClick={() => {
                     const temp = Number(tempSetting);
 
-                    if (isNaN(temp) || temp < 0) {
-                        return;
-                    }
+                    if (isNaN(temp) || temp < 0) return;
 
-                    const priorityFee = BigInt((temp * 1e8).toFixed(0));
+                    const priorityFee = BigInt(temp.toFixed(0));
 
                     setSetting(priorityFee);
                     onClose();

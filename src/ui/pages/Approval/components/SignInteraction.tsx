@@ -112,7 +112,7 @@ export default function SignInteraction(props: Props) {
                 <ChangePriorityFee
                     onClose={() => setIsPriorityFeeModalOpen(false)}
                     setSetting={setPriorityFee}
-                    setting={(Number(priorityFee) / 1e8).toFixed(8).replace(/\.?0+$/, '')}
+                    setting={priorityFee.toLocaleString()}
                 />
             )}
 
@@ -272,8 +272,8 @@ export default function SignInteraction(props: Props) {
                                 fontWeight: 600,
                                 color: colors.main
                             }}>
-                            {(Number(priorityFee) / 1e8).toFixed(8).replace(/\.?0+$/, '')}
-                            <span style={{ fontSize: '10px', color: colors.textFaded }}>BTC</span>
+                            {Number(priorityFee).toLocaleString()}
+                            <span style={{ fontSize: '10px', color: colors.textFaded }}>sat</span>
                         </div>
                     </div>
 

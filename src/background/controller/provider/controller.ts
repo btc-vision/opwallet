@@ -202,9 +202,15 @@ export class ProviderController {
             total: amountToSatoshis(balance.btc_total_amount),
             confirmed: amountToSatoshis(balance.btc_confirm_amount),
             unconfirmed: amountToSatoshis(balance.btc_pending_amount),
+            csv75_total: amountToSatoshis(balance.csv75_total_amount || '0'),
+            csv75_unlocked: amountToSatoshis(balance.csv75_unlocked_amount || '0'),
+            csv75_locked: amountToSatoshis(balance.csv75_locked_amount || '0'),
+            csv1_total: amountToSatoshis(balance.csv1_total_amount || '0'),
             csv1_unlocked: amountToSatoshis(balance.csv1_unlocked_amount || '0'),
             csv1_locked: amountToSatoshis(balance.csv1_locked_amount || '0'),
-            p2wda_total_amount: amountToSatoshis(balance.p2wda_total_amount || '0')
+            p2wda_total_amount: amountToSatoshis(balance.p2wda_total_amount || '0'),
+            p2wda_pending_amount: amountToSatoshis(balance.p2wda_pending_amount || '0'),
+            usd_value: balance.usd_value
         };
     };
 
