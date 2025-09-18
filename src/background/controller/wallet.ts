@@ -504,7 +504,7 @@ export class WalletController extends BaseController {
 
   changeKeyring = async (keyring: WalletKeyring, accountIndex = 0) => {
     preferenceService.setCurrentKeyringIndex(keyring.index);
-    await preferenceService.setCurrentAccount(keyring.accounts[accountIndex]);
+    preferenceService.setCurrentAccount(keyring.accounts[accountIndex]);
     const flag = preferenceService.getAddressFlag(keyring.accounts[accountIndex].address);
     walletApiService.setClientAddress(keyring.accounts[accountIndex].address, flag);
   };
@@ -1097,10 +1097,6 @@ export class WalletController extends BaseController {
       throw new Error('UTXO not found.');
     }
 
-    // if (utxo.inscriptions.length > 1) {
-    //   throw new Error('Multiple inscriptions are mixed together. Please split them first.');
-    // }
-
     const assetUtxo = Object.assign(utxo, { pubkey: account.pubkey });
 
     if (!btcUtxos) {
@@ -1109,6 +1105,10 @@ export class WalletController extends BaseController {
 
     if (btcUtxos.length == 0) {
       throw new Error('Insufficient balance.');
+    }
+
+    if (!outputValue) {
+      outputValue = assetUtxo.satoshis;
     }
 
     const { psbt, toSignInputs } = await txHelpers.sendInscription({
