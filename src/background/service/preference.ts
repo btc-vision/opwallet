@@ -63,8 +63,8 @@ const DEFAULTS = {
         firstOpen: false,
         currency: 'USD',
         addressType: AddressType.P2TR,
-        networkType: NetworkType.TESTNET,
-        chainType: ChainType.BITCOIN_TESTNET,
+        networkType: NetworkType.REGTEST, // DEFAULT NETWORK
+        chainType: ChainType.BITCOIN_REGTEST,
         keyringAlianNames: {},
         accountAlianNames: {},
         skippedVersion: '',

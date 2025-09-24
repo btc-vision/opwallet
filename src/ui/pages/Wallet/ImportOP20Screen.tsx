@@ -1,12 +1,12 @@
-import React, { useEffect, useState } from 'react';
 import Web3API from '@/shared/web3/Web3API';
 import { Column, Content, Header, Input, Layout } from '@/ui/components';
+import { useTools } from '@/ui/components/ActionComponent';
 import { RouteTypes, useNavigate } from '@/ui/pages/MainRoute';
 import { useCurrentAccount } from '@/ui/state/accounts/hooks';
 import { useChainType } from '@/ui/state/settings/hooks';
-import { useTools } from '@/ui/components/ActionComponent';
 import { LoadingOutlined } from '@ant-design/icons';
 import { Address, AddressTypes, AddressVerificator } from '@btc-vision/transaction';
+import { useEffect, useState } from 'react';
 
 const colors = {
     main: '#f37413',
@@ -106,7 +106,7 @@ export default function ImportTokenScreen() {
                     name: info.name || 'Unknown Token',
                     symbol: info.symbol || 'UNKNOWN',
                     decimals: info.decimals || 18,
-                    totalSupply: info.maximumSupply?.toString() || '0',
+                    totalSupply: info.totalSupply?.toString() || '0',
                     icon: info.logo
                 });
             }
