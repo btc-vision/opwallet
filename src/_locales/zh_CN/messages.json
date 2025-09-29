@@ -2285,14 +2285,20 @@
   "brc20_history_type_receive": {
     "message": "接收"
   },
-  "brc20_history_type_withdraw": {
-    "message": "提取"
+  "brc20_history_type_wrap": {
+    "message": "封装"
+  },
+  "brc20_history_type_unwrap": {
+    "message": "解封装"
   },
   "brc20_history_type_inscribe_transfer": {
     "message": "铭刻转账"
   },
   "brc20_history_type_inscribe_mint": {
     "message": "铭刻铸造"
+  },
+  "brc20_history_type_inscribe_deploy": {
+    "message": "铭刻部署"
   },
   "brc20_history_from": {
     "message": "从"
@@ -2309,8 +2315,8 @@
   "brc20_in_wallet": {
     "message": "在钱包中"
   },
-  "brc20_on_pizzaswap": {
-    "message": "在PizzaSwap中"
+  "brc20_on_swap": {
+    "message": "在 InSwap 余额"
   },
   "brc20_on_prog": {
     "message": "封装 brc2.0 余额"
@@ -2318,11 +2324,11 @@
   "swap_swap": {
     "message": "兑换"
   },
-  "swap_deposit": {
-    "message": "存入"
+  "swap_wrap": {
+    "message": "封装"
   },
-  "swap_withdraw": {
-    "message": "取出"
+  "swap_unwrap": {
+    "message": "解封装"
   },
   "swap_send": {
     "message": "发送"

@@ -64,18 +64,18 @@ export default function BRC20BalanceCard2(props: BRC20BalanceCard2Props) {
   }
   _names = _names.splice(0, 4);
 
-  const onPizzaSwapBalance = swapBalance;
+  const onSwapBalance = swapBalance;
   const onProgBalance = progBalance;
   const inWalletBalance = overallBalance;
 
   const totalBalance = useMemo(() => {
     return new BigNumber(inWalletBalance)
-      .plus(new BigNumber(onPizzaSwapBalance || 0))
+      .plus(new BigNumber(onSwapBalance || 0))
       .plus(new BigNumber(onProgBalance || 0))
       .toString();
-  }, [inWalletBalance, onPizzaSwapBalance, onProgBalance]);
+  }, [inWalletBalance, onSwapBalance, onProgBalance]);
 
-  const hasOutWalletBalance = (onPizzaSwapBalance || onProgBalance || '0')! !== '0';
+  const hasOutWalletBalance = (onSwapBalance || onProgBalance || '0')! !== '0';
 
   return (
     <Card
@@ -139,14 +139,14 @@ export default function BRC20BalanceCard2(props: BRC20BalanceCard2Props) {
               </Row>
             </Row>
 
-            {onPizzaSwapBalance ? (
+            {onSwapBalance ? (
               <Row fullY justifyBetween justifyCenter>
                 <Column fullY justifyCenter>
-                  <Text text={t('brc20_on_pizzaswap')} color="textDim" size="xs" />
+                  <Text text={t('brc20_on_swap')} color="textDim" size="xs" />
                 </Column>
 
                 <Row itemsCenter fullY gap="zero">
-                  <Text text={onPizzaSwapBalance} size="xs" digital />
+                  <Text text={onSwapBalance} size="xs" digital />
                 </Row>
               </Row>
             ) : null}

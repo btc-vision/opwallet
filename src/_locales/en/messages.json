@@ -2378,14 +2378,20 @@
   "brc20_history_type_receive": {
     "message": "Receive"
   },
-  "brc20_history_type_withdraw": {
-    "message": "Withdraw"
+  "brc20_history_type_wrap": {
+    "message": "Wrap"
+  },
+  "brc20_history_type_unwrap": {
+    "message": "Unwrap"
   },
   "brc20_history_type_inscribe_transfer": {
     "message": "Inscribe Transfer"
   },
   "brc20_history_type_inscribe_mint": {
     "message": "Inscribe Mint"
+  },
+  "brc20_history_type_inscribe_deploy": {
+    "message": "Inscribe Deploy"
   },
   "brc20_history_from": {
     "message": "From"
@@ -2402,8 +2408,8 @@
   "brc20_in_wallet": {
     "message": "In Wallet"
   },
-  "brc20_on_pizzaswap": {
-    "message": "On PizzaSwap"
+  "brc20_on_swap": {
+    "message": "InSwap balance"
   },
   "brc20_on_prog": {
     "message": "Wrapped brc2.0 balance"
@@ -2411,11 +2417,11 @@
   "swap_swap": {
     "message": "Swap"
   },
-  "swap_deposit": {
-    "message": "Deposit"
+  "swap_wrap": {
+    "message": "Wrap"
   },
-  "swap_withdraw": {
-    "message": "Withdraw"
+  "swap_unwrap": {
+    "message": "Unwrap"
   },
   "swap_send": {
     "message": "Send"

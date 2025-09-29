@@ -33,10 +33,10 @@ enum TabKey {
   HISTORY = 'history'
 }
 
-const PIZZASWAP_MODULE_ADDRESS = '6a2095ee19329a210f8d5ded9b5cfa55b74fdd3b1e9af1e202072db6d1be82d45bfd';
+const SWAP_MODULE_ADDRESS = '6a2095ee19329a210f8d5ded9b5cfa55b74fdd3b1e9af1e202072db6d1be82d45bfd';
 const BRIDGE_BURN_ADDRESS = '6a20ada13e56859a2ab2eeb93cb4dc19c6e3f5e94d0ed38ed95a30ddc43711a0ff14';
 
-function BRC20TokenHistory(props: { ticker: string }) {
+function BRC20TokenHistory(props: { ticker: string; displayName?: string }) {
   const wallet = useWallet();
   const { t } = useI18n();
 
@@ -89,10 +89,12 @@ function BRC20TokenHistory(props: { ticker: string }) {
           if (item.type === 'send') {
             mainTitle = t('brc20_history_type_send');
             subTitle = t('brc20_history_to') + ' ' + shortAddress(item.to);
-            if (item.to === PIZZASWAP_MODULE_ADDRESS) {
-              subTitle = t('brc20_history_to') + ' ' + 'PizzaSwap';
-            }
             icon = 'history_send';
+            if (item.to === SWAP_MODULE_ADDRESS) {
+              mainTitle = t('brc20_history_type_wrap');
+              subTitle = t('brc20_history_to') + ' ' + 'InSwap';
+              icon = 'history_wrap';
+            }
           } else if (item.type === 'single-step-transfer') {
             if (item.from === account.address) {
               mainTitle = t('brc20_history_type_send');
@@ -108,14 +110,17 @@ function BRC20TokenHistory(props: { ticker: string }) {
             subTitle = t('brc20_history_from') + ' ' + shortAddress(item.from);
             icon = 'history_receive';
           } else if (item.type === 'withdraw') {
-            mainTitle = t('brc20_history_type_withdraw');
-            subTitle = t('brc20_history_from') + ' ' + 'PizzaSwap';
-            icon = 'history_receive';
+            mainTitle = t('brc20_history_type_unwrap');
+            subTitle = t('brc20_history_from') + ' ' + 'InSwap';
+            icon = 'history_unwrap';
           } else if (item.type === 'inscribe-transfer') {
             mainTitle = t('brc20_history_type_inscribe_transfer');
             icon = 'history_inscribe';
           } else if (item.type === 'inscribe-mint') {
             mainTitle = t('brc20_history_type_inscribe_mint');
+            icon = 'history_inscribe';
+          } else if (item.type === 'inscribe-deploy') {
+            mainTitle = t('brc20_history_type_inscribe_deploy');
             icon = 'history_inscribe';
           } else {
             return null;
@@ -168,7 +173,7 @@ function BRC20TokenHistory(props: { ticker: string }) {
                 justifyCenter
                 py="md"
                 style={{ borderBottomWidth: 1, borderColor: colors.border2 }}>
-                <Row>
+                <Row itemsCenter>
                   <Row
                     onClick={() => {
                       window.open(getTxExplorerUrl(item.txid));
@@ -193,10 +198,12 @@ function BRC20TokenHistory(props: { ticker: string }) {
                   </Column>
                 </Row>
 
-                <Row itemsCenter>
-                  <Text text={item.amount} />
-                  <Text text={props.ticker} preset="sub" />
-                </Row>
+                {item.amount !== '0' ? (
+                  <Row itemsCenter>
+                    <Text text={item.amount} />
+                    <Text text={props.displayName || props.ticker} preset="sub" />
+                  </Row>
+                ) : null}
               </Row>
             ))}
         </Column>
@@ -350,7 +357,7 @@ export default function BRC20TokenScreen() {
 
   const renderTabChildren = useMemo(() => {
     if (activeTab === TabKey.HISTORY && enableHistory) {
-      return <BRC20TokenHistory ticker={ticker} />;
+      return <BRC20TokenHistory ticker={ticker} displayName={tokenSummary?.tokenBalance?.displayName} />;
     }
 
     if (activeTab === TabKey.DETAILS) {
@@ -405,7 +412,7 @@ export default function BRC20TokenScreen() {
     }
   }, [activeTab, deployInscription, enableHistory, tokenSummary]);
 
-  const onPizzaSwapBalance = tokenSummary?.tokenBalance?.swapBalance;
+  const onSwapBalance = tokenSummary?.tokenBalance?.swapBalance;
   const onProgBalance = tokenSummary?.tokenBalance?.progBalance;
   const inWalletBalance = tokenSummary?.tokenBalance?.overallBalance;
   const totalBalance = useMemo(() => {
@@ -413,12 +420,12 @@ export default function BRC20TokenScreen() {
       return '--';
     }
     return new BigNumber(inWalletBalance)
-      .plus(new BigNumber(onPizzaSwapBalance || 0))
+      .plus(new BigNumber(onSwapBalance || 0))
       .plus(new BigNumber(onProgBalance || 0))
       .toString();
-  }, [onPizzaSwapBalance, onProgBalance, inWalletBalance]);
+  }, [onSwapBalance, onProgBalance, inWalletBalance]);
 
-  const hasOutWalletBalance = (onPizzaSwapBalance || onProgBalance || '0')! !== '0';
+  const hasOutWalletBalance = (onSwapBalance || onProgBalance || '0')! !== '0';
 
   return (
     <Layout>
@@ -483,31 +490,14 @@ export default function BRC20TokenScreen() {
                 </Row>
               ) : null}
 
-              {onProgBalance ? <Line /> : null}
-
-              {onPizzaSwapBalance ? (
-                <Row fullY justifyBetween justifyCenter>
-                  <Column fullY justifyCenter>
-                    <Text text={t('brc20_on_pizzaswap')} color="textDim" size="xs" />
-                  </Column>
-
-                  <Row itemsCenter fullY gap="zero">
-                    <Text text={onPizzaSwapBalance} size="xs" digital />
-                  </Row>
-                </Row>
-              ) : null}
-
-              {onPizzaSwapBalance ? (
+              {onProgBalance ? (
                 <Row gap="sm">
                   <Button
-                    text={t('swap_swap')}
+                    text={t('swap_wrap')}
                     preset="swap"
-                    icon="swap_swap"
+                    icon="swap_wrap"
                     onClick={(e) => {
-                      window.open(`https://pizzaswap.io/swap?t0=${encodeURIComponent(ticker)}`);
-                    }}
-                    style={{
-                      paddingTop: 5
+                      window.open(`https://unisat.io/wrap?tick=${encodeURIComponent(ticker)}`);
                     }}
                     iconSize={{
                       width: 12,
@@ -516,24 +506,11 @@ export default function BRC20TokenScreen() {
                     full
                   />
                   <Button
-                    text={t('swap_deposit')}
+                    text={t('swap_unwrap')}
                     preset="swap"
-                    icon="swap_deposit"
+                    icon="swap_unwrap"
                     onClick={(e) => {
-                      window.open(`https://pizzaswap.io/swap?tab=deposit`);
-                    }}
-                    iconSize={{
-                      width: 12,
-                      height: 12
-                    }}
-                    full
-                  />
-                  <Button
-                    text={t('swap_withdraw')}
-                    preset="swap"
-                    icon="swap_withdraw"
-                    onClick={(e) => {
-                      window.open(`https://pizzaswap.io/swap?tab=withdraw&t=${encodeURIComponent(ticker)}`);
+                      window.open(`https://unisat.io/wrap?action=unwrap&tick=${encodeURIComponent(ticker)}`);
                     }}
                     iconSize={{
                       width: 12,
@@ -546,7 +523,79 @@ export default function BRC20TokenScreen() {
                     preset="swap"
                     icon="swap_send"
                     onClick={(e) => {
-                      window.open(`https://pizzaswap.io/swap/assets/account`);
+                      window.open(`https://bestinslot.xyz/brc2.0/${encodeURIComponent(ticker)}/transfer`);
+                    }}
+                    iconSize={{
+                      width: 12,
+                      height: 12
+                    }}
+                    full
+                  />
+                </Row>
+              ) : null}
+
+              {onSwapBalance ? (
+                <Row fullY justifyBetween justifyCenter>
+                  <Column fullY justifyCenter>
+                    <Text text={t('brc20_on_swap')} color="textDim" size="xs" />
+                  </Column>
+
+                  <Row itemsCenter fullY gap="zero">
+                    <Text text={onSwapBalance} size="xs" digital />
+                  </Row>
+                </Row>
+              ) : null}
+
+              {onSwapBalance ? (
+                <Row gap="sm">
+                  <Button
+                    text={t('swap_swap')}
+                    preset="swap"
+                    icon="swap_swap"
+                    onClick={(e) => {
+                      window.open(`https://inswap.cc/swap?t0=${encodeURIComponent(ticker)}`);
+                    }}
+                    style={{
+                      paddingTop: 5
+                    }}
+                    iconSize={{
+                      width: 12,
+                      height: 12
+                    }}
+                    full
+                  />
+                  <Button
+                    text={t('swap_wrap')}
+                    preset="swap"
+                    icon="swap_wrap"
+                    onClick={(e) => {
+                      window.open(`https://inswap.cc/swap?tab=deposit`);
+                    }}
+                    iconSize={{
+                      width: 12,
+                      height: 12
+                    }}
+                    full
+                  />
+                  <Button
+                    text={t('swap_unwrap')}
+                    preset="swap"
+                    icon="swap_unwrap"
+                    onClick={(e) => {
+                      window.open(`https://inswap.cc/swap?tab=withdraw&t=${encodeURIComponent(ticker)}`);
+                    }}
+                    iconSize={{
+                      width: 12,
+                      height: 12
+                    }}
+                    full
+                  />
+                  <Button
+                    text={t('swap_send')}
+                    preset="swap"
+                    icon="swap_send"
+                    onClick={(e) => {
+                      window.open(`https://inswap.cc/swap/assets/account`);
                     }}
                     iconSize={{
                       width: 12,

@@ -2367,7 +2367,10 @@
   "brc20_history_type_receive": {
     "message": "Получить"
   },
-  "brc20_history_type_withdraw": {
+  "brc20_history_type_wrap": {
+    "message": "Упаковать"
+  },
+  "brc20_history_type_unwrap": {
     "message": "Вывести"
   },
   "brc20_history_type_inscribe_transfer": {
@@ -2375,6 +2378,9 @@
   },
   "brc20_history_type_inscribe_mint": {
     "message": "Создать надпись выпуска"
+  },
+  "brc20_history_type_inscribe_deploy": {
+    "message": "Создать надпись развертывания"
   },
   "brc20_history_from": {
     "message": "От"
@@ -2391,8 +2397,8 @@
   "brc20_in_wallet": {
     "message": "В кошельке"
   },
-  "brc20_on_pizzaswap": {
-    "message": "В PizzaSwap"
+  "brc20_on_swap": {
+    "message": "Баланс InSwap"
   },
   "brc20_on_prog": {
     "message": "Упакованный баланс brc2.0"
@@ -2400,11 +2406,11 @@
   "swap_swap": {
     "message": "Обмен"
   },
-  "swap_deposit": {
-    "message": "Депозит"
+  "swap_wrap": {
+    "message": "Wrap"
   },
-  "swap_withdraw": {
-    "message": "Вывод"
+  "swap_unwrap": {
+    "message": "Unwrap"
   },
   "swap_send": {
     "message": "Отправить"

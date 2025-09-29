@@ -2370,14 +2370,20 @@
   "brc20_history_type_receive": {
     "message": "受信"
   },
-  "brc20_history_type_withdraw": {
-    "message": "引き出し"
+  "brc20_history_type_wrap": {
+    "message": "Wrap"
+  },
+  "brc20_history_type_unwrap": {
+    "message": "Unwrap"
   },
   "brc20_history_type_inscribe_transfer": {
     "message": "転送刻印"
   },
   "brc20_history_type_inscribe_mint": {
     "message": "ミント刻印"
+  },
+  "brc20_history_type_inscribe_deploy": {
+    "message": "デプロイ刻印"
   },
   "brc20_history_from": {
     "message": "送信者"
@@ -2394,8 +2400,8 @@
   "brc20_in_wallet": {
     "message": "ウォレット内"
   },
-  "brc20_on_pizzaswap": {
-    "message": "PizzaSwap内"
+  "brc20_on_swap": {
+    "message": "InSwap 残高"
   },
   "brc20_on_prog": {
     "message": "ラップされたbrc2.0残高"
@@ -2403,11 +2409,11 @@
   "swap_swap": {
     "message": "スワップ"
   },
-  "swap_deposit": {
-    "message": "預け入れ"
+  "swap_wrap": {
+    "message": "Wrap"
   },
-  "swap_withdraw": {
-    "message": "引き出し"
+  "swap_unwrap": {
+    "message": "Unwrap"
   },
   "swap_send": {
     "message": "送信"
