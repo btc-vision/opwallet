@@ -1,5 +1,11 @@
 # UniSat Wallet Release Notes
 
+## v1.7.5
+
+Changes
+
+- Change PizzaSwap to InSwap
+
 ## v1.7.4
 
 New Features
