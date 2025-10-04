@@ -281,7 +281,10 @@ export const DEFAULT_CHAINS_MAP: { [key in ChainType]?: TypeChain<key> } = {
         disable: false,
         showPrice: false,
         defaultExplorer: 'mempool-space',
-        contractAddresses: {}
+        contractAddresses: {
+            moto: '0x8de4d9ee47d56f719986302a05aece375c7e7d493ba986dc6a1eb5029eaf294c',
+            pill: '0x21770d319becc52154546ff93d0cb9b9728b251f202fdd772faf6de80c15ef04'
+        }
     },
     [ChainType.BITCOIN_TESTNET4]: {
         enum: ChainType.BITCOIN_TESTNET4,
@@ -313,8 +316,8 @@ export const DEFAULT_CHAINS_MAP: { [key in ChainType]?: TypeChain<key> } = {
         showPrice: false,
         defaultExplorer: 'mempool-space',
         contractAddresses: {
-            moto: '0x765af63f9f7656f0dbefaaf052a266ebee231daebb532809a0d1fccb016e2e5d',
-            pill: '0xd39e00810cd7eed0bd0393209482020bfce875bba1e391501f2cf516af55f8bd'
+            moto: '0xe9fd8cc8cf1b1ef869be84973c3ec49c115b81e046119edd14cad5746d57d065',
+            pill: '0x5605480e53318234d9a20a847a3edbd0830d957ee7e44d60009b0aa078250b94'
         }
     },
     [ChainType.BITCOIN_SIGNET]: {
