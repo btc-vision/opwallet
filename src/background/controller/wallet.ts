@@ -28,6 +28,7 @@ import {
     KEYRING_TYPES,
     NETWORK_TYPES
 } from '@/shared/constant';
+import { UTXO_CONFIG } from '@/shared/config';
 import eventBus from '@/shared/eventBus';
 import { SessionEvent } from '@/shared/interfaces/SessionEvent';
 import {
@@ -2373,7 +2374,25 @@ export class WalletController {
             csv1_locked_amount: '0',
             p2wda_pending_amount: '0',
             p2wda_total_amount: '0',
-            usd_value: '0.00'
+            consolidation_amount: '0',
+            consolidation_unspent_amount: '0',
+            consolidation_unspent_count: 0,
+            consolidation_csv1_unlocked_amount: '0',
+            consolidation_csv1_unlocked_count: 0,
+            consolidation_csv75_unlocked_amount: '0',
+            consolidation_csv75_unlocked_count: 0,
+            consolidation_p2wda_unspent_amount: '0',
+            consolidation_p2wda_unspent_count: 0,
+            usd_value: '0.00',
+
+            all_utxos_count: 0,
+            unspent_utxos_count: 0,
+            csv75_locked_utxos_count: 0,
+            csv75_unlocked_utxos_count: 0,
+            csv1_locked_utxos_count: 0,
+            csv1_unlocked_utxos_count: 0,
+            p2wda_utxos_count: 0,
+            unspent_p2wda_utxos_count: 0
         };
     }
 
@@ -2424,7 +2443,12 @@ export class WalletController {
                 const totalUnspent = unspentUTXOs.reduce((sum, u) => sum + u.value, 0n);
                 const pendingAmount = totalAll - totalUnspent;
 
-                return {
+                // Calculate consolidation amount (first N unspent UTXOs only)
+                const consolidationLimit = UTXO_CONFIG.CONSOLIDATION_LIMIT;
+                const consolidatableUnspentUTXOs = unspentUTXOs.slice(0, consolidationLimit);
+                const consolidationUnspentAmount = consolidatableUnspentUTXOs.reduce((sum, u) => sum + u.value, 0n);
+
+                const result = {
                     btc_total_amount: BitcoinUtils.formatUnits(totalAll, 8),
                     btc_confirm_amount: BitcoinUtils.formatUnits(totalUnspent, 8),
                     btc_pending_amount: BitcoinUtils.formatUnits(pendingAmount, 8),
@@ -2440,8 +2464,28 @@ export class WalletController {
                     p2wda_pending_amount: '0',
                     p2wda_total_amount: '0',
 
-                    usd_value: '0.00'
+                    consolidation_amount: BitcoinUtils.formatUnits(consolidationUnspentAmount, 8),
+                    consolidation_unspent_amount: BitcoinUtils.formatUnits(consolidationUnspentAmount, 8),
+                    consolidation_unspent_count: consolidatableUnspentUTXOs.length,
+                    consolidation_csv1_unlocked_amount: '0',
+                    consolidation_csv1_unlocked_count: 0,
+                    consolidation_csv75_unlocked_amount: '0',
+                    consolidation_csv75_unlocked_count: 0,
+                    consolidation_p2wda_unspent_amount: '0',
+                    consolidation_p2wda_unspent_count: 0,
+
+                    usd_value: '0.00',
+
+                    all_utxos_count: allUTXOs.length,
+                    unspent_utxos_count: unspentUTXOs.length,
+                    csv75_locked_utxos_count: 0,
+                    csv75_unlocked_utxos_count: 0,
+                    csv1_locked_utxos_count: 0,
+                    csv1_unlocked_utxos_count: 0,
+                    p2wda_utxos_count: 0,
+                    unspent_p2wda_utxos_count: 0
                 };
+                return result;
             }
 
             // Full balance fetch with CSV addresses - using Promise.allSettled for better error handling
@@ -2485,8 +2529,40 @@ export class WalletController {
             const totalUnspentP2WDA = unspentP2WDAUTXOs.reduce((sum, u) => sum + u.value, 0n);
             const pendingP2WDA = totalP2WDA - totalUnspentP2WDA;
 
+            const allUTXOsCount = allUTXOs.length;
+            const unspentUTXOsCount = unspentUTXOs.length;
+            const csv75LockedUTXOsCount = csv75Data.lockedUTXOs.length;
+            const csv75UnlockedUTXOsCount = csv75Data.unlockedUTXOs.length;
+            const csv1LockedUTXOsCount = csv1Data.lockedUTXOs.length;
+            const csv1UnlockedUTXOsCount = csv1Data.unlockedUTXOs.length;
+            const p2wdaUTXOsCount = p2wdaUTXOs.length;
+            const unspentP2wdaUTXOsCount = unspentP2WDAUTXOs.length;
+
+            // Calculate consolidation amounts by type (first N UTXOs of each type)
+            const consolidationLimit = UTXO_CONFIG.CONSOLIDATION_LIMIT;
+            
+            // Unspent UTXOs (primary account)
+            const consolidatableUnspentUTXOs = unspentUTXOs.slice(0, consolidationLimit);
+            const consolidationUnspentAmount = consolidatableUnspentUTXOs.reduce((sum, u) => sum + u.value, 0n);
+            
+            // CSV1 unlocked UTXOs
+            const consolidatableCsv1UnlockedUTXOs = csv1Data.unlockedUTXOs.slice(0, consolidationLimit);
+            const consolidationCsv1UnlockedAmount = consolidatableCsv1UnlockedUTXOs.reduce((sum, u) => sum + u.value, 0n);
+            
+            // CSV75 unlocked UTXOs
+            const consolidatableCsv75UnlockedUTXOs = csv75Data.unlockedUTXOs.slice(0, consolidationLimit);
+            const consolidationCsv75UnlockedAmount = consolidatableCsv75UnlockedUTXOs.reduce((sum, u) => sum + u.value, 0n);
+            
+            // P2WDA unspent UTXOs
+            const consolidatableP2wdaUnspentUTXOs = unspentP2WDAUTXOs.slice(0, consolidationLimit);
+            const consolidationP2wdaUnspentAmount = consolidatableP2wdaUnspentUTXOs.reduce((sum, u) => sum + u.value, 0n);
+            
+            // Total consolidation amount (sum of all types)
+            const consolidationAmount = consolidationUnspentAmount + consolidationCsv1UnlockedAmount + 
+                                       consolidationCsv75UnlockedAmount + consolidationP2wdaUnspentAmount;
+
             // Convert all BigInt values to formatted strings using BitcoinUtils
-            return {
+            const result = {
                 btc_total_amount: BitcoinUtils.formatUnits(totalAll, 8),
                 btc_confirm_amount: BitcoinUtils.formatUnits(totalUnspent, 8),
                 btc_pending_amount: BitcoinUtils.formatUnits(pendingAmount, 8),
@@ -2502,8 +2578,28 @@ export class WalletController {
                 p2wda_pending_amount: BitcoinUtils.formatUnits(pendingP2WDA, 8),
                 p2wda_total_amount: BitcoinUtils.formatUnits(totalP2WDA, 8),
 
-                usd_value: '0.00'
+                consolidation_amount: BitcoinUtils.formatUnits(consolidationAmount, 8),
+                consolidation_unspent_amount: BitcoinUtils.formatUnits(consolidationUnspentAmount, 8),
+                consolidation_unspent_count: consolidatableUnspentUTXOs.length,
+                consolidation_csv1_unlocked_amount: BitcoinUtils.formatUnits(consolidationCsv1UnlockedAmount, 8),
+                consolidation_csv1_unlocked_count: consolidatableCsv1UnlockedUTXOs.length,
+                consolidation_csv75_unlocked_amount: BitcoinUtils.formatUnits(consolidationCsv75UnlockedAmount, 8),
+                consolidation_csv75_unlocked_count: consolidatableCsv75UnlockedUTXOs.length,
+                consolidation_p2wda_unspent_amount: BitcoinUtils.formatUnits(consolidationP2wdaUnspentAmount, 8),
+                consolidation_p2wda_unspent_count: consolidatableP2wdaUnspentUTXOs.length,
+
+                usd_value: '0.00',
+
+                all_utxos_count: allUTXOsCount,
+                unspent_utxos_count: unspentUTXOsCount,
+                csv75_locked_utxos_count: csv75LockedUTXOsCount,
+                csv75_unlocked_utxos_count: csv75UnlockedUTXOsCount,
+                csv1_locked_utxos_count: csv1LockedUTXOsCount,
+                csv1_unlocked_utxos_count: csv1UnlockedUTXOsCount,
+                p2wda_utxos_count: p2wdaUTXOsCount,
+                unspent_p2wda_utxos_count: unspentP2wdaUTXOsCount
             };
+            return result;
         } catch (err) {
             throw new WalletControllerError(`Failed to get OPNET balance: ${String(err)}`, { address });
         }
