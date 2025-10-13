@@ -6,9 +6,8 @@ import { getBitcoinLibJSNetwork } from '@/shared/web3/Web3API';
 import { Column, Content, Header, Layout, Row, Text } from '@/ui/components';
 import { useTools } from '@/ui/components/ActionComponent';
 import { AddressTypeCard } from '@/ui/components/AddressTypeCard';
-import { TabBar } from '@/ui/components/TabBar';
 import { satoshisToAmount, useWallet } from '@/ui/utils';
-import { ImportOutlined, InfoCircleOutlined, KeyOutlined, LoadingOutlined, WalletOutlined } from '@ant-design/icons';
+import { CheckCircleFilled, ImportOutlined, InfoCircleOutlined, KeyOutlined, LoadingOutlined, WalletOutlined } from '@ant-design/icons';
 import { EcKeyPair, Wallet } from '@btc-vision/transaction';
 import { ethers } from 'ethers';
 
@@ -617,20 +616,27 @@ export default function CreateSimpleWalletScreen() {
         [contextData, setContextData]
     );
 
-    const items = [
-        {
-            key: TabType.STEP1,
-            label: 'Private Key',
-            children: <Step1 updateContextData={updateContextData} />
-        },
-        {
-            key: TabType.STEP2,
-            label: 'Address Type',
-            children: <Step2 contextData={contextData} updateContextData={updateContextData} />
-        }
-    ];
+    const items = useMemo(() => {
+        return [
+            {
+                key: TabType.STEP1,
+                label: 'Private Key',
+                children: <Step1 updateContextData={updateContextData} />
+            },
+            {
+                key: TabType.STEP2,
+                label: 'Address Type',
+                children: <Step2 contextData={contextData} updateContextData={updateContextData} />
+            }
+        ];
+    }, [contextData, updateContextData]);
 
-    const renderChildren = items.find((v) => v.key == contextData.tabType)?.children;
+    const currentChildren = useMemo(() => {
+        const item = items.find((v) => v.key === contextData.tabType);
+        return item?.children;
+    }, [items, contextData.tabType]);
+
+    const currentStepIndex = items.findIndex((item) => item.key === contextData.tabType);
 
     return (
         <Layout>
@@ -640,29 +646,165 @@ export default function CreateSimpleWalletScreen() {
                 }}
                 title="Import Private Key"
             />
-            <Content style={{ padding: '12px' }}>
-                <Row justifyCenter style={{ marginBottom: '16px' }}>
-                    <TabBar
-                        progressEnabled
-                        defaultActiveKey={TabType.STEP1}
-                        items={items}
-                        activeKey={contextData.tabType}
-                        onTabClick={(key) => {
-                            const toTabType = key as TabType;
-                            if (toTabType === TabType.STEP2) {
-                                if (!contextData.step1Completed) {
-                                    setTimeout(() => {
-                                        updateContextData({ tabType: contextData.tabType });
-                                    }, 200);
-                                    return;
-                                }
-                            }
-                            updateContextData({ tabType: toTabType });
-                        }}
-                    />
-                </Row>
 
-                {renderChildren}
+            <Content
+                style={{
+                    padding: '0',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    height: 'calc(100vh - 56px)',
+                    overflow: 'hidden'
+                }}>
+                {/* Compact Step Indicator */}
+                <div
+                    style={{
+                        padding: '12px 16px',
+                        background: colors.containerBgFaded,
+                        borderBottom: `1px solid ${colors.containerBorder}`,
+                        flexShrink: 0
+                    }}>
+                    <div
+                        style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            marginBottom: '8px'
+                        }}>
+                        <div
+                            style={{
+                                fontSize: '11px',
+                                color: colors.textFaded,
+                                fontWeight: 600,
+                                textTransform: 'uppercase',
+                                letterSpacing: '0.5px'
+                            }}>
+                            Step {currentStepIndex + 1} of {items.length}
+                        </div>
+                        <div
+                            style={{
+                                fontSize: '12px',
+                                color: colors.main,
+                                fontWeight: 600
+                            }}>
+                            {items[currentStepIndex]?.label}
+                        </div>
+                    </div>
+
+                    {/* Compact Progress Steps */}
+                    <div
+                        style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '8px'
+                        }}>
+                        {items.map((item, index) => {
+                            const isActive = item.key === contextData.tabType;
+                            const isCompleted = index < currentStepIndex;
+                            const isClickable = isCompleted || (index === currentStepIndex + 1 && contextData.step1Completed);
+
+                            return (
+                                <div
+                                    key={item.key}
+                                    style={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        flex: index === items.length - 1 ? '0' : '1'
+                                    }}>
+                                    <button
+                                        style={{
+                                            width: '24px',
+                                            height: '24px',
+                                            borderRadius: '50%',
+                                            background: isActive
+                                                ? colors.main
+                                                : isCompleted
+                                                  ? colors.success
+                                                  : colors.buttonHoverBg,
+                                            border: `1px solid ${
+                                                isActive ? colors.main : isCompleted ? colors.success : colors.containerBorder
+                                            }`,
+                                            color: isActive || isCompleted ? colors.background : colors.textFaded,
+                                            fontSize: '11px',
+                                            fontWeight: 600,
+                                            cursor: isClickable ? 'pointer' : 'default',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            transition: 'all 0.2s',
+                                            flexShrink: 0
+                                        }}
+                                        onClick={() => {
+                                            if (!isClickable) return;
+
+                                            const toTabType = item.key;
+                                            if (toTabType === TabType.STEP2 && !contextData.step1Completed) {
+                                                return;
+                                            }
+                                            updateContextData({ tabType: toTabType });
+                                        }}>
+                                        {isCompleted ? <CheckCircleFilled style={{ fontSize: 12 }} /> : index + 1}
+                                    </button>
+                                    {index < items.length - 1 && (
+                                        <div
+                                            style={{
+                                                flex: 1,
+                                                height: '2px',
+                                                background: isCompleted ? colors.success : colors.containerBorder,
+                                                margin: '0 8px',
+                                                transition: 'background 0.3s'
+                                            }}
+                                        />
+                                    )}
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+
+                {/* Scrollable Content Area */}
+                <div
+                    style={{
+                        flex: 1,
+                        overflow: 'auto',
+                        padding: '16px',
+                        minHeight: 0
+                    }}>
+                    {currentChildren}
+                </div>
+
+                {/* Fixed Bottom Warning - Only show on first step */}
+                {currentStepIndex === 0 && (
+                    <div
+                        style={{
+                            padding: '12px 16px',
+                            background: `${colors.warning}10`,
+                            borderTop: `1px solid ${colors.warning}30`,
+                            flexShrink: 0
+                        }}>
+                        <div
+                            style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '8px'
+                            }}>
+                            <span
+                                style={{
+                                    fontSize: '14px',
+                                    color: colors.warning
+                                }}>
+                                ⚠️
+                            </span>
+                            <div
+                                style={{
+                                    fontSize: '11px',
+                                    color: colors.textFaded,
+                                    lineHeight: '1.3'
+                                }}>
+                                Never share your private key. Ensure privacy when importing.
+                            </div>
+                        </div>
+                    </div>
+                )}
             </Content>
         </Layout>
     );
