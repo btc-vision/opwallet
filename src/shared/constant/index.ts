@@ -194,7 +194,7 @@ export enum ChainType {
 }
 
 export const NETWORK_TYPES = [
-    { value: NetworkType.MAINNET, label: 'LIVENET', name: 'livenet', validNames: [0, 'livenet', 'mainnet'] },
+    { value: NetworkType.MAINNET, label: 'MAINNET', name: 'mainnet', validNames: [0, 'livenet', 'mainnet'] },
     { value: NetworkType.TESTNET, label: 'TESTNET', name: 'testnet', validNames: ['testnet'] },
     { value: NetworkType.REGTEST, label: 'REGTEST', name: 'regtest', validNames: ['regtest'] }
 ];
