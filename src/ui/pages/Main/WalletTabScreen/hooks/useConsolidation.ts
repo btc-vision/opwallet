@@ -69,8 +69,6 @@ export function useConsolidation() {
             p2wda: freshBalance.consolidation_p2wda_unspent_count
         };
 
-        console.log('[useConsolidation] Consolidation counts:', consolidationCounts);
-
         // Find the type with the most UTXOs
         // Check in reverse priority order (lowest to highest)
         let selectedType: ConsolidationType = 'unspent';
@@ -92,8 +90,6 @@ export function useConsolidation() {
             selectedType = 'unspent';
             maxCount = consolidationCounts.unspent;
         }
-
-        console.log('[useConsolidation] Selected type:', selectedType, 'with', maxCount, 'UTXOs');
 
         return {
             type: selectedType,

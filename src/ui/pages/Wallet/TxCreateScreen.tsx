@@ -57,6 +57,17 @@ interface AddressBalance {
     description2?: string;
 }
 
+interface ConsolidationParams {
+    enabled: boolean;
+    selectedType: 'unspent' | 'csv1' | 'csv75' | 'p2wda';
+    maxUTXOs: number;
+    autoFillAmount: boolean;
+}
+
+interface LocationState {
+    consolidation?: ConsolidationParams;
+}
+
 export default function TxCreateScreen() {
     const navigate = useNavigate();
     const location = useLocation();
@@ -68,8 +79,7 @@ export default function TxCreateScreen() {
 
     const { toInfo, inputAmount, enableRBF, feeRate } = uiState;
 
-    // Get consolidation params from navigation state
-    const consolidationParams = (location.state as any)?.consolidation;
+    const consolidationParams = (location.state as LocationState | undefined)?.consolidation;
 
     const [disabled, setDisabled] = useState(true);
     const [error, setError] = useState('');
@@ -205,15 +215,9 @@ export default function TxCreateScreen() {
                 };
                 
                 const targetType = typeMapping[consolidationParams.selectedType || 'unspent'];
-                
-                console.log('[Consolidation] Selected type:', consolidationParams.selectedType, '-> SourceType:', targetType);
-                console.log('[Consolidation] Available addresses:', addressBalances.map(b => ({ type: b.type, available: b.available })));
-                
+
                 // Find the address matching the selected type
                 const selectedAddress = addressBalances.find(b => b.type === targetType && b.available);
-                
-                console.log('[Consolidation] Found source address:', selectedAddress?.type, selectedAddress?.address);
-                console.log('[Consolidation] Destination (Primary Account):', account.address);
                 
                 if (selectedAddress) {
                     // Auto-select the address
@@ -252,7 +256,6 @@ export default function TxCreateScreen() {
                                 break;
                         }
                         
-                        console.log('[Consolidation] Amount for type', consolidationParams.selectedType, ':', consolidationAmount);
                         setUiState({ inputAmount: consolidationAmount });
                     }
                     

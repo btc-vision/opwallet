@@ -92,7 +92,7 @@ export default function WalletTabScreen() {
     const faucetUrl = useFaucetUrl();
 
     const [switchChainModalVisible, setSwitchChainModalVisible] = useState(false);
-    const [showUTXOsSection, setShowUTXOsSection] = useState(false);
+    const [showBalanceDetails, setShowBalanceDetails] = useState(false);
 
     const currentKeyring = useCurrentKeyring();
     const currentAccount = useCurrentAccount();
@@ -132,6 +132,13 @@ export default function WalletTabScreen() {
     useEffect(() => {
         void fetchBalance();
     }, [fetchBalance]);
+
+    // Helper function to check if there are CSV balances
+    const hasCSVBalances = () => {
+        const csv75Total = parseFloat(accountBalance.csv75_total_amount || '0');
+        const csv1Total = parseFloat(accountBalance.csv1_total_amount || '0');
+        return csv75Total > 0 || csv1Total > 0;
+    };
 
     const tools = useTools();
 
@@ -365,7 +372,7 @@ export default function WalletTabScreen() {
                                         TOTAL BALANCE
                                     </div>
                                     <button
-                                        onClick={() => setShowUTXOsSection(!showUTXOsSection)}
+                                        onClick={() => setShowBalanceDetails(!showBalanceDetails)}
                                         style={{
                                             padding: '2px 8px',
                                             background: colors.buttonHoverBg,
@@ -392,7 +399,7 @@ export default function WalletTabScreen() {
                                         <DownOutlined 
                                             style={{ 
                                                 fontSize: 7, 
-                                                transform: showUTXOsSection ? 'rotate(180deg)' : 'rotate(0deg)', 
+                                                transform: showBalanceDetails ? 'rotate(180deg)' : 'rotate(0deg)',
                                                 transition: 'transform 0.2s' 
                                             }} 
                                         />
@@ -402,14 +409,14 @@ export default function WalletTabScreen() {
                                 {/* Balance Details Tabs or Balance Display */}
                                 <BalanceDisplay
                                     accountBalance={accountBalance}
-                                    showDetails={showUTXOsSection}
+                                    showDetails={showBalanceDetails}
                                     btcUnit={btcUnit}
                                     colors={colors}
                                     noBreakStyle={$noBreakStyle}
                                 />
 
                                 {/* Metadata: CSV Badge and Public Key */}
-                                {!showUTXOsSection && (
+                                {!showBalanceDetails && (
                                     <div
                                         style={{
                                             display: 'flex',
@@ -419,8 +426,7 @@ export default function WalletTabScreen() {
                                             marginTop: '4px'
                                         }}>
                                         {/* Show CSV balances if they exist */}
-                                        {(parseFloat(accountBalance.csv75_total_amount || '0') > 0 || 
-                                          parseFloat(accountBalance.csv1_total_amount || '0') > 0) && (
+                                        {hasCSVBalances() && (
                                             <span
                                                 style={{
                                                     fontSize: '10px',
