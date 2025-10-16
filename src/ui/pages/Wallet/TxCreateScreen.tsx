@@ -224,9 +224,7 @@ export default function TxCreateScreen() {
                     setSelectedBalance(selectedAddress);
                     setHasSelectedAddress(true);
                     setHasAutoSelectedOnce(true);
-                    
-                    // CRITICAL: For consolidation, ALWAYS send to Primary Account (not to the source address)
-                    // This ensures funds are consolidated to the main wallet, not to CSV/P2WDA addresses
+
                     setUiState({ 
                         toInfo: { 
                             address: account.address, 
@@ -234,7 +232,7 @@ export default function TxCreateScreen() {
                         }
                     });
                     
-                    // Auto-fill with consolidation amount if requested
+                    // Autofill with consolidation amount if requested
                     if (consolidationParams.autoFillAmount) {
                         // Get balance and use the appropriate consolidation amount based on type
                         const balance = await wallet.getAddressBalance(account.address, account.pubkey);
