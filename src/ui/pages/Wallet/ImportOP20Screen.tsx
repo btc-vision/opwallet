@@ -90,7 +90,7 @@ export default function ImportTokenScreen() {
 
         const type = AddressVerificator.detectAddressType(address, Web3API.network);
         if (type !== AddressTypes.P2OP && type !== AddressTypes.P2PK) {
-            setError(`Invalid address format. Must be a valid contract address. Detected type: ${type}`);
+            setError('Invalid address format. Must be a valid contract address.');
             return;
         }
 
@@ -149,7 +149,7 @@ export default function ImportTokenScreen() {
 
     return (
         <Layout>
-            <Header title="Import OP20 Token" onBack={() => navigate(RouteTypes.ImportSelectionScreen)} />
+            <Header title="Import OP_20 Token" onBack={() => navigate(RouteTypes.ImportSelectionScreen)} />
 
             <Content style={{ padding: '16px' }}>
                 <Column gap="lg">
@@ -160,7 +160,7 @@ export default function ImportTokenScreen() {
                                 color: colors.textFaded,
                                 marginBottom: '16px'
                             }}>
-                            Enter the OP20 token contract address to import
+                            Enter the OP_20 token contract address to import
                         </p>
                     </div>
 

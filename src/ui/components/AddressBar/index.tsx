@@ -90,7 +90,7 @@ export function AddressBar({
         {
             label: 'Smart Contract Optimized',
             value: p2wdaAddress,
-            info: 'Up to 75% cheaper fees for contract interactions (not for trading)',
+            info: 'Up to 75% cheaper fees for contract interactions (not for trading).',
             showBalance: true,
             total: p2wda_total_amount
         },

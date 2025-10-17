@@ -239,6 +239,8 @@ export default function TxCreateScreen() {
             setDisplayP2OPWarning(false);
 
             const address = val.address;
+            if (!address) return;
+
             const type = AddressVerificator.detectAddressType(address, Web3API.network);
 
             if (type === null) {
@@ -546,8 +548,8 @@ export default function TxCreateScreen() {
                                         color: colors.textFaded,
                                         margin: '8px 0 0 0'
                                     }}>
-                                    If you have funds in other addresses types, they will show up here once they have
-                                    been detected on-chain.
+                                    If you have funds in other address types, they will show up here once they have been
+                                    detected on-chain.
                                 </p>
                             </div>
                         )}

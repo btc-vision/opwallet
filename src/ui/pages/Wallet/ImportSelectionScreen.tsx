@@ -1,6 +1,6 @@
-import { useState } from 'react';
 import { Column, Content, Header, Layout } from '@/ui/components';
 import { RouteTypes, useNavigate } from '@/ui/pages/MainRoute';
+import { useState } from 'react';
 
 const colors = {
     main: '#f37413',
@@ -128,14 +128,14 @@ export default function ImportSelectionScreen() {
                     <ImportOption
                         type={ImportType.TOKEN}
                         icon="🪙"
-                        title="OP20 Token"
-                        description="Import fungible tokens like MOTO, wBTC, etc."
+                        title="OP_20 Token"
+                        description="Import fungible tokens like MOTO, PILL, etc."
                     />
 
                     <ImportOption
                         type={ImportType.NFT}
                         icon="🎨"
-                        title="OP721 NFT Collection"
+                        title="OP_721 NFT Collection"
                         description="Import NFT collections to view and manage your NFTs"
                     />
                 </Column>

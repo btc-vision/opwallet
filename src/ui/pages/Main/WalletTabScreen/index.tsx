@@ -596,6 +596,7 @@ export default function WalletTabScreen() {
                                                     }}>
                                                     {publicKey.slice(0, 6)}...{publicKey.slice(-4)}
                                                 </span>
+
                                                 <svg
                                                     width="10"
                                                     height="10"
@@ -604,7 +605,7 @@ export default function WalletTabScreen() {
                                                     xmlns="http://www.w3.org/2000/svg"
                                                     style={{ flexShrink: 0 }}>
                                                     <path
-                                                        d="M8 4H6C5.46957 4 4.96086 4.21071 4.58579 4.58579C4.21071 4.96086 4 5.46957 4 6V18C4 18.5304 4.21071 19.0391 4.58579 19.4142C4.96086 19.7893 5.46957 20 6 20H18C18.5304 20 19.0391 19.7893 19.4142 19.4142C19.7893 19.0391 20 18.5304 20 18V16M16 4H20M20 4V8M20 4L10 14"
+                                                        d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2M12 11v6M9 14h6M15 4H9a1 1 0 0 0-1 1v2a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V5a1 1 0 0 0-1-1z"
                                                         stroke={colors.main}
                                                         strokeWidth="2"
                                                         strokeLinecap="round"

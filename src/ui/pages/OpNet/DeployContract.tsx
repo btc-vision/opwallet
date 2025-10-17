@@ -99,7 +99,7 @@ export default function DeployContractOpnet() {
 
     return (
         <Layout>
-            <Header title="Deploy Smart Contract" onBack={() => window.history.go(-1)} />
+            <Header title="Deploy Smart Contract" onBack={() => navigate(RouteTypes.MainScreen)} />
 
             <Content
                 style={{
@@ -446,15 +446,21 @@ export default function DeployContractOpnet() {
                             </div>
                             <input
                                 type="text"
-                                placeholder="0x... (optional)"
+                                placeholder="Paste hex data: 0x... (optional)"
                                 value={calldataHex}
                                 onChange={(e) => {
                                     const hex = e.target.value;
                                     if (hex === '' || /^0x[0-9a-fA-F]*$/.test(hex)) {
                                         setCalldataHex(hex);
                                     } else {
-                                        tools.toastError('Invalid hex string');
+                                        tools.toastError('Invalid hex string - paste valid hex data');
                                     }
+                                }}
+                                onPaste={(e) => {
+                                    e.currentTarget.style.borderColor = colors.main;
+                                    setTimeout(() => {
+                                        e.currentTarget.style.borderColor = colors.containerBorder;
+                                    }, 300);
                                 }}
                                 style={{
                                     width: '100%',
@@ -465,7 +471,8 @@ export default function DeployContractOpnet() {
                                     color: colors.text,
                                     fontSize: '13px',
                                     outline: 'none',
-                                    fontFamily: 'monospace'
+                                    fontFamily: 'monospace',
+                                    transition: 'border-color 0.3s'
                                 }}
                             />
                         </div>
