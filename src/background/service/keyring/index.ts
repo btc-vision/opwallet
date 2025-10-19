@@ -426,7 +426,7 @@ class KeyringService extends EventEmitter {
         return this.fullUpdate();
     };
 
-    changePassword = async (oldPassword: string, newPassword: string): Promise<MemStoreState> => {
+    changePassword = async (oldPassword: string, newPassword: string) => {
         const oldMethod = await this.verifyPassword(oldPassword);
         this.password = oldPassword;
 
@@ -462,7 +462,7 @@ class KeyringService extends EventEmitter {
         await this.persistAllKeyrings();
         await this._updateMemStoreKeyrings();
 
-        return this.fullUpdate();
+        this.fullUpdate();
     };
 
     /**
