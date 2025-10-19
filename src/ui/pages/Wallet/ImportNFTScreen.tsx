@@ -1,12 +1,12 @@
-import React, { useEffect, useState } from 'react';
 import Web3API from '@/shared/web3/Web3API';
 import { Column, Content, Header, Input, Layout } from '@/ui/components';
+import { useTools } from '@/ui/components/ActionComponent';
 import { RouteTypes, useNavigate } from '@/ui/pages/MainRoute';
 import { useCurrentAccount } from '@/ui/state/accounts/hooks';
 import { useChainType } from '@/ui/state/settings/hooks';
-import { useTools } from '@/ui/components/ActionComponent';
 import { LoadingOutlined } from '@ant-design/icons';
 import { AddressTypes, AddressVerificator } from '@btc-vision/transaction';
+import { useEffect, useState } from 'react';
 
 const colors = {
     main: '#f37413',
@@ -71,7 +71,7 @@ export default function ImportNFTScreen() {
 
         const type = AddressVerificator.detectAddressType(address, Web3API.network);
         if (type !== AddressTypes.P2OP && type !== AddressTypes.P2PK) {
-            setError(`Invalid address format. Must be a valid contract address. Detecting type: ${type}`);
+            setError('Invalid address format. Must be a valid contract address.');
             return;
         }
 
@@ -147,7 +147,7 @@ export default function ImportNFTScreen() {
                                 color: colors.textFaded,
                                 marginBottom: '16px'
                             }}>
-                            Enter the OP721 collection contract address to import
+                            Enter the OP_721 collection contract address to import
                         </p>
                     </div>
 

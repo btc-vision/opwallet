@@ -1,15 +1,13 @@
-import { Tooltip } from 'antd';
 import React, { CSSProperties, useEffect, useState } from 'react';
 
 import { AddressFlagType } from '@/shared/constant';
 import { checkAddressFlag } from '@/shared/utils';
 import { Column, Content, Footer, Header, Image, Layout, Row } from '@/ui/components';
 import AccountSelect from '@/ui/components/AccountSelect';
-import { BtcUsd } from '@/ui/components/BtcUsd';
 import { DisableUnconfirmedsPopover } from '@/ui/components/DisableUnconfirmedPopover';
 import { NavTabBar } from '@/ui/components/NavTabBar';
 import { UpgradePopover } from '@/ui/components/UpgradePopover';
-import { BtcDisplay } from '@/ui/pages/Main/WalletTabScreen/components/BtcDisplay';
+import { BalanceDisplay } from '@/ui/pages/Main/WalletTabScreen/components/BalanceDisplay';
 import {
     useAccountBalance,
     useAccountPublicKey,
@@ -38,17 +36,18 @@ import {
     ExclamationCircleOutlined,
     ExperimentOutlined,
     HistoryOutlined,
-    InfoCircleOutlined,
     QrcodeOutlined,
     SendOutlined,
     SwapOutlined,
     WalletOutlined
 } from '@ant-design/icons';
+import { Tooltip } from 'antd';
 import { Address } from '@btc-vision/transaction';
 import ActionButton from '../../../components/ActionButton/index';
 import { RouteTypes, useNavigate } from '../../MainRoute';
 import { SwitchChainModal } from '../../Settings/network/SwitchChainModal';
 import { OPNetList } from './OPNetList';
+import { useConsolidation } from './hooks';
 
 const colors = {
     main: '#f37413',
@@ -93,6 +92,7 @@ export default function WalletTabScreen() {
     const faucetUrl = useFaucetUrl();
 
     const [switchChainModalVisible, setSwitchChainModalVisible] = useState(false);
+    const [showBalanceDetails, setShowBalanceDetails] = useState(false);
 
     const currentKeyring = useCurrentKeyring();
     const currentAccount = useCurrentAccount();
@@ -106,6 +106,7 @@ export default function WalletTabScreen() {
     const versionInfo = useVersionInfo();
 
     const resetUiTxCreateScreen = useResetUiTxCreateScreen();
+    const { checkUTXOLimit, navigateToConsolidation } = useConsolidation();
 
     const [showDisableUnconfirmedUtxoNotice, setShowDisableUnconfirmedUtxoNotice] = useState(false);
 
@@ -131,16 +132,6 @@ export default function WalletTabScreen() {
     useEffect(() => {
         void fetchBalance();
     }, [fetchBalance]);
-
-    // Helper function to calculate total balance including CSV amounts
-    const calculateTotalBalance = () => {
-        const mainBalance = parseFloat(accountBalance.btc_total_amount || '0');
-        const csv75Total = parseFloat(accountBalance.csv75_total_amount || '0');
-        const csv1Total = parseFloat(accountBalance.csv1_total_amount || '0');
-
-        const total = mainBalance + csv75Total + csv1Total;
-        return total.toFixed(8).replace(/\.?0+$/, '');
-    };
 
     // Helper function to check if there are CSV balances
     const hasCSVBalances = () => {
@@ -308,257 +299,157 @@ export default function WalletTabScreen() {
                                 }}
                             />
 
-                            <Tooltip
-                                placement={'bottom'}
-                                styles={{
-                                    root: {
-                                        fontSize: '11px',
-                                        maxWidth: '280px'
-                                    }
-                                }}>
-                                <Tooltip
-                                    title={
-                                        <div style={{ padding: '4px' }}>
-                                            {/* Main Balance Breakdown */}
-                                            <div style={{ marginBottom: '8px' }}>
-                                                <div
-                                                    style={{
-                                                        fontSize: '10px',
-                                                        fontWeight: 600,
-                                                        color: colors.textFaded,
-                                                        marginBottom: '6px',
-                                                        textTransform: 'uppercase',
-                                                        letterSpacing: '0.5px'
-                                                    }}>
-                                                    Main Balance
-                                                </div>
-                                                <Row justifyBetween style={{ marginBottom: '4px' }}>
-                                                    <span style={$noBreakStyle}>Available</span>
-                                                    <span
-                                                        style={
-                                                            $noBreakStyle
-                                                        }>{`${accountBalance.btc_confirm_amount} ${btcUnit}`}</span>
-                                                </Row>
-                                                <Row justifyBetween style={{ marginBottom: '4px' }}>
-                                                    <span style={$noBreakStyle}>Pending</span>
-                                                    <span
-                                                        style={
-                                                            $noBreakStyle
-                                                        }>{`${accountBalance.btc_pending_amount} ${btcUnit}`}</span>
-                                                </Row>
+                            <div>
+                                {/* Warning message when limit is reached */}
+                                {(() => {
+                                    const { hasReachedLimit, consolidationLimit } = checkUTXOLimit(accountBalance);
+
+                                    return hasReachedLimit ? (
+                                        <div
+                                            style={{
+                                                background: `linear-gradient(135deg, ${colors.error}15 0%, ${colors.error}08 100%)`,
+                                                border: `1px solid ${colors.error}40`,
+                                                borderRadius: '8px',
+                                                padding: '10px',
+                                                marginBottom: '12px',
+                                                fontSize: '10px',
+                                                color: '#dbdbdb',
+                                                lineHeight: '1.4',
+                                                maxWidth: '320px',
+                                                margin: '0 auto 12px'
+                                            }}>
+                                            <div style={{ fontWeight: 600, color: colors.error, marginBottom: '4px' }}>
+                                                ⚠️ UTXO Limit Reached
                                             </div>
-
-                                            {/* CSV75 Balance */}
-                                            {accountBalance.csv75_total_amount &&
-                                                parseFloat(accountBalance.csv75_total_amount) > 0 && (
-                                                    <div
-                                                        style={{
-                                                            marginBottom: '8px',
-                                                            paddingTop: '8px',
-                                                            borderTop: `1px solid ${colors.containerBorder}`
-                                                        }}>
-                                                        <div
-                                                            style={{
-                                                                fontSize: '10px',
-                                                                fontWeight: 600,
-                                                                color: colors.main,
-                                                                marginBottom: '6px',
-                                                                textTransform: 'uppercase',
-                                                                letterSpacing: '0.5px'
-                                                            }}>
-                                                            CSV 75 Balance
-                                                        </div>
-                                                        <Row justifyBetween style={{ marginBottom: '4px' }}>
-                                                            <span
-                                                                style={{
-                                                                    ...$noBreakStyle,
-                                                                    color: colors.success
-                                                                }}>
-                                                                Unlocked
-                                                            </span>
-                                                            <span
-                                                                style={{
-                                                                    ...$noBreakStyle,
-                                                                    color: colors.success
-                                                                }}>
-                                                                {`${accountBalance.csv75_unlocked_amount || '0'} ${btcUnit}`}
-                                                            </span>
-                                                        </Row>
-                                                        <Row justifyBetween style={{ marginBottom: '4px' }}>
-                                                            <span
-                                                                style={{
-                                                                    ...$noBreakStyle,
-                                                                    color: colors.warning
-                                                                }}>
-                                                                Locked
-                                                            </span>
-                                                            <span
-                                                                style={{
-                                                                    ...$noBreakStyle,
-                                                                    color: colors.warning
-                                                                }}>
-                                                                {`${accountBalance.csv75_locked_amount || '0'} ${btcUnit}`}
-                                                            </span>
-                                                        </Row>
-                                                        <Row justifyBetween>
-                                                            <span style={$noBreakStyle}>Total</span>
-                                                            <span style={$noBreakStyle}>
-                                                                {`${accountBalance.csv75_total_amount} ${btcUnit}`}
-                                                            </span>
-                                                        </Row>
-                                                    </div>
-                                                )}
-
-                                            {/* CSV1 Balance */}
-                                            {accountBalance.csv1_total_amount &&
-                                                parseFloat(accountBalance.csv1_total_amount) > 0 && (
-                                                    <div
-                                                        style={{
-                                                            marginBottom: '8px',
-                                                            paddingTop: '8px',
-                                                            borderTop: `1px solid ${colors.containerBorder}`
-                                                        }}>
-                                                        <div
-                                                            style={{
-                                                                fontSize: '10px',
-                                                                fontWeight: 600,
-                                                                color: colors.main,
-                                                                marginBottom: '6px',
-                                                                textTransform: 'uppercase',
-                                                                letterSpacing: '0.5px'
-                                                            }}>
-                                                            CSV 1 Balance
-                                                        </div>
-                                                        <Row justifyBetween style={{ marginBottom: '4px' }}>
-                                                            <span
-                                                                style={{
-                                                                    ...$noBreakStyle,
-                                                                    color: colors.success
-                                                                }}>
-                                                                Unlocked
-                                                            </span>
-                                                            <span
-                                                                style={{
-                                                                    ...$noBreakStyle,
-                                                                    color: colors.success
-                                                                }}>
-                                                                {`${accountBalance.csv1_unlocked_amount || '0'} ${btcUnit}`}
-                                                            </span>
-                                                        </Row>
-                                                        <Row justifyBetween style={{ marginBottom: '4px' }}>
-                                                            <span
-                                                                style={{
-                                                                    ...$noBreakStyle,
-                                                                    color: colors.warning
-                                                                }}>
-                                                                Locked
-                                                            </span>
-                                                            <span
-                                                                style={{
-                                                                    ...$noBreakStyle,
-                                                                    color: colors.warning
-                                                                }}>
-                                                                {`${accountBalance.csv1_locked_amount || '0'} ${btcUnit}`}
-                                                            </span>
-                                                        </Row>
-                                                        <Row justifyBetween>
-                                                            <span style={$noBreakStyle}>Total</span>
-                                                            <span style={$noBreakStyle}>
-                                                                {`${accountBalance.csv1_total_amount} ${btcUnit}`}
-                                                            </span>
-                                                        </Row>
-                                                    </div>
-                                                )}
-
-                                            {/* Grand Total */}
-                                            <div
+                                            <div style={{ fontSize: '9px', color: 'rgba(219, 219, 219, 0.7)', marginBottom: '8px' }}>
+                                                Your total balance is not fully displayed since it has exceeded 2,000 UTXOs.
+                                                <strong style={{ display: 'block', marginTop: '4px', color: colors.main }}>
+                                                    You can consolidate up to {consolidationLimit} UTXOs at a time to fix this issue.
+                                                </strong>
+                                            </div>
+                                            <button
+                                                onClick={navigateToConsolidation}
                                                 style={{
-                                                    borderTop: `2px solid ${colors.main}`,
-                                                    paddingTop: '8px',
-                                                    marginTop: '8px'
+                                                    width: '100%',
+                                                    padding: '6px 12px',
+                                                    background: colors.main,
+                                                    border: 'none',
+                                                    borderRadius: '6px',
+                                                    cursor: 'pointer',
+                                                    fontSize: '10px',
+                                                    fontWeight: 600,
+                                                    color: '#000',
+                                                    transition: 'all 0.2s'
+                                                }}
+                                                onMouseEnter={(e) => {
+                                                    e.currentTarget.style.opacity = '0.8';
+                                                }}
+                                                onMouseLeave={(e) => {
+                                                    e.currentTarget.style.opacity = '1';
                                                 }}>
-                                                <Row justifyBetween>
-                                                    <span
-                                                        style={{
-                                                            ...$noBreakStyle,
-                                                            fontWeight: 700,
-                                                            color: colors.main
-                                                        }}>
-                                                        GRAND TOTAL
-                                                    </span>
-                                                    <span
-                                                        style={{
-                                                            ...$noBreakStyle,
-                                                            fontWeight: 700,
-                                                            color: colors.main
-                                                        }}>
-                                                        {`${calculateTotalBalance()} ${btcUnit}`}
-                                                    </span>
-                                                </Row>
-                                            </div>
+                                                Consolidate {consolidationLimit} UTXOs
+                                            </button>
                                         </div>
-                                    }>
+                                    ) : null;
+                                })()}
+
+                                {/* Total Balance Label + Details Button */}
+                                <div style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    gap: '8px',
+                                    marginBottom: '3px'
+                                }}>
                                     <div
                                         style={{
                                             fontSize: '10px',
                                             fontWeight: 600,
                                             color: colors.textFaded,
                                             textTransform: 'uppercase',
-                                            letterSpacing: '0.5px',
-                                            marginBottom: '3px',
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            justifyContent: 'center',
-                                            gap: '4px'
+                                            letterSpacing: '0.5px'
                                         }}>
                                         TOTAL BALANCE
-                                        <InfoCircleOutlined style={{ fontSize: 10 }} />
                                     </div>
-                                </Tooltip>
+                                    <button
+                                        onClick={() => setShowBalanceDetails(!showBalanceDetails)}
+                                        style={{
+                                            padding: '2px 8px',
+                                            background: colors.buttonHoverBg,
+                                            border: `1px solid ${colors.containerBorder}`,
+                                            borderRadius: '4px',
+                                            cursor: 'pointer',
+                                            fontSize: '9px',
+                                            fontWeight: 600,
+                                            color: colors.textFaded,
+                                            transition: 'all 0.2s',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '4px'
+                                        }}
+                                        onMouseEnter={(e) => {
+                                            e.currentTarget.style.color = colors.main;
+                                            e.currentTarget.style.borderColor = colors.main;
+                                        }}
+                                        onMouseLeave={(e) => {
+                                            e.currentTarget.style.color = colors.textFaded;
+                                            e.currentTarget.style.borderColor = colors.containerBorder;
+                                        }}>
+                                        Details
+                                        <DownOutlined 
+                                            style={{ 
+                                                fontSize: 7, 
+                                                transform: showBalanceDetails ? 'rotate(180deg)' : 'rotate(0deg)',
+                                                transition: 'transform 0.2s' 
+                                            }} 
+                                        />
+                                    </button>
+                                </div>
 
-                                {/* Display the combined total */}
-                                <BtcDisplay balance={calculateTotalBalance()} />
-                                <BtcUsd
-                                    sats={amountToSatoshis(calculateTotalBalance())}
-                                    textCenter
-                                    size={'sm'}
-                                    style={{
-                                        marginBottom: '4px'
-                                    }}
+                                {/* Balance Details Tabs or Balance Display */}
+                                <BalanceDisplay
+                                    accountBalance={accountBalance}
+                                    showDetails={showBalanceDetails}
+                                    btcUnit={btcUnit}
+                                    colors={colors}
+                                    noBreakStyle={$noBreakStyle}
                                 />
-                                <div
-                                    style={{
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        gap: '6px',
-                                        marginTop: '4px'
-                                    }}>
-                                    {/* Show CSV balances if they exist */}
-                                    {hasCSVBalances() && (
-                                        <span
-                                            style={{
-                                                fontSize: '10px',
-                                                color: colors.btcOrange,
-                                                backgroundColor: 'rgba(233, 152, 61, 0.15)',
-                                                padding: '2px 6px',
-                                                borderRadius: '6px',
-                                                textAlign: 'center',
-                                                fontWeight: 500
-                                            }}>
-                                            + CSV Balances
-                                        </span>
-                                    )}
 
-                                    {/* Public Key Display */}
+                                {/* Metadata: CSV Badge and Public Key */}
+                                {!showBalanceDetails && (
                                     <div
                                         style={{
                                             display: 'flex',
                                             alignItems: 'center',
-                                            justifyContent: 'space-between',
-                                            gap: '12px'
+                                            justifyContent: 'center',
+                                            gap: '6px',
+                                            marginTop: '4px'
                                         }}>
-                                        <Tooltip title="Click to copy public key" placement="top">
+                                        {/* Show CSV balances if they exist */}
+                                        {hasCSVBalances() && (
+                                            <span
+                                                style={{
+                                                    fontSize: '10px',
+                                                    color: colors.btcOrange,
+                                                    backgroundColor: 'rgba(233, 152, 61, 0.15)',
+                                                    padding: '2px 6px',
+                                                    borderRadius: '6px',
+                                                    textAlign: 'center',
+                                                    fontWeight: 500
+                                                }}>
+                                                + CSV Balances
+                                            </span>
+                                        )}
+
+                                        {/* Public Key Display */}
+                                        <div
+                                            style={{
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'space-between',
+                                                gap: '12px'
+                                            }}>
+                                            <Tooltip title="Click to copy public key" placement="top">
                                             <button
                                                 style={{
                                                     display: 'flex',
@@ -596,6 +487,7 @@ export default function WalletTabScreen() {
                                                     }}>
                                                     {publicKey.slice(0, 6)}...{publicKey.slice(-4)}
                                                 </span>
+
                                                 <svg
                                                     width="10"
                                                     height="10"
@@ -604,7 +496,7 @@ export default function WalletTabScreen() {
                                                     xmlns="http://www.w3.org/2000/svg"
                                                     style={{ flexShrink: 0 }}>
                                                     <path
-                                                        d="M8 4H6C5.46957 4 4.96086 4.21071 4.58579 4.58579C4.21071 4.96086 4 5.46957 4 6V18C4 18.5304 4.21071 19.0391 4.58579 19.4142C4.96086 19.7893 5.46957 20 6 20H18C18.5304 20 19.0391 19.7893 19.4142 19.4142C19.7893 19.0391 20 18.5304 20 18V16M16 4H20M20 4V8M20 4L10 14"
+                                                        d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2M12 11v6M9 14h6M15 4H9a1 1 0 0 0-1 1v2a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V5a1 1 0 0 0-1-1z"
                                                         stroke={colors.main}
                                                         strokeWidth="2"
                                                         strokeLinecap="round"
@@ -612,10 +504,11 @@ export default function WalletTabScreen() {
                                                     />
                                                 </svg>
                                             </button>
-                                        </Tooltip>
+                                            </Tooltip>
+                                        </div>
                                     </div>
-                                </div>
-                            </Tooltip>
+                                )}
+                            </div>
                         </div>
 
                         {/* Action Buttons */}

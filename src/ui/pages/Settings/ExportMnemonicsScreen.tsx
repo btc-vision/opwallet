@@ -175,7 +175,7 @@ export default function ExportMnemonicsScreen() {
                         </Row>
                         <Card>
                             <Column>
-                                <Text text="Advance Options" />
+                                <Text text="Advanced Options" />
                                 <Text
                                     text={`Derivation Path: ${keyring.hdPath}/0 (${pathName})`}
                                     preset="sub"

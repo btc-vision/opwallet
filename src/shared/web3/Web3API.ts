@@ -296,7 +296,7 @@ class Web3API {
             const name = metadata.name ?? this.getContractName(addressP2OP);
             const symbol = metadata.symbol ?? 'UNKNOWN';
             const decimals = metadata.decimals ?? 0;
-            const maximumSupply = metadata.maximumSupply ?? 0n;
+            const totalSupply = metadata.totalSupply ?? 0n;
 
             const logo = metadata.icon || results[1];
             return {
@@ -304,7 +304,7 @@ class Web3API {
                 symbol,
                 decimals,
                 logo,
-                maximumSupply
+                totalSupply
             };
         } catch (e) {
             console.warn(`Couldn't query name/symbol/decimals/logo for contract ${address}:`, e);

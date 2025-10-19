@@ -3,10 +3,10 @@ import { useUnreadAppSummary } from '@/ui/state/accounts/hooks';
 import { TabOption } from '@/ui/state/global/reducer';
 import { colors } from '@/ui/theme/colors';
 
+import PartnerIcon from '@/ui/components/Icon/PartnerIcon';
 import { BaseView } from '../BaseView';
 import { Grid } from '../Grid';
 import { Icon, IconTypes } from '../Icon';
-import PartnerIcon from '@/ui/components/Icon/PartnerIcon';
 
 export function NavTabBar({ tab }: { tab: TabOption }) {
     return (
@@ -55,6 +55,7 @@ export function NavTabBar({ tab }: { tab: TabOption }) {
 function TabButton({ tabName, icon, isActive }: { tabName: TabOption; icon: IconTypes; isActive: boolean }) {
     const navigate = useNavigate();
     const unreadApp = useUnreadAppSummary();
+
     return (
         <div
             style={{
@@ -62,9 +63,10 @@ function TabButton({ tabName, icon, isActive }: { tabName: TabOption; icon: Icon
                 flexDirection: 'row',
                 alignItems: 'center',
                 justifyContent: 'center',
-                aspectRatio: '1 / 1'
+                aspectRatio: '1 / 1',
+                cursor: 'pointer'
             }}
-            onClick={(e) => {
+            onClick={() => {
                 if (tabName === 'home') {
                     navigate(RouteTypes.MainScreen);
                 } else if (tabName === 'nft') {

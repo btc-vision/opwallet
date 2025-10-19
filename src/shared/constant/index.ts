@@ -194,7 +194,7 @@ export enum ChainType {
 }
 
 export const NETWORK_TYPES = [
-    { value: NetworkType.MAINNET, label: 'LIVENET', name: 'livenet', validNames: [0, 'livenet', 'mainnet'] },
+    { value: NetworkType.MAINNET, label: 'MAINNET', name: 'mainnet', validNames: [0, 'livenet', 'mainnet'] },
     { value: NetworkType.TESTNET, label: 'TESTNET', name: 'testnet', validNames: ['testnet'] },
     { value: NetworkType.REGTEST, label: 'REGTEST', name: 'regtest', validNames: ['regtest'] }
 ];
@@ -281,10 +281,7 @@ export const DEFAULT_CHAINS_MAP: { [key in ChainType]?: TypeChain<key> } = {
         disable: false,
         showPrice: false,
         defaultExplorer: 'mempool-space',
-        contractAddresses: {
-            moto: '0x95d245621dd9faca22a7294419ad3b88e7187af6fa7e7bf7acf223a016b6f953',
-            pill: '0x4038c7b0e617f9fdc776d02cc3f62d6d0b29807c8886af55355766305c9d3af5'
-        }
+        contractAddresses: {}
     },
     [ChainType.BITCOIN_TESTNET4]: {
         enum: ChainType.BITCOIN_TESTNET4,
@@ -300,9 +297,7 @@ export const DEFAULT_CHAINS_MAP: { [key in ChainType]?: TypeChain<key> } = {
         disable: true,
         showPrice: false,
         defaultExplorer: 'mempool-space',
-        contractAddresses: {
-            // Add testnet4 addresses when available
-        }
+        contractAddresses: {}
     },
     [ChainType.BITCOIN_REGTEST]: {
         enum: ChainType.BITCOIN_REGTEST,
@@ -318,8 +313,8 @@ export const DEFAULT_CHAINS_MAP: { [key in ChainType]?: TypeChain<key> } = {
         showPrice: false,
         defaultExplorer: 'mempool-space',
         contractAddresses: {
-            moto: '0x6ab40fde08b9d9da6ae7418722017487e584fa302d486171da2011955ff85c31',
-            pill: '0x364fc78f5b676e41b1d39cbb41af524833c1830a9b6ab6df9ce91a7c0b4eec70'
+            moto: '0x4baf2993659029a2c406846cec0c9acbc310e3d1d55c8d2344a2f235d879903d',
+            pill: '0x5288a80fb6e6f22443b965af7ed0f5bc8d6e8345e4dc80221b7dad9e126a90d2'
         }
     },
     [ChainType.BITCOIN_SIGNET]: {

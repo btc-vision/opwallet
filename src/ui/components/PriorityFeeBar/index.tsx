@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useState } from 'react';
 import { Column, Input, Row, Text } from '@/ui/components';
+import { useCallback, useEffect, useState } from 'react';
 
 enum FeeRateType {
     NONE = 0,
@@ -85,7 +85,10 @@ export function PriorityFeeBar({
                     preset="amount"
                     placeholder="sat"
                     value={customVal}
-                    onAmountInputChange={setCustomVal}
+                    onAmountInputChange={(val) => {
+                        const sanitized = val.replace(/[^\d]/g, '');
+                        setCustomVal(sanitized);
+                    }}
                     autoFocus
                 />
             )}

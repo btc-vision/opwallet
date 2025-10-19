@@ -436,9 +436,10 @@ export const LockTimePopover = ({ onNext, onCancel }: { onNext: () => void; onCa
                                             style={{
                                                 fontSize: '10px',
                                                 color: colors.warning,
-                                                marginTop: '1px'
+                                                marginTop: '1px',
+                                                fontStyle: 'italic'
                                             }}>
-                                            Less secure
+                                            More secure but less convenient
                                         </div>
                                     )}
                                 </div>

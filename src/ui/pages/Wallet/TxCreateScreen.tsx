@@ -1,5 +1,6 @@
 import BigNumber from 'bignumber.js';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 
 import { COIN_DUST } from '@/shared/constant';
 import { Action, Features, SendBitcoinParameters, SourceType } from '@/shared/interfaces/RawTxParameters';
@@ -56,8 +57,20 @@ interface AddressBalance {
     description2?: string;
 }
 
+interface ConsolidationParams {
+    enabled: boolean;
+    selectedType: 'unspent' | 'csv1' | 'csv75' | 'p2wda';
+    maxUTXOs: number;
+    autoFillAmount: boolean;
+}
+
+interface LocationState {
+    consolidation?: ConsolidationParams;
+}
+
 export default function TxCreateScreen() {
     const navigate = useNavigate();
+    const location = useLocation();
     const btcUnit = useBTCUnit();
     const setUiState = useUpdateUiTxCreateScreen();
     const uiState = useUiTxCreateScreen();
@@ -65,6 +78,8 @@ export default function TxCreateScreen() {
     const wallet = useWallet();
 
     const { toInfo, inputAmount, enableRBF, feeRate } = uiState;
+
+    const consolidationParams = (location.state as LocationState | undefined)?.consolidation;
 
     const [disabled, setDisabled] = useState(true);
     const [error, setError] = useState('');
@@ -79,6 +94,7 @@ export default function TxCreateScreen() {
     const [selectedBalance, setSelectedBalance] = useState<AddressBalance | null>(null);
     const [loadingBalances, setLoadingBalances] = useState(true);
     const [hasSelectedAddress, setHasSelectedAddress] = useState(false);
+    const [hasAutoSelectedOnce, setHasAutoSelectedOnce] = useState(false);
 
     useEffect(() => {
         void (async () => {
@@ -186,6 +202,77 @@ export default function TxCreateScreen() {
         void fetchAllBalances();
     }, [account.address, account.pubkey, wallet]);
 
+    // Handle consolidation mode - auto-select address and fill form (only on initial load)
+    useEffect(() => {
+        const setupConsolidation = async () => {
+            if (consolidationParams?.enabled && addressBalances.length > 0 && !hasSelectedAddress && !hasAutoSelectedOnce) {
+                // Map the selected type to SourceType
+                const typeMapping: Record<string, SourceType> = {
+                    'unspent': SourceType.CURRENT,
+                    'csv1': SourceType.CSV1,
+                    'csv75': SourceType.CSV75,
+                    'p2wda': SourceType.P2WDA
+                };
+                
+                const targetType = typeMapping[consolidationParams.selectedType || 'unspent'];
+
+                // Find the address matching the selected type
+                const selectedAddress = addressBalances.find(b => b.type === targetType && b.available);
+                
+                if (selectedAddress) {
+                    // Auto-select the address
+                    setSelectedBalance(selectedAddress);
+                    setHasSelectedAddress(true);
+                    setHasAutoSelectedOnce(true);
+
+                    setUiState({ 
+                        toInfo: { 
+                            address: account.address, 
+                            domain: '' 
+                        }
+                    });
+                    
+                    // Autofill with consolidation amount if requested
+                    if (consolidationParams.autoFillAmount) {
+                        // Get balance and use the appropriate consolidation amount based on type
+                        const balance = await wallet.getAddressBalance(account.address, account.pubkey);
+                        let consolidationAmount = '0';
+                        
+                        switch (consolidationParams.selectedType) {
+                            case 'csv1':
+                                consolidationAmount = balance.consolidation_csv1_unlocked_amount;
+                                break;
+                            case 'csv75':
+                                consolidationAmount = balance.consolidation_csv75_unlocked_amount;
+                                break;
+                            case 'p2wda':
+                                consolidationAmount = balance.consolidation_p2wda_unspent_amount;
+                                break;
+                            case 'unspent':
+                            default:
+                                consolidationAmount = balance.consolidation_unspent_amount;
+                                break;
+                        }
+                        
+                        setUiState({ inputAmount: consolidationAmount });
+                    }
+                    
+                    // Add note for consolidation with type info
+                    const typeLabels: Record<string, string> = {
+                        'unspent': 'Primary Account',
+                        'csv1': 'CSV1 Fast Access',
+                        'csv75': 'CSV75',
+                        'p2wda': 'Smart Contract Optimized'
+                    };
+                    const typeLabel = typeLabels[consolidationParams.selectedType || 'unspent'];
+                    setNote(`UTXO Consolidation - ${typeLabel} (${consolidationParams.maxUTXOs} UTXOs)`);
+                }
+            }
+        };
+        
+        void setupConsolidation();
+    }, [consolidationParams, addressBalances, hasSelectedAddress, hasAutoSelectedOnce, setUiState, wallet, account.address, account.pubkey]);
+
     const toSatoshis = useMemo(() => (inputAmount ? amountToSatoshis(inputAmount) : 0), [inputAmount]);
     const dustAmount = useMemo(() => satoshisToAmount(COIN_DUST), []);
 
@@ -239,6 +326,8 @@ export default function TxCreateScreen() {
             setDisplayP2OPWarning(false);
 
             const address = val.address;
+            if (!address) return;
+
             const type = AddressVerificator.detectAddressType(address, Web3API.network);
 
             if (type === null) {
@@ -275,7 +364,7 @@ export default function TxCreateScreen() {
     if (!hasSelectedAddress) {
         return (
             <Layout>
-                <Header title={`Send ${btcUnit}`} onBack={() => window.history.go(-1)} />
+                <Header title={`Send ${btcUnit}`} onBack={() => navigate(RouteTypes.MainScreen)} />
 
                 <Content style={{ padding: '16px' }}>
                     <Column>
@@ -546,8 +635,8 @@ export default function TxCreateScreen() {
                                         color: colors.textFaded,
                                         margin: '8px 0 0 0'
                                     }}>
-                                    If you have funds in other addresses types, they will show up here once they have
-                                    been detected on-chain.
+                                    If you have funds in other address types, they will show up here once they have been
+                                    detected on-chain.
                                 </p>
                             </div>
                         )}
@@ -560,7 +649,18 @@ export default function TxCreateScreen() {
     // Main transaction form after address selection
     return (
         <Layout>
-            <Header title={`Send ${btcUnit}`} onBack={() => setHasSelectedAddress(false)} />
+            <Header 
+                title={`Send ${btcUnit}`} 
+                onBack={() => {
+                    // If coming from consolidation, go back to main screen
+                    if (consolidationParams?.enabled) {
+                        navigate(RouteTypes.MainScreen);
+                    } else {
+                        // Otherwise, go back to address selection
+                        setHasSelectedAddress(false);
+                    }
+                }} 
+            />
 
             <Content style={{ padding: '12px' }}>
                 <Column>
