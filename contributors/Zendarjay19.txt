@@ -1,3 +1,3 @@
-I hereby accept the terms of the Contributor License Agreement in the CONTRIBUTING.md file of the btc-vision/opwallet git repository as of October 5th, 2025.
+I hereby accept the terms of the Contributor License Agreement in the CONTRIBUTING.md file of the btc-vision/opwallet git repository as of August 13, 2024.
 
-Signed: Zendarjay19 / Etienne Lavallée 10-05-2025
+Signed: Zendarjay19 10-05-2025
