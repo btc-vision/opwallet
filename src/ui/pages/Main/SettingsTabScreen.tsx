@@ -21,8 +21,8 @@ import {
     RightOutlined,
     SendOutlined,
     SettingOutlined,
-    TwitterOutlined,
-    WifiOutlined
+    WifiOutlined,
+    XOutlined
 } from '@ant-design/icons';
 
 import { Tabs } from 'webextension-polyfill';
@@ -434,7 +434,7 @@ export default function SettingsTabScreen() {
                                     e.currentTarget.style.background = colors.buttonHoverBg;
                                     e.currentTarget.style.transform = 'translateY(0)';
                                 }}>
-                                <TwitterOutlined style={{ fontSize: 18, color: colors.text }} />
+                                <XOutlined style={{ fontSize: 18, color: colors.text }} />
                             </button>
 
                             <button
