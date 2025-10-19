@@ -313,8 +313,8 @@ export const DEFAULT_CHAINS_MAP: { [key in ChainType]?: TypeChain<key> } = {
         showPrice: false,
         defaultExplorer: 'mempool-space',
         contractAddresses: {
-            moto: '0x4baf2993659029a2c406846cec0c9acbc310e3d1d55c8d2344a2f235d879903d',
-            pill: '0x5288a80fb6e6f22443b965af7ed0f5bc8d6e8345e4dc80221b7dad9e126a90d2'
+            moto: '0x186f943f8b0f803be7a44fce28739ff65953cf2bd83687a392186adaf293a336',
+            pill: '0xb7e01bd7c583ef6d2e4fd0e3bb9835f275c54b5dc5af44a442b526ebaeeebfb9'
         }
     },
     [ChainType.BITCOIN_SIGNET]: {
