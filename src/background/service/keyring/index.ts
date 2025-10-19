@@ -426,9 +426,28 @@ class KeyringService extends EventEmitter {
         return this.fullUpdate();
     };
 
-    changePassword = async (oldPassword: string, newPassword: string) => {
+    changePassword = async (oldPassword: string, newPassword: string): Promise<MemStoreState> => {
         const oldMethod = await this.verifyPassword(oldPassword);
-        await this.unlockKeyrings(oldPassword, oldMethod);
+        this.password = oldPassword;
+
+        try {
+            this.keyrings = await this.unlockKeyrings(oldPassword, oldMethod);
+        } catch (e) {
+            if (oldMethod) {
+                try {
+                    await this.boot(oldPassword);
+                    this.keyrings = await this.unlockKeyrings(oldPassword, false);
+                } catch (e) {
+                    console.log('unlock failed (new)', e);
+                    throw e; // Re-throw to prevent password change with wrong old password
+                }
+            } else {
+                console.log('unlock failed', e);
+                throw e; // Re-throw to prevent password change with wrong old password
+            }
+        }
+
+        // Only proceed if unlock was successful
         this.password = newPassword;
 
         const encryptBooted = await this.encryptor.encrypt(newPassword, 'true');
@@ -442,7 +461,8 @@ class KeyringService extends EventEmitter {
 
         await this.persistAllKeyrings();
         await this._updateMemStoreKeyrings();
-        this.fullUpdate();
+
+        return this.fullUpdate();
     };
 
     /**
