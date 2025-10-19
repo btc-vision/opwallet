@@ -39,6 +39,26 @@ export interface BitcoinBalance {
     p2wda_pending_amount?: string;
 
     usd_value: string;
+
+    consolidation_amount: string;
+
+    consolidation_unspent_amount: string;
+    consolidation_unspent_count: number;
+    consolidation_csv1_unlocked_amount: string;
+    consolidation_csv1_unlocked_count: number;
+    consolidation_csv75_unlocked_amount: string;
+    consolidation_csv75_unlocked_count: number;
+    consolidation_p2wda_unspent_amount: string;
+    consolidation_p2wda_unspent_count: number;
+
+    all_utxos_count: number;
+    unspent_utxos_count: number;
+    csv75_locked_utxos_count: number;
+    csv75_unlocked_utxos_count: number;
+    csv1_locked_utxos_count: number;
+    csv1_unlocked_utxos_count: number;
+    p2wda_utxos_count: number;
+    unspent_p2wda_utxos_count: number;
 }
 
 export interface AddressAssets {

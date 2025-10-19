@@ -2,6 +2,7 @@ import { Account, AddressSummary, AppSummary, BitcoinBalance, TxHistoryItem } fr
 import { createSlice } from '@reduxjs/toolkit';
 
 import { updateVersion } from '../global/actions';
+import { DEFAULT_BITCOIN_BALANCE } from './constants';
 
 export interface AccountsState {
     accounts: Account[];
@@ -89,29 +90,19 @@ const slice = createSlice({
                     usd_value,
 
                     p2wda_pending_amount,
-                    p2wda_total_amount
+                    p2wda_total_amount,
+
+                    all_utxos_count,
+                    unspent_utxos_count,
+                    csv75_locked_utxos_count,
+                    csv75_unlocked_utxos_count,
+                    csv1_locked_utxos_count,
+                    csv1_unlocked_utxos_count,
+                    p2wda_utxos_count,
+                    unspent_p2wda_utxos_count
                 }
             } = action;
-            state.balanceMap[address] =
-                state.balanceMap[address] ||
-                ({
-                    btc_total_amount: '0',
-                    btc_confirm_amount: '0',
-                    btc_pending_amount: '0',
-
-                    csv75_total_amount: '0',
-                    csv75_unlocked_amount: '0',
-                    csv75_locked_amount: '0',
-
-                    csv1_total_amount: '0',
-                    csv1_unlocked_amount: '0',
-                    csv1_locked_amount: '0',
-
-                    p2wda_total_amount: '0',
-                    p2wda_pending_amount: '0',
-
-                    usd_value: '0.00'
-                } as BitcoinBalance & { address: string });
+            state.balanceMap[address] = state.balanceMap[address] || { ...DEFAULT_BITCOIN_BALANCE };
 
             state.balanceMap[address].btc_total_amount = btc_total_amount;
             state.balanceMap[address].btc_confirm_amount = btc_confirm_amount;
@@ -129,6 +120,15 @@ const slice = createSlice({
             state.balanceMap[address].p2wda_total_amount = p2wda_total_amount;
 
             state.balanceMap[address].usd_value = usd_value;
+            
+            state.balanceMap[address].all_utxos_count = all_utxos_count;
+            state.balanceMap[address].unspent_utxos_count = unspent_utxos_count;
+            state.balanceMap[address].csv75_locked_utxos_count = csv75_locked_utxos_count;
+            state.balanceMap[address].csv75_unlocked_utxos_count = csv75_unlocked_utxos_count;
+            state.balanceMap[address].csv1_locked_utxos_count = csv1_locked_utxos_count;
+            state.balanceMap[address].csv1_unlocked_utxos_count = csv1_unlocked_utxos_count;
+            state.balanceMap[address].p2wda_utxos_count = p2wda_utxos_count;
+            state.balanceMap[address].unspent_p2wda_utxos_count = unspent_p2wda_utxos_count;
         },
         setAddressSummary(state, action: { payload: AddressSummary }) {
             state.addressSummary = action.payload;
