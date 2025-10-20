@@ -253,7 +253,7 @@ export default function NFTTabScreen() {
                                             fontWeight: 600,
                                             cursor: 'pointer'
                                         }}
-                                        onClick={() => navigate(RouteTypes.ImportSelectionScreen)}>
+                                        onClick={() => navigate(RouteTypes.ImportNFTScreen)}>
                                         + Add
                                     </button>
                                 </Row>

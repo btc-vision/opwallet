@@ -140,7 +140,21 @@ if (rootElement) {
                             <IdleTimerProvider
                                 onAction={() => {
                                     wallet.setLastActiveTime();
-                                }}>
+                                }}
+                                throttle={2000}
+                                events={[
+                                    'mousemove',
+                                    'keydown',
+                                    'wheel',
+                                    'DOMMouseScroll',
+                                    'mousewheel',
+                                    'mousedown',
+                                    'touchstart',
+                                    'touchmove',
+                                    'MSPointerDown',
+                                    'MSPointerMove',
+                                    'visibilitychange'
+                                ]}>
                                 <Updaters />
                                 <AsyncMainRoute />
                             </IdleTimerProvider>
