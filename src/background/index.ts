@@ -1,11 +1,14 @@
-import 'reflect-metadata';
 import { EVENTS, MANIFEST_VERSION } from '@/shared/constant';
 import eventBus from '@/shared/eventBus';
 import { ProviderControllerRequest, RequestParams } from '@/shared/types/Request.js';
 import { Message } from '@/shared/utils';
 import { openExtensionInTab } from '@/ui/features/browser/tabs';
+import 'reflect-metadata';
 
 import { SessionEvent, SessionEventPayload } from '@/shared/interfaces/SessionEvent';
+import { customNetworksManager } from '@/shared/utils/CustomNetworksManager';
+import { initEccLib } from '@btc-vision/bitcoin';
+import * as ecc from 'tiny-secp256k1';
 import { Runtime } from 'webextension-polyfill';
 import { providerController, walletController } from './controller';
 import {
@@ -20,7 +23,8 @@ import { StoredData } from './service/keyring';
 import { isOpenapiServiceMethod, isWalletControllerMethod } from './utils/controller';
 import { storage } from './webapi';
 import browser, { browserRuntimeOnConnect, browserRuntimeOnInstalled } from './webapi/browser';
-import { customNetworksManager } from '@/shared/utils/CustomNetworksManager';
+
+initEccLib(ecc);
 
 const { PortMessage } = Message;
 
