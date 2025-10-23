@@ -12,6 +12,7 @@ import {
 import { DisplayedKeyring, Keyring, SavedVault } from '@/background/service/keyring';
 import { WalletSaveList } from '@/background/service/preference';
 import { BroadcastTransactionOptions } from '@/content-script/pageProvider/Web3Provider.js';
+import { UTXO_CONFIG } from '@/shared/config';
 import {
     ADDRESS_TYPES,
     AddressFlagType,
@@ -28,7 +29,6 @@ import {
     KEYRING_TYPES,
     NETWORK_TYPES
 } from '@/shared/constant';
-import { UTXO_CONFIG } from '@/shared/config';
 import eventBus from '@/shared/eventBus';
 import { SessionEvent } from '@/shared/interfaces/SessionEvent';
 import {
@@ -806,33 +806,6 @@ export class WalletController {
         preferenceService.setCurrentAccount(keyring.accounts[accountIndex]);
         const flag = preferenceService.getAddressFlag(keyring.accounts[accountIndex].address);
         openapiService.setClientAddress(keyring.accounts[accountIndex].address, flag);
-    };
-
-    /**
-     * Return a list of all addresses for a specific keyring account index, in multiple address formats.
-     */
-    public getAllAddresses = (keyring: WalletKeyring, index: number): string[] => {
-        const networkType = this.getNetworkType();
-        const addresses: string[] = [];
-        const _keyring = keyringService.keyrings[keyring.index] as KeystoneKeyring;
-        if (keyring.type === KEYRING_TYPE.HdKeyring || keyring.type === KEYRING_TYPE.KeystoneKeyring) {
-            const pathPubkey: Record<string, string> = {};
-            ADDRESS_TYPES.filter((v) => v.displayIndex >= 0).forEach((v) => {
-                let pubkey = pathPubkey[v.hdPath];
-                if (!pubkey && _keyring.getAccountByHdPath) {
-                    pubkey = _keyring.getAccountByHdPath(v.hdPath, index);
-                }
-                const address = publicKeyToAddress(pubkey, v.value, networkType);
-                addresses.push(address);
-            });
-        } else {
-            ADDRESS_TYPES.filter((v) => v.displayIndex >= 0 && v.isUnisatLegacy === false).forEach((v) => {
-                const pubkey = keyring.accounts[index].pubkey;
-                const address = publicKeyToAddress(pubkey, v.value, networkType);
-                addresses.push(address);
-            });
-        }
-        return addresses;
     };
 
     /**
@@ -2540,26 +2513,38 @@ export class WalletController {
 
             // Calculate consolidation amounts by type (first N UTXOs of each type)
             const consolidationLimit = UTXO_CONFIG.CONSOLIDATION_LIMIT;
-            
+
             // Unspent UTXOs (primary account)
             const consolidatableUnspentUTXOs = unspentUTXOs.slice(0, consolidationLimit);
             const consolidationUnspentAmount = consolidatableUnspentUTXOs.reduce((sum, u) => sum + u.value, 0n);
-            
+
             // CSV1 unlocked UTXOs
             const consolidatableCsv1UnlockedUTXOs = csv1Data.unlockedUTXOs.slice(0, consolidationLimit);
-            const consolidationCsv1UnlockedAmount = consolidatableCsv1UnlockedUTXOs.reduce((sum, u) => sum + u.value, 0n);
-            
+            const consolidationCsv1UnlockedAmount = consolidatableCsv1UnlockedUTXOs.reduce(
+                (sum, u) => sum + u.value,
+                0n
+            );
+
             // CSV75 unlocked UTXOs
             const consolidatableCsv75UnlockedUTXOs = csv75Data.unlockedUTXOs.slice(0, consolidationLimit);
-            const consolidationCsv75UnlockedAmount = consolidatableCsv75UnlockedUTXOs.reduce((sum, u) => sum + u.value, 0n);
-            
+            const consolidationCsv75UnlockedAmount = consolidatableCsv75UnlockedUTXOs.reduce(
+                (sum, u) => sum + u.value,
+                0n
+            );
+
             // P2WDA unspent UTXOs
             const consolidatableP2wdaUnspentUTXOs = unspentP2WDAUTXOs.slice(0, consolidationLimit);
-            const consolidationP2wdaUnspentAmount = consolidatableP2wdaUnspentUTXOs.reduce((sum, u) => sum + u.value, 0n);
-            
+            const consolidationP2wdaUnspentAmount = consolidatableP2wdaUnspentUTXOs.reduce(
+                (sum, u) => sum + u.value,
+                0n
+            );
+
             // Total consolidation amount (sum of all types)
-            const consolidationAmount = consolidationUnspentAmount + consolidationCsv1UnlockedAmount + 
-                                       consolidationCsv75UnlockedAmount + consolidationP2wdaUnspentAmount;
+            const consolidationAmount =
+                consolidationUnspentAmount +
+                consolidationCsv1UnlockedAmount +
+                consolidationCsv75UnlockedAmount +
+                consolidationP2wdaUnspentAmount;
 
             // Convert all BigInt values to formatted strings using BitcoinUtils
             const result = {

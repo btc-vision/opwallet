@@ -1,4 +1,3 @@
-import { createContext, ReactNode, useContext } from 'react';
 import { ContactBookItem, ContactBookStore } from '@/background/service/contactBook';
 import { SavedVault, ToSignInput } from '@/background/service/keyring';
 import { ConnectedSite } from '@/background/service/permission';
@@ -23,6 +22,7 @@ import { ApprovalData, ApprovalResponse } from '@/shared/types/Approval';
 import { Psbt } from '@btc-vision/bitcoin';
 import { InteractionParametersWithoutSigner } from '@btc-vision/transaction';
 import { AddressType, UnspentOutput } from '@btc-vision/wallet-sdk';
+import { createContext, ReactNode, useContext } from 'react';
 
 export interface WalletController {
     changePassword: (password: string, newPassword: string) => Promise<void>;
@@ -190,8 +190,6 @@ export interface WalletController {
     getKeyrings(): Promise<WalletKeyring[]>;
 
     changeKeyring(keyring: WalletKeyring, accountIndex?: number): Promise<void>;
-
-    getAllAddresses(keyring: WalletKeyring, index: number): Promise<string[]>;
 
     setKeyringAlianName(keyring: WalletKeyring, name: string): Promise<WalletKeyring>;
 
