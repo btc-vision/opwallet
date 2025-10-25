@@ -34,6 +34,7 @@ interface BalanceTabsProps {
     };
     noBreakStyle: CSSProperties;
     TransactionsCountComponent: React.ReactNode;
+    defaultActiveTab?: BalanceTabType;
 }
 
 export const BalanceTabs: React.FC<BalanceTabsProps> = ({
@@ -41,9 +42,10 @@ export const BalanceTabs: React.FC<BalanceTabsProps> = ({
     btcUnit,
     colors,
     noBreakStyle,
-    TransactionsCountComponent
+    TransactionsCountComponent,
+    defaultActiveTab = 'balance'
 }) => {
-    const [activeTab, setActiveTab] = useState<BalanceTabType>('balance');
+    const [activeTab, setActiveTab] = useState<BalanceTabType>(defaultActiveTab);
 
     const hasCSV75 = accountBalance.csv75_total_amount && parseFloat(accountBalance.csv75_total_amount) > 0;
     const hasCSV1 = accountBalance.csv1_total_amount && parseFloat(accountBalance.csv1_total_amount) > 0;

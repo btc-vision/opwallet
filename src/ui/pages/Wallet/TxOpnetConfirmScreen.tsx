@@ -128,6 +128,7 @@ export default function TxOpnetConfirmScreen() {
     const [loadingMessage, setLoadingMessage] = useState<string>(defaultMessage);
     const [deploymentContract, setDeploymentContract] = useState<DeploymentResult | null>(null);
     const [disabled, setDisabled] = useState<boolean>(false);
+    const [elapsedTime, setElapsedTime] = useState<number>(0);
     const { rawTxInfo } = useLocationState<LocationState>();
     const btcUnit = useBTCUnit();
     const wallet = useWallet();
@@ -139,6 +140,24 @@ export default function TxOpnetConfirmScreen() {
         };
         void setWallet();
     });
+
+    // Timer for UTXO processing
+    useEffect(() => {
+        let interval: NodeJS.Timeout | null = null;
+        
+        if (openLoading && loadingMessage.includes('UTXOs')) {
+            setElapsedTime(0);
+            interval = setInterval(() => {
+                setElapsedTime(prev => prev + 1);
+            }, 1000);
+        } else {
+            setElapsedTime(0);
+        }
+        
+        return () => {
+            if (interval) clearInterval(interval);
+        };
+    }, [openLoading, loadingMessage]);
 
     const getWallet = useCallback(async () => {
         const currentWalletAddress = await wallet.getCurrentAccount();
@@ -345,7 +364,20 @@ export default function TxOpnetConfirmScreen() {
                 note: parameters.note
             };
 
+            // Show loading modal with informative message
+            setOpenLoading(true);
+            setLoadingMessage(
+                `Processing ${utxos.length} UTXO${utxos.length > 1 ? 's' : ''}... This may take up to ${Math.ceil(utxos.length / 50)} second${Math.ceil(utxos.length / 50) > 1 ? 's' : ''}. Please do not close this window.`
+            );
+
+            // Give React time to render the modal
+            await new Promise(resolve => setTimeout(resolve, 100));
+
             const sendTransact = await Web3API.transactionFactory.createBTCTransfer(IFundingTransactionParameters);
+            
+            // Close loading modal
+            setOpenLoading(false);
+            setLoadingMessage(defaultMessage);
 
             const sendTransaction = await Web3API.provider.sendRawTransaction(sendTransact.tx, false);
             if (!sendTransaction.success) {
@@ -998,6 +1030,10 @@ export default function TxOpnetConfirmScreen() {
             {openLoading && (
                 <BottomModal
                     onClose={() => {
+                        // Prevent closing during UTXO processing
+                        if (loadingMessage !== defaultMessage && !loadingMessage.includes('Deployment')) {
+                            return;
+                        }
                         setDisabled(false);
                         setOpenLoading(false);
                     }}>
@@ -1017,6 +1053,63 @@ export default function TxOpnetConfirmScreen() {
                         />
 
                         <Text text={loadingMessage} size="md" style={{ marginBottom: '16px' }} />
+
+                        {/* Elapsed time counter for UTXO processing */}
+                        {loadingMessage !== defaultMessage && loadingMessage.includes('UTXOs') && (
+                            <div
+                                style={{
+                                    fontSize: '13px',
+                                    color: colors.textFaded,
+                                    marginBottom: '16px',
+                                    fontFamily: 'monospace'
+                                }}>
+                                Elapsed time: {elapsedTime}s
+                            </div>
+                        )}
+
+                        {/* Warning for UTXO processing */}
+                        {loadingMessage !== defaultMessage && loadingMessage.includes('UTXOs') && (
+                            <div
+                                style={{
+                                    display: 'flex',
+                                    alignItems: 'flex-start',
+                                    gap: '8px',
+                                    padding: '12px',
+                                    background: `${colors.warning}15`,
+                                    border: `1px solid ${colors.warning}30`,
+                                    borderRadius: '8px',
+                                    marginBottom: '12px',
+                                    width: '100%'
+                                }}>
+                                <WarningOutlined
+                                    style={{
+                                        fontSize: 14,
+                                        color: colors.warning,
+                                        flexShrink: 0,
+                                        marginTop: '2px'
+                                    }}
+                                />
+                                <div style={{ flex: 1, textAlign: 'left' }}>
+                                    <div
+                                        style={{
+                                            fontSize: '11px',
+                                            color: colors.warning,
+                                            fontWeight: 600,
+                                            marginBottom: '4px'
+                                        }}>
+                                        Processing in progress
+                                    </div>
+                                    <div
+                                        style={{
+                                            fontSize: '10px',
+                                            color: colors.textFaded,
+                                            lineHeight: '1.4'
+                                        }}>
+                                        The transaction is being prepared. This process cannot be interrupted. Closing this window may result in transaction failure.
+                                    </div>
+                                </div>
+                            </div>
+                        )}
 
                         {deploymentContract && (
                             <div
