@@ -1,11 +1,20 @@
 import { Action, Features, TransferParameters } from '@/shared/interfaces/RawTxParameters';
 import { OPTokenInfo } from '@/shared/types';
+import Web3API from '@/shared/web3/Web3API';
 import { Content, Header, Input, Layout, Text } from '@/ui/components';
 import { FeeRateBar } from '@/ui/components/FeeRateBar';
 import { PriorityFeeBar } from '@/ui/components/PriorityFeeBar';
 import { formatBalance } from '@/ui/pages/OpNet/BigintToString';
 import { useLocationState } from '@/ui/utils';
-import { DollarOutlined, EditOutlined, SendOutlined, ThunderboltOutlined, WalletOutlined } from '@ant-design/icons';
+import {
+    DollarOutlined,
+    EditOutlined,
+    SafetyOutlined,
+    SendOutlined,
+    ThunderboltOutlined,
+    WalletOutlined
+} from '@ant-design/icons';
+import { AddressTypes, AddressVerificator } from '@btc-vision/transaction';
 import BigNumber from 'bignumber.js';
 import { BitcoinUtils } from 'opnet';
 import { useEffect, useState } from 'react';
@@ -40,8 +49,47 @@ export default function SendOpNetScreen() {
     const [error, setError] = useState('');
     const [disabled, setDisabled] = useState(true);
     const [note, setNote] = useState<string>('');
+    const [publicKey, setPublicKey] = useState<string>('');
+    const [fetchingPubKey, setFetchingPubKey] = useState(false);
 
     const balanceFormatted = new BigNumber(BitcoinUtils.formatUnits(balance, divisibility));
+
+    // Fetch public key when address changes
+    useEffect(() => {
+        const fetchPublicKey = async () => {
+            if (!toInfo.address) {
+                setPublicKey('');
+                return;
+            }
+
+            setFetchingPubKey(true);
+            try {
+                const pubKeyStr: string = toInfo.address.replace('0x', '');
+                // Check if the input is already a public key
+                if (
+                    (pubKeyStr.length === 64 || pubKeyStr.length === 66 || pubKeyStr.length === 130) &&
+                    pubKeyStr.match(/^[0-9a-fA-F]+$/) !== null
+                ) {
+                    setPublicKey(pubKeyStr);
+                } else {
+                    // Fetch public key from the address
+                    const pubKey = await Web3API.provider.getPublicKeyInfo(toInfo.address);
+                    if (pubKey) {
+                        setPublicKey(pubKey.toString());
+                    } else {
+                        setPublicKey('');
+                    }
+                }
+            } catch (err) {
+                console.error('Error fetching public key:', err);
+                setPublicKey('');
+            } finally {
+                setFetchingPubKey(false);
+            }
+        };
+
+        void fetchPublicKey();
+    }, [toInfo.address]);
 
     useEffect(() => {
         setError('');
@@ -50,7 +98,26 @@ export default function SendOpNetScreen() {
         if (!toInfo.address) {
             return;
         }
+
+        // Check if address is a p2op (contract) address
+        const isP2OP = AddressVerificator.detectAddressType(toInfo.address, Web3API.network) === AddressTypes.P2OP;
+        if (isP2OP) {
+            setError('Cannot send to contract addresses (p2op)');
+            return;
+        }
+
         if (!inputAmount.trim()) {
+            return;
+        }
+
+        // Check if public key is being fetched
+        if (fetchingPubKey) {
+            return;
+        }
+
+        // Check if public key is found
+        if (!publicKey) {
+            setError('Cannot send: Public key not found for this address');
             return;
         }
 
@@ -68,7 +135,7 @@ export default function SendOpNetScreen() {
         }
 
         setDisabled(false);
-    }, [toInfo, inputAmount, balance, divisibility]);
+    }, [toInfo, inputAmount, balance, divisibility, publicKey, fetchingPubKey]);
 
     const handleNext = () => {
         const params: TransferParameters = {
@@ -221,6 +288,78 @@ export default function SendOpNetScreen() {
                         }}
                     />
                 </div>
+
+                {/* Public Key Display */}
+                {toInfo.address && (
+                    <div
+                        style={{
+                            background: colors.containerBgFaded,
+                            borderRadius: '12px',
+                            padding: '12px'
+                        }}>
+                        <div
+                            style={{
+                                fontSize: '11px',
+                                fontWeight: 600,
+                                color: colors.textFaded,
+                                textTransform: 'uppercase',
+                                letterSpacing: '0.5px',
+                                marginBottom: '8px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '6px'
+                            }}>
+                            <SafetyOutlined style={{ fontSize: 10 }} />
+                            Public Key
+                        </div>
+                        {fetchingPubKey ? (
+                            <div
+                                style={{
+                                    padding: '10px',
+                                    background: colors.inputBg,
+                                    borderRadius: '8px',
+                                    fontSize: '12px',
+                                    color: colors.textFaded,
+                                    textAlign: 'center'
+                                }}>
+                                Fetching public key...
+                            </div>
+                        ) : publicKey ? (
+                            <div
+                                style={{
+                                    padding: '10px',
+                                    background: colors.inputBg,
+                                    border: `1px solid ${colors.success}30`,
+                                    borderRadius: '8px',
+                                    fontSize: '11px',
+                                    color: colors.text,
+                                    fontFamily: 'monospace',
+                                    wordBreak: 'break-all',
+                                    lineHeight: '1.5'
+                                }}>
+                                {publicKey}
+                            </div>
+                        ) : (
+                            <div
+                                style={{
+                                    padding: '10px',
+                                    background: `${colors.error}15`,
+                                    border: `1px solid ${colors.error}30`,
+                                    borderRadius: '8px',
+                                    fontSize: '11px',
+                                    color: colors.error,
+                                    lineHeight: '1.6'
+                                }}>
+                                <div style={{ fontWeight: 600, marginBottom: '4px' }}>Public Key Not Found</div>
+                                <div style={{ color: colors.textFaded }}>
+                                    This address has never spent a UTXO, so OP_NET cannot automatically retrieve its
+                                    public key. Please use the recipient&apos;s token deposit address (public key)
+                                    instead.
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                )}
 
                 {/* Amount Input */}
                 <div
