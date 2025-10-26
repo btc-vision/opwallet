@@ -798,8 +798,9 @@ export default function TxCreateScreen() {
                         {showUTXOStatus && (
                             <div style={{ 
                                 display: 'flex', 
-                                justifyContent: 'center',
-                                animation: 'fadeIn 0.2s ease-in'
+                                justifyContent: 'flex-start',
+                                animation: 'fadeIn 0.2s ease-in',
+                                width: '100%'
                             }}>
                                 <BalanceDisplay
                                     accountBalance={accountBalance}
@@ -808,6 +809,8 @@ export default function TxCreateScreen() {
                                     colors={colors}
                                     noBreakStyle={{ whiteSpace: 'nowrap' }}
                                     defaultActiveTab={utxoStatusActiveTab}
+                                    noBorder={true}
+                                    alignLeft={true}
                                 />
                             </div>
                         )}

@@ -128,7 +128,6 @@ export default function TxOpnetConfirmScreen() {
     const [loadingMessage, setLoadingMessage] = useState<string>(defaultMessage);
     const [deploymentContract, setDeploymentContract] = useState<DeploymentResult | null>(null);
     const [disabled, setDisabled] = useState<boolean>(false);
-    const [elapsedTime, setElapsedTime] = useState<number>(0);
     const { rawTxInfo } = useLocationState<LocationState>();
     const btcUnit = useBTCUnit();
     const wallet = useWallet();
@@ -140,24 +139,6 @@ export default function TxOpnetConfirmScreen() {
         };
         void setWallet();
     });
-
-    // Timer for UTXO processing
-    useEffect(() => {
-        let interval: NodeJS.Timeout | null = null;
-        
-        if (openLoading && loadingMessage.includes('UTXOs')) {
-            setElapsedTime(0);
-            interval = setInterval(() => {
-                setElapsedTime(prev => prev + 1);
-            }, 1000);
-        } else {
-            setElapsedTime(0);
-        }
-        
-        return () => {
-            if (interval) clearInterval(interval);
-        };
-    }, [openLoading, loadingMessage]);
 
     const getWallet = useCallback(async () => {
         const currentWalletAddress = await wallet.getCurrentAccount();
@@ -367,7 +348,7 @@ export default function TxOpnetConfirmScreen() {
             // Show loading modal with informative message
             setOpenLoading(true);
             setLoadingMessage(
-                `Processing ${utxos.length} UTXO${utxos.length > 1 ? 's' : ''}... This may take up to ${Math.ceil(utxos.length / 50)} second${Math.ceil(utxos.length / 50) > 1 ? 's' : ''}. Please do not close this window.`
+                `Processing ${utxos.length} UTXO${utxos.length > 1 ? 's' : ''}... Please wait.`
             );
 
             // Give React time to render the modal
@@ -1054,21 +1035,8 @@ export default function TxOpnetConfirmScreen() {
 
                         <Text text={loadingMessage} size="md" style={{ marginBottom: '16px' }} />
 
-                        {/* Elapsed time counter for UTXO processing */}
-                        {loadingMessage !== defaultMessage && loadingMessage.includes('UTXOs') && (
-                            <div
-                                style={{
-                                    fontSize: '13px',
-                                    color: colors.textFaded,
-                                    marginBottom: '16px',
-                                    fontFamily: 'monospace'
-                                }}>
-                                Elapsed time: {elapsedTime}s
-                            </div>
-                        )}
-
                         {/* Warning for UTXO processing */}
-                        {loadingMessage !== defaultMessage && loadingMessage.includes('UTXOs') && (
+                        {loadingMessage !== defaultMessage && loadingMessage.includes('UTXO') && (
                             <div
                                 style={{
                                     display: 'flex',
@@ -1105,7 +1073,7 @@ export default function TxOpnetConfirmScreen() {
                                             color: colors.textFaded,
                                             lineHeight: '1.4'
                                         }}>
-                                        The transaction is being prepared. This process cannot be interrupted. Closing this window may result in transaction failure.
+                                        The transaction is being prepared. For large transactions, your browser may show a "Page Unresponsive" warning - click "Wait" to continue. If you close this window, the transaction will continue processing in the background, but you won't see the confirmation.
                                     </div>
                                 </div>
                             </div>

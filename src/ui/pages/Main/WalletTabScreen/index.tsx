@@ -106,7 +106,7 @@ export default function WalletTabScreen() {
     const versionInfo = useVersionInfo();
 
     const resetUiTxCreateScreen = useResetUiTxCreateScreen();
-    const { checkUTXOLimit, navigateToConsolidation } = useConsolidation();
+    const { checkUTXOLimit, checkUTXOWarning, navigateToConsolidation } = useConsolidation();
 
     const [showDisableUnconfirmedUtxoNotice, setShowDisableUnconfirmedUtxoNotice] = useState(false);
 
@@ -300,7 +300,62 @@ export default function WalletTabScreen() {
                             />
 
                             <div>
-                                {/* Warning message when limit is reached */}
+                                {/* Warning message when threshold is reached (yellow) */}
+                                {(() => {
+                                    const { hasReachedWarning, warningThreshold } = checkUTXOWarning(accountBalance);
+                                    const { hasReachedLimit } = checkUTXOLimit(accountBalance);
+
+                                    // Only show warning if threshold reached but limit not yet reached
+                                    return hasReachedWarning && !hasReachedLimit ? (
+                                        <div
+                                            style={{
+                                                background: `linear-gradient(135deg, ${colors.warning}15 0%, ${colors.warning}08 100%)`,
+                                                border: `1px solid ${colors.warning}40`,
+                                                borderRadius: '8px',
+                                                padding: '10px',
+                                                marginBottom: '12px',
+                                                fontSize: '10px',
+                                                color: '#dbdbdb',
+                                                lineHeight: '1.4',
+                                                maxWidth: '320px',
+                                                margin: '0 auto 12px'
+                                            }}>
+                                            <div style={{ fontWeight: 600, color: colors.warning, marginBottom: '4px' }}>
+                                                ⚠️ High UTXO Count
+                                            </div>
+                                            <div style={{ fontSize: '9px', color: 'rgba(219, 219, 219, 0.7)', marginBottom: '8px' }}>
+                                                One or more UTXO categories has reached {warningThreshold} UTXOs. Consider consolidating now to avoid issues.
+                                                <strong style={{ display: 'block', marginTop: '4px', color: colors.warning }}>
+                                                    If you exceed 2,000 UTXOs in any category, your balance will not be fully displayed.
+                                                </strong>
+                                            </div>
+                                            <button
+                                                onClick={navigateToConsolidation}
+                                                style={{
+                                                    width: '100%',
+                                                    padding: '6px 12px',
+                                                    background: colors.warning,
+                                                    border: 'none',
+                                                    borderRadius: '6px',
+                                                    cursor: 'pointer',
+                                                    fontSize: '10px',
+                                                    fontWeight: 600,
+                                                    color: '#000',
+                                                    transition: 'all 0.2s'
+                                                }}
+                                                onMouseEnter={(e) => {
+                                                    e.currentTarget.style.opacity = '0.8';
+                                                }}
+                                                onMouseLeave={(e) => {
+                                                    e.currentTarget.style.opacity = '1';
+                                                }}>
+                                                Consolidate UTXOs
+                                            </button>
+                                        </div>
+                                    ) : null;
+                                })()}
+
+                                {/* Critical warning message when limit is reached (red) */}
                                 {(() => {
                                     const { hasReachedLimit, consolidationLimit } = checkUTXOLimit(accountBalance);
 

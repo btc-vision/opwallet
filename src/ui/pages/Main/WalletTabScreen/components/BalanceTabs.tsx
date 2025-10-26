@@ -35,6 +35,8 @@ interface BalanceTabsProps {
     noBreakStyle: CSSProperties;
     TransactionsCountComponent: React.ReactNode;
     defaultActiveTab?: BalanceTabType;
+    noBorder?: boolean;
+    alignLeft?: boolean;
 }
 
 export const BalanceTabs: React.FC<BalanceTabsProps> = ({
@@ -43,7 +45,9 @@ export const BalanceTabs: React.FC<BalanceTabsProps> = ({
     colors,
     noBreakStyle,
     TransactionsCountComponent,
-    defaultActiveTab = 'balance'
+    defaultActiveTab = 'balance',
+    noBorder = false,
+    alignLeft = false
 }) => {
     const [activeTab, setActiveTab] = useState<BalanceTabType>(defaultActiveTab);
 
@@ -69,13 +73,13 @@ export const BalanceTabs: React.FC<BalanceTabsProps> = ({
     return (
         <div
             style={{
-                background: 'rgba(0, 0, 0, 0.85)',
-                border: '1px solid rgba(255, 255, 255, 0.1)',
-                borderRadius: '8px',
-                padding: '12px',
-                width: '280px',
-                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
-                backdropFilter: 'blur(10px)'
+                background: noBorder ? 'transparent' : 'rgba(0, 0, 0, 0.85)',
+                border: noBorder ? 'none' : '1px solid rgba(255, 255, 255, 0.1)',
+                borderRadius: noBorder ? '0' : '8px',
+                padding: noBorder ? '0' : '12px',
+                width: alignLeft ? '100%' : '280px',
+                boxShadow: noBorder ? 'none' : '0 4px 12px rgba(0, 0, 0, 0.3)',
+                backdropFilter: noBorder ? 'none' : 'blur(10px)'
             }}>
             {/* Tabs Header */}
             <div
