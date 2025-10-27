@@ -1,5 +1,6 @@
 import { Column, Content, Header, Layout } from '@/ui/components';
 import { RouteTypes, useNavigate } from '@/ui/pages/MainRoute';
+import { DollarOutlined, PictureOutlined } from '@ant-design/icons';
 import { useState } from 'react';
 
 const colors = {
@@ -43,7 +44,7 @@ export default function ImportSelectionScreen() {
         description
     }: {
         type: ImportType;
-        icon: string;
+        icon: React.ReactNode;
         title: string;
         description: string;
     }) => (
@@ -74,7 +75,6 @@ export default function ImportSelectionScreen() {
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    fontSize: '24px',
                     flexShrink: 0
                 }}>
                 {icon}
@@ -127,14 +127,14 @@ export default function ImportSelectionScreen() {
 
                     <ImportOption
                         type={ImportType.TOKEN}
-                        icon="🪙"
+                        icon={<DollarOutlined style={{ fontSize: '24px', color: colors.background }} />}
                         title="OP_20 Token"
                         description="Import fungible tokens like MOTO, PILL, etc."
                     />
 
                     <ImportOption
                         type={ImportType.NFT}
-                        icon="🎨"
+                        icon={<PictureOutlined style={{ fontSize: '24px', color: colors.background }} />}
                         title="OP_721 NFT Collection"
                         description="Import NFT collections to view and manage your NFTs"
                     />
