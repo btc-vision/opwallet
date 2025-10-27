@@ -32,7 +32,6 @@ interface NFTCollection {
     icon?: string;
     banner?: string;
     description?: string;
-    website?: string;
     totalSupply: string;
     maximumSupply: string;
 }
@@ -372,9 +371,11 @@ function CollectionCard({
                 e.currentTarget.style.borderColor = colors.containerBorder;
             }}>
             {collection.icon && (
-                <img
+                <AsyncImage
                     src={collection.icon}
                     alt={collection.name}
+                    width="100%"
+                    height="100%"
                     style={{
                         width: '100%',
                         height: '100%',
@@ -445,27 +446,6 @@ function CollectionCard({
                         }}>
                         {collection.maximumSupply} NFTs
                     </span>
-                    {collection.website && (
-                        <a
-                            href={collection.website}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            style={{
-                                width: '20px',
-                                height: '20px',
-                                background: 'rgba(243, 116, 19, 0.9)',
-                                borderRadius: '50%',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                color: 'white',
-                                fontSize: '10px',
-                                textDecoration: 'none'
-                            }}
-                            onClick={(e) => e.stopPropagation()}>
-                            🔗
-                        </a>
-                    )}
                 </Row>
             </div>
         </div>
@@ -488,9 +468,11 @@ function CollectionHeader({ collection }: { collection: NFTCollection }) {
                         height: '100%',
                         position: 'absolute'
                     }}>
-                    <img
+                    <AsyncImage
                         src={collection.banner}
                         alt=""
+                        width="100%"
+                        height="100%"
                         style={{
                             width: '100%',
                             height: '100%',
@@ -514,9 +496,11 @@ function CollectionHeader({ collection }: { collection: NFTCollection }) {
                 }}>
                 <Row gap="md" style={{ alignItems: 'center' }}>
                     {collection.icon && (
-                        <img
+                        <AsyncImage
                             src={collection.icon}
                             alt={collection.name}
+                            width="48px"
+                            height="48px"
                             style={{
                                 width: '48px',
                                 height: '48px',

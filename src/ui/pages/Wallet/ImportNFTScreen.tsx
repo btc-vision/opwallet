@@ -1,10 +1,11 @@
 import Web3API from '@/shared/web3/Web3API';
 import { Column, Content, Header, Input, Layout } from '@/ui/components';
+import { AsyncImage } from '@/ui/components/AsyncImage';
 import { useTools } from '@/ui/components/ActionComponent';
 import { RouteTypes, useNavigate } from '@/ui/pages/MainRoute';
 import { useCurrentAccount } from '@/ui/state/accounts/hooks';
 import { useChainType } from '@/ui/state/settings/hooks';
-import { LoadingOutlined } from '@ant-design/icons';
+import { LoadingOutlined, PictureOutlined } from '@ant-design/icons';
 import { AddressTypes, AddressVerificator } from '@btc-vision/transaction';
 import { useEffect, useState } from 'react';
 
@@ -30,7 +31,6 @@ interface NFTCollectionInfo {
     icon?: string;
     banner?: string;
     description?: string;
-    website?: string;
 }
 
 interface RawNFTCollectionInfo extends NFTCollectionInfo {
@@ -89,7 +89,6 @@ export default function ImportNFTScreen() {
                     icon: info.icon,
                     banner: info.banner,
                     description: info.description,
-                    website: info.website,
                     totalSupply: info.totalSupply || 0n,
                     maximumSupply: info.maximumSupply || 0n
                 });
@@ -209,7 +208,7 @@ export default function ImportNFTScreen() {
                                     style={{
                                         width: '64px',
                                         height: '64px',
-                                        background: collectionInfo.icon ? 'transparent' : colors.main,
+                                        background: colors.main,
                                         borderRadius: '12px',
                                         display: 'flex',
                                         alignItems: 'center',
@@ -218,13 +217,16 @@ export default function ImportNFTScreen() {
                                         overflow: 'hidden'
                                     }}>
                                     {collectionInfo.icon ? (
-                                        <img
+                                        <AsyncImage
                                             src={collectionInfo.icon}
                                             alt={collectionInfo.name}
+                                            width="64px"
+                                            height="64px"
                                             style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                                            fallback={<PictureOutlined style={{ fontSize: '32px', color: colors.background }} />}
                                         />
                                     ) : (
-                                        '🎨'
+                                        <PictureOutlined style={{ fontSize: '32px', color: colors.background }} />
                                     )}
                                 </div>
                                 <div style={{ flex: 1 }}>
@@ -244,24 +246,6 @@ export default function ImportNFTScreen() {
                                     )}
                                 </div>
                             </div>
-
-                            {collectionInfo.website && (
-                                <a
-                                    href={collectionInfo.website}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    style={{
-                                        display: 'inline-flex',
-                                        alignItems: 'center',
-                                        gap: '4px',
-                                        fontSize: '11px',
-                                        color: colors.main,
-                                        textDecoration: 'none',
-                                        marginTop: '8px'
-                                    }}>
-                                    🔗 Visit Website
-                                </a>
-                            )}
                         </div>
                     )}
 
