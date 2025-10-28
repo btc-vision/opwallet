@@ -2,7 +2,7 @@ import React, { CSSProperties, useEffect, useState } from 'react';
 
 import { AddressFlagType } from '@/shared/constant';
 import { checkAddressFlag } from '@/shared/utils';
-import { Column, Content, Footer, Header, Image, Layout, Row } from '@/ui/components';
+import { Column, Content, Footer, Header, Image, Layout } from '@/ui/components';
 import AccountSelect from '@/ui/components/AccountSelect';
 import { DisableUnconfirmedsPopover } from '@/ui/components/DisableUnconfirmedPopover';
 import { NavTabBar } from '@/ui/components/NavTabBar';
@@ -27,7 +27,7 @@ import {
     useWalletConfig
 } from '@/ui/state/settings/hooks';
 import { useResetUiTxCreateScreen } from '@/ui/state/ui/hooks';
-import { amountToSatoshis, copyToClipboard, useWallet } from '@/ui/utils';
+import { copyToClipboard, useWallet } from '@/ui/utils';
 
 import { useTools } from '@/ui/components/ActionComponent';
 import ParticleField from '@/ui/components/ParticleField/ParticleField';
@@ -41,8 +41,8 @@ import {
     SwapOutlined,
     WalletOutlined
 } from '@ant-design/icons';
-import { Tooltip } from 'antd';
 import { Address } from '@btc-vision/transaction';
+import { Tooltip } from 'antd';
 import ActionButton from '../../../components/ActionButton/index';
 import { RouteTypes, useNavigate } from '../../MainRoute';
 import { SwitchChainModal } from '../../Settings/network/SwitchChainModal';
@@ -81,7 +81,6 @@ export default function WalletTabScreen() {
 
     const address = untweakedPublicKey ? Address.fromString(untweakedPublicKey) : null;
     const tweakedPublicKey = address ? address.toHex() : '';
-    const publicKey = address ? '0x' + address.originalPublicKeyBuffer().toString('hex') : '';
     const explorerUrl = address ? `https://opscan.org/accounts/${tweakedPublicKey}` : '';
 
     const accountBalance = useAccountBalance();
@@ -321,10 +320,18 @@ export default function WalletTabScreen() {
                                             <div style={{ fontWeight: 600, color: colors.error, marginBottom: '4px' }}>
                                                 ⚠️ UTXO Limit Reached
                                             </div>
-                                            <div style={{ fontSize: '9px', color: 'rgba(219, 219, 219, 0.7)', marginBottom: '8px' }}>
-                                                Your total balance is not fully displayed since it has exceeded 2,000 UTXOs.
-                                                <strong style={{ display: 'block', marginTop: '4px', color: colors.main }}>
-                                                    You can consolidate up to {consolidationLimit} UTXOs at a time to fix this issue.
+                                            <div
+                                                style={{
+                                                    fontSize: '9px',
+                                                    color: 'rgba(219, 219, 219, 0.7)',
+                                                    marginBottom: '8px'
+                                                }}>
+                                                Your total balance is not fully displayed since it has exceeded 2,000
+                                                UTXOs.
+                                                <strong
+                                                    style={{ display: 'block', marginTop: '4px', color: colors.main }}>
+                                                    You can consolidate up to {consolidationLimit} UTXOs at a time to
+                                                    fix this issue.
                                                 </strong>
                                             </div>
                                             <button
@@ -354,13 +361,14 @@ export default function WalletTabScreen() {
                                 })()}
 
                                 {/* Total Balance Label + Details Button */}
-                                <div style={{
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    gap: '8px',
-                                    marginBottom: '3px'
-                                }}>
+                                <div
+                                    style={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        gap: '8px',
+                                        marginBottom: '3px'
+                                    }}>
                                     <div
                                         style={{
                                             fontSize: '10px',
@@ -396,12 +404,12 @@ export default function WalletTabScreen() {
                                             e.currentTarget.style.borderColor = colors.containerBorder;
                                         }}>
                                         Details
-                                        <DownOutlined 
-                                            style={{ 
-                                                fontSize: 7, 
+                                        <DownOutlined
+                                            style={{
+                                                fontSize: 7,
                                                 transform: showBalanceDetails ? 'rotate(180deg)' : 'rotate(0deg)',
-                                                transition: 'transform 0.2s' 
-                                            }} 
+                                                transition: 'transform 0.2s'
+                                            }}
                                         />
                                     </button>
                                 </div>
@@ -450,60 +458,60 @@ export default function WalletTabScreen() {
                                                 gap: '12px'
                                             }}>
                                             <Tooltip title="Click to copy public key" placement="top">
-                                            <button
-                                                style={{
-                                                    display: 'flex',
-                                                    alignItems: 'center',
-                                                    gap: '4px',
-                                                    padding: '3px 8px',
-                                                    background: 'rgba(243, 116, 19, 0.1)',
-                                                    border: '1px solid rgba(243, 116, 19, 0.3)',
-                                                    borderRadius: '6px',
-                                                    cursor: 'pointer',
-                                                    transition: 'all 0.15s',
-                                                    maxWidth: '120px'
-                                                }}
-                                                onClick={async (e) => {
-                                                    e.stopPropagation();
-                                                    await copyToClipboard(publicKey);
-                                                    tools.toastSuccess('Copied');
-                                                }}
-                                                onMouseEnter={(e) => {
-                                                    e.currentTarget.style.background = 'rgba(243, 116, 19, 0.2)';
-                                                    e.currentTarget.style.borderColor = 'rgba(243, 116, 19, 0.5)';
-                                                }}
-                                                onMouseLeave={(e) => {
-                                                    e.currentTarget.style.background = 'rgba(243, 116, 19, 0.1)';
-                                                    e.currentTarget.style.borderColor = 'rgba(243, 116, 19, 0.3)';
-                                                }}>
-                                                <span
+                                                <button
                                                     style={{
-                                                        fontSize: '10px',
-                                                        color: colors.main,
-                                                        fontFamily: 'monospace',
-                                                        overflow: 'hidden',
-                                                        textOverflow: 'ellipsis',
-                                                        whiteSpace: 'nowrap'
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        gap: '4px',
+                                                        padding: '3px 8px',
+                                                        background: 'rgba(243, 116, 19, 0.1)',
+                                                        border: '1px solid rgba(243, 116, 19, 0.3)',
+                                                        borderRadius: '6px',
+                                                        cursor: 'pointer',
+                                                        transition: 'all 0.15s',
+                                                        maxWidth: '120px'
+                                                    }}
+                                                    onClick={async (e) => {
+                                                        e.stopPropagation();
+                                                        await copyToClipboard(tweakedPublicKey);
+                                                        tools.toastSuccess('Copied');
+                                                    }}
+                                                    onMouseEnter={(e) => {
+                                                        e.currentTarget.style.background = 'rgba(243, 116, 19, 0.2)';
+                                                        e.currentTarget.style.borderColor = 'rgba(243, 116, 19, 0.5)';
+                                                    }}
+                                                    onMouseLeave={(e) => {
+                                                        e.currentTarget.style.background = 'rgba(243, 116, 19, 0.1)';
+                                                        e.currentTarget.style.borderColor = 'rgba(243, 116, 19, 0.3)';
                                                     }}>
-                                                    {publicKey.slice(0, 6)}...{publicKey.slice(-4)}
-                                                </span>
+                                                    <span
+                                                        style={{
+                                                            fontSize: '10px',
+                                                            color: colors.main,
+                                                            fontFamily: 'monospace',
+                                                            overflow: 'hidden',
+                                                            textOverflow: 'ellipsis',
+                                                            whiteSpace: 'nowrap'
+                                                        }}>
+                                                        {tweakedPublicKey.slice(0, 6)}...{tweakedPublicKey.slice(-4)}
+                                                    </span>
 
-                                                <svg
-                                                    width="10"
-                                                    height="10"
-                                                    viewBox="0 0 24 24"
-                                                    fill="none"
-                                                    xmlns="http://www.w3.org/2000/svg"
-                                                    style={{ flexShrink: 0 }}>
-                                                    <path
-                                                        d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2M12 11v6M9 14h6M15 4H9a1 1 0 0 0-1 1v2a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V5a1 1 0 0 0-1-1z"
-                                                        stroke={colors.main}
-                                                        strokeWidth="2"
-                                                        strokeLinecap="round"
-                                                        strokeLinejoin="round"
-                                                    />
-                                                </svg>
-                                            </button>
+                                                    <svg
+                                                        width="10"
+                                                        height="10"
+                                                        viewBox="0 0 24 24"
+                                                        fill="none"
+                                                        xmlns="http://www.w3.org/2000/svg"
+                                                        style={{ flexShrink: 0 }}>
+                                                        <path
+                                                            d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2M12 11v6M9 14h6M15 4H9a1 1 0 0 0-1 1v2a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V5a1 1 0 0 0-1-1z"
+                                                            stroke={colors.main}
+                                                            strokeWidth="2"
+                                                            strokeLinecap="round"
+                                                            strokeLinejoin="round"
+                                                        />
+                                                    </svg>
+                                                </button>
                                             </Tooltip>
                                         </div>
                                     </div>
