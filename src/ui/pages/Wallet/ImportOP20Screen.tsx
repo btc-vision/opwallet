@@ -4,7 +4,7 @@ import { useTools } from '@/ui/components/ActionComponent';
 import { RouteTypes, useNavigate } from '@/ui/pages/MainRoute';
 import { useCurrentAccount } from '@/ui/state/accounts/hooks';
 import { useChainType } from '@/ui/state/settings/hooks';
-import { LoadingOutlined } from '@ant-design/icons';
+import { DollarOutlined, LoadingOutlined } from '@ant-design/icons';
 import { Address, AddressTypes, AddressVerificator } from '@btc-vision/transaction';
 import { useEffect, useState } from 'react';
 
@@ -238,7 +238,7 @@ export default function ImportTokenScreen() {
                                             style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                                         />
                                     ) : (
-                                        '🪙'
+                                        <DollarOutlined style={{ fontSize: '24px', color: colors.textFaded }} />
                                     )}
                                 </div>
                                 <div style={{ flex: 1 }}>

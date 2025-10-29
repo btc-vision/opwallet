@@ -16,10 +16,14 @@ import { BottomModal } from '@/ui/components/BottomModal';
 import { useBTCUnit } from '@/ui/state/settings/hooks';
 import { useLocationState, useWallet } from '@/ui/utils';
 import {
+    ArrowRightOutlined,
     CheckCircleOutlined,
     CopyOutlined,
     DollarOutlined,
+    FileTextOutlined,
+    GiftOutlined,
     LoadingOutlined,
+    PictureOutlined,
     RocketOutlined,
     SafetyOutlined,
     ThunderboltOutlined,
@@ -600,21 +604,22 @@ export default function TxOpnetConfirmScreen() {
     };
 
     const getActionIcon = () => {
+        const iconStyle = { fontSize: '20px', color: colors.text };
         switch (rawTxInfo.action) {
             case Action.SendBitcoin:
-                return '₿';
+                return <DollarOutlined style={iconStyle} />;
             case Action.DeployContract:
-                return '🚀';
+                return <RocketOutlined style={iconStyle} />;
             case Action.Mint:
-                return '🪙';
+                return <DollarOutlined style={iconStyle} />;
             case Action.Airdrop:
-                return '🎁';
+                return <GiftOutlined style={iconStyle} />;
             case Action.Transfer:
-                return '➡️';
+                return <ArrowRightOutlined style={iconStyle} />;
             case Action.SendNFT:
-                return '🖼️';
+                return <PictureOutlined style={iconStyle} />;
             default:
-                return '📝';
+                return <FileTextOutlined style={iconStyle} />;
         }
     };
 

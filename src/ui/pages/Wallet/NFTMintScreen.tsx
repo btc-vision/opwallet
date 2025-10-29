@@ -1,12 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { Column, Content, Header, Layout } from '@/ui/components';
+import { AsyncImage } from '@/ui/components/AsyncImage';
 import { FeeRateBar } from '@/ui/components/FeeRateBar';
 import { RouteTypes, useNavigate } from '@/ui/pages/MainRoute';
 import { useCurrentAccount } from '@/ui/state/accounts/hooks';
 import { useWallet } from '@/ui/utils';
 import Web3API from '@/shared/web3/Web3API';
-import { FireOutlined, LoadingOutlined, ThunderboltOutlined } from '@ant-design/icons';
+import { FireOutlined, LoadingOutlined, PictureOutlined, ThunderboltOutlined } from '@ant-design/icons';
 import { Action, Features, MintNFTParameters } from '@/shared/interfaces/RawTxParameters';
 
 const colors = {
@@ -204,10 +205,24 @@ export default function NFTMintScreen() {
                                 flexShrink: 0
                             }}>
                             {collection.icon ? (
-                                <img
+                                <AsyncImage
                                     src={collection.icon}
                                     alt={collection.name}
+                                    width="64px"
+                                    height="64px"
                                     style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                                    fallback={
+                                        <div
+                                            style={{
+                                                width: '100%',
+                                                height: '100%',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center'
+                                            }}>
+                                            <PictureOutlined style={{ fontSize: '28px', color: colors.textFaded }} />
+                                        </div>
+                                    }
                                 />
                             ) : (
                                 <div
@@ -216,10 +231,9 @@ export default function NFTMintScreen() {
                                         height: '100%',
                                         display: 'flex',
                                         alignItems: 'center',
-                                        justifyContent: 'center',
-                                        fontSize: '28px'
+                                        justifyContent: 'center'
                                     }}>
-                                    🎨
+                                    <PictureOutlined style={{ fontSize: '28px', color: colors.textFaded }} />
                                 </div>
                             )}
                         </div>

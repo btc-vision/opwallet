@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 
-import { ADDRESS_TYPES, KEYRING_TYPE } from '@/shared/constant';
-import { AddressAssets } from '@/shared/types';
+import { AddressAssets, AddressType } from '@/shared/types';
 import { Column, Content, Header, Layout, Text } from '@/ui/components';
 import { useTools } from '@/ui/components/ActionComponent';
 import { useCurrentAccount, useReloadAccounts } from '@/ui/state/accounts/hooks';
@@ -16,7 +15,9 @@ import {
     WalletOutlined
 } from '@ant-design/icons';
 
+import { getBitcoinLibJSNetwork } from '@/shared/web3/Web3API';
 import { useBTCUnit } from '@/ui/state/settings/hooks';
+import { Address } from '@btc-vision/transaction';
 import { RouteTypes, useNavigate } from '../MainRoute';
 
 const colors = {
@@ -43,6 +44,13 @@ interface AddressTypeItemProps {
     btcUnit: string;
     onClick: () => void;
 }
+
+type AddressTypes = Array<{
+    value: AddressType;
+    name: string;
+    address: string;
+    assets: AddressAssets;
+}>;
 
 function AddressTypeItem({ label, address, assets, checked, description, btcUnit, onClick }: AddressTypeItemProps) {
     const [copied, setCopied] = useState(false);
@@ -282,7 +290,17 @@ export default function AddressTypeScreen() {
     const tools = useTools();
     const btcUnit = useBTCUnit();
 
-    const [addresses, setAddresses] = useState<string[]>([]);
+    const [addresses, setAddresses] = useState<{
+        p2tr: string;
+        p2wpkh: string;
+        p2shp2wpkh: string;
+        p2pkh: string;
+    }>({
+        p2tr: '',
+        p2wpkh: '',
+        p2shp2wpkh: '',
+        p2pkh: ''
+    });
     const [addressAssets, setAddressAssets] = useState<Record<string, AddressAssets>>({});
     const [loading, setLoading] = useState(true);
     const [switching, setSwitching] = useState(false);
@@ -290,14 +308,26 @@ export default function AddressTypeScreen() {
     const loadAddresses = async () => {
         setLoading(true);
         try {
-            const _res = await wallet.getAllAddresses(currentKeyring, account.index ?? 0);
-            setAddresses(_res);
+            const networkType = await wallet.getNetworkType();
+            const chainType = await wallet.getChainType();
+            const network = getBitcoinLibJSNetwork(networkType, chainType);
 
-            const balances = await wallet.getMultiAddressAssets(_res.join(','));
+            const address = Address.fromString(account.pubkey);
+            const p2tr = address.p2tr(network);
+            const p2wpkh = address.p2wpkh(network);
+            const p2shp2wpkh = address.p2shp2wpkh(network);
+            const p2pkh = address.p2pkh(network);
+            setAddresses({ p2tr, p2wpkh, p2shp2wpkh, p2pkh });
+
+            // Convert addresses object to array of address strings
+            const addressArray = Object.values({ p2tr, p2wpkh, p2shp2wpkh, p2pkh });
+
+            // Join addresses with comma separator for the API call
+            const balances = await wallet.getMultiAddressAssets(addressArray.join(','));
             const addressAssets: Record<string, AddressAssets> = {};
 
-            for (let i = 0; i < _res.length; i++) {
-                const address = _res[i];
+            for (let i = 0; i < addressArray.length; i++) {
+                const address = addressArray[i];
                 const balance = balances[i];
                 const satoshis = balance.totalSatoshis;
                 addressAssets[address] = {
@@ -320,28 +350,52 @@ export default function AddressTypeScreen() {
     }, []);
 
     const addressTypes = useMemo(() => {
-        if (currentKeyring.type === KEYRING_TYPE.HdKeyring) {
-            return ADDRESS_TYPES.filter((v) => {
-                if (v.displayIndex < 0) {
-                    return false;
-                }
-                const address = addresses[v.value];
-                const balance = addressAssets[address];
-                if (v.isUnisatLegacy) {
-                    if (!balance || balance.satoshis == 0) {
-                        return false;
-                    }
-                }
-                return true;
-            }).sort((a, b) => a.displayIndex - b.displayIndex);
-        } else {
-            return ADDRESS_TYPES.filter((v) => v.displayIndex >= 0 && v.isUnisatLegacy != true).sort(
-                (a, b) => a.displayIndex - b.displayIndex
-            );
-        }
-    }, [currentKeyring.type, addressAssets, addresses]);
+        const types: AddressTypes = [];
 
-    const handleAddressTypeChange = async (item: (typeof ADDRESS_TYPES)[0]) => {
+        const addressEntries = Object.entries(addresses) as [keyof typeof addresses, string][];
+
+        for (const [key, address] of addressEntries) {
+            if (!address) continue;
+
+            const assets = addressAssets[address];
+            if (!assets) continue;
+
+            // Map the key to proper AddressType enum values
+            let addressType: AddressType;
+            let name = '';
+
+            switch (key) {
+                case 'p2tr':
+                    addressType = AddressType.P2TR;
+                    name = 'Taproot';
+                    break;
+                case 'p2wpkh':
+                    addressType = AddressType.P2WPKH;
+                    name = 'Native SegWit';
+                    break;
+                case 'p2shp2wpkh':
+                    addressType = AddressType.P2SH_P2WPKH;
+                    name = 'Nested SegWit';
+                    break;
+                case 'p2pkh':
+                    addressType = AddressType.P2PKH;
+                    name = 'Legacy';
+                    break;
+                default:
+                    continue;
+            }
+
+            types.push({
+                value: addressType,
+                name,
+                address,
+                assets
+            });
+        }
+        return types;
+    }, [addresses, addressAssets]);
+
+    const handleAddressTypeChange = async (item: AddressTypes[number]) => {
         if (item.value === currentKeyring.addressType) {
             return;
         }
@@ -360,7 +414,7 @@ export default function AddressTypeScreen() {
         }
     };
 
-    const getDescription = (item: (typeof ADDRESS_TYPES)[0]) => {
+    const getDescription = (item: AddressTypes[number]) => {
         if (item.name === 'P2TR') {
             return 'Taproot - Lower fees, enhanced privacy';
         } else if (item.name === 'P2WPKH') {
@@ -449,22 +503,17 @@ export default function AddressTypeScreen() {
                 {/* Address Type List */}
                 <div style={{ width: '100%' }}>
                     {addressTypes.map((item, index) => {
-                        const address = addresses[item.value];
-                        const assets = addressAssets[address] || {
+                        const address = item.address;
+                        const assets = item.assets || {
                             total_btc: '0',
                             satoshis: 0,
                             total_inscription: 0
                         };
 
-                        let name = item.name;
-                        if (currentKeyring.type === KEYRING_TYPE.HdKeyring) {
-                            name = `${item.name} (${item.hdPath}/${account.index})`;
-                        }
-
                         return (
                             <AddressTypeItem
                                 key={index}
-                                label={name}
+                                label={item.name}
                                 address={address}
                                 assets={assets}
                                 checked={item.value === currentKeyring.addressType}

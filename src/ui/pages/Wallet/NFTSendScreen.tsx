@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { Column, Content, Header, Input, Layout } from '@/ui/components';
+import { AsyncImage } from '@/ui/components/AsyncImage';
 import { FeeRateBar } from '@/ui/components/FeeRateBar';
 import { RouteTypes, useNavigate } from '@/ui/pages/MainRoute';
 import { useCurrentAccount } from '@/ui/state/accounts/hooks';
 import { isValidAddress, useWallet } from '@/ui/utils';
 import Web3API, { OwnedNFT } from '@/shared/web3/Web3API';
-import { InfoCircleOutlined, LoadingOutlined, SendOutlined, ThunderboltOutlined } from '@ant-design/icons';
+import { InfoCircleOutlined, LoadingOutlined, QuestionCircleOutlined, SendOutlined, ThunderboltOutlined } from '@ant-design/icons';
 import { Address, AddressTypes, AddressVerificator } from '@btc-vision/transaction';
 import { Action, Features, NFTMetadata, SendNFTParameters } from '@/shared/interfaces/RawTxParameters';
 
@@ -193,10 +194,24 @@ export default function NFTSendScreen() {
                                     <LoadingOutlined style={{ fontSize: 24, color: colors.textFaded }} />
                                 </div>
                             ) : metadata?.image ? (
-                                <img
+                                <AsyncImage
                                     src={metadata.image}
                                     alt={metadata.name || `NFT #${nft.tokenId}`}
+                                    width="80px"
+                                    height="80px"
                                     style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                                    fallback={
+                                        <div
+                                            style={{
+                                                width: '100%',
+                                                height: '100%',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center'
+                                            }}>
+                                            <QuestionCircleOutlined style={{ fontSize: '36px', color: colors.textFaded }} />
+                                        </div>
+                                    }
                                 />
                             ) : (
                                 <div
@@ -205,10 +220,9 @@ export default function NFTSendScreen() {
                                         height: '100%',
                                         display: 'flex',
                                         alignItems: 'center',
-                                        justifyContent: 'center',
-                                        fontSize: '36px'
+                                        justifyContent: 'center'
                                     }}>
-                                    ERROR
+                                    <QuestionCircleOutlined style={{ fontSize: '36px', color: colors.textFaded }} />
                                 </div>
                             )}
                         </div>
