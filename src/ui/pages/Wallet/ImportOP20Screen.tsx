@@ -73,11 +73,11 @@ export default function ImportTokenScreen() {
                     const info = await Web3API.queryContractInformation(moto);
                     suggestions.push({ 
                         address: moto, 
-                        name: 'Pill',
+                        name: 'Motoswap',
                         logo: info ? info.logo : undefined
                     });
                 } catch (e) {
-                    suggestions.push({ address: moto, name: 'Pill' });
+                    suggestions.push({ address: moto, name: 'Motoswap' });
                 }
             }
             if (pill && !storedAddresses.includes(pill)) {
@@ -85,11 +85,11 @@ export default function ImportTokenScreen() {
                     const info = await Web3API.queryContractInformation(pill);
                     suggestions.push({ 
                         address: pill, 
-                        name: 'Motoswap',
+                        name: 'Pill',
                         logo: info ? info.logo : undefined
                     });
                 } catch (e) {
-                    suggestions.push({ address: pill, name: 'Motoswap' });
+                    suggestions.push({ address: pill, name: 'Pill' });
                 }
             }
             
