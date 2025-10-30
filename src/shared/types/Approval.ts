@@ -169,7 +169,7 @@ export interface SignPsbtApprovalParams {
 export interface SignTextApprovalParams {
     method: string;
     data: {
-        text: string;
+        message: string;
         type: string;
     };
     session: Session;
