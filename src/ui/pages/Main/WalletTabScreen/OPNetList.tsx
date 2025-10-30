@@ -95,25 +95,22 @@ export function OPNetList() {
     const [showModal, setShowModal] = useState(false);
     const [modalToken, setModalToken] = useState<string | null>(null);
 
-    // Track if default tokens have been checked
-    const defaultTokensCheckedRef = useRef<Set<string>>(new Set());
-
     const storageKey = `opnetTokens_${chainType}_${currentAccount.pubkey}`;
+    const initializationKey = `opnetTokens_initialized_${chainType}_${currentAccount.pubkey}`;
 
-    // Ensure default tokens are always included
+    // Ensure default tokens are included only on first launch
     const ensureDefaultTokens = useCallback(
         (addresses: string[]): string[] => {
             const result = [...addresses];
-            const accountKey = `${chainType}_${currentAccount.pubkey}`;
 
-            // Check if we've already added defaults for this account/chain combo
-            if (!defaultTokensCheckedRef.current.has(accountKey)) {
-                defaultTokensCheckedRef.current.add(accountKey);
+            // Only add defaults if this account/chain combo has never been initialized
+            const isInitialized = localStorage.getItem(initializationKey);
 
+            if (!isInitialized) {
                 const moto = Web3API.motoAddressP2OP;
                 const pill = Web3API.pillAddressP2OP;
 
-                // Always add MOTO and PILL if they exist and aren't already in the list
+                // Add MOTO and PILL if they exist and aren't already in the list
                 if (moto && !result.includes(moto)) {
                     console.log('Adding MOTO token:', moto);
                     result.unshift(moto); // Add to beginning
@@ -141,11 +138,14 @@ export function OPNetList() {
                         console.error('Failed to save default tokens:', e);
                     }
                 }
+
+                // Mark as initialized - never add defaults again for this account/chain
+                localStorage.setItem(initializationKey, 'true');
             }
 
             return result;
         },
-        [chainType, currentAccount.pubkey, storageKey]
+        [storageKey, initializationKey]
     );
 
     // Get all token addresses from storage
@@ -402,8 +402,6 @@ export function OPNetList() {
 
     // When account or chain changes, reset everything
     useEffect(() => {
-        // Clear the default tokens check for new account/chain
-        defaultTokensCheckedRef.current.clear();
         setCurrentPage(1);
         setTokenBalancesMap(new Map());
         initialize();
