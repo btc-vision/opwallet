@@ -22,6 +22,16 @@ export interface UTXOLimitStatus {
 }
 
 /**
+ * Result of UTXO warning threshold check
+ */
+export interface UTXOWarningStatus {
+    /** Whether any UTXO category has reached the warning threshold */
+    hasReachedWarning: boolean;
+    /** Warning threshold value */
+    warningThreshold: number;
+}
+
+/**
  * Hook to manage UTXO consolidation logic
  * Handles checking limits and navigating to consolidation screen
  */
@@ -32,14 +42,36 @@ export function useConsolidation() {
     const navigate = useNavigate();
 
     /**
+     * Check if any UTXO category has reached the warning threshold (yellow indicator)
+     */
+    const checkUTXOWarning = useCallback((accountBalance: BitcoinBalance): UTXOWarningStatus => {
+        const warningThreshold = UTXO_CONFIG.WARNING_THRESHOLD;
+
+        // Check if ANY individual category has reached the warning threshold
+        const hasReachedWarning = 
+            accountBalance.unspent_utxos_count >= warningThreshold ||
+            accountBalance.csv75_locked_utxos_count >= warningThreshold ||
+            accountBalance.csv75_unlocked_utxos_count >= warningThreshold ||
+            accountBalance.csv1_locked_utxos_count >= warningThreshold ||
+            accountBalance.csv1_unlocked_utxos_count >= warningThreshold ||
+            accountBalance.p2wda_utxos_count >= warningThreshold ||
+            accountBalance.unspent_p2wda_utxos_count >= warningThreshold;
+
+        return {
+            hasReachedWarning,
+            warningThreshold
+        };
+    }, []);
+
+    /**
      * Check if any UTXO category has reached the maximum limit
      */
     const checkUTXOLimit = useCallback((accountBalance: BitcoinBalance): UTXOLimitStatus => {
         const maxUTXOs = UTXO_CONFIG.MAX_UTXOS;
         const consolidationLimit = UTXO_CONFIG.CONSOLIDATION_LIMIT;
 
+        // Check if ANY individual category has reached the limit (not the total)
         const hasReachedLimit = 
-            accountBalance.all_utxos_count >= maxUTXOs ||
             accountBalance.unspent_utxos_count >= maxUTXOs ||
             accountBalance.csv75_locked_utxos_count >= maxUTXOs ||
             accountBalance.csv75_unlocked_utxos_count >= maxUTXOs ||
@@ -108,12 +140,16 @@ export function useConsolidation() {
 
         // Determine which account has the most UTXOs to consolidate
         const { type, count } = selectConsolidationType(freshBalance);
+        
+        // Limit to the actual consolidation limit (1400)
+        const consolidationLimit = UTXO_CONFIG.CONSOLIDATION_LIMIT;
+        const actualUTXOsToConsolidate = Math.min(count, consolidationLimit);
 
         navigate(RouteTypes.TxCreateScreen, {
             consolidation: {
                 enabled: true,
                 selectedType: type,
-                maxUTXOs: count,
+                maxUTXOs: actualUTXOsToConsolidate,
                 autoFillAmount: true
             }
         });
@@ -121,6 +157,7 @@ export function useConsolidation() {
 
     return {
         checkUTXOLimit,
+        checkUTXOWarning,
         navigateToConsolidation
     };
 }
