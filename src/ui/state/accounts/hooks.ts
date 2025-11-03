@@ -6,8 +6,8 @@ import { AppState } from '..';
 import { useAppDispatch, useAppSelector } from '../hooks';
 import { keyringsActions } from '../keyrings/reducer';
 import { settingsActions } from '../settings/reducer';
-import { accountActions } from './reducer';
 import { DEFAULT_BITCOIN_BALANCE } from './constants';
+import { accountActions } from './reducer';
 
 export function useAccountsState(): AppState['accounts'] {
     return useAppSelector((state) => state.accounts);
@@ -23,7 +23,7 @@ export function useAccountBalance() {
     const currentAccount = useCurrentAccount();
 
     const balance = accountsState.balanceMap[currentAccount.address] || DEFAULT_BITCOIN_BALANCE;
-    
+
     return balance;
 }
 
@@ -97,6 +97,10 @@ export function useFetchBalanceCallback() {
             csv75_unlocked_amount: accountBalance.csv75_unlocked_amount ?? '0',
             csv75_locked_amount: accountBalance.csv75_locked_amount ?? '0',
 
+            csv2_total_amount: accountBalance.csv2_total_amount ?? '0',
+            csv2_unlocked_amount: accountBalance.csv2_unlocked_amount ?? '0',
+            csv2_locked_amount: accountBalance.csv2_locked_amount ?? '0',
+
             csv1_total_amount: accountBalance.csv1_total_amount ?? '0',
             csv1_unlocked_amount: accountBalance.csv1_unlocked_amount ?? '0',
             csv1_locked_amount: accountBalance.csv1_locked_amount ?? '0',
@@ -107,10 +111,12 @@ export function useFetchBalanceCallback() {
             consolidation_amount: accountBalance.consolidation_amount,
             consolidation_unspent_amount: accountBalance.consolidation_unspent_amount,
             consolidation_unspent_count: accountBalance.consolidation_unspent_count,
-            consolidation_csv1_unlocked_amount: accountBalance.consolidation_csv1_unlocked_amount,
-            consolidation_csv1_unlocked_count: accountBalance.consolidation_csv1_unlocked_count,
             consolidation_csv75_unlocked_amount: accountBalance.consolidation_csv75_unlocked_amount,
             consolidation_csv75_unlocked_count: accountBalance.consolidation_csv75_unlocked_count,
+            consolidation_csv2_unlocked_amount: accountBalance.consolidation_csv2_unlocked_amount,
+            consolidation_csv2_unlocked_count: accountBalance.consolidation_csv2_unlocked_count,
+            consolidation_csv1_unlocked_amount: accountBalance.consolidation_csv1_unlocked_amount,
+            consolidation_csv1_unlocked_count: accountBalance.consolidation_csv1_unlocked_count,
             consolidation_p2wda_unspent_amount: accountBalance.consolidation_p2wda_unspent_amount,
             consolidation_p2wda_unspent_count: accountBalance.consolidation_p2wda_unspent_count,
 
@@ -120,6 +126,8 @@ export function useFetchBalanceCallback() {
             unspent_utxos_count: accountBalance.unspent_utxos_count,
             csv75_locked_utxos_count: accountBalance.csv75_locked_utxos_count,
             csv75_unlocked_utxos_count: accountBalance.csv75_unlocked_utxos_count,
+            csv2_locked_utxos_count: accountBalance.csv2_locked_utxos_count,
+            csv2_unlocked_utxos_count: accountBalance.csv2_unlocked_utxos_count,
             csv1_locked_utxos_count: accountBalance.csv1_locked_utxos_count,
             csv1_unlocked_utxos_count: accountBalance.csv1_unlocked_utxos_count,
             p2wda_utxos_count: accountBalance.p2wda_utxos_count,

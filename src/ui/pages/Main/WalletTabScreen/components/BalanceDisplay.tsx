@@ -1,9 +1,9 @@
-import React, { CSSProperties } from 'react';
 import { BitcoinBalance } from '@/shared/types';
-import { BtcDisplay } from './BtcDisplay';
 import { BtcUsd } from '@/ui/components/BtcUsd';
 import { amountToSatoshis } from '@/ui/utils';
+import React, { CSSProperties } from 'react';
 import { BalanceTabs } from './BalanceTabs';
+import { BtcDisplay } from './BtcDisplay';
 import { TransactionsCount } from './TransactionsCount';
 
 interface BalanceDisplayProps {
@@ -38,19 +38,21 @@ export const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
     const calculateTotalBalance = () => {
         const mainBalance = parseFloat(accountBalance.btc_total_amount || '0');
         const csv75Total = parseFloat(accountBalance.csv75_total_amount || '0');
+        const csv2Total = parseFloat(accountBalance.csv2_total_amount || '0');
         const csv1Total = parseFloat(accountBalance.csv1_total_amount || '0');
 
-        const total = mainBalance + csv75Total + csv1Total;
+        const total = mainBalance + csv75Total + csv2Total + csv1Total;
         return total.toFixed(8).replace(/\.?0+$/, '');
     };
 
     if (showDetails) {
         return (
-            <div style={{ 
-                display: 'flex', 
-                justifyContent: 'center',
-                marginTop: '8px'
-            }}>
+            <div
+                style={{
+                    display: 'flex',
+                    justifyContent: 'center',
+                    marginTop: '8px'
+                }}>
                 <BalanceTabs
                     accountBalance={accountBalance}
                     btcUnit={btcUnit}
@@ -61,11 +63,13 @@ export const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
                             unspent_utxos_count={accountBalance.unspent_utxos_count}
                             csv75_locked_utxos_count={accountBalance.csv75_locked_utxos_count}
                             csv75_unlocked_utxos_count={accountBalance.csv75_unlocked_utxos_count}
+                            csv2_locked_utxos_count={accountBalance.csv2_locked_utxos_count}
+                            csv2_unlocked_utxos_count={accountBalance.csv2_unlocked_utxos_count}
                             csv1_locked_utxos_count={accountBalance.csv1_locked_utxos_count}
                             csv1_unlocked_utxos_count={accountBalance.csv1_unlocked_utxos_count}
                             p2wda_utxos_count={accountBalance.p2wda_utxos_count}
                             unspent_p2wda_utxos_count={accountBalance.unspent_p2wda_utxos_count}
-                            colors={{...colors, textFaded: colors.textFaded}}
+                            colors={{ ...colors, textFaded: colors.textFaded }}
                             noBreakStyle={noBreakStyle}
                         />
                     }

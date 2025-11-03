@@ -46,6 +46,9 @@ export default function ReceiveScreen() {
                         csv75_total_amount={undefined}
                         csv75_unlocked_amount={undefined}
                         csv75_locked_amount={undefined}
+                        csv2_total_amount={undefined}
+                        csv2_unlocked_amount={undefined}
+                        csv2_locked_amount={undefined}
                         csv1_total_amount={undefined}
                         csv1_unlocked_amount={undefined}
                         csv1_locked_amount={undefined}

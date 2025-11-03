@@ -59,7 +59,7 @@ interface AddressBalance {
 
 interface ConsolidationParams {
     enabled: boolean;
-    selectedType: 'unspent' | 'csv1' | 'csv75' | 'p2wda';
+    selectedType: 'unspent' | 'csv75' | 'csv2' | 'csv1' | 'p2wda';
     maxUTXOs: number;
     autoFillAmount: boolean;
 }
@@ -115,6 +115,7 @@ export default function TxCreateScreen() {
 
                 // Get CSV addresses for display
                 const csv75Address = currentAddress.toCSV(75, Web3API.network);
+                const csv2Address = currentAddress.toCSV(2, Web3API.network);
                 const csv1Address = currentAddress.toCSV(1, Web3API.network);
                 const p2wdaAddress = currentAddress.p2wda(Web3API.network);
 
@@ -171,6 +172,26 @@ export default function TxCreateScreen() {
                     });
                 }
 
+                // Check CSV2 balance from the response
+                if (currentBalance.csv2_total_amount && currentBalance.csv2_total_amount !== '0') {
+                    const csv2UnlockedAmount = currentBalance.csv2_unlocked_amount || '0';
+                    const csv2LockedAmount = currentBalance.csv2_locked_amount || '0';
+                    const hasUnlocked = csv2UnlockedAmount !== '0';
+
+                    balances.push({
+                        type: SourceType.CSV2,
+                        label: 'CSV-2 Fast Access',
+                        address: csv2Address.address,
+                        balance: csv2UnlockedAmount,
+                        totalBalance: currentBalance.csv2_total_amount,
+                        lockedBalance: csv2LockedAmount,
+                        satoshis: BigInt(amountToSatoshis(csv2UnlockedAmount)),
+                        available: hasUnlocked,
+                        lockTime: 2,
+                        description: 'Anti-pinning protection (2 block lock)'
+                    });
+                }
+
                 // Check CSV75 balance from the response
                 if (currentBalance.csv75_total_amount && currentBalance.csv75_total_amount !== '0') {
                     const csv75UnlockedAmount = currentBalance.csv75_unlocked_amount || '0';
@@ -205,42 +226,51 @@ export default function TxCreateScreen() {
     // Handle consolidation mode - auto-select address and fill form (only on initial load)
     useEffect(() => {
         const setupConsolidation = async () => {
-            if (consolidationParams?.enabled && addressBalances.length > 0 && !hasSelectedAddress && !hasAutoSelectedOnce) {
+            if (
+                consolidationParams?.enabled &&
+                addressBalances.length > 0 &&
+                !hasSelectedAddress &&
+                !hasAutoSelectedOnce
+            ) {
                 // Map the selected type to SourceType
                 const typeMapping: Record<string, SourceType> = {
-                    'unspent': SourceType.CURRENT,
-                    'csv1': SourceType.CSV1,
-                    'csv75': SourceType.CSV75,
-                    'p2wda': SourceType.P2WDA
+                    unspent: SourceType.CURRENT,
+                    csv1: SourceType.CSV1,
+                    csv2: SourceType.CSV2,
+                    csv75: SourceType.CSV75,
+                    p2wda: SourceType.P2WDA
                 };
-                
+
                 const targetType = typeMapping[consolidationParams.selectedType || 'unspent'];
 
                 // Find the address matching the selected type
-                const selectedAddress = addressBalances.find(b => b.type === targetType && b.available);
-                
+                const selectedAddress = addressBalances.find((b) => b.type === targetType && b.available);
+
                 if (selectedAddress) {
                     // Auto-select the address
                     setSelectedBalance(selectedAddress);
                     setHasSelectedAddress(true);
                     setHasAutoSelectedOnce(true);
 
-                    setUiState({ 
-                        toInfo: { 
-                            address: account.address, 
-                            domain: '' 
+                    setUiState({
+                        toInfo: {
+                            address: account.address,
+                            domain: ''
                         }
                     });
-                    
+
                     // Autofill with consolidation amount if requested
                     if (consolidationParams.autoFillAmount) {
                         // Get balance and use the appropriate consolidation amount based on type
                         const balance = await wallet.getAddressBalance(account.address, account.pubkey);
                         let consolidationAmount = '0';
-                        
+
                         switch (consolidationParams.selectedType) {
                             case 'csv1':
                                 consolidationAmount = balance.consolidation_csv1_unlocked_amount;
+                                break;
+                            case 'csv2':
+                                consolidationAmount = balance.consolidation_csv2_unlocked_amount;
                                 break;
                             case 'csv75':
                                 consolidationAmount = balance.consolidation_csv75_unlocked_amount;
@@ -253,25 +283,35 @@ export default function TxCreateScreen() {
                                 consolidationAmount = balance.consolidation_unspent_amount;
                                 break;
                         }
-                        
+
                         setUiState({ inputAmount: consolidationAmount });
                     }
-                    
+
                     // Add note for consolidation with type info
                     const typeLabels: Record<string, string> = {
-                        'unspent': 'Primary Account',
-                        'csv1': 'CSV1 Fast Access',
-                        'csv75': 'CSV75',
-                        'p2wda': 'Smart Contract Optimized'
+                        unspent: 'Primary Account',
+                        csv1: 'CSV1 Fast Access',
+                        csv2: 'CSV2 Fast Access',
+                        csv75: 'CSV75',
+                        p2wda: 'Smart Contract Optimized'
                     };
                     const typeLabel = typeLabels[consolidationParams.selectedType || 'unspent'];
                     setNote(`UTXO Consolidation - ${typeLabel} (${consolidationParams.maxUTXOs} UTXOs)`);
                 }
             }
         };
-        
+
         void setupConsolidation();
-    }, [consolidationParams, addressBalances, hasSelectedAddress, hasAutoSelectedOnce, setUiState, wallet, account.address, account.pubkey]);
+    }, [
+        consolidationParams,
+        addressBalances,
+        hasSelectedAddress,
+        hasAutoSelectedOnce,
+        setUiState,
+        wallet,
+        account.address,
+        account.pubkey
+    ]);
 
     const toSatoshis = useMemo(() => (inputAmount ? amountToSatoshis(inputAmount) : 0), [inputAmount]);
     const dustAmount = useMemo(() => satoshisToAmount(COIN_DUST), []);
@@ -649,8 +689,8 @@ export default function TxCreateScreen() {
     // Main transaction form after address selection
     return (
         <Layout>
-            <Header 
-                title={`Send ${btcUnit}`} 
+            <Header
+                title={`Send ${btcUnit}`}
                 onBack={() => {
                     // If coming from consolidation, go back to main screen
                     if (consolidationParams?.enabled) {
@@ -659,7 +699,7 @@ export default function TxCreateScreen() {
                         // Otherwise, go back to address selection
                         setHasSelectedAddress(false);
                     }
-                }} 
+                }}
             />
 
             <Content style={{ padding: '12px' }}>

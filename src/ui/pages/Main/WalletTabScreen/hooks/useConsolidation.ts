@@ -1,15 +1,15 @@
-import { useCallback } from 'react';
-import { BitcoinBalance } from '@/shared/types';
 import { UTXO_CONFIG } from '@/shared/config';
-import { useWallet } from '@/ui/utils';
+import { BitcoinBalance } from '@/shared/types';
 import { useCurrentAccount } from '@/ui/state/accounts/hooks';
 import { useResetUiTxCreateScreen } from '@/ui/state/ui/hooks';
-import { useNavigate, RouteTypes } from '../../../MainRoute';
+import { useWallet } from '@/ui/utils';
+import { useCallback } from 'react';
+import { RouteTypes, useNavigate } from '../../../MainRoute';
 
 /**
  * Type of account for UTXO consolidation
  */
-export type ConsolidationType = 'unspent' | 'csv1' | 'csv75' | 'p2wda';
+export type ConsolidationType = 'unspent' | 'csv75' | 'csv2' | 'csv1' | 'p2wda';
 
 /**
  * Result of UTXO limit check
@@ -38,11 +38,13 @@ export function useConsolidation() {
         const maxUTXOs = UTXO_CONFIG.MAX_UTXOS;
         const consolidationLimit = UTXO_CONFIG.CONSOLIDATION_LIMIT;
 
-        const hasReachedLimit = 
+        const hasReachedLimit =
             accountBalance.all_utxos_count >= maxUTXOs ||
             accountBalance.unspent_utxos_count >= maxUTXOs ||
             accountBalance.csv75_locked_utxos_count >= maxUTXOs ||
             accountBalance.csv75_unlocked_utxos_count >= maxUTXOs ||
+            accountBalance.csv2_locked_utxos_count >= maxUTXOs ||
+            accountBalance.csv2_unlocked_utxos_count >= maxUTXOs ||
             accountBalance.csv1_locked_utxos_count >= maxUTXOs ||
             accountBalance.csv1_unlocked_utxos_count >= maxUTXOs ||
             accountBalance.p2wda_utxos_count >= maxUTXOs ||
@@ -56,46 +58,56 @@ export function useConsolidation() {
 
     /**
      * Determine which account type has the most UTXOs available for consolidation
-     * Priority order (in case of equality): unspent > csv1 > p2wda > csv75
+     * Priority order (in case of equality): unspent > csv1 > csv2 > p2wda > csv75
      */
-    const selectConsolidationType = useCallback((freshBalance: BitcoinBalance): {
-        type: ConsolidationType;
-        count: number;
-    } => {
-        const consolidationCounts = {
-            unspent: freshBalance.consolidation_unspent_count,
-            csv1: freshBalance.consolidation_csv1_unlocked_count,
-            csv75: freshBalance.consolidation_csv75_unlocked_count,
-            p2wda: freshBalance.consolidation_p2wda_unspent_count
-        };
+    const selectConsolidationType = useCallback(
+        (
+            freshBalance: BitcoinBalance
+        ): {
+            type: ConsolidationType;
+            count: number;
+        } => {
+            const consolidationCounts = {
+                unspent: freshBalance.consolidation_unspent_count,
+                csv75: freshBalance.consolidation_csv75_unlocked_count,
+                csv2: freshBalance.consolidation_csv2_unlocked_count,
+                csv1: freshBalance.consolidation_csv1_unlocked_count,
+                p2wda: freshBalance.consolidation_p2wda_unspent_count
+            };
 
-        // Find the type with the most UTXOs
-        // Check in reverse priority order (lowest to highest)
-        let selectedType: ConsolidationType = 'unspent';
-        let maxCount = consolidationCounts.unspent;
+            // Find the type with the most UTXOs
+            // Check in reverse priority order (lowest to highest)
+            let selectedType: ConsolidationType = 'unspent';
+            let maxCount = consolidationCounts.unspent;
 
-        if (consolidationCounts.csv75 >= maxCount) {
-            selectedType = 'csv75';
-            maxCount = consolidationCounts.csv75;
-        }
-        if (consolidationCounts.p2wda >= maxCount) {
-            selectedType = 'p2wda';
-            maxCount = consolidationCounts.p2wda;
-        }
-        if (consolidationCounts.csv1 >= maxCount) {
-            selectedType = 'csv1';
-            maxCount = consolidationCounts.csv1;
-        }
-        if (consolidationCounts.unspent >= maxCount) {
-            selectedType = 'unspent';
-            maxCount = consolidationCounts.unspent;
-        }
+            if (consolidationCounts.csv75 >= maxCount) {
+                selectedType = 'csv75';
+                maxCount = consolidationCounts.csv75;
+            }
+            if (consolidationCounts.p2wda >= maxCount) {
+                selectedType = 'p2wda';
+                maxCount = consolidationCounts.p2wda;
+            }
+            if (consolidationCounts.csv2 >= maxCount) {
+                selectedType = 'csv2';
+                maxCount = consolidationCounts.csv2;
+            }
+            if (consolidationCounts.csv1 >= maxCount) {
+                selectedType = 'csv1';
+                maxCount = consolidationCounts.csv1;
+            }
+            if (consolidationCounts.unspent >= maxCount) {
+                selectedType = 'unspent';
+                maxCount = consolidationCounts.unspent;
+            }
 
-        return {
-            type: selectedType,
-            count: maxCount
-        };
-    }, []);
+            return {
+                type: selectedType,
+                count: maxCount
+            };
+        },
+        []
+    );
 
     /**
      * Navigate to the consolidation screen with the appropriate account type selected
