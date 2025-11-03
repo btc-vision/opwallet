@@ -95,6 +95,8 @@ export default function TxCreateScreen() {
     const [loadingBalances, setLoadingBalances] = useState(true);
     const [hasSelectedAddress, setHasSelectedAddress] = useState(false);
     const [hasAutoSelectedOnce, setHasAutoSelectedOnce] = useState(false);
+    const [showCSV2Warning, setShowCSV2Warning] = useState(false);
+    const [pendingBalance, setPendingBalance] = useState<AddressBalance | null>(null);
 
     useEffect(() => {
         void (async () => {
@@ -393,6 +395,13 @@ export default function TxCreateScreen() {
 
     const handleSelectAddress = (balance: AddressBalance) => {
         if (balance.available && balance.satoshis > 0n) {
+            // Show warning for CSV2 addresses (used by MotoChef)
+            if (balance.type === SourceType.CSV2) {
+                setPendingBalance(balance);
+                setShowCSV2Warning(true);
+                return;
+            }
+
             setSelectedBalance(balance);
             setHasSelectedAddress(true);
             // Clear any existing input amount when switching addresses
@@ -400,11 +409,182 @@ export default function TxCreateScreen() {
         }
     };
 
+    const handleConfirmCSV2 = () => {
+        if (pendingBalance) {
+            setSelectedBalance(pendingBalance);
+            setHasSelectedAddress(true);
+            setUiState({ inputAmount: '' });
+        }
+        setShowCSV2Warning(false);
+        setPendingBalance(null);
+    };
+
+    const handleCancelCSV2 = () => {
+        setShowCSV2Warning(false);
+        setPendingBalance(null);
+    };
+
     // Show address selection screen first
     if (!hasSelectedAddress) {
         return (
             <Layout>
                 <Header title={`Send ${btcUnit}`} onBack={() => navigate(RouteTypes.MainScreen)} />
+
+                {/* CSV2 Warning Modal */}
+                {showCSV2Warning && (
+                    <div
+                        style={{
+                            position: 'fixed',
+                            top: 0,
+                            left: 0,
+                            right: 0,
+                            bottom: 0,
+                            background: 'rgba(0, 0, 0, 0.85)',
+                            backdropFilter: 'blur(8px)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            zIndex: 10000,
+                            padding: '20px'
+                        }}
+                        onClick={handleCancelCSV2}>
+                        <div
+                            style={{
+                                background: colors.containerBg,
+                                border: `2px solid ${colors.warning}40`,
+                                borderRadius: '16px',
+                                padding: '20px',
+                                maxWidth: '360px',
+                                width: '100%',
+                                boxShadow: `0 20px 60px rgba(0, 0, 0, 0.6)`
+                            }}
+                            onClick={(e) => e.stopPropagation()}>
+                            {/* Header */}
+                            <div
+                                style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '10px',
+                                    marginBottom: '16px'
+                                }}>
+                                <div
+                                    style={{
+                                        width: '36px',
+                                        height: '36px',
+                                        background: `${colors.warning}20`,
+                                        borderRadius: '10px',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center'
+                                    }}>
+                                    <WarningOutlined style={{ fontSize: '18px', color: colors.warning }} />
+                                </div>
+                                <div>
+                                    <h3
+                                        style={{
+                                            fontSize: '15px',
+                                            fontWeight: 600,
+                                            color: colors.text,
+                                            margin: 0
+                                        }}>
+                                        CSV-2 Address Warning
+                                    </h3>
+                                    <p
+                                        style={{
+                                            fontSize: '11px',
+                                            color: colors.textFaded,
+                                            margin: 0
+                                        }}>
+                                        Used by MotoChef staking
+                                    </p>
+                                </div>
+                            </div>
+
+                            {/* Content */}
+                            <div
+                                style={{
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    gap: '10px',
+                                    marginBottom: '20px'
+                                }}>
+                                <div
+                                    style={{
+                                        padding: '10px 12px',
+                                        background: `${colors.error}12`,
+                                        border: `1px solid ${colors.error}25`,
+                                        borderRadius: '10px',
+                                        fontSize: '12px',
+                                        color: colors.text,
+                                        lineHeight: 1.4
+                                    }}>
+                                    <strong style={{ color: colors.error }}>Warning:</strong> Sending may terminate
+                                    staking positions and lose unharvested MOTO rewards.
+                                </div>
+
+                                <div
+                                    style={{
+                                        padding: '10px 12px',
+                                        background: `${colors.main}08`,
+                                        borderRadius: '8px',
+                                        fontSize: '11px',
+                                        color: colors.textFaded,
+                                        lineHeight: 1.4
+                                    }}>
+                                    💡 Only proceed if you&apos;ve already unstaked or don&apos;t have active positions.
+                                </div>
+                            </div>
+
+                            {/* Buttons */}
+                            <div style={{ display: 'flex', gap: '10px' }}>
+                                <button
+                                    style={{
+                                        flex: 1,
+                                        padding: '10px',
+                                        background: colors.containerBgFaded,
+                                        border: `1px solid ${colors.containerBorder}`,
+                                        borderRadius: '10px',
+                                        color: colors.text,
+                                        fontSize: '12px',
+                                        fontWeight: 600,
+                                        cursor: 'pointer',
+                                        transition: 'all 0.2s'
+                                    }}
+                                    onClick={handleCancelCSV2}
+                                    onMouseEnter={(e) => {
+                                        e.currentTarget.style.background = colors.buttonBg;
+                                    }}
+                                    onMouseLeave={(e) => {
+                                        e.currentTarget.style.background = colors.containerBgFaded;
+                                    }}>
+                                    Cancel
+                                </button>
+                                <button
+                                    style={{
+                                        flex: 1.3,
+                                        padding: '10px',
+                                        background: colors.warning,
+                                        border: 'none',
+                                        borderRadius: '10px',
+                                        color: colors.background,
+                                        fontSize: '12px',
+                                        fontWeight: 600,
+                                        cursor: 'pointer',
+                                        transition: 'all 0.2s'
+                                    }}
+                                    onClick={handleConfirmCSV2}
+                                    onMouseEnter={(e) => {
+                                        e.currentTarget.style.transform = 'scale(1.02)';
+                                    }}
+                                    onMouseLeave={(e) => {
+                                        e.currentTarget.style.transform = 'scale(1)';
+                                    }}>
+                                    I Understand
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
 
                 <Content style={{ padding: '16px' }}>
                     <Column>
