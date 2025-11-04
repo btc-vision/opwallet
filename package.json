@@ -48,9 +48,9 @@
     "dependencies": {
         "@ant-design/icons": "^6.0.0",
         "@babel/core": "^7.28.3",
-        "@btc-vision/bitcoin": "^6.4.10",
+        "@btc-vision/bitcoin": "^6.4.11",
         "@btc-vision/passworder": "1.0.0",
-        "@btc-vision/transaction": "^1.6.18",
+        "@btc-vision/transaction": "^1.6.19",
         "@btc-vision/wallet-sdk": "^1.0.8",
         "@eslint/js": "9.38.0",
         "@fortawesome/fontawesome-svg-core": "^7.0.0",
