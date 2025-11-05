@@ -1,12 +1,14 @@
-import React, { CSSProperties } from 'react';
-import { ProgressSection } from './ProgressSection';
 import { UTXO_CONFIG } from '@/shared/config';
+import React, { CSSProperties } from 'react';
 import { UTXO_SECTION_LABELS } from '../constants';
+import { ProgressSection } from './ProgressSection';
 
 interface TransactionsCountProps {
     unspent_utxos_count: number;
     csv75_locked_utxos_count: number;
     csv75_unlocked_utxos_count: number;
+    csv2_locked_utxos_count: number;
+    csv2_unlocked_utxos_count: number;
     csv1_locked_utxos_count: number;
     csv1_unlocked_utxos_count: number;
     p2wda_utxos_count: number;
@@ -26,6 +28,8 @@ export const TransactionsCount: React.FC<TransactionsCountProps> = ({
     unspent_utxos_count,
     csv75_locked_utxos_count,
     csv75_unlocked_utxos_count,
+    csv2_locked_utxos_count,
+    csv2_unlocked_utxos_count,
     csv1_locked_utxos_count,
     csv1_unlocked_utxos_count,
     p2wda_utxos_count,
@@ -77,6 +81,26 @@ export const TransactionsCount: React.FC<TransactionsCountProps> = ({
             <ProgressSection
                 label={UTXO_SECTION_LABELS.CSV75_UNLOCKED}
                 currentValue={csv75_unlocked_utxos_count}
+                maxValue={maxUTXOs}
+                warningThreshold={warningThreshold}
+                colors={colors}
+                noBreakStyle={noBreakStyle}
+            />
+
+            {/* CSV2 Locked UTXOs */}
+            <ProgressSection
+                label={UTXO_SECTION_LABELS.CSV2_LOCKED}
+                currentValue={csv2_locked_utxos_count}
+                maxValue={maxUTXOs}
+                warningThreshold={warningThreshold}
+                colors={colors}
+                noBreakStyle={noBreakStyle}
+            />
+
+            {/* CSV2 Unlocked UTXOs */}
+            <ProgressSection
+                label={UTXO_SECTION_LABELS.CSV2_UNLOCKED}
+                currentValue={csv2_unlocked_utxos_count}
                 maxValue={maxUTXOs}
                 warningThreshold={warningThreshold}
                 colors={colors}

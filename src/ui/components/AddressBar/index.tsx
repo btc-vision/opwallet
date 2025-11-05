@@ -34,6 +34,9 @@ export function AddressBar({
     csv75_total_amount,
     csv75_unlocked_amount,
     csv75_locked_amount,
+    csv2_total_amount,
+    csv2_unlocked_amount,
+    csv2_locked_amount,
     csv1_total_amount,
     csv1_unlocked_amount,
     csv1_locked_amount,
@@ -42,6 +45,9 @@ export function AddressBar({
     csv75_total_amount: string | undefined;
     csv75_unlocked_amount: string | undefined;
     csv75_locked_amount: string | undefined;
+    csv2_total_amount: string | undefined;
+    csv2_unlocked_amount: string | undefined;
+    csv2_locked_amount: string | undefined;
     csv1_total_amount: string | undefined;
     csv1_unlocked_amount: string | undefined;
     csv1_locked_amount: string | undefined;
@@ -54,6 +60,7 @@ export function AddressBar({
     const tweakedPublicKey = address.toHex();
     const explorerUrl = `https://opscan.org/accounts/${tweakedPublicKey}`;
     const csv75Address = address.toCSV(75, Web3API.network).address;
+    const csv2Address = address.toCSV(2, Web3API.network).address;
     const csv1Address = address.toCSV(1, Web3API.network).address;
     const p2wdaAddress = address.p2wda(Web3API.network).address;
 
@@ -95,16 +102,6 @@ export function AddressBar({
             total: p2wda_total_amount
         },
         {
-            label: 'CSV 1',
-            value: csv1Address,
-            info: 'Address for anti-pinning protection, used by contracts such as NativeSwap.',
-            showBalance: true,
-            total: csv1_total_amount,
-            unlocked: csv1_unlocked_amount,
-            locked: csv1_locked_amount,
-            showLocked: true
-        },
-        {
             label: 'CSV 75',
             value: csv75Address,
             info: 'Address used for SHA1 Mining reward payouts on OP_NET.',
@@ -112,6 +109,26 @@ export function AddressBar({
             total: csv75_total_amount,
             unlocked: csv75_unlocked_amount,
             locked: csv75_locked_amount,
+            showLocked: true
+        },
+        {
+            label: 'CSV 2',
+            value: csv2Address,
+            info: 'Address for anti-pinning protection, used by contracts such as MotoChef.',
+            showBalance: true,
+            total: csv2_total_amount,
+            unlocked: csv2_unlocked_amount,
+            locked: csv2_locked_amount,
+            showLocked: true
+        },
+        {
+            label: 'CSV 1',
+            value: csv1Address,
+            info: 'Address for anti-pinning protection, used by contracts such as NativeSwap.',
+            showBalance: true,
+            total: csv1_total_amount,
+            unlocked: csv1_unlocked_amount,
+            locked: csv1_locked_amount,
             showLocked: true
         }
     ];
@@ -442,7 +459,7 @@ export function AddressBar({
                                             </div>
 
                                             {/* Balance Display */}
-                                            {addr.showBalance && (
+                                            {addr.showBalance && addr.total !== undefined && (
                                                 <div
                                                     style={{
                                                         background: colors.containerBgFaded,
