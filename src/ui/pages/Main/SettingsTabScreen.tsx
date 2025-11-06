@@ -224,7 +224,9 @@ export default function SettingsTabScreen() {
 
     return (
         <Layout>
-            <Header />
+            <Header 
+                onBack={() => navigate('/main')}
+            />
             <Content style={{ padding: '12px' }}>
                 <Column>
                     {/* Settings Cards */}

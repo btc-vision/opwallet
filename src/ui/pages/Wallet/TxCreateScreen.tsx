@@ -62,7 +62,7 @@ interface AddressBalance {
 
 interface ConsolidationParams {
     enabled: boolean;
-    selectedType: 'unspent' | 'csv1' | 'csv75' | 'p2wda';
+    selectedType: 'unspent' | 'csv75' | 'csv2' | 'csv1' | 'p2wda';
     maxUTXOs: number;
     autoFillAmount: boolean;
 }
@@ -103,6 +103,8 @@ export default function TxCreateScreen() {
     const [loadingBalances, setLoadingBalances] = useState(true);
     const [hasSelectedAddress, setHasSelectedAddress] = useState(false);
     const [hasAutoSelectedOnce, setHasAutoSelectedOnce] = useState(false);
+    const [showCSV2Warning, setShowCSV2Warning] = useState(false);
+    const [pendingBalance, setPendingBalance] = useState<AddressBalance | null>(null);
 
     useEffect(() => {
         void (async () => {
@@ -123,6 +125,7 @@ export default function TxCreateScreen() {
 
                 // Get CSV addresses for display
                 const csv75Address = currentAddress.toCSV(75, Web3API.network);
+                const csv2Address = currentAddress.toCSV(2, Web3API.network);
                 const csv1Address = currentAddress.toCSV(1, Web3API.network);
                 const p2wdaAddress = currentAddress.p2wda(Web3API.network);
 
@@ -179,6 +182,26 @@ export default function TxCreateScreen() {
                     });
                 }
 
+                // Check CSV2 balance from the response
+                if (currentBalance.csv2_total_amount && currentBalance.csv2_total_amount !== '0') {
+                    const csv2UnlockedAmount = currentBalance.csv2_unlocked_amount || '0';
+                    const csv2LockedAmount = currentBalance.csv2_locked_amount || '0';
+                    const hasUnlocked = csv2UnlockedAmount !== '0';
+
+                    balances.push({
+                        type: SourceType.CSV2,
+                        label: 'CSV-2 Fast Access',
+                        address: csv2Address.address,
+                        balance: csv2UnlockedAmount,
+                        totalBalance: currentBalance.csv2_total_amount,
+                        lockedBalance: csv2LockedAmount,
+                        satoshis: BigInt(amountToSatoshis(csv2UnlockedAmount)),
+                        available: hasUnlocked,
+                        lockTime: 2,
+                        description: 'Anti-pinning protection (2 block lock)'
+                    });
+                }
+
                 // Check CSV75 balance from the response
                 if (currentBalance.csv75_total_amount && currentBalance.csv75_total_amount !== '0') {
                     const csv75UnlockedAmount = currentBalance.csv75_unlocked_amount || '0';
@@ -213,42 +236,51 @@ export default function TxCreateScreen() {
     // Handle consolidation mode - auto-select address and fill form (only on initial load)
     useEffect(() => {
         const setupConsolidation = async () => {
-            if (consolidationParams?.enabled && addressBalances.length > 0 && !hasSelectedAddress && !hasAutoSelectedOnce) {
+            if (
+                consolidationParams?.enabled &&
+                addressBalances.length > 0 &&
+                !hasSelectedAddress &&
+                !hasAutoSelectedOnce
+            ) {
                 // Map the selected type to SourceType
                 const typeMapping: Record<string, SourceType> = {
-                    'unspent': SourceType.CURRENT,
-                    'csv1': SourceType.CSV1,
-                    'csv75': SourceType.CSV75,
-                    'p2wda': SourceType.P2WDA
+                    unspent: SourceType.CURRENT,
+                    csv1: SourceType.CSV1,
+                    csv2: SourceType.CSV2,
+                    csv75: SourceType.CSV75,
+                    p2wda: SourceType.P2WDA
                 };
-                
+
                 const targetType = typeMapping[consolidationParams.selectedType || 'unspent'];
 
                 // Find the address matching the selected type
-                const selectedAddress = addressBalances.find(b => b.type === targetType && b.available);
-                
+                const selectedAddress = addressBalances.find((b) => b.type === targetType && b.available);
+
                 if (selectedAddress) {
                     // Auto-select the address
                     setSelectedBalance(selectedAddress);
                     setHasSelectedAddress(true);
                     setHasAutoSelectedOnce(true);
 
-                    setUiState({ 
-                        toInfo: { 
-                            address: account.address, 
-                            domain: '' 
+                    setUiState({
+                        toInfo: {
+                            address: account.address,
+                            domain: ''
                         }
                     });
-                    
+
                     // Autofill with consolidation amount if requested
                     if (consolidationParams.autoFillAmount) {
                         // Get balance and use the appropriate consolidation amount based on type
                         const balance = await wallet.getAddressBalance(account.address, account.pubkey);
                         let consolidationAmount = '0';
-                        
+
                         switch (consolidationParams.selectedType) {
                             case 'csv1':
                                 consolidationAmount = balance.consolidation_csv1_unlocked_amount;
+                                break;
+                            case 'csv2':
+                                consolidationAmount = balance.consolidation_csv2_unlocked_amount;
                                 break;
                             case 'csv75':
                                 consolidationAmount = balance.consolidation_csv75_unlocked_amount;
@@ -261,25 +293,35 @@ export default function TxCreateScreen() {
                                 consolidationAmount = balance.consolidation_unspent_amount;
                                 break;
                         }
-                        
+
                         setUiState({ inputAmount: consolidationAmount });
                     }
-                    
+
                     // Add note for consolidation with type info
                     const typeLabels: Record<string, string> = {
-                        'unspent': 'Primary Account',
-                        'csv1': 'CSV1 Fast Access',
-                        'csv75': 'CSV75',
-                        'p2wda': 'Smart Contract Optimized'
+                        unspent: 'Primary Account',
+                        csv1: 'CSV1 Fast Access',
+                        csv2: 'CSV2 Fast Access',
+                        csv75: 'CSV75',
+                        p2wda: 'Smart Contract Optimized'
                     };
                     const typeLabel = typeLabels[consolidationParams.selectedType || 'unspent'];
                     setNote(`UTXO Consolidation - ${typeLabel} (${consolidationParams.maxUTXOs} UTXOs)`);
                 }
             }
         };
-        
+
         void setupConsolidation();
-    }, [consolidationParams, addressBalances, hasSelectedAddress, hasAutoSelectedOnce, setUiState, wallet, account.address, account.pubkey]);
+    }, [
+        consolidationParams,
+        addressBalances,
+        hasSelectedAddress,
+        hasAutoSelectedOnce,
+        setUiState,
+        wallet,
+        account.address,
+        account.pubkey
+    ]);
 
     // Open UTXO Status section and set Quotas tab active when coming from consolidation
     useEffect(() => {
@@ -369,6 +411,13 @@ export default function TxCreateScreen() {
 
     const handleSelectAddress = (balance: AddressBalance) => {
         if (balance.available && balance.satoshis > 0n) {
+            // Show warning for CSV2 addresses (used by MotoChef)
+            if (balance.type === SourceType.CSV2) {
+                setPendingBalance(balance);
+                setShowCSV2Warning(true);
+                return;
+            }
+
             setSelectedBalance(balance);
             setHasSelectedAddress(true);
             // Clear any existing input amount when switching addresses
@@ -376,11 +425,182 @@ export default function TxCreateScreen() {
         }
     };
 
+    const handleConfirmCSV2 = () => {
+        if (pendingBalance) {
+            setSelectedBalance(pendingBalance);
+            setHasSelectedAddress(true);
+            setUiState({ inputAmount: '' });
+        }
+        setShowCSV2Warning(false);
+        setPendingBalance(null);
+    };
+
+    const handleCancelCSV2 = () => {
+        setShowCSV2Warning(false);
+        setPendingBalance(null);
+    };
+
     // Show address selection screen first
     if (!hasSelectedAddress) {
         return (
             <Layout>
                 <Header title={`Send ${btcUnit}`} onBack={() => navigate(RouteTypes.MainScreen)} />
+
+                {/* CSV2 Warning Modal */}
+                {showCSV2Warning && (
+                    <div
+                        style={{
+                            position: 'fixed',
+                            top: 0,
+                            left: 0,
+                            right: 0,
+                            bottom: 0,
+                            background: 'rgba(0, 0, 0, 0.85)',
+                            backdropFilter: 'blur(8px)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            zIndex: 10000,
+                            padding: '20px'
+                        }}
+                        onClick={handleCancelCSV2}>
+                        <div
+                            style={{
+                                background: colors.containerBg,
+                                border: `2px solid ${colors.warning}40`,
+                                borderRadius: '16px',
+                                padding: '20px',
+                                maxWidth: '360px',
+                                width: '100%',
+                                boxShadow: `0 20px 60px rgba(0, 0, 0, 0.6)`
+                            }}
+                            onClick={(e) => e.stopPropagation()}>
+                            {/* Header */}
+                            <div
+                                style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '10px',
+                                    marginBottom: '16px'
+                                }}>
+                                <div
+                                    style={{
+                                        width: '36px',
+                                        height: '36px',
+                                        background: `${colors.warning}20`,
+                                        borderRadius: '10px',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center'
+                                    }}>
+                                    <WarningOutlined style={{ fontSize: '18px', color: colors.warning }} />
+                                </div>
+                                <div>
+                                    <h3
+                                        style={{
+                                            fontSize: '15px',
+                                            fontWeight: 600,
+                                            color: colors.text,
+                                            margin: 0
+                                        }}>
+                                        CSV-2 Address Warning
+                                    </h3>
+                                    <p
+                                        style={{
+                                            fontSize: '11px',
+                                            color: colors.textFaded,
+                                            margin: 0
+                                        }}>
+                                        Used by MotoChef staking
+                                    </p>
+                                </div>
+                            </div>
+
+                            {/* Content */}
+                            <div
+                                style={{
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    gap: '10px',
+                                    marginBottom: '20px'
+                                }}>
+                                <div
+                                    style={{
+                                        padding: '10px 12px',
+                                        background: `${colors.error}12`,
+                                        border: `1px solid ${colors.error}25`,
+                                        borderRadius: '10px',
+                                        fontSize: '12px',
+                                        color: colors.text,
+                                        lineHeight: 1.4
+                                    }}>
+                                    <strong style={{ color: colors.error }}>Warning:</strong> Sending may terminate
+                                    staking positions and lose unharvested MOTO rewards.
+                                </div>
+
+                                <div
+                                    style={{
+                                        padding: '10px 12px',
+                                        background: `${colors.main}08`,
+                                        borderRadius: '8px',
+                                        fontSize: '11px',
+                                        color: colors.textFaded,
+                                        lineHeight: 1.4
+                                    }}>
+                                    💡 Only proceed if you&apos;ve already unstaked or don&apos;t have active positions.
+                                </div>
+                            </div>
+
+                            {/* Buttons */}
+                            <div style={{ display: 'flex', gap: '10px' }}>
+                                <button
+                                    style={{
+                                        flex: 1,
+                                        padding: '10px',
+                                        background: colors.containerBgFaded,
+                                        border: `1px solid ${colors.containerBorder}`,
+                                        borderRadius: '10px',
+                                        color: colors.text,
+                                        fontSize: '12px',
+                                        fontWeight: 600,
+                                        cursor: 'pointer',
+                                        transition: 'all 0.2s'
+                                    }}
+                                    onClick={handleCancelCSV2}
+                                    onMouseEnter={(e) => {
+                                        e.currentTarget.style.background = colors.buttonBg;
+                                    }}
+                                    onMouseLeave={(e) => {
+                                        e.currentTarget.style.background = colors.containerBgFaded;
+                                    }}>
+                                    Cancel
+                                </button>
+                                <button
+                                    style={{
+                                        flex: 1.3,
+                                        padding: '10px',
+                                        background: colors.warning,
+                                        border: 'none',
+                                        borderRadius: '10px',
+                                        color: colors.background,
+                                        fontSize: '12px',
+                                        fontWeight: 600,
+                                        cursor: 'pointer',
+                                        transition: 'all 0.2s'
+                                    }}
+                                    onClick={handleConfirmCSV2}
+                                    onMouseEnter={(e) => {
+                                        e.currentTarget.style.transform = 'scale(1.02)';
+                                    }}
+                                    onMouseLeave={(e) => {
+                                        e.currentTarget.style.transform = 'scale(1)';
+                                    }}>
+                                    I Understand
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
 
                 <Content style={{ padding: '16px' }}>
                     <Column>
@@ -665,8 +885,8 @@ export default function TxCreateScreen() {
     // Main transaction form after address selection
     return (
         <Layout>
-            <Header 
-                title={`Send ${btcUnit}`} 
+            <Header
+                title={`Send ${btcUnit}`}
                 onBack={() => {
                     // If coming from consolidation, go back to main screen
                     if (consolidationParams?.enabled) {
@@ -675,7 +895,7 @@ export default function TxCreateScreen() {
                         // Otherwise, go back to address selection
                         setHasSelectedAddress(false);
                     }
-                }} 
+                }}
             />
 
             <Content style={{ padding: '12px' }}>

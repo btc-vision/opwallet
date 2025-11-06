@@ -302,6 +302,17 @@ export default function TxOpnetConfirmScreen() {
                         1n,
                         parameters.optimize
                     );
+                } else if (parameters.sourceType === SourceType.CSV2) {
+                    const csv2Address = currentAddress.toCSV(2, Web3API.network);
+                    fromAddress = csv2Address.address;
+                    witnessScript = csv2Address.witnessScript;
+
+                    utxos = await Web3API.getAllUTXOsForAddresses(
+                        [fromAddress],
+                        BitcoinUtils.expandToDecimals(parameters.inputAmount, 8) + feeMin,
+                        2n,
+                        parameters.optimize
+                    );
                 } else if (parameters.sourceType === SourceType.P2WDA) {
                     const p2wdaAddress = currentAddress.p2wda(Web3API.network);
                     fromAddress = p2wdaAddress.address;
@@ -377,7 +388,9 @@ export default function TxOpnetConfirmScreen() {
                     ? ' from CSV-75'
                     : parameters.sourceType === SourceType.CSV1
                       ? ' from CSV-1'
-                      : '';
+                      : parameters.sourceType === SourceType.CSV2
+                        ? ' from CSV-2'
+                        : '';
             tools.toastSuccess(`You have successfully transferred ${amountA} ${btcUnit}${sourceLabel}`);
 
             // Update UTXO manager for the correct address

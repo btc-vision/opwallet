@@ -73,6 +73,7 @@ export interface AirdropParameters extends BaseRawTxInfo<Action.Airdrop> {
 export enum SourceType {
     CURRENT = 'current',
     CSV75 = 'csv75',
+    CSV2 = 'csv2',
     CSV1 = 'csv1',
     P2WDA = 'p2wda'
 }

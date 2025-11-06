@@ -83,6 +83,10 @@ const slice = createSlice({
                     csv75_unlocked_amount,
                     csv75_locked_amount,
 
+                    csv2_total_amount,
+                    csv2_unlocked_amount,
+                    csv2_locked_amount,
+
                     csv1_total_amount,
                     csv1_unlocked_amount,
                     csv1_locked_amount,
@@ -96,6 +100,8 @@ const slice = createSlice({
                     unspent_utxos_count,
                     csv75_locked_utxos_count,
                     csv75_unlocked_utxos_count,
+                    csv2_locked_utxos_count,
+                    csv2_unlocked_utxos_count,
                     csv1_locked_utxos_count,
                     csv1_unlocked_utxos_count,
                     p2wda_utxos_count,
@@ -112,6 +118,10 @@ const slice = createSlice({
             state.balanceMap[address].csv75_unlocked_amount = csv75_unlocked_amount;
             state.balanceMap[address].csv75_locked_amount = csv75_locked_amount;
 
+            state.balanceMap[address].csv2_total_amount = csv2_total_amount;
+            state.balanceMap[address].csv2_unlocked_amount = csv2_unlocked_amount;
+            state.balanceMap[address].csv2_locked_amount = csv2_locked_amount;
+
             state.balanceMap[address].csv1_total_amount = csv1_total_amount;
             state.balanceMap[address].csv1_unlocked_amount = csv1_unlocked_amount;
             state.balanceMap[address].csv1_locked_amount = csv1_locked_amount;
@@ -120,11 +130,13 @@ const slice = createSlice({
             state.balanceMap[address].p2wda_total_amount = p2wda_total_amount;
 
             state.balanceMap[address].usd_value = usd_value;
-            
+
             state.balanceMap[address].all_utxos_count = all_utxos_count;
             state.balanceMap[address].unspent_utxos_count = unspent_utxos_count;
             state.balanceMap[address].csv75_locked_utxos_count = csv75_locked_utxos_count;
             state.balanceMap[address].csv75_unlocked_utxos_count = csv75_unlocked_utxos_count;
+            state.balanceMap[address].csv2_locked_utxos_count = csv2_locked_utxos_count;
+            state.balanceMap[address].csv2_unlocked_utxos_count = csv2_unlocked_utxos_count;
             state.balanceMap[address].csv1_locked_utxos_count = csv1_locked_utxos_count;
             state.balanceMap[address].csv1_unlocked_utxos_count = csv1_unlocked_utxos_count;
             state.balanceMap[address].p2wda_utxos_count = p2wda_utxos_count;

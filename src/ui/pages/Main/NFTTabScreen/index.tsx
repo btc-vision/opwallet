@@ -89,6 +89,7 @@ export default function NFTTabScreen() {
     const chainType = useChainType();
 
     const [collections, setCollections] = useState<NFTCollection[]>([]);
+    const [collectionCounts, setCollectionCounts] = useState<Record<string, number>>({});
     const [selectedCollection, setSelectedCollection] = useState<NFTCollection | null>(null);
     const [ownedNFTs, setOwnedNFTs] = useState<OwnedNFT[]>([]);
     const [loadingNFTs, setLoadingNFTs] = useState(false);
@@ -100,6 +101,41 @@ export default function NFTTabScreen() {
         setCollections(updatedCollections);
         localStorage.setItem(storageKey, JSON.stringify(updatedCollections));
     };
+
+    useEffect(() => {
+        const fetchCollectionCounts = async () => {
+            const counts: Record<string, number> = {};
+            const userAddress = Address.fromString(currentAccount.pubkey);
+
+            for (const collection of collections) {
+                const cacheKey = `${collection.address}-${currentAccount.pubkey}`;
+                const cached = nftCache.getOwnedNfts(cacheKey);
+
+                if (cached) {
+                    counts[collection.address] = cached.length;
+                } else {
+                    try {
+                        const nfts = await Web3API.getOwnedNFTsForCollection(collection.address, userAddress);
+                        if (nfts && typeof nfts !== 'boolean') {
+                            counts[collection.address] = nfts.length;
+                            nftCache.setOwnedNfts(cacheKey, nfts);
+                        } else {
+                            counts[collection.address] = 0;
+                        }
+                    } catch (error) {
+                        console.error(`Failed to fetch NFTs for ${collection.address}:`, error);
+                        counts[collection.address] = 0;
+                    }
+                }
+            }
+
+            setCollectionCounts(counts);
+        };
+
+        if (collections.length > 0) {
+            void fetchCollectionCounts();
+        }
+    }, [collections, currentAccount.pubkey]);
 
     useEffect(() => {
         const storedCollections = localStorage.getItem(storageKey);
@@ -270,6 +306,7 @@ export default function NFTTabScreen() {
                                             collection={collection}
                                             onClick={() => handleCollectionClick(collection)}
                                             onDelete={() => handleDeleteCollection(collection.address)}
+                                            ownedCount={collectionCounts[collection.address]}
                                         />
                                     ))}
                                 </div>
@@ -334,11 +371,13 @@ export default function NFTTabScreen() {
 function CollectionCard({
     collection,
     onClick,
-    onDelete
+    onDelete,
+    ownedCount
 }: {
     collection: NFTCollection;
     onClick: () => void;
     onDelete: () => void;
+    ownedCount?: number;
 }) {
     const handleDelete = (e: React.MouseEvent) => {
         e.stopPropagation();
@@ -444,7 +483,7 @@ function CollectionCard({
                             padding: '2px 6px',
                             borderRadius: '4px'
                         }}>
-                        {collection.maximumSupply} NFTs
+                        {ownedCount !== undefined ? `${ownedCount} owned` : 'Loading...'}
                     </span>
                 </Row>
             </div>
