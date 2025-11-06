@@ -1,7 +1,7 @@
-import React, { CSSProperties } from 'react';
-import { ProgressSection } from './ProgressSection';
 import { UTXO_CONFIG } from '@/shared/config';
+import React, { CSSProperties } from 'react';
 import { UTXO_SECTION_LABELS } from '../constants';
+import { ProgressSection } from './ProgressSection';
 
 interface TransactionsCountProps {
     unspent_utxos_count: number;
@@ -39,7 +39,8 @@ export const TransactionsCount: React.FC<TransactionsCountProps> = ({
     return (
         <div
             style={{
-                marginBottom: '8px'
+                marginBottom: '8px',
+                textAlign: 'left'
             }}>
             <div
                 style={{
@@ -48,7 +49,8 @@ export const TransactionsCount: React.FC<TransactionsCountProps> = ({
                     color: colors.textFaded,
                     marginBottom: '6px',
                     textTransform: 'uppercase',
-                    letterSpacing: '0.5px'
+                    letterSpacing: '0.5px',
+                    textAlign: 'left'
                 }}>
                 UTXOs Counts
             </div>

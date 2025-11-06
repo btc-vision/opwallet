@@ -75,13 +75,15 @@ export const ProgressSection: React.FC<ProgressSectionProps> = ({
                     style={{
                         width: '110px',
                         minWidth: '110px',
-                        flexShrink: 0
+                        flexShrink: 0,
+                        textAlign: 'left'
                     }}>
                     <span
                         style={{
                             ...noBreakStyle,
                             color: progressColor,
-                            fontWeight: 600
+                            fontWeight: 600,
+                            fontSize: '11px'
                         }}>
                         {label}
                     </span>

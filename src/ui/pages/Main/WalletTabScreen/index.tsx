@@ -1,6 +1,7 @@
 import React, { CSSProperties, useEffect, useState } from 'react';
 
 import { AddressFlagType } from '@/shared/constant';
+import { UTXO_CONFIG } from '@/shared/config';
 import { checkAddressFlag } from '@/shared/utils';
 import { Column, Content, Footer, Header, Image, Layout, Row } from '@/ui/components';
 import AccountSelect from '@/ui/components/AccountSelect';
@@ -300,17 +301,35 @@ export default function WalletTabScreen() {
                             />
 
                             <div>
-                                {/* Warning message when threshold is reached (yellow) */}
+                                {/* Warning message when threshold is reached (yellow/red based on count) */}
                                 {(() => {
                                     const { hasReachedWarning, warningThreshold } = checkUTXOWarning(accountBalance);
                                     const { hasReachedLimit } = checkUTXOLimit(accountBalance);
 
-                                    // Only show warning if threshold reached but limit not yet reached
-                                    return hasReachedWarning && !hasReachedLimit ? (
+                                    if (!hasReachedWarning || hasReachedLimit) return null;
+
+                                    // Check if we've reached the error threshold (1500) to show red instead of yellow
+                                    const errorThreshold = UTXO_CONFIG.ERROR_THRESHOLD;
+                                    const hasReachedError = 
+                                        accountBalance.unspent_utxos_count >= errorThreshold ||
+                                        accountBalance.csv75_locked_utxos_count >= errorThreshold ||
+                                        accountBalance.csv75_unlocked_utxos_count >= errorThreshold ||
+                                        accountBalance.csv1_locked_utxos_count >= errorThreshold ||
+                                        accountBalance.csv1_unlocked_utxos_count >= errorThreshold ||
+                                        accountBalance.p2wda_utxos_count >= errorThreshold ||
+                                        accountBalance.unspent_p2wda_utxos_count >= errorThreshold;
+
+                                    // Use same colors as 2000+ message when >= 1500
+                                    const alertColor = hasReachedError ? colors.error : colors.warning;
+                                    const strongTextColor = hasReachedError ? colors.main : colors.warning;
+                                    const buttonColor = hasReachedError ? colors.main : colors.warning;
+                                    const buttonTextColor = '#000';
+
+                                    return (
                                         <div
                                             style={{
-                                                background: `linear-gradient(135deg, ${colors.warning}15 0%, ${colors.warning}08 100%)`,
-                                                border: `1px solid ${colors.warning}40`,
+                                                background: `linear-gradient(135deg, ${alertColor}15 0%, ${alertColor}08 100%)`,
+                                                border: `1px solid ${alertColor}40`,
                                                 borderRadius: '8px',
                                                 padding: '10px',
                                                 marginBottom: '12px',
@@ -320,12 +339,12 @@ export default function WalletTabScreen() {
                                                 maxWidth: '320px',
                                                 margin: '0 auto 12px'
                                             }}>
-                                            <div style={{ fontWeight: 600, color: colors.warning, marginBottom: '4px' }}>
+                                            <div style={{ fontWeight: 600, color: alertColor, marginBottom: '4px' }}>
                                                 ⚠️ High UTXO Count
                                             </div>
                                             <div style={{ fontSize: '9px', color: 'rgba(219, 219, 219, 0.7)', marginBottom: '8px' }}>
                                                 One or more UTXO categories has reached {warningThreshold} UTXOs. Consider consolidating now to avoid issues.
-                                                <strong style={{ display: 'block', marginTop: '4px', color: colors.warning }}>
+                                                <strong style={{ display: 'block', marginTop: '4px', color: strongTextColor }}>
                                                     If you exceed 2,000 UTXOs in any category, your balance will not be fully displayed.
                                                 </strong>
                                             </div>
@@ -334,13 +353,13 @@ export default function WalletTabScreen() {
                                                 style={{
                                                     width: '100%',
                                                     padding: '6px 12px',
-                                                    background: colors.warning,
+                                                    background: buttonColor,
                                                     border: 'none',
                                                     borderRadius: '6px',
                                                     cursor: 'pointer',
                                                     fontSize: '10px',
                                                     fontWeight: 600,
-                                                    color: '#000',
+                                                    color: buttonTextColor,
                                                     transition: 'all 0.2s'
                                                 }}
                                                 onMouseEnter={(e) => {
@@ -352,7 +371,7 @@ export default function WalletTabScreen() {
                                                 Consolidate UTXOs
                                             </button>
                                         </div>
-                                    ) : null;
+                                    );
                                 })()}
 
                                 {/* Critical warning message when limit is reached (red) */}

@@ -7,13 +7,12 @@ import { Action, Features, SendBitcoinParameters, SourceType } from '@/shared/in
 import Web3API from '@/shared/web3/Web3API';
 import { Column, Content, Header, Input, Layout } from '@/ui/components';
 import { FeeRateBar } from '@/ui/components/FeeRateBar';
+import { BalanceDisplay } from '@/ui/pages/Main/WalletTabScreen/components/BalanceDisplay';
 import { RouteTypes, useNavigate } from '@/ui/pages/MainRoute';
-import { useCurrentAccount } from '@/ui/state/accounts/hooks';
+import { useAccountBalance, useCurrentAccount } from '@/ui/state/accounts/hooks';
 import { useBTCUnit } from '@/ui/state/settings/hooks';
 import { useUiTxCreateScreen, useUpdateUiTxCreateScreen } from '@/ui/state/ui/hooks';
 import { amountToSatoshis, isValidAddress, satoshisToAmount, useWallet } from '@/ui/utils';
-import { useAccountBalance } from '@/ui/state/accounts/hooks';
-import { BalanceDisplay } from '@/ui/pages/Main/WalletTabScreen/components/BalanceDisplay';
 import {
     DollarOutlined,
     DownOutlined,
@@ -744,78 +743,7 @@ export default function TxCreateScreen() {
                             Change
                         </button>
                     </div>
-
-                    {/* UTXO Status Section - Collapsible */}
-                    <div
-                        style={{
-                            background: colors.containerBgFaded,
-                            borderRadius: '12px',
-                            padding: '14px',
-                            marginBottom: '12px',
-                            border: `1px solid ${colors.containerBorder}`
-                        }}>
-                        <button
-                            onClick={() => setShowUTXOStatus(!showUTXOStatus)}
-                            style={{
-                                width: '100%',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'space-between',
-                                background: 'transparent',
-                                border: 'none',
-                                cursor: 'pointer',
-                                padding: 0,
-                                marginBottom: showUTXOStatus ? '12px' : 0
-                            }}>
-                            <div
-                                style={{
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '6px'
-                                }}>
-                                <InfoCircleOutlined style={{ fontSize: 14, color: colors.main }} />
-                                <span
-                                    style={{
-                                        fontSize: '12px',
-                                        fontWeight: 600,
-                                        color: colors.textFaded,
-                                        textTransform: 'uppercase',
-                                        letterSpacing: '0.5px'
-                                    }}>
-                                    UTXO Status
-                                </span>
-                            </div>
-                            <DownOutlined 
-                                style={{ 
-                                    fontSize: 10, 
-                                    color: colors.textFaded,
-                                    transform: showUTXOStatus ? 'rotate(180deg)' : 'rotate(0deg)',
-                                    transition: 'transform 0.2s' 
-                                }} 
-                            />
-                        </button>
-
-                        {showUTXOStatus && (
-                            <div style={{ 
-                                display: 'flex', 
-                                justifyContent: 'flex-start',
-                                animation: 'fadeIn 0.2s ease-in',
-                                width: '100%'
-                            }}>
-                                <BalanceDisplay
-                                    accountBalance={accountBalance}
-                                    showDetails={true}
-                                    btcUnit={btcUnit}
-                                    colors={colors}
-                                    noBreakStyle={{ whiteSpace: 'nowrap' }}
-                                    defaultActiveTab={utxoStatusActiveTab}
-                                    noBorder={true}
-                                    alignLeft={true}
-                                />
-                            </div>
-                        )}
-                    </div>
-
+                    
                     {/* Recipient Section */}
                     <div
                         style={{
@@ -1070,6 +998,77 @@ export default function TxCreateScreen() {
                         </div>
 
                         <FeeRateBar onChange={(val) => setUiState({ feeRate: val })} />
+                    </div>
+
+                    {/* UTXO Status Section - Collapsible */}
+                    <div
+                        style={{
+                            background: colors.containerBgFaded,
+                            borderRadius: '12px',
+                            padding: '14px',
+                            marginBottom: '12px',
+                            border: `1px solid ${colors.containerBorder}`
+                        }}>
+                        <button
+                            onClick={() => setShowUTXOStatus(!showUTXOStatus)}
+                            style={{
+                                width: '100%',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                background: 'transparent',
+                                border: 'none',
+                                cursor: 'pointer',
+                                padding: 0,
+                                marginBottom: showUTXOStatus ? '12px' : 0
+                            }}>
+                            <div
+                                style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '6px'
+                                }}>
+                                <InfoCircleOutlined style={{ fontSize: 14, color: colors.main }} />
+                                <span
+                                    style={{
+                                        fontSize: '12px',
+                                        fontWeight: 600,
+                                        color: colors.textFaded,
+                                        textTransform: 'uppercase',
+                                        letterSpacing: '0.5px'
+                                    }}>
+                                    UTXO Status
+                                </span>
+                            </div>
+                            <DownOutlined 
+                                style={{ 
+                                    fontSize: 10, 
+                                    color: colors.textFaded,
+                                    transform: showUTXOStatus ? 'rotate(180deg)' : 'rotate(0deg)',
+                                    transition: 'transform 0.2s' 
+                                }} 
+                            />
+                        </button>
+
+                        {showUTXOStatus && (
+                            <div style={{ 
+                                display: 'flex', 
+                                justifyContent: 'flex-start',
+                                animation: 'fadeIn 0.2s ease-in',
+                                width: '100%'
+                            }}>
+                                <BalanceDisplay
+                                    accountBalance={accountBalance}
+                                    showDetails={true}
+                                    btcUnit={btcUnit}
+                                    colors={colors}
+                                    noBreakStyle={{ whiteSpace: 'nowrap' }}
+                                    defaultActiveTab={utxoStatusActiveTab}
+                                    noBorder={true}
+                                    alignLeft={true}
+                                />
+                            </div>
+                        )}
                     </div>
 
                     {/* Small UTXOs Consolidation Option */}

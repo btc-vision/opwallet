@@ -1,5 +1,5 @@
-import React, { CSSProperties, useState } from 'react';
 import { Row } from '@/ui/components';
+import React, { CSSProperties, useState } from 'react';
 import { BalanceTabType } from '../constants';
 
 interface BalanceTabsProps {
@@ -135,7 +135,8 @@ export const BalanceTabs: React.FC<BalanceTabsProps> = ({
                                     color: colors.textFaded,
                                     marginBottom: '6px',
                                     textTransform: 'uppercase',
-                                    letterSpacing: '0.5px'
+                                    letterSpacing: '0.5px',
+                                    textAlign: 'left'
                                 }}>
                                 Main Balance
                             </div>
@@ -163,7 +164,8 @@ export const BalanceTabs: React.FC<BalanceTabsProps> = ({
                                         color: colors.main,
                                         marginBottom: '6px',
                                         textTransform: 'uppercase',
-                                        letterSpacing: '0.5px'
+                                        letterSpacing: '0.5px',
+                                        textAlign: 'left'
                                     }}>
                                     CSV 75 Balance
                                 </div>
@@ -207,7 +209,8 @@ export const BalanceTabs: React.FC<BalanceTabsProps> = ({
                                         color: colors.main,
                                         marginBottom: '6px',
                                         textTransform: 'uppercase',
-                                        letterSpacing: '0.5px'
+                                        letterSpacing: '0.5px',
+                                        textAlign: 'left'
                                     }}>
                                     CSV 1 Balance
                                 </div>

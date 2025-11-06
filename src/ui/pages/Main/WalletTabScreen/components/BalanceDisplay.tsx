@@ -1,9 +1,9 @@
-import React, { CSSProperties } from 'react';
 import { BitcoinBalance } from '@/shared/types';
-import { BtcDisplay } from './BtcDisplay';
 import { BtcUsd } from '@/ui/components/BtcUsd';
 import { amountToSatoshis } from '@/ui/utils';
+import React, { CSSProperties } from 'react';
 import { BalanceTabs } from './BalanceTabs';
+import { BtcDisplay } from './BtcDisplay';
 import { TransactionsCount } from './TransactionsCount';
 
 interface BalanceDisplayProps {
