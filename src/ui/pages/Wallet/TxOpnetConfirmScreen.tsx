@@ -360,20 +360,7 @@ export default function TxOpnetConfirmScreen() {
                 note: parameters.note
             };
 
-            // Show loading modal with informative message
-            setOpenLoading(true);
-            setLoadingMessage(
-                `Processing ${utxos.length} UTXO${utxos.length > 1 ? 's' : ''}... Please wait.`
-            );
-
-            // Give React time to render the modal
-            await new Promise(resolve => setTimeout(resolve, 100));
-
             const sendTransact = await Web3API.transactionFactory.createBTCTransfer(IFundingTransactionParameters);
-            
-            // Close loading modal
-            setOpenLoading(false);
-            setLoadingMessage(defaultMessage);
 
             const sendTransaction = await Web3API.provider.sendRawTransaction(sendTransact.tx, false);
             if (!sendTransaction.success) {
@@ -1029,10 +1016,6 @@ export default function TxOpnetConfirmScreen() {
             {openLoading && (
                 <BottomModal
                     onClose={() => {
-                        // Prevent closing during UTXO processing
-                        if (loadingMessage !== defaultMessage && !loadingMessage.includes('Deployment')) {
-                            return;
-                        }
                         setDisabled(false);
                         setOpenLoading(false);
                     }}>
@@ -1052,50 +1035,6 @@ export default function TxOpnetConfirmScreen() {
                         />
 
                         <Text text={loadingMessage} size="md" style={{ marginBottom: '16px' }} />
-
-                        {/* Warning for UTXO processing */}
-                        {loadingMessage !== defaultMessage && loadingMessage.includes('UTXO') && (
-                            <div
-                                style={{
-                                    display: 'flex',
-                                    alignItems: 'flex-start',
-                                    gap: '8px',
-                                    padding: '12px',
-                                    background: `${colors.warning}15`,
-                                    border: `1px solid ${colors.warning}30`,
-                                    borderRadius: '8px',
-                                    marginBottom: '12px',
-                                    width: '100%'
-                                }}>
-                                <WarningOutlined
-                                    style={{
-                                        fontSize: 14,
-                                        color: colors.warning,
-                                        flexShrink: 0,
-                                        marginTop: '2px'
-                                    }}
-                                />
-                                <div style={{ flex: 1, textAlign: 'left' }}>
-                                    <div
-                                        style={{
-                                            fontSize: '11px',
-                                            color: colors.warning,
-                                            fontWeight: 600,
-                                            marginBottom: '4px'
-                                        }}>
-                                        Processing in progress
-                                    </div>
-                                    <div
-                                        style={{
-                                            fontSize: '10px',
-                                            color: colors.textFaded,
-                                            lineHeight: '1.4'
-                                        }}>
-                                        The transaction is being prepared. For large transactions, your browser may show a "Page Unresponsive" warning - click "Wait" to continue. If you close this window, the transaction will continue processing in the background, but you won't see the confirmation.
-                                    </div>
-                                </div>
-                            </div>
-                        )}
 
                         {deploymentContract && (
                             <div
