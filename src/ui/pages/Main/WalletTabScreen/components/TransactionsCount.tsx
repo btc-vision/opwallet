@@ -43,7 +43,8 @@ export const TransactionsCount: React.FC<TransactionsCountProps> = ({
     return (
         <div
             style={{
-                marginBottom: '8px'
+                marginBottom: '8px',
+                textAlign: 'left'
             }}>
             <div
                 style={{
@@ -52,7 +53,8 @@ export const TransactionsCount: React.FC<TransactionsCountProps> = ({
                     color: colors.textFaded,
                     marginBottom: '6px',
                     textTransform: 'uppercase',
-                    letterSpacing: '0.5px'
+                    letterSpacing: '0.5px',
+                    textAlign: 'left'
                 }}>
                 UTXOs Counts
             </div>

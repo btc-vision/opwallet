@@ -22,6 +22,9 @@ interface BalanceDisplayProps {
         warning: string;
     };
     noBreakStyle: CSSProperties;
+    defaultActiveTab?: 'balance' | 'quotas';
+    noBorder?: boolean;
+    alignLeft?: boolean;
 }
 
 /**
@@ -32,7 +35,10 @@ export const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
     showDetails,
     btcUnit,
     colors,
-    noBreakStyle
+    noBreakStyle,
+    defaultActiveTab = 'balance',
+    noBorder = false,
+    alignLeft = false
 }) => {
     // Helper function to calculate total balance including CSV amounts
     const calculateTotalBalance = () => {
@@ -47,17 +53,20 @@ export const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
 
     if (showDetails) {
         return (
-            <div
-                style={{
-                    display: 'flex',
-                    justifyContent: 'center',
-                    marginTop: '8px'
-                }}>
+            <div style={{ 
+                display: 'flex', 
+                justifyContent: alignLeft ? 'flex-start' : 'center',
+                marginTop: '8px',
+                width: '100%'
+            }}>
                 <BalanceTabs
                     accountBalance={accountBalance}
                     btcUnit={btcUnit}
                     colors={colors}
                     noBreakStyle={noBreakStyle}
+                    defaultActiveTab={defaultActiveTab}
+                    noBorder={noBorder}
+                    alignLeft={alignLeft}
                     TransactionsCountComponent={
                         <TransactionsCount
                             unspent_utxos_count={accountBalance.unspent_utxos_count}

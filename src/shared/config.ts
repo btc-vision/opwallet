@@ -11,10 +11,16 @@ export const UTXO_CONFIG = {
     MAX_UTXOS: 2000,
 
     /**
-     * Warning threshold for UTXO count
-     * UI will show warning indicators when UTXO count exceeds this value
+     * Warning threshold for UTXO count (yellow warning)
+     * UI will show yellow warning indicators when UTXO count exceeds this value
      */
-    WARNING_THRESHOLD: 1500,
+    WARNING_THRESHOLD: 500,
+
+    /**
+     * Error threshold for UTXO count (red warning)
+     * UI will show red warning indicators when UTXO count exceeds this value
+     */
+    ERROR_THRESHOLD: 1500,
 
     /**
      * Maximum number of UTXOs that can be consolidated in a single transaction
