@@ -51,7 +51,7 @@
         "@btc-vision/bitcoin": "^6.4.11",
         "@btc-vision/passworder": "1.0.0",
         "@btc-vision/post-quantum": "^0.5.2",
-        "@btc-vision/transaction": "1.6.19",
+        "@btc-vision/transaction": "^1.7.7",
         "@btc-vision/wallet-sdk": "^1.0.8",
         "@eslint/js": "9.38.0",
         "@fortawesome/fontawesome-svg-core": "^7.0.0",
