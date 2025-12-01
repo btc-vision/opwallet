@@ -312,7 +312,10 @@ export default function AddressTypeScreen() {
             const chainType = await wallet.getChainType();
             const network = getBitcoinLibJSNetwork(networkType, chainType);
 
-            const address = Address.fromString(account.pubkey);
+            // Address.fromString requires (mldsaHashedKey, legacyKey) - use pubkey for both if no mldsa
+            const address = account.quantumPublicKeyHash
+                ? Address.fromString(account.quantumPublicKeyHash, account.pubkey)
+                : Address.fromString(account.pubkey, account.pubkey);
             const p2tr = address.p2tr(network);
             const p2wpkh = address.p2wpkh(network);
             const p2shp2wpkh = address.p2shp2wpkh(network);

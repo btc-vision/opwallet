@@ -118,7 +118,9 @@ export default function TxCreateScreen() {
         const fetchAllBalances = async () => {
             setLoadingBalances(true);
             try {
-                const currentAddress = Address.fromString(account.pubkey);
+                const currentAddress = account.quantumPublicKeyHash
+                    ? Address.fromString(account.quantumPublicKeyHash, account.pubkey)
+                    : Address.fromString(account.pubkey, account.pubkey);
 
                 // Get all balances in one call
                 const currentBalance = await wallet.getAddressBalance(account.address, account.pubkey);

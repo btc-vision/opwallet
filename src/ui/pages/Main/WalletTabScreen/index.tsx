@@ -83,7 +83,12 @@ export default function WalletTabScreen() {
 
     // untweakedPublicKey.mldsa can be UNDEFINED if the account is not quantum-enabled! we need to handle this gracefully, no error!
 
-    const address = untweakedPublicKey ? Address.fromString(untweakedPublicKey.mldsa, untweakedPublicKey.pubkey) : null;
+    // Address.fromString requires (mldsaHashedKey, legacyKey) - use pubkey for both if no mldsa
+    const address = untweakedPublicKey
+        ? untweakedPublicKey.mldsa
+            ? Address.fromString(untweakedPublicKey.mldsa, untweakedPublicKey.pubkey)
+            : Address.fromString(untweakedPublicKey.pubkey, untweakedPublicKey.pubkey)
+        : null;
     const tweakedPublicKey = address ? address.toHex() : '';
     const publicKey = address ? '0x' + address.originalPublicKeyBuffer().toString('hex') : '';
     const explorerUrl = address ? `https://opscan.org/accounts/${tweakedPublicKey}` : '';

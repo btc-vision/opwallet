@@ -285,7 +285,9 @@ export default function TxOpnetConfirmScreen() {
 
             // Check if sending from a CSV address
             if (parameters.from && parameters.sourceType && parameters.sourceType !== SourceType.CURRENT) {
-                const currentAddress = Address.fromString(currentWalletAddress.pubkey);
+                const currentAddress = currentWalletAddress.quantumPublicKeyHash
+                    ? Address.fromString(currentWalletAddress.quantumPublicKeyHash, currentWalletAddress.pubkey)
+                    : Address.fromString(currentWalletAddress.pubkey, currentWalletAddress.pubkey);
 
                 if (parameters.sourceType === SourceType.CSV75) {
                     const csv75Address = currentAddress.toCSV(75, Web3API.network);

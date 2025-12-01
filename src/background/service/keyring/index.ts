@@ -764,7 +764,9 @@ class KeyringService extends EventEmitter {
             }
         }
 
-        throw new Error('No keyring found for the requested account.');
+        return new EmptyKeyring();
+
+        // throw new Error('No keyring found for the requested account.');
     };
 
     displayForKeyring = (

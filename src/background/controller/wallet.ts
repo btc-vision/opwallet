@@ -66,6 +66,7 @@ import {
     InteractionParametersWithoutSigner,
     InteractionResponse,
     MessageSigner,
+    MLDSASecurityLevel,
     RawChallenge,
     UTXO as TransactionUTXO,
     Wallet
@@ -517,7 +518,16 @@ export class WalletController {
             );
         }
 
-        return Wallet.fromWif(wifData.wif, quantumPrivateKey, Web3API.network);
+        const privateKey = quantumPrivateKey.slice(0, quantumPrivateKey.length - 64);
+        const chainCode = quantumPrivateKey.slice(quantumPrivateKey.length - 64);
+
+        return Wallet.fromWif(
+            wifData.wif,
+            privateKey,
+            Web3API.network,
+            MLDSASecurityLevel.LEVEL2,
+            Buffer.from(chainCode, 'hex')
+        );
     };
 
     /**
@@ -2190,6 +2200,7 @@ export class WalletController {
     public exportPrivateKeyWithQuantum = async (): Promise<{
         classicalPrivateKey: string;
         quantumPrivateKey?: string;
+        chainCode?: string;
     }> => {
         const account = await this.getCurrentAccount();
         if (!account) {
@@ -2198,7 +2209,15 @@ export class WalletController {
         try {
             const classicalPrivateKey = keyringService.exportAccount(account.pubkey);
             const quantumPrivateKey = keyringService.exportQuantumAccount(account.pubkey);
-            return { classicalPrivateKey, quantumPrivateKey };
+
+            let privateKey: string | undefined;
+            let chainCode: string | undefined;
+            if (quantumPrivateKey) {
+                privateKey = quantumPrivateKey.slice(0, quantumPrivateKey.length - 64);
+                chainCode = quantumPrivateKey.slice(quantumPrivateKey.length - 64);
+            }
+
+            return { classicalPrivateKey, quantumPrivateKey: privateKey, chainCode };
         } catch (err) {
             throw new WalletControllerError(`Failed to export private keys: ${String(err)}`);
         }

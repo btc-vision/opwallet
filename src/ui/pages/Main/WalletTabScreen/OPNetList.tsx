@@ -223,7 +223,10 @@ export function OPNetList() {
 
             const contract = getContract<IOP20Contract>(address, OP_20_ABI, Web3API.provider, Web3API.network);
 
-            const balance = await contract.balanceOf(Address.fromString(currentAccount.pubkey));
+            const userAddress = currentAccount.quantumPublicKeyHash
+                ? Address.fromString(currentAccount.quantumPublicKeyHash, currentAccount.pubkey)
+                : Address.fromString(currentAccount.pubkey, currentAccount.pubkey);
+            const balance = await contract.balanceOf(userAddress);
 
             return {
                 address,

@@ -155,7 +155,10 @@ export function Select(props: SelectProps) {
                     }
 
                     try {
-                        const balance = await contract.balanceOf(Address.fromString(account.pubkey));
+                        const userAddress = account.quantumPublicKeyHash
+                            ? Address.fromString(account.quantumPublicKeyHash, account.pubkey)
+                            : Address.fromString(account.pubkey, account.pubkey);
+                        const balance = await contract.balanceOf(userAddress);
                         if (balance == undefined) {
                             setFilteredOptions([]);
                             setLoading(false);

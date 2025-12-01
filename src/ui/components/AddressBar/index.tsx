@@ -54,9 +54,12 @@ export function AddressBar({
     p2wda_total_amount: string | undefined;
 }) {
     const tools = useTools();
-    const untweakedPublicKey = useAccountPublicKey();
+    const accountKey = useAccountPublicKey();
 
-    const address = Address.fromString(untweakedPublicKey);
+    // Address.fromString requires (mldsaHashedKey, legacyKey) - mldsa can be undefined if not linked yet
+    const address = accountKey.mldsa
+        ? Address.fromString(accountKey.mldsa, accountKey.pubkey)
+        : Address.fromString(accountKey.pubkey, accountKey.pubkey);
     const tweakedPublicKey = address.toHex();
     const explorerUrl = `https://opscan.org/accounts/${tweakedPublicKey}`;
     const csv75Address = address.toCSV(75, Web3API.network).address;
@@ -97,7 +100,7 @@ export function AddressBar({
         },
         {
             label: 'Classical Public Key',
-            value: untweakedPublicKey,
+            value: accountKey.pubkey,
             info: 'Your classical Bitcoin public key (for legacy compatibility).',
             showBalance: false
         },
