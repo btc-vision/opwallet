@@ -38,7 +38,9 @@ import {
     DeploymentResult,
     IDeploymentParameters,
     IFundingTransactionParameters,
-    UTXO
+    MLDSASecurityLevel,
+    UTXO,
+    Wallet
 } from '@btc-vision/transaction';
 import BigNumber from 'bignumber.js';
 import {
@@ -144,7 +146,15 @@ export default function TxOpnetConfirmScreen() {
     });
 
     const getOPNetWallet = useCallback(async () => {
-        return wallet.getOPNetWallet();
+        const data = await wallet.getOPNetWallet();
+
+        return Wallet.fromWif(
+            data[0],
+            data[1],
+            Web3API.network,
+            MLDSASecurityLevel.LEVEL2,
+            Buffer.from(data[2], 'hex')
+        );
     }, [wallet]);
 
     const handleCancel = () => {
