@@ -63,7 +63,11 @@ export function useAccountAddress() {
 
 export function useAccountPublicKey() {
     const currentAccount = useCurrentAccount();
-    return currentAccount.pubkey;
+
+    return {
+        pubkey: currentAccount.pubkey,
+        mldsa: currentAccount.quantumPublicKeyHash
+    };
 }
 
 export function useSetCurrentAccountCallback() {

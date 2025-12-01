@@ -65,6 +65,7 @@ import {
     IInteractionParameters,
     InteractionParametersWithoutSigner,
     InteractionResponse,
+    MessageSigner,
     RawChallenge,
     UTXO as TransactionUTXO,
     Wallet
@@ -75,7 +76,6 @@ import {
     signBip322MessageWithNetworkType,
     toNetwork
 } from '@btc-vision/wallet-sdk';
-import { createHash } from 'crypto';
 
 import { customNetworksManager } from '@/shared/utils/CustomNetworksManager';
 import {
@@ -1636,7 +1636,9 @@ export class WalletController {
 
             if (quantumPublicKey) {
                 // Calculate SHA256 hash of quantum public key
-                quantumPublicKeyHash = createHash('sha256').update(Buffer.from(quantumPublicKey, 'hex')).digest('hex');
+                quantumPublicKeyHash = Buffer.from(MessageSigner.sha256(Buffer.from(quantumPublicKey, 'hex'))).toString(
+                    'hex'
+                );
                 quantumKeyStatus = QuantumKeyStatus.MIGRATED;
             } else if (type === KEYRING_TYPE.HdKeyring) {
                 // HD keyrings auto-derive quantum keys
@@ -2133,7 +2135,7 @@ export class WalletController {
     public getQuantumPublicKeyHash = async (): Promise<string | undefined> => {
         const qpk = await this.getQuantumPublicKey();
         if (!qpk) return undefined;
-        return createHash('sha256').update(Buffer.from(qpk, 'hex')).digest('hex');
+        return Buffer.from(MessageSigner.sha256(Buffer.from(qpk, 'hex'))).toString('hex');
     };
 
     /**
@@ -2306,7 +2308,11 @@ export class WalletController {
         let p2wdaAddress = '';
 
         if (pubKey) {
-            const addressInst = Address.fromString(pubKey);
+            const addressInst = Address.fromString(
+                '0x0000000000000000000000000000000000000000000000000000000000000000',
+                pubKey
+            );
+
             csv75Address = addressInst.toCSV(75, Web3API.network).address;
             csv2Address = addressInst.toCSV(2, Web3API.network).address;
             csv1Address = addressInst.toCSV(1, Web3API.network).address;
@@ -2719,7 +2725,11 @@ export class WalletController {
 
         // If pubKey exists, include CSV addresses in the key
         if (pubKey) {
-            const addressInst = Address.fromString(pubKey);
+            const addressInst = Address.fromString(
+                '0x0000000000000000000000000000000000000000000000000000000000000000',
+                pubKey
+            );
+
             const csv75 = addressInst.toCSV(75, Web3API.network).address;
             const csv2 = addressInst.toCSV(2, Web3API.network).address;
             const csv1 = addressInst.toCSV(1, Web3API.network).address;
