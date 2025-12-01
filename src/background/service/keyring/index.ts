@@ -890,10 +890,15 @@ class KeyringService extends EventEmitter {
                 for (const account of accounts) {
                     if (excludePublicKey && account === excludePublicKey) continue;
 
-                    if (keyring.hasKeys()) {
-                        const hash = keyring.getQuantumPublicKeyHash();
-                        if (hash) {
-                            hashes.push(hash.toLowerCase());
+                    // Use hasQuantumKey() to check if quantum key exists before trying to get hash
+                    if (keyring.hasQuantumKey()) {
+                        try {
+                            const hash = keyring.getQuantumPublicKeyHash();
+                            if (hash) {
+                                hashes.push(hash.toLowerCase());
+                            }
+                        } catch {
+                            // Quantum key not available - skip
                         }
                     }
                 }
@@ -924,9 +929,11 @@ class KeyringService extends EventEmitter {
         if (keyring instanceof SimpleKeyring) {
             // Get existing key hashes before import
             const existingHashes = this.getAllQuantumKeyHashes(publicKey);
+            console.log('existingHashes', existingHashes);
 
             // Import the key
             keyring.importQuantumKey(quantumPrivateKey);
+            console.log('importQuantumKey');
 
             // Check if the imported key's hash matches any existing key
             const newHash = keyring.getQuantumPublicKeyHash();
@@ -937,6 +944,8 @@ class KeyringService extends EventEmitter {
                     'This quantum key is already associated with another account. Each account must have a unique quantum key.'
                 );
             }
+
+            console.log('newHash', newHash);
 
             await this.persistAllKeyrings();
             this._updateMemStoreKeyrings();

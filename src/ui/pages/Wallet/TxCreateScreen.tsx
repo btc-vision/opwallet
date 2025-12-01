@@ -120,7 +120,10 @@ export default function TxCreateScreen() {
             try {
                 const currentAddress = account.quantumPublicKeyHash
                     ? Address.fromString(account.quantumPublicKeyHash, account.pubkey)
-                    : Address.fromString(account.pubkey, account.pubkey);
+                    : Address.fromString(
+                          '0x0000000000000000000000000000000000000000000000000000000000000000',
+                          account.pubkey
+                      );
 
                 // Get all balances in one call
                 const currentBalance = await wallet.getAddressBalance(account.address, account.pubkey);
@@ -132,8 +135,6 @@ export default function TxCreateScreen() {
                 const p2wdaAddress = currentAddress.p2wda(Web3API.network);
 
                 const balances: AddressBalance[] = [];
-
-                console.log('currentBalance', currentBalance);
 
                 // Always add current address
                 balances.push({
@@ -397,7 +398,15 @@ export default function TxCreateScreen() {
 
             if (type === AddressTypes.P2PK) {
                 setDisplayP2PKWarning(true);
-                setUiState({ toInfo: { ...val, address: Address.fromString(address).p2tr(Web3API.network) } });
+                setUiState({
+                    toInfo: {
+                        ...val,
+                        address: Address.fromString(
+                            '0x0000000000000000000000000000000000000000000000000000000000000000',
+                            address
+                        ).p2tr(Web3API.network)
+                    }
+                });
                 return;
             }
 
