@@ -12,10 +12,8 @@ import { ProviderControllerRequest } from '@/shared/types/Request';
 import { isWalletError } from '@/shared/utils/errors';
 import providerController, { ProviderController } from './controller';
 
-
 // This is used for type safety while returning approval metadata
 type ApprovalMetadata = [ApprovalType, (req: ProviderControllerRequest) => boolean, object?];
-
 
 const isSignApproval = (type: string) => {
     const SIGN_APPROVALS = ['SignText', 'SignPsbt', 'SignTx', 'SignData', 'SignInteraction'];
@@ -95,9 +93,10 @@ const flowContext = flow
             },
             mapMethod
         } = ctx;
-        const approvalMetadata = Reflect.getMetadata('APPROVAL', providerController, mapMethod) as ApprovalMetadata | undefined;
+        const approvalMetadata = Reflect.getMetadata('APPROVAL', providerController, mapMethod) as
+            | ApprovalMetadata
+            | undefined;
         const [approvalType, condition, options = {}] = approvalMetadata || [];
-        
 
         if (approvalType && !condition?.(ctx.request)) {
             ctx.request.requestedApproval = true;
@@ -125,13 +124,15 @@ const flowContext = flow
     .use(async (ctx) => {
         const { approvalRes, mapMethod, request } = ctx;
         // process request
-        const approvalMetadata = Reflect.getMetadata('APPROVAL', providerController, mapMethod) as ApprovalMetadata | undefined;
+        const approvalMetadata = Reflect.getMetadata('APPROVAL', providerController, mapMethod) as
+            | ApprovalMetadata
+            | undefined;
         const [approvalType = ''] = approvalMetadata || [];
 
         const method = providerController[mapMethod as keyof ProviderController];
-        // TODO (typing): Check this again as it's not the most ideal solution. 
-        // However, the problem is that we have a general type like RequestParams for 
-        // incoming request data as we have different handlers. So, we assumed that 
+        // TODO (typing): Check this again as it's not the most ideal solution.
+        // However, the problem is that we have a general type like RequestParams for
+        // incoming request data as we have different handlers. So, we assumed that
         // the params are passed correctly for each method for now.
         const requestDefer = Promise.resolve(
             (method as (args?: object) => unknown).call(providerController, { ...request, approvalRes })
@@ -162,14 +163,14 @@ const flowContext = flow
                 }
             });
 
-            // TODO (typing): If a multi-step approval is needed, re-implement recursive requestApprovalLoop function here  
+        // TODO (typing): If a multi-step approval is needed, re-implement recursive requestApprovalLoop function here
 
         return requestDefer;
     })
     .callback();
 
 export default (request: ProviderControllerRequest) => {
-    const ctx: ApprovalContext = { request: { ...request, requestedApproval: false }, mapMethod: ''};
+    const ctx: ApprovalContext = { request: { ...request, requestedApproval: false }, mapMethod: '' };
     return flowContext(ctx).finally(() => {
         if (ctx.request.requestedApproval) {
             flow.requestedApproval = false;

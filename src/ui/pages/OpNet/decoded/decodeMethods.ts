@@ -4,22 +4,22 @@ import {
     DecodedAddLiquidityNative,
     DecodedAirdrop,
     DecodedAirdropWithAmount,
-    DecodedIncreaseAllowance,
-    DecodedDecreaseAllowance,
-    DecodedIncreaseAllowanceBySignature,
-    DecodedDecreaseAllowanceBySignature,
     DecodedBurn,
     DecodedCancelListing,
     DecodedCreatePool,
     DecodedCreatePoolWithSignature,
+    DecodedDecreaseAllowance,
+    DecodedDecreaseAllowanceBySignature,
+    DecodedIncreaseAllowance,
+    DecodedIncreaseAllowanceBySignature,
     DecodedListLiquidity,
     DecodedMint,
     DecodedRemoveLiquidity,
     DecodedReserve,
-    DecodedSetFees,
-    DecodedSwap,
     DecodedSafeTransfer,
-    DecodedSafeTransferFrom
+    DecodedSafeTransferFrom,
+    DecodedSetFees,
+    DecodedSwap
 } from './DecodedTypes';
 import { InteractionType } from './InteractionType';
 

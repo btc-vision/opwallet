@@ -288,9 +288,7 @@ export default function WalletTabScreen() {
                     {/* Quantum Migration Banner */}
                     {needsQuantumMigration && (
                         <div style={{ marginTop: '8px' }}>
-                            <QuantumMigrationBanner
-                                onMigrate={() => navigate(RouteTypes.QuantumMigrationScreen)}
-                            />
+                            <QuantumMigrationBanner onMigrate={() => navigate(RouteTypes.QuantumMigrationScreen)} />
                         </div>
                     )}
 
@@ -347,7 +345,7 @@ export default function WalletTabScreen() {
 
                                     // Check if we've reached the error threshold (1500) to show red instead of yellow
                                     const errorThreshold = UTXO_CONFIG.ERROR_THRESHOLD;
-                                    const hasReachedError = 
+                                    const hasReachedError =
                                         accountBalance.unspent_utxos_count >= errorThreshold ||
                                         accountBalance.csv75_locked_utxos_count >= errorThreshold ||
                                         accountBalance.csv75_unlocked_utxos_count >= errorThreshold ||
@@ -379,10 +377,22 @@ export default function WalletTabScreen() {
                                             <div style={{ fontWeight: 600, color: alertColor, marginBottom: '4px' }}>
                                                 ⚠️ High UTXO Count
                                             </div>
-                                            <div style={{ fontSize: '9px', color: 'rgba(219, 219, 219, 0.7)', marginBottom: '8px' }}>
-                                                One or more UTXO categories has reached {warningThreshold} UTXOs. Consider consolidating now to avoid issues.
-                                                <strong style={{ display: 'block', marginTop: '4px', color: strongTextColor }}>
-                                                    If you exceed 2,000 UTXOs in any category, your balance will not be fully displayed.
+                                            <div
+                                                style={{
+                                                    fontSize: '9px',
+                                                    color: 'rgba(219, 219, 219, 0.7)',
+                                                    marginBottom: '8px'
+                                                }}>
+                                                One or more UTXO categories has reached {warningThreshold} UTXOs.
+                                                Consider consolidating now to avoid issues.
+                                                <strong
+                                                    style={{
+                                                        display: 'block',
+                                                        marginTop: '4px',
+                                                        color: strongTextColor
+                                                    }}>
+                                                    If you exceed 2,000 UTXOs in any category, your balance will not be
+                                                    fully displayed.
                                                 </strong>
                                             </div>
                                             <button

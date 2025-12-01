@@ -79,7 +79,9 @@ export default function SendOpNetScreen() {
                         // Check for zero address (user not found on-chain)
                         if (pubKeyHex === '0x' + '00'.repeat(32) || pubKeyHex === '00'.repeat(32)) {
                             setPublicKey('');
-                            setError('User not found on-chain. This wallet has not performed any OPNet transactions yet.');
+                            setError(
+                                'User not found on-chain. This wallet has not performed any OPNet transactions yet.'
+                            );
                         } else {
                             setPublicKey(pubKeyHex);
                         }
@@ -116,7 +118,9 @@ export default function SendOpNetScreen() {
         // Check for 32-byte values (likely MLDSA public key hash, not valid address)
         const cleanAddress = toInfo.address.replace('0x', '');
         if (cleanAddress.length === 64 && /^[0-9a-fA-F]+$/.test(cleanAddress)) {
-            setError('32-byte values are not valid Bitcoin addresses. This may be an MLDSA public key hash - please use the recipient\'s Bitcoin address instead.');
+            setError(
+                "32-byte values are not valid Bitcoin addresses. This may be an MLDSA public key hash - please use the recipient's Bitcoin address instead."
+            );
             return;
         }
 

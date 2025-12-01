@@ -1,7 +1,7 @@
 import { AddressFlagType, CHAINS, ChainType, CustomNetwork, DEFAULT_LOCKTIME_ID, EVENTS } from '@/shared/constant';
 import eventBus from '@/shared/eventBus';
 import { SessionEvent } from '@/shared/interfaces/SessionEvent';
-import { Account, AddressTypes, AppSummary, NetworkType, TxHistoryItem, storageToAddressTypes } from '@/shared/types';
+import { Account, AddressTypes, AppSummary, NetworkType, storageToAddressTypes, TxHistoryItem } from '@/shared/types';
 import { compareVersions } from 'compare-versions';
 import cloneDeep from 'lodash/cloneDeep';
 import browser from '../webapi/browser';

@@ -192,10 +192,9 @@ body {
     align-items: center;
     justify-content: center;
     height: 60px;
-    transition:
-        background 0.3s,
-        transform 0.3s,
-        border 0.3s;
+    transition: background 0.3s,
+    transform 0.3s,
+    border 0.3s;
     cursor: pointer;
 }
 
@@ -216,9 +215,8 @@ body {
     color: #222121;
     position: relative;
     top: 0;
-    transition:
-        background 0.3s,
-        top 0.1s;
+    transition: background 0.3s,
+    top 0.1s;
 }
 
 .op_action_button:hover .op_icon_wrapper {
@@ -235,9 +233,8 @@ body {
     color: var(--opnet-button-text-color);
     border-radius: 17px;
     cursor: pointer;
-    transition:
-        background 0.3s,
-        color 0.3s;
+    transition: background 0.3s,
+    color 0.3s;
 }
 
 .op_token_container:hover {
@@ -277,9 +274,8 @@ body {
     color: var(--opnet-button-background-color);
     align-items: center;
     justify-content: center;
-    transition:
-        background 0.3s,
-        color 0.3s;
+    transition: background 0.3s,
+    color 0.3s;
 }
 
 .op_token_remove:hover {
@@ -320,10 +316,9 @@ body {
     font-size: 12px;
     font-weight: 500;
     border: 2px solid var(--opnet-button-background-color);
-    transition:
-        background 0.3s,
-        color 0.3s,
-        border 0.3s;
+    transition: background 0.3s,
+    color 0.3s,
+    border 0.3s;
     cursor: pointer;
 }
 
@@ -427,10 +422,9 @@ button.op_tokens_action_button {
     font-size: 12px;
     font-weight: 500;
     border: 2px solid var(--opnet-button-background-color);
-    transition:
-        background 0.3s,
-        color 0.3s,
-        border 0.3s;
+    transition: background 0.3s,
+    color 0.3s,
+    border 0.3s;
     cursor: pointer;
 }
 
@@ -466,10 +460,9 @@ button.op_token_action_button {
     line-height: normal;
     font-family: Inter-Regular, serif;
     border: 2px solid var(--opnet-button-background-color);
-    transition:
-        background 0.3s,
-        color 0.3s,
-        border 0.3s;
+    transition: background 0.3s,
+    color 0.3s,
+    border 0.3s;
     cursor: pointer;
 }
 
@@ -497,10 +490,9 @@ button.op_token_action_button {
     font-size: 12px;
     font-weight: 500;
     cursor: pointer;
-    transition:
-        background 0.3s,
-        color 0.3s,
-        border 0.3s;
+    transition: background 0.3s,
+    color 0.3s,
+    border 0.3s;
     user-select: none;
 }
 
@@ -585,10 +577,9 @@ button.op_token_action_button {
     color: var(--opnet-button-text-color);
     border-radius: 6px;
     padding: 0 16px 0 16px;
-    transition:
-        background 0.3s,
-        color 0.3s,
-        border 0.3s;
+    transition: background 0.3s,
+    color 0.3s,
+    border 0.3s;
 }
 
 .op_input_amount_container.with_max {
@@ -628,10 +619,9 @@ button.op_token_action_button {
     line-height: normal;
     font-family: Inter-Regular, serif;
     border: 2px solid var(--opnet-input-background-color);
-    transition:
-        background 0.3s,
-        color 0.3s,
-        border 0.3s;
+    transition: background 0.3s,
+    color 0.3s,
+    border 0.3s;
     cursor: pointer;
 }
 
@@ -694,10 +684,9 @@ button.op_token_action_button {
     line-height: normal;
     font-size: 12px;
     font-weight: 500;
-    transition:
-        background 0.3s,
-        color 0.3s,
-        border 0.3s;
+    transition: background 0.3s,
+    color 0.3s,
+    border 0.3s;
     color: var(--opnet-background-color);
     cursor: pointer;
     height: 34px;

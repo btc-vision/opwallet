@@ -25,26 +25,26 @@ export interface ChainChangedEventData extends BaseSessionEventPayload {
     enum: ChainType;
 }
 
-export type WalletErrorEventData = BaseSessionEventPayload
+export type WalletErrorEventData = BaseSessionEventPayload;
 
-export type WalletConnectedEventData = BaseSessionEventPayload
+export type WalletConnectedEventData = BaseSessionEventPayload;
 
-export type WalletDisconnectedEventData = BaseSessionEventPayload
+export type WalletDisconnectedEventData = BaseSessionEventPayload;
 
 export type SessionEventPayload<T extends SessionEvent> = T extends SessionEvent.networkChanged
     ? NetworkChangedEventData
     : T extends SessionEvent.accountsChanged
-    ? string[]
-    : T extends SessionEvent.walletDisconnected
-    ? WalletDisconnectedEventData
-    : T extends SessionEvent.walletConnected
-    ? WalletConnectedEventData
-    : T extends SessionEvent.walletError
-    ? WalletErrorEventData
-    : T extends SessionEvent.unlock
-    ? BaseSessionEventPayload
-    : T extends SessionEvent.lock
-    ? BaseSessionEventPayload
-    : T extends SessionEvent.chainChanged
-    ? ChainChangedEventData
-    : never;
+      ? string[]
+      : T extends SessionEvent.walletDisconnected
+        ? WalletDisconnectedEventData
+        : T extends SessionEvent.walletConnected
+          ? WalletConnectedEventData
+          : T extends SessionEvent.walletError
+            ? WalletErrorEventData
+            : T extends SessionEvent.unlock
+              ? BaseSessionEventPayload
+              : T extends SessionEvent.lock
+                ? BaseSessionEventPayload
+                : T extends SessionEvent.chainChanged
+                  ? ChainChangedEventData
+                  : never;

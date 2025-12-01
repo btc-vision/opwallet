@@ -105,22 +105,12 @@ export const RESTORE_WALLETS: { value: RestoreWalletType; name: string; addressT
     {
         value: RestoreWalletType.OP_WALLET,
         name: 'OP_WALLET',
-        addressTypes: [
-            AddressTypes.P2WPKH,
-            AddressTypes.P2SH_OR_P2SH_P2WPKH,
-            AddressTypes.P2TR,
-            AddressTypes.P2PKH
-        ]
+        addressTypes: [AddressTypes.P2WPKH, AddressTypes.P2SH_OR_P2SH_P2WPKH, AddressTypes.P2TR, AddressTypes.P2PKH]
     },
     {
         value: RestoreWalletType.UNISAT,
         name: 'UniSat Wallet',
-        addressTypes: [
-            AddressTypes.P2WPKH,
-            AddressTypes.P2SH_OR_P2SH_P2WPKH,
-            AddressTypes.P2TR,
-            AddressTypes.P2PKH
-        ]
+        addressTypes: [AddressTypes.P2WPKH, AddressTypes.P2SH_OR_P2SH_P2WPKH, AddressTypes.P2TR, AddressTypes.P2PKH]
     },
     {
         value: RestoreWalletType.SPARROW,
@@ -140,12 +130,7 @@ export const RESTORE_WALLETS: { value: RestoreWalletType; name: string; addressT
     {
         value: RestoreWalletType.OTHERS,
         name: 'Other Wallet',
-        addressTypes: [
-            AddressTypes.P2PKH,
-            AddressTypes.P2WPKH,
-            AddressTypes.P2SH_OR_P2SH_P2WPKH,
-            AddressTypes.P2TR
-        ]
+        addressTypes: [AddressTypes.P2PKH, AddressTypes.P2WPKH, AddressTypes.P2SH_OR_P2SH_P2WPKH, AddressTypes.P2TR]
     }
 ];
 

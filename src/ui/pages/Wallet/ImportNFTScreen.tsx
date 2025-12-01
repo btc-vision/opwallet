@@ -223,7 +223,11 @@ export default function ImportNFTScreen() {
                                             width="64px"
                                             height="64px"
                                             style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                                            fallback={<PictureOutlined style={{ fontSize: '32px', color: colors.background }} />}
+                                            fallback={
+                                                <PictureOutlined
+                                                    style={{ fontSize: '32px', color: colors.background }}
+                                                />
+                                            }
                                         />
                                     ) : (
                                         <PictureOutlined style={{ fontSize: '32px', color: colors.background }} />

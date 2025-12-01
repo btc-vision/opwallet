@@ -114,7 +114,12 @@ export default function ReceiveScreen() {
                             ) : quantumPublicKeyHash ? (
                                 <>
                                     <Column gap="xs">
-                                        <Text text="MLDSA Public Key Hash (SHA256)" preset="sub" size="xs" style={{ opacity: 0.7 }} />
+                                        <Text
+                                            text="MLDSA Public Key Hash (SHA256)"
+                                            preset="sub"
+                                            size="xs"
+                                            style={{ opacity: 0.7 }}
+                                        />
                                         <Row
                                             itemsCenter
                                             gap="sm"

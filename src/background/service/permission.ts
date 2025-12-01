@@ -47,10 +47,6 @@ class PermissionService {
         }
     };
 
-    private persist = () => {
-        browser.storage.local.set({ permission: this.store });
-    };
-
     sync = () => {
         if (!this.lruCache) return;
         // Manually dump current cache into store
@@ -219,6 +215,10 @@ class PermissionService {
 
     isInternalOrigin = (origin: string) => {
         return origin === INTERNAL_REQUEST_ORIGIN;
+    };
+
+    private persist = () => {
+        browser.storage.local.set({ permission: this.store });
     };
 }
 

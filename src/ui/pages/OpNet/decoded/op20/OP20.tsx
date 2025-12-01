@@ -6,12 +6,13 @@ import { fontSizes } from '@/ui/theme/font';
 import {
     DecodedAirdrop,
     DecodedAirdropWithAmount,
+    DecodedBurn,
+    DecodedDecreaseAllowanceBySignature,
     DecodedIncreaseAllowance,
     DecodedIncreaseAllowanceBySignature,
-    DecodedBurn,
     DecodedMint,
     DecodedSafeTransfer,
-    DecodedSafeTransferFrom, DecodedDecreaseAllowanceBySignature
+    DecodedSafeTransferFrom
 } from '@/ui/pages/OpNet/decoded/DecodedTypes';
 import { sliceAddress } from '@/ui/pages/OpNet/decoded/helpper';
 import BigNumber from 'bignumber.js';

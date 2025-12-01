@@ -4,13 +4,8 @@ import * as oldEncryptor from 'browser-passworder';
 import { EventEmitter } from 'events';
 import log from 'loglevel';
 
-import { ADDRESS_TYPES, KEYRING_TYPE } from '@/shared/constant';
-import {
-    AddressTypes,
-    isLegacyAddressType,
-    legacyToAddressTypes,
-    storageToAddressTypes
-} from '@/shared/types';
+import { KEYRING_TYPE } from '@/shared/constant';
+import { AddressTypes, isLegacyAddressType, legacyToAddressTypes, storageToAddressTypes } from '@/shared/types';
 import { Network, networks, Psbt } from '@btc-vision/bitcoin';
 import * as encryptor from '@btc-vision/passworder';
 import { HdKeyring, SimpleKeyring } from '@btc-vision/wallet-sdk';
@@ -772,7 +767,11 @@ class KeyringService extends EventEmitter {
         throw new Error('No keyring found for the requested account.');
     };
 
-    displayForKeyring = (keyring: Keyring | EmptyKeyring, addressType: AddressTypes, index: number): DisplayedKeyring => {
+    displayForKeyring = (
+        keyring: Keyring | EmptyKeyring,
+        addressType: AddressTypes,
+        index: number
+    ): DisplayedKeyring => {
         const accounts = keyring.getAccounts();
         const all_accounts: { pubkey: string; brandName: string; quantumPublicKey?: string }[] = [];
 
@@ -855,7 +854,9 @@ class KeyringService extends EventEmitter {
     };
 
     _updateMemStoreKeyrings = (): void => {
-        const keyrings = this.keyrings.map((keyring, index) => this.displayForKeyring(keyring, this.addressTypes[index], index));
+        const keyrings = this.keyrings.map((keyring, index) =>
+            this.displayForKeyring(keyring, this.addressTypes[index], index)
+        );
         this.memStore.updateState({ keyrings });
     };
 
@@ -919,7 +920,9 @@ class KeyringService extends EventEmitter {
             if (newHash && existingHashes.includes(newHash.toLowerCase())) {
                 // Revert the import by clearing the quantum key
                 (keyring as SimpleKeyring & { clearQuantumKey: () => void }).clearQuantumKey();
-                throw new Error('This quantum key is already associated with another account. Each account must have a unique quantum key.');
+                throw new Error(
+                    'This quantum key is already associated with another account. Each account must have a unique quantum key.'
+                );
             }
 
             await this.persistAllKeyrings();

@@ -6,7 +6,7 @@ import { ProviderControllerRequest } from '@/shared/types/Request';
 import wallet from '../wallet';
 
 const tabCheckin = (req: ProviderControllerRequest) => {
-    const {origin, name, icon} = req.data.params as SessionInfo;
+    const { origin, name, icon } = req.data.params as SessionInfo;
     req.session.setProp({ origin, name, icon });
 };
 
@@ -35,13 +35,12 @@ export interface InternalMethod {
     tabCheckin: (req: ProviderControllerRequest) => void;
     getProviderState: (req: ProviderControllerRequest) => Promise<ProviderState>;
     keepAlive: (req: ProviderControllerRequest) => string;
-};
+}
 
 const internalMethod: InternalMethod = {
     tabCheckin,
     getProviderState,
-    keepAlive,
-}
+    keepAlive
+};
 
 export default internalMethod;
-

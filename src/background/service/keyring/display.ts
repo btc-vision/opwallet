@@ -1,6 +1,5 @@
 import { isHDKeyring } from '@/background/utils/keyring';
 import KeyringService, { Keyring } from './index';
-import { HdKeyring } from '@btc-vision/wallet-sdk';
 
 // Type for keyring that may be Keyring, EmptyKeyring, or HdKeyring
 type AnyKeyring = Keyring | { type: string; getAccounts(): string[] };

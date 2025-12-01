@@ -138,10 +138,7 @@ export default function SignText({ params: { data, session } }: Props) {
                                     border: '1px solid rgba(243, 116, 19, 0.3)'
                                 }}>
                                 <Column gap="md">
-                                    <Text
-                                        text="You are about to sign this message with your wallet."
-                                        textCenter
-                                    />
+                                    <Text text="You are about to sign this message with your wallet." textCenter />
                                     <Text
                                         preset="sub"
                                         textCenter
@@ -173,14 +170,26 @@ export default function SignText({ params: { data, session } }: Props) {
                 {step === 'review' && (
                     <Row full gap="md" style={{ padding: '16px' }}>
                         <Button text="Reject" full preset="default" onClick={handleCancel} style={{ flex: 1 }} />
-                        <Button text="Review Details" full preset="primary" onClick={handleReview} style={{ flex: 1 }} />
+                        <Button
+                            text="Review Details"
+                            full
+                            preset="primary"
+                            onClick={handleReview}
+                            style={{ flex: 1 }}
+                        />
                     </Row>
                 )}
 
                 {step === 'confirm' && (
                     <Row full gap="md" style={{ padding: '16px' }}>
                         <Button text="Back" full preset="default" onClick={handleBack} style={{ flex: 1 }} />
-                        <Button text="Confirm Signature" full preset="primary" onClick={handleConfirm} style={{ flex: 1 }} />
+                        <Button
+                            text="Confirm Signature"
+                            full
+                            preset="primary"
+                            onClick={handleConfirm}
+                            style={{ flex: 1 }}
+                        />
                     </Row>
                 )}
             </Footer>

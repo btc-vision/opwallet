@@ -73,12 +73,13 @@ export default function SignData({ params: { data, session } }: Props) {
                         <>
                             <Text text="Confirm your signature" textCenter mt="lg" />
 
-                            <Card style={{ backgroundColor: 'rgba(243, 116, 19, 0.1)', borderColor: 'rgba(243, 116, 19, 0.3)' }}>
+                            <Card
+                                style={{
+                                    backgroundColor: 'rgba(243, 116, 19, 0.1)',
+                                    borderColor: 'rgba(243, 116, 19, 0.3)'
+                                }}>
                                 <Column gap="md">
-                                    <Text
-                                        text="You are about to sign this data with your wallet."
-                                        textCenter
-                                    />
+                                    <Text text="You are about to sign this data with your wallet." textCenter />
                                     <Text
                                         preset="sub"
                                         textCenter
@@ -88,12 +89,7 @@ export default function SignData({ params: { data, session } }: Props) {
                                 </Column>
                             </Card>
 
-                            <Text
-                                preset="sub"
-                                textCenter
-                                mt="md"
-                                text="Signature type: ecdsa"
-                            />
+                            <Text preset="sub" textCenter mt="md" text="Signature type: ecdsa" />
                         </>
                     )}
                 </Column>

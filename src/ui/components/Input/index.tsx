@@ -149,9 +149,10 @@ function AmountInput(props: InputProps) {
             />
             {enableMax ? (
                 <div>
-                    <button onClick={() => {
-                        if (onMaxClick) onMaxClick();
-                    }}>
+                    <button
+                        onClick={() => {
+                            if (onMaxClick) onMaxClick();
+                        }}>
                         Max
                     </button>
                 </div>

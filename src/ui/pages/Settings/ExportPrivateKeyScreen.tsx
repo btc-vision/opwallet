@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { WarningOutlined, SafetyOutlined } from '@ant-design/icons';
+import { SafetyOutlined, WarningOutlined } from '@ant-design/icons';
 
 import { KEYRING_TYPE } from '@/shared/constant';
 import { Account } from '@/shared/types';
@@ -131,11 +131,20 @@ export default function ExportPrivateKeyScreen() {
                         </Card>
 
                         {isSimpleKeyring && (
-                            <Card style={{ backgroundColor: 'rgba(243, 116, 19, 0.1)', borderColor: 'rgba(243, 116, 19, 0.3)' }}>
+                            <Card
+                                style={{
+                                    backgroundColor: 'rgba(243, 116, 19, 0.1)',
+                                    borderColor: 'rgba(243, 116, 19, 0.3)'
+                                }}>
                                 <Row itemsCenter gap="sm">
                                     <WarningOutlined style={{ fontSize: 18, color: '#f37413' }} />
                                     <Column gap="xs" style={{ flex: 1 }}>
-                                        <Text text="IMPORTANT: Export BOTH Keys" preset="bold" size="sm" color="warning" />
+                                        <Text
+                                            text="IMPORTANT: Export BOTH Keys"
+                                            preset="bold"
+                                            size="sm"
+                                            color="warning"
+                                        />
                                         <Text
                                             text="For OPNet compatibility, you must backup both your classical and quantum private keys."
                                             preset="sub"
@@ -230,11 +239,20 @@ export default function ExportPrivateKeyScreen() {
                         {/* Quantum Private Key Section - Only for Simple Keyrings */}
                         {isSimpleKeyring && quantumPrivateKey && (
                             <>
-                                <Card style={{ backgroundColor: 'rgba(239, 68, 68, 0.15)', borderColor: 'rgba(239, 68, 68, 0.4)' }}>
+                                <Card
+                                    style={{
+                                        backgroundColor: 'rgba(239, 68, 68, 0.15)',
+                                        borderColor: 'rgba(239, 68, 68, 0.4)'
+                                    }}>
                                     <Column gap="sm">
                                         <Row itemsCenter gap="sm">
                                             <WarningOutlined style={{ fontSize: 18, color: '#ef4444' }} />
-                                            <Text text="CRITICAL: Import BOTH Keys" preset="bold" size="sm" color="red" />
+                                            <Text
+                                                text="CRITICAL: Import BOTH Keys"
+                                                preset="bold"
+                                                size="sm"
+                                                color="red"
+                                            />
                                         </Row>
                                         <Text
                                             text="When importing this wallet elsewhere, you MUST import BOTH the classical private key (WIF) AND the quantum private key below. If you only import the WIF key, you will NOT be able to use OPNet features!"
@@ -245,7 +263,11 @@ export default function ExportPrivateKeyScreen() {
                                     </Column>
                                 </Card>
 
-                                <Card style={{ backgroundColor: 'rgba(139, 92, 246, 0.1)', borderColor: 'rgba(139, 92, 246, 0.3)' }}>
+                                <Card
+                                    style={{
+                                        backgroundColor: 'rgba(139, 92, 246, 0.1)',
+                                        borderColor: 'rgba(139, 92, 246, 0.3)'
+                                    }}>
                                     <Column gap="md">
                                         <Row itemsCenter gap="sm">
                                             <SafetyOutlined style={{ fontSize: 16, color: '#8B5CF6' }} />

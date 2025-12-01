@@ -36,11 +36,7 @@ export default function MultiSignDisclaimerModal({
                         text={`By proceeding, you confirm that you've read and accepted this disclaimer.`}></Text>
                 </Column>
 
-                <Button
-                    text={`Sign all ${txCount} transactions at once`}
-                    preset="primaryV2"
-                    onClick={onContinue}
-                />
+                <Button text={`Sign all ${txCount} transactions at once`} preset="primaryV2" onClick={onContinue} />
             </Column>
         </BottomModal>
     );

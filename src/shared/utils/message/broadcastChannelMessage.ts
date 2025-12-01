@@ -27,7 +27,6 @@ export default class BroadcastChannelMessage extends Message {
         return this;
     };
 
-     
     listen = (listenCallback: (_: RequestParams) => Promise<unknown>) => {
         this.listenCallback = listenCallback;
 

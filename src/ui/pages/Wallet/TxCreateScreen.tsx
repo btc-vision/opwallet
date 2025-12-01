@@ -92,7 +92,7 @@ export default function TxCreateScreen() {
     const [autoAdjust, setAutoAdjust] = useState(false);
     const [note, setNote] = useState<string>('');
     const [checked, setChecked] = useState(false);
-    
+
     // UTXO Status section states
     const [showUTXOStatus, setShowUTXOStatus] = useState(false);
     const [utxoStatusActiveTab, setUtxoStatusActiveTab] = useState<'balance' | 'quotas'>('balance');
@@ -963,7 +963,7 @@ export default function TxCreateScreen() {
                             Change
                         </button>
                     </div>
-                    
+
                     {/* Recipient Section */}
                     <div
                         style={{
@@ -1260,23 +1260,24 @@ export default function TxCreateScreen() {
                                     UTXO Status
                                 </span>
                             </div>
-                            <DownOutlined 
-                                style={{ 
-                                    fontSize: 10, 
+                            <DownOutlined
+                                style={{
+                                    fontSize: 10,
                                     color: colors.textFaded,
                                     transform: showUTXOStatus ? 'rotate(180deg)' : 'rotate(0deg)',
-                                    transition: 'transform 0.2s' 
-                                }} 
+                                    transition: 'transform 0.2s'
+                                }}
                             />
                         </button>
 
                         {showUTXOStatus && (
-                            <div style={{ 
-                                display: 'flex', 
-                                justifyContent: 'flex-start',
-                                animation: 'fadeIn 0.2s ease-in',
-                                width: '100%'
-                            }}>
+                            <div
+                                style={{
+                                    display: 'flex',
+                                    justifyContent: 'flex-start',
+                                    animation: 'fadeIn 0.2s ease-in',
+                                    width: '100%'
+                                }}>
                                 <BalanceDisplay
                                     accountBalance={accountBalance}
                                     showDetails={true}
@@ -1338,8 +1339,8 @@ export default function TxCreateScreen() {
                                             color: colors.textFaded,
                                             lineHeight: '1.4'
                                         }}>
-                                        Small UTXOs will be included in the transaction and consolidated.
-                                        This helps reduce fragmentation but may increase transaction fees.
+                                        Small UTXOs will be included in the transaction and consolidated. This helps
+                                        reduce fragmentation but may increase transaction fees.
                                     </div>
                                 </div>
                             </div>

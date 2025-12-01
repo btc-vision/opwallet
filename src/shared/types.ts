@@ -253,9 +253,9 @@ export interface WalletKeyring {
 
 // Quantum key status for accounts
 export enum QuantumKeyStatus {
-    NOT_REQUIRED = 'not_required',     // HD wallet - can derive from mnemonic
-    NOT_MIGRATED = 'not_migrated',     // WIF/private key import - needs migration
-    MIGRATED = 'migrated',             // WIF/private key with quantum key assigned
+    NOT_REQUIRED = 'not_required', // HD wallet - can derive from mnemonic
+    NOT_MIGRATED = 'not_migrated', // WIF/private key import - needs migration
+    MIGRATED = 'migrated', // WIF/private key with quantum key assigned
     LINKED_ON_CHAIN = 'linked_on_chain' // Key is linked on blockchain
 }
 
@@ -271,7 +271,7 @@ export interface Account {
     key: string;
     flag: number;
     // Quantum/MLDSA key info
-    quantumPublicKeyHash?: string;  // SHA256 of MLDSA public key
+    quantumPublicKeyHash?: string; // SHA256 of MLDSA public key
     quantumKeyStatus?: QuantumKeyStatus;
 }
 

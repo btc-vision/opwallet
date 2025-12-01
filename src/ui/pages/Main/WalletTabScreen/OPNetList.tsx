@@ -1,7 +1,7 @@
 import { CloseOutlined, LoadingOutlined } from '@ant-design/icons';
 import { Modal } from 'antd';
 import BigNumber from 'bignumber.js';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import browser from 'webextension-polyfill';
 
 import Web3API from '@/shared/web3/Web3API';

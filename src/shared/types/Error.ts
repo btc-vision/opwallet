@@ -1,4 +1,4 @@
-import { BitcoinProviderError, BitcoinRpcError } from "../lib/bitcoin-rpc-errors/classes";
+import { BitcoinProviderError, BitcoinRpcError } from '../lib/bitcoin-rpc-errors/classes';
 
 export type WalletError = Error | BitcoinProviderError | BitcoinRpcError;
 
@@ -15,4 +15,3 @@ export interface SerializedWalletError {
     data?: unknown;
     stack?: string;
 }
-

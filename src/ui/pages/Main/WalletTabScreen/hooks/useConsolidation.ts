@@ -48,7 +48,7 @@ export function useConsolidation() {
         const warningThreshold = UTXO_CONFIG.WARNING_THRESHOLD;
 
         // Check if ANY individual category has reached the warning threshold
-        const hasReachedWarning = 
+        const hasReachedWarning =
             accountBalance.unspent_utxos_count >= warningThreshold ||
             accountBalance.csv75_locked_utxos_count >= warningThreshold ||
             accountBalance.csv75_unlocked_utxos_count >= warningThreshold ||
@@ -152,7 +152,7 @@ export function useConsolidation() {
 
         // Determine which account has the most UTXOs to consolidate
         const { type, count } = selectConsolidationType(freshBalance);
-        
+
         // Limit to the actual consolidation limit (1400)
         const consolidationLimit = UTXO_CONFIG.CONSOLIDATION_LIMIT;
         const actualUTXOsToConsolidate = Math.min(count, consolidationLimit);

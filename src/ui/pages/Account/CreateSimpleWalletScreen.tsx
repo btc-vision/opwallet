@@ -3,11 +3,19 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ADDRESS_TYPES } from '@/shared/constant';
 import { AddressAssets, AddressTypes } from '@/shared/types';
 import { getBitcoinLibJSNetwork } from '@/shared/web3/Web3API';
-import { Column, Content, Header, Layout, Row, Text } from '@/ui/components';
+import { Column, Content, Header, Layout, Text } from '@/ui/components';
 import { useTools } from '@/ui/components/ActionComponent';
 import { AddressTypeCard } from '@/ui/components/AddressTypeCard';
 import { satoshisToAmount, useWallet } from '@/ui/utils';
-import { CheckCircleFilled, ImportOutlined, InfoCircleOutlined, KeyOutlined, LoadingOutlined, SafetyOutlined, WalletOutlined } from '@ant-design/icons';
+import {
+    CheckCircleFilled,
+    ImportOutlined,
+    InfoCircleOutlined,
+    KeyOutlined,
+    LoadingOutlined,
+    SafetyOutlined,
+    WalletOutlined
+} from '@ant-design/icons';
 import { EcKeyPair } from '@btc-vision/transaction';
 import { ethers } from 'ethers';
 
@@ -342,12 +350,13 @@ function Step2({
 
         const getAddrForType = (t: AddressTypes) => {
             // For both WIF and raw hex, use EcKeyPair methods for address derivation
-            const kp = contextData.keyKind === 'wif'
-                ? EcKeyPair.fromWIF(contextData.wif, bitcoinNetwork)
-                : EcKeyPair.fromPrivateKey(
-                    Buffer.from(contextData.wif.replace(/^0x/, '').trim(), 'hex'),
-                    bitcoinNetwork
-                );
+            const kp =
+                contextData.keyKind === 'wif'
+                    ? EcKeyPair.fromWIF(contextData.wif, bitcoinNetwork)
+                    : EcKeyPair.fromPrivateKey(
+                          Buffer.from(contextData.wif.replace(/^0x/, '').trim(), 'hex'),
+                          bitcoinNetwork
+                      );
 
             if (t === AddressTypes.P2TR) return EcKeyPair.getTaprootAddress(kp, bitcoinNetwork);
             if (t === AddressTypes.P2SH_OR_P2SH_P2WPKH) return EcKeyPair.getLegacySegwitAddress(kp, bitcoinNetwork);
@@ -442,9 +451,8 @@ function Step2({
             }
 
             // Pass quantum private key if provided
-            const quantumKey = contextData.importQuantumKey && quantumKeyInput
-                ? quantumKeyInput.replace('0x', '').trim()
-                : undefined;
+            const quantumKey =
+                contextData.importQuantumKey && quantumKeyInput ? quantumKeyInput.replace('0x', '').trim() : undefined;
 
             await wallet.createKeyringWithPrivateKey(pk, contextData.addressType, undefined, quantumKey);
             navigate(RouteTypes.MainScreen);
@@ -586,9 +594,7 @@ function Step2({
                             <div style={{ fontSize: '13px', fontWeight: 600, color: colors.text }}>
                                 Import Quantum Key
                             </div>
-                            <div style={{ fontSize: '11px', color: colors.textFaded }}>
-                                For OPNet compatibility
-                            </div>
+                            <div style={{ fontSize: '11px', color: colors.textFaded }}>For OPNet compatibility</div>
                         </div>
                     </div>
                     <button
@@ -615,7 +621,9 @@ function Step2({
                                 minHeight: '60px',
                                 padding: '10px',
                                 background: colors.inputBg,
-                                border: quantumKeyError ? `1px solid ${colors.error}` : `1px solid ${colors.containerBorder}`,
+                                border: quantumKeyError
+                                    ? `1px solid ${colors.error}`
+                                    : `1px solid ${colors.containerBorder}`,
                                 borderRadius: '8px',
                                 color: colors.text,
                                 fontSize: '11px',
@@ -636,8 +644,8 @@ function Step2({
                             </div>
                         )}
                         <div style={{ fontSize: '10px', color: colors.textFaded, marginTop: '6px' }}>
-                            If you have an existing quantum key from another wallet, enter it here.
-                            Otherwise, a new key will be generated automatically.
+                            If you have an existing quantum key from another wallet, enter it here. Otherwise, a new key
+                            will be generated automatically.
                         </div>
                     </div>
                 )}
@@ -807,7 +815,8 @@ export default function CreateSimpleWalletScreen() {
                         {items.map((item, index) => {
                             const isActive = item.key === contextData.tabType;
                             const isCompleted = index < currentStepIndex;
-                            const isClickable = isCompleted || (index === currentStepIndex + 1 && contextData.step1Completed);
+                            const isClickable =
+                                isCompleted || (index === currentStepIndex + 1 && contextData.step1Completed);
 
                             return (
                                 <div
@@ -828,7 +837,11 @@ export default function CreateSimpleWalletScreen() {
                                                   ? colors.success
                                                   : colors.buttonHoverBg,
                                             border: `1px solid ${
-                                                isActive ? colors.main : isCompleted ? colors.success : colors.containerBorder
+                                                isActive
+                                                    ? colors.main
+                                                    : isCompleted
+                                                      ? colors.success
+                                                      : colors.containerBorder
                                             }`,
                                             color: isActive || isCompleted ? colors.background : colors.textFaded,
                                             fontSize: '11px',

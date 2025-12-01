@@ -33,7 +33,7 @@ const create = async ({ url, ...rest }: WindowProps): Promise<number | undefined
         top: cTop,
         left: cLeft,
         width
-    } = await browserWindowsGetCurrent() as { top: number, left: number, width: number };
+    } = (await browserWindowsGetCurrent()) as { top: number; left: number; width: number };
 
     const top = cTop + BROWSER_HEADER;
     const left = cLeft + width - WINDOW_SIZE.width;

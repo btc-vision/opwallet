@@ -114,8 +114,8 @@ export function Step1_Import({
             if (isWalletError(e)) {
                 tools.toastError(e.message);
             } else {
-                tools.toastError("An unexpected error occurred.");
-                console.error("Non-WalletError caught: ", e);
+                tools.toastError('An unexpected error occurred.');
+                console.error('Non-WalletError caught: ', e);
             }
         }
     };

@@ -232,7 +232,14 @@ export class ProviderController {
             data: { params }
         } = req;
         const networkType = params.network ?? wallet.getNetworkType();
-        return verifyBip322MessageWithNetworkType(params.address, params.message, params.signature, networkTypeToOPNet(networkType)) ? 1 : 0;
+        return verifyBip322MessageWithNetworkType(
+            params.address,
+            params.message,
+            params.signature,
+            networkTypeToOPNet(networkType)
+        )
+            ? 1
+            : 0;
     };
 
     @Reflect.metadata('APPROVAL', [

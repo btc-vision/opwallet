@@ -25,7 +25,6 @@ export interface Props {
     handleConfirm?: (rawTxInfo?: RawTxInfo) => void;
 }
 
-
 function SignTxDetails({ txInfo, type, rawTxInfo }: { txInfo: TxInfo; rawTxInfo?: RawTxInfo; type: TxType }) {
     const address = useAccountAddress();
     const chain = useChain();

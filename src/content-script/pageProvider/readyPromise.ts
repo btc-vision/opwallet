@@ -42,7 +42,7 @@ class ReadyPromise {
             if (!task) {
                 continue;
             }
-    
+
             const { resolve, reject, fn } = task;
 
             let errored = false;

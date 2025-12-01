@@ -94,7 +94,12 @@ export interface WalletController {
         keyring: WalletKeyring
     ): Promise<{ mnemonic: string | undefined; hdPath: string | undefined; passphrase: string | undefined }>;
 
-    createKeyringWithPrivateKey(data: string, addressType: AddressTypes, alianName?: string, quantumPrivateKey?: string): Promise<Account[]>;
+    createKeyringWithPrivateKey(
+        data: string,
+        addressType: AddressTypes,
+        alianName?: string,
+        quantumPrivateKey?: string
+    ): Promise<Account[]>;
 
     getPreMnemonics(): Promise<SavedVault[] | null>;
 

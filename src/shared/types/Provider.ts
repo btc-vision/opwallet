@@ -1,4 +1,4 @@
-import { ChainType } from "../constant";
+import { ChainType } from '../constant';
 
 export interface ProviderState {
     network: string;

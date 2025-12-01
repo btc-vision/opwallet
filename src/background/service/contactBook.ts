@@ -28,10 +28,6 @@ class ContactBook {
         }
     };
 
-    private persist = () => {
-        browser.storage.local.set({ contactBook: this.store });
-    };
-
     getContactByAddress = (address: string) => {
         return this.store[address.toLowerCase()];
     };
@@ -129,6 +125,10 @@ class ContactBook {
                 {}
             );
         return res;
+    };
+
+    private persist = () => {
+        browser.storage.local.set({ contactBook: this.store });
     };
 }
 

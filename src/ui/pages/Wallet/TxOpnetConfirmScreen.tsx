@@ -38,8 +38,7 @@ import {
     DeploymentResult,
     IDeploymentParameters,
     IFundingTransactionParameters,
-    UTXO,
-    Wallet
+    UTXO
 } from '@btc-vision/transaction';
 import BigNumber from 'bignumber.js';
 import {
@@ -158,13 +157,12 @@ export default function TxOpnetConfirmScreen() {
 
         // Check for 32-byte values (likely MLDSA public key hash, not valid address)
         if (pubKeyStr.length === 64 && /^[0-9a-fA-F]+$/.test(pubKeyStr)) {
-            throw new Error('32-byte values are not valid Bitcoin addresses. This may be an MLDSA public key hash - please use the recipient\'s Bitcoin address instead.');
+            throw new Error(
+                "32-byte values are not valid Bitcoin addresses. This may be an MLDSA public key hash - please use the recipient's Bitcoin address instead."
+            );
         }
 
-        if (
-            (pubKeyStr.length === 66 || pubKeyStr.length === 130) &&
-            pubKeyStr.match(/^[0-9a-fA-F]+$/) !== null
-        ) {
+        if ((pubKeyStr.length === 66 || pubKeyStr.length === 130) && pubKeyStr.match(/^[0-9a-fA-F]+$/) !== null) {
             pubKey = Address.fromString(pubKeyStr);
         } else {
             pubKey = await Web3API.provider.getPublicKeyInfo(to, false);

@@ -1,6 +1,4 @@
 import React from 'react';
-import { RouteTypes } from '@/ui/pages/MainRoute';
-import { QrcodeOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 
 const colors = {
@@ -9,8 +7,8 @@ const colors = {
     buttonBorder: '#444746',
     buttonBorderHover: '#f37413',
     main: '#f37413',
-    text: '#dbdbdb',
-}
+    text: '#dbdbdb'
+};
 
 interface ActionButtonProps {
     label: string;

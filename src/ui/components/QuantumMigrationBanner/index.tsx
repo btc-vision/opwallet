@@ -32,12 +32,7 @@ export function QuantumMigrationBanner({ onMigrate }: QuantumMigrationBannerProp
                     <WarningOutlined style={{ fontSize: 18, color: '#f37413' }} />
                 </div>
                 <Column gap="zero" style={{ flex: 1 }}>
-                    <Text
-                        text="Post-Quantum Migration Required"
-                        preset="bold"
-                        size="sm"
-                        color="warning"
-                    />
+                    <Text text="Post-Quantum Migration Required" preset="bold" size="sm" color="warning" />
                     <Text
                         text="Tap to migrate your wallet to quantum-safe keys"
                         preset="sub"

@@ -1,6 +1,6 @@
 type Listener = (params?: unknown) => void;
 
-// TODO (typing): It may not worth it to make EventBus generic at this point 
+// TODO (typing): It may not worth it to make EventBus generic at this point
 // since there are some usages where we pass 'params' dynamically (i.e. rpcFlow.ts).
 // Making this generic may be more meaningful when we have a strict typing in provider controller functions.
 class EventBus {

@@ -1,6 +1,6 @@
 import browser, { Runtime, Tabs, Windows } from 'webextension-polyfill';
 
-export interface WindowProps extends Windows.CreateCreateDataType{
+export interface WindowProps extends Windows.CreateCreateDataType {
     route?: string;
 }
 
