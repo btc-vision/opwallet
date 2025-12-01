@@ -97,8 +97,8 @@ export interface WalletController {
     createKeyringWithPrivateKey(
         data: string,
         addressType: AddressTypes,
-        alianName?: string,
-        quantumPrivateKey?: string
+        quantumPrivateKey: string,
+        alianName?: string
     ): Promise<Account[]>;
 
     getPreMnemonics(): Promise<SavedVault[] | null>;

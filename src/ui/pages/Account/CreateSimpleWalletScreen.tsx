@@ -18,7 +18,7 @@ import {
     WalletOutlined,
     WarningOutlined
 } from '@ant-design/icons';
-import { EcKeyPair, MLDSASecurityLevel } from '@btc-vision/transaction';
+import { EcKeyPair, MLDSASecurityLevel, Wallet } from '@btc-vision/transaction';
 import { getMLDSAConfig, QuantumBIP32Factory } from '@btc-vision/bip32';
 import { crypto as bitcoinCrypto, networks } from '@btc-vision/bitcoin';
 import { ethers } from 'ethers';
@@ -709,6 +709,9 @@ function Step3({
         setImporting(true);
         setQuantumKeyError('');
 
+        const network = await wallet.getNetworkType();
+        const bitcoinNetwork = getBitcoinLibJSNetwork(network);
+
         try {
             const pk =
                 contextData.keyKind === 'rawHex' ? contextData.wif.replace(/^0x/, '').toLowerCase() : contextData.wif;
@@ -724,7 +727,8 @@ function Step3({
                     setImporting(false);
                     return;
                 }
-                quantumKey = undefined;
+
+                quantumKey = Wallet.generate(bitcoinNetwork, MLDSASecurityLevel.LEVEL2).quantumPrivateKeyHex;
             } else if (quantumKeyInput) {
                 // Validate format
                 if (!validateQuantumKey(quantumKeyInput)) {
@@ -751,8 +755,12 @@ function Step3({
                 quantumKey = cleanKey;
             }
 
+            if (!quantumKey) {
+                throw new Error('Quantum key is required for import.');
+            }
+
             // Create the wallet
-            await wallet.createKeyringWithPrivateKey(pk, contextData.addressType, undefined, quantumKey);
+            await wallet.createKeyringWithPrivateKey(pk, contextData.addressType, quantumKey, undefined);
 
             // If user chose to generate new key and no key was provided
             if (generateNewQuantumKey && !quantumKey) {
@@ -965,7 +973,9 @@ function Step3({
                                 padding: '12px'
                             }}>
                             <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
-                                <InfoCircleOutlined style={{ fontSize: 14, color: colors.textFaded, marginTop: '2px' }} />
+                                <InfoCircleOutlined
+                                    style={{ fontSize: 14, color: colors.textFaded, marginTop: '2px' }}
+                                />
                                 <div style={{ fontSize: '11px', color: colors.textFaded, lineHeight: '1.4' }}>
                                     Generating a new key is disabled because this wallet already has a key linked
                                     on-chain. You must import the original key to access your funds.
@@ -1062,7 +1072,7 @@ function Step3({
                             <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
                                 <WarningOutlined style={{ fontSize: 14, color: colors.main, marginTop: '2px' }} />
                                 <div style={{ fontSize: '11px', color: colors.text, lineHeight: '1.4' }}>
-                                    The imported key's public key hash must match:
+                                    The imported key&#39;s public key hash must match:
                                     <div
                                         style={{
                                             marginTop: '6px',
@@ -1144,7 +1154,7 @@ function Step3({
                                 textAlign: 'center'
                             }}>
                             <div style={{ fontSize: '12px', color: colors.textFaded, marginBottom: '8px' }}>
-                                Don't have a quantum key to link with this wallet?
+                                Don&#39;t have a quantum key to link with this wallet?
                             </div>
                             <button
                                 style={{
@@ -1351,9 +1361,7 @@ export default function CreateSimpleWalletScreen() {
                             const canGoToStep2 = contextData.step1Completed;
                             const canGoToStep3 = contextData.step1Completed && contextData.step2Completed;
                             const isClickable =
-                                isCompleted ||
-                                (index === 1 && canGoToStep2) ||
-                                (index === 2 && canGoToStep3);
+                                isCompleted || (index === 1 && canGoToStep2) || (index === 2 && canGoToStep3);
 
                             return (
                                 <div

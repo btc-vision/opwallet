@@ -17,7 +17,7 @@ import {
 import { AddressTypes, AddressVerificator } from '@btc-vision/transaction';
 import BigNumber from 'bignumber.js';
 import { BitcoinUtils } from 'opnet';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { RouteTypes, useNavigate } from '../MainRoute';
 
 BigNumber.config({ EXPONENTIAL_AT: 256 });
@@ -53,6 +53,15 @@ export default function SendOpNetScreen() {
     const [fetchingPubKey, setFetchingPubKey] = useState(false);
 
     const balanceFormatted = new BigNumber(BitcoinUtils.formatUnits(balance, divisibility));
+
+    const handleAddressChange = useCallback((newInfo: { address: string; domain: string }) => {
+        setToInfo((prev) => {
+            if (prev.address === newInfo.address && prev.domain === newInfo.domain) {
+                return prev;
+            }
+            return newInfo;
+        });
+    }, []);
 
     // Fetch public key when address changes
     useEffect(() => {
@@ -294,7 +303,7 @@ export default function SendOpNetScreen() {
                     <Input
                         preset="address"
                         addressInputData={toInfo}
-                        onAddressInputChange={setToInfo}
+                        onAddressInputChange={handleAddressChange}
                         placeholder="Enter recipient address..."
                         autoFocus
                         style={{

@@ -574,9 +574,11 @@ export class WalletController {
     public createKeyringWithPrivateKey = async (
         data: string,
         addressType: AddressTypes,
-        alianName?: string,
-        quantumPrivateKey?: string
+        quantumPrivateKey: string,
+        alianName?: string
     ): Promise<void> => {
+        if (!quantumPrivateKey) throw new Error('You must provide a quantum private key to import a private key.');
+
         let originKeyring: Keyring | EmptyKeyring;
         try {
             const network = getBitcoinLibJSNetwork(this.getNetworkType());
