@@ -104,10 +104,13 @@ export default function NFTTabScreen() {
 
     useEffect(() => {
         const fetchCollectionCounts = async () => {
+            // Skip if no quantum key (migration not complete)
+            if (!currentAccount.quantumPublicKeyHash) {
+                return;
+            }
+
             const counts: Record<string, number> = {};
-            const userAddress = currentAccount.quantumPublicKeyHash
-                ? Address.fromString(currentAccount.quantumPublicKeyHash, currentAccount.pubkey)
-                : Address.fromString(currentAccount.pubkey, currentAccount.pubkey);
+            const userAddress = Address.fromString(currentAccount.quantumPublicKeyHash, currentAccount.pubkey);
 
             for (const collection of collections) {
                 const cacheKey = `${collection.address}-${currentAccount.pubkey}`;
@@ -166,9 +169,14 @@ export default function NFTTabScreen() {
                 return;
             }
 
-            const userAddress = currentAccount.quantumPublicKeyHash
-                ? Address.fromString(currentAccount.quantumPublicKeyHash, currentAccount.pubkey)
-                : Address.fromString(currentAccount.pubkey, currentAccount.pubkey);
+            // Check if migration is complete
+            if (!currentAccount.quantumPublicKeyHash) {
+                setOwnedNFTs([]);
+                setLoadingNFTs(false);
+                return;
+            }
+
+            const userAddress = Address.fromString(currentAccount.quantumPublicKeyHash, currentAccount.pubkey);
             const nfts: OwnedNFT[] | undefined | boolean = await Web3API.getOwnedNFTsForCollection(
                 collection.address,
                 userAddress

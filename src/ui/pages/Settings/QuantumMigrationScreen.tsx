@@ -141,14 +141,20 @@ export default function QuantumMigrationScreen() {
 
         setImporting(true);
         try {
+            console.log('[QuantumMigration] Starting import, key length:', cleanKey.length);
+
             // Import quantum key for the current account
             // The SDK's importQuantumKey handles both key-only and key+chaincode formats
             await wallet.setQuantumKey(cleanKey);
+            console.log('[QuantumMigration] setQuantumKey completed');
 
             // Verify the imported key matches the on-chain linked key (if any)
             const opnetWallet = await wallet.getOPNetWallet();
+            console.log('[QuantumMigration] getOPNetWallet completed, mldsaKeypair:', !!opnetWallet.mldsaKeypair);
+
             if (opnetWallet.mldsaKeypair) {
                 const importedKeyHash = opnetWallet.address.toHex().replace('0x', '');
+                console.log('[QuantumMigration] Imported key hash:', importedKeyHash.slice(0, 16) + '...');
 
                 // If there's an on-chain linked key, verify it matches
                 if (onChainLinkedKey) {
@@ -167,8 +173,12 @@ export default function QuantumMigrationScreen() {
                 setHasQuantumKey(true);
                 setQuantumPublicKeyHash(importedKeyHash);
                 setImportMode(false);
+            } else {
+                console.error('[QuantumMigration] No mldsaKeypair after import!');
+                setError('Failed to import quantum key: Key was not properly initialized');
             }
         } catch (e) {
+            console.error('[QuantumMigration] Import error:', e);
             setError((e as Error).message);
         } finally {
             setImporting(false);
@@ -559,34 +569,6 @@ export default function QuantumMigrationScreen() {
                                     padding: '12px'
                                 }}>
                                 <Text text={error} color="error" size="sm" />
-                            </Card>
-                        )}
-
-                        {isLinkedOnChain && onChainLinkedKey && (
-                            <Card
-                                style={{
-                                    backgroundColor: 'rgba(139, 92, 246, 0.15)',
-                                    border: '1px solid rgba(139, 92, 246, 0.4)',
-                                    padding: '14px'
-                                }}>
-                                <Column gap="sm">
-                                    <Row itemsCenter gap="sm">
-                                        <InfoCircleOutlined style={{ fontSize: 16, color: colors.purple }} />
-                                        <Text text="Expected key hash (must match):" preset="sub" size="xs" color="white" />
-                                    </Row>
-                                    <div
-                                        style={{
-                                            padding: '10px',
-                                            backgroundColor: 'rgba(0, 0, 0, 0.3)',
-                                            borderRadius: '6px',
-                                            fontFamily: 'monospace',
-                                            fontSize: '11px',
-                                            wordBreak: 'break-all',
-                                            color: colors.text
-                                        }}>
-                                        {onChainLinkedKey}
-                                    </div>
-                                </Column>
                             </Card>
                         )}
                     </Column>

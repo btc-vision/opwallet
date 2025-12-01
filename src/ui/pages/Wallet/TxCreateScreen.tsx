@@ -71,6 +71,8 @@ interface LocationState {
     consolidation?: ConsolidationParams;
 }
 
+const zeroHash = '0x0000000000000000000000000000000000000000000000000000000000000000';
+
 export default function TxCreateScreen() {
     const navigate = useNavigate();
     const location = useLocation();
@@ -118,12 +120,10 @@ export default function TxCreateScreen() {
         const fetchAllBalances = async () => {
             setLoadingBalances(true);
             try {
+                // CSVs can be used even without quantum migration - use zero hash as fallback
                 const currentAddress = account.quantumPublicKeyHash
                     ? Address.fromString(account.quantumPublicKeyHash, account.pubkey)
-                    : Address.fromString(
-                          '0x0000000000000000000000000000000000000000000000000000000000000000',
-                          account.pubkey
-                      );
+                    : Address.fromString(zeroHash, account.pubkey);
 
                 // Get all balances in one call
                 const currentBalance = await wallet.getAddressBalance(account.address, account.pubkey);
@@ -135,6 +135,8 @@ export default function TxCreateScreen() {
                 const p2wdaAddress = currentAddress.p2wda(Web3API.network);
 
                 const balances: AddressBalance[] = [];
+
+                console.log('currentBalance', currentBalance);
 
                 // Always add current address
                 balances.push({
@@ -383,41 +385,49 @@ export default function TxCreateScreen() {
 
     const onSetAddress = useCallback(
         (val: { address: string; domain: string }) => {
-            setDisplayP2PKWarning(false);
-            setDisplayP2OPWarning(false);
-
             const address = val.address;
-            if (!address) return;
+            if (!address) {
+                setDisplayP2PKWarning(false);
+                setDisplayP2OPWarning(false);
+                return;
+            }
 
             const type = AddressVerificator.detectAddressType(address, Web3API.network);
 
             if (type === null) {
+                setDisplayP2PKWarning(false);
+                setDisplayP2OPWarning(false);
                 setError(`Invalid recipient address`);
                 return;
             }
 
             if (type === AddressTypes.P2PK) {
+                // Convert P2PK to P2TR and show warning
+                const p2trAddress = Address.fromString(zeroHash, address).p2tr(Web3API.network);
                 setDisplayP2PKWarning(true);
-                setUiState({
-                    toInfo: {
-                        ...val,
-                        address: Address.fromString(
-                            '0x0000000000000000000000000000000000000000000000000000000000000000',
-                            address
-                        ).p2tr(Web3API.network)
-                    }
-                });
+                setDisplayP2OPWarning(false);
+                setUiState({ toInfo: { ...val, address: p2trAddress } });
                 return;
             }
 
             if (type === AddressTypes.P2OP) {
+                setDisplayP2PKWarning(false);
                 setDisplayP2OPWarning(true);
                 return;
             }
 
+            // Only update if address actually changed to prevent infinite loop
+            // (happens when P2PK was converted to P2TR and triggers this callback again)
+            setDisplayP2OPWarning(false);
+            // Don't reset P2PK warning here - it should persist after conversion
+            if (type === AddressTypes.P2TR && showP2PKWarning) {
+                // This is the converted P2TR from a P2PK - don't reset warning, don't update state again
+                return;
+            }
+            setDisplayP2PKWarning(false);
             setUiState({ toInfo: val });
         },
-        [setUiState]
+        [setUiState, showP2PKWarning]
     );
 
     const handleSelectAddress = (balance: AddressBalance) => {

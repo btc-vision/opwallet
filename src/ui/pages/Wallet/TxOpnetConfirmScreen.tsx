@@ -285,9 +285,11 @@ export default function TxOpnetConfirmScreen() {
 
             // Check if sending from a CSV address
             if (parameters.from && parameters.sourceType && parameters.sourceType !== SourceType.CURRENT) {
+                // CSVs can be used even without quantum migration - use zero hash as fallback
+                const zeroHash = '0x0000000000000000000000000000000000000000000000000000000000000000';
                 const currentAddress = currentWalletAddress.quantumPublicKeyHash
                     ? Address.fromString(currentWalletAddress.quantumPublicKeyHash, currentWalletAddress.pubkey)
-                    : Address.fromString(currentWalletAddress.pubkey, currentWalletAddress.pubkey);
+                    : Address.fromString(zeroHash, currentWalletAddress.pubkey);
 
                 if (parameters.sourceType === SourceType.CSV75) {
                     const csv75Address = currentAddress.toCSV(75, Web3API.network);

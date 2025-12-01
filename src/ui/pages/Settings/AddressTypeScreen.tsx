@@ -304,18 +304,23 @@ export default function AddressTypeScreen() {
     const [addressAssets, setAddressAssets] = useState<Record<string, AddressAssets>>({});
     const [loading, setLoading] = useState(true);
     const [switching, setSwitching] = useState(false);
+    const [needsMigration, setNeedsMigration] = useState(false);
 
     const loadAddresses = async () => {
         setLoading(true);
         try {
+            // Check if quantum migration is complete
+            if (!account.quantumPublicKeyHash) {
+                setNeedsMigration(true);
+                setLoading(false);
+                return;
+            }
+
             const networkType = await wallet.getNetworkType();
             const chainType = await wallet.getChainType();
             const network = getBitcoinLibJSNetwork(networkType, chainType);
 
-            // Address.fromString requires (mldsaHashedKey, legacyKey) - use pubkey for both if no mldsa
-            const address = account.quantumPublicKeyHash
-                ? Address.fromString(account.quantumPublicKeyHash, account.pubkey)
-                : Address.fromString(account.pubkey, account.pubkey);
+            const address = Address.fromString(account.quantumPublicKeyHash, account.pubkey);
             const p2tr = address.p2tr(network);
             const p2wpkh = address.p2wpkh(network);
             const p2shp2wpkh = address.p2shp2wpkh(network);
@@ -444,6 +449,47 @@ export default function AddressTypeScreen() {
                     <Column itemsCenter>
                         <LoadingOutlined style={{ fontSize: 24, color: colors.main }} />
                         <Text text="Loading addresses..." color="textDim" style={{ marginTop: 12 }} />
+                    </Column>
+                </Content>
+            </Layout>
+        );
+    }
+
+    if (needsMigration) {
+        return (
+            <Layout>
+                <Header onBack={() => window.history.go(-1)} title="Address Type" />
+                <Content
+                    style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        minHeight: '300px',
+                        padding: '20px'
+                    }}>
+                    <Column itemsCenter gap="md">
+                        <Text
+                            text="Feature unavailable"
+                            preset="bold"
+                            size="lg"
+                            color="warning"
+                        />
+                        <Text
+                            text="This feature is only available once your MLDSA keypair is linked. Please complete the post-quantum migration first."
+                            textCenter
+                            color="textDim"
+                        />
+                        <div
+                            style={{
+                                marginTop: '16px',
+                                padding: '12px 24px',
+                                backgroundColor: colors.main,
+                                borderRadius: '8px',
+                                cursor: 'pointer'
+                            }}
+                            onClick={() => navigate(RouteTypes.QuantumMigrationScreen)}>
+                            <Text text="Go to Migration" color="white" />
+                        </div>
                     </Column>
                 </Content>
             </Layout>
