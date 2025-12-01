@@ -229,41 +229,58 @@ export default function ExportPrivateKeyScreen() {
 
                         {/* Quantum Private Key Section - Only for Simple Keyrings */}
                         {isSimpleKeyring && quantumPrivateKey && (
-                            <Card style={{ backgroundColor: 'rgba(139, 92, 246, 0.1)', borderColor: 'rgba(139, 92, 246, 0.3)' }}>
-                                <Column gap="md">
-                                    <Row itemsCenter gap="sm">
-                                        <SafetyOutlined style={{ fontSize: 16, color: '#8B5CF6' }} />
-                                        <Text text="Post-Quantum Private Key (MLDSA)" preset="bold" size="sm" />
-                                    </Row>
-
-                                    <Text
-                                        text="Required for OPNet transactions. Store this key securely alongside your classical key."
-                                        preset="sub"
-                                        size="xs"
-                                        style={{ opacity: 0.7 }}
-                                    />
-
-                                    <div
-                                        onClick={() => copy(quantumPrivateKey)}
-                                        style={{
-                                            padding: '10px 12px',
-                                            backgroundColor: 'rgba(0, 0, 0, 0.3)',
-                                            borderRadius: '8px',
-                                            cursor: 'pointer',
-                                            display: 'flex',
-                                            alignItems: 'flex-start',
-                                            gap: '8px'
-                                        }}>
-                                        <Icon icon="copy" color="textDim" size={14} />
+                            <>
+                                <Card style={{ backgroundColor: 'rgba(239, 68, 68, 0.15)', borderColor: 'rgba(239, 68, 68, 0.4)' }}>
+                                    <Column gap="sm">
+                                        <Row itemsCenter gap="sm">
+                                            <WarningOutlined style={{ fontSize: 18, color: '#ef4444' }} />
+                                            <Text text="CRITICAL: Import BOTH Keys" preset="bold" size="sm" color="red" />
+                                        </Row>
                                         <Text
-                                            text={quantumPrivateKey}
-                                            color="textDim"
+                                            text="When importing this wallet elsewhere, you MUST import BOTH the classical private key (WIF) AND the quantum private key below. If you only import the WIF key, you will NOT be able to use OPNet features!"
+                                            preset="sub"
                                             size="xs"
-                                            style={{ overflowWrap: 'anywhere', flex: 1, fontFamily: 'monospace' }}
+                                            color="red"
                                         />
-                                    </div>
-                                </Column>
-                            </Card>
+                                    </Column>
+                                </Card>
+
+                                <Card style={{ backgroundColor: 'rgba(139, 92, 246, 0.1)', borderColor: 'rgba(139, 92, 246, 0.3)' }}>
+                                    <Column gap="md">
+                                        <Row itemsCenter gap="sm">
+                                            <SafetyOutlined style={{ fontSize: 16, color: '#8B5CF6' }} />
+                                            <Text text="Post-Quantum Private Key (MLDSA)" preset="bold" size="sm" />
+                                        </Row>
+
+                                        <Text
+                                            text="This key is required for all OPNet transactions. Store it securely alongside your classical key."
+                                            preset="sub"
+                                            size="xs"
+                                            style={{ opacity: 0.7 }}
+                                        />
+
+                                        <div
+                                            onClick={() => copy(quantumPrivateKey)}
+                                            style={{
+                                                padding: '10px 12px',
+                                                backgroundColor: 'rgba(0, 0, 0, 0.3)',
+                                                borderRadius: '8px',
+                                                cursor: 'pointer',
+                                                display: 'flex',
+                                                alignItems: 'flex-start',
+                                                gap: '8px'
+                                            }}>
+                                            <Icon icon="copy" color="textDim" size={14} />
+                                            <Text
+                                                text={quantumPrivateKey}
+                                                color="textDim"
+                                                size="xs"
+                                                style={{ overflowWrap: 'anywhere', flex: 1, fontFamily: 'monospace' }}
+                                            />
+                                        </div>
+                                    </Column>
+                                </Card>
+                            </>
                         )}
 
                         {/* Note for HD wallets */}

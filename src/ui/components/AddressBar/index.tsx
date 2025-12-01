@@ -90,8 +90,15 @@ export function AddressBar({
 
     const otherAddresses = [
         {
-            label: 'Public Key',
+            label: 'MLDSA Public Key Hash',
+            value: tweakedPublicKey,
+            info: 'SHA256 hash of your ML-DSA quantum-resistant public key. This is your universal OPNet identity.',
+            showBalance: false
+        },
+        {
+            label: 'Classical Public Key',
             value: untweakedPublicKey,
+            info: 'Your classical Bitcoin public key (for legacy compatibility).',
             showBalance: false
         },
         {

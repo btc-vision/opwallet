@@ -865,12 +865,63 @@ class KeyringService extends EventEmitter {
     };
 
     /**
+     * Get all quantum public key hashes in use by all accounts (excluding specified one)
+     */
+    getAllQuantumKeyHashes = (excludePublicKey?: string): string[] => {
+        const hashes: string[] = [];
+
+        for (const keyring of this.keyrings) {
+            if (keyring instanceof SimpleKeyring) {
+                const accounts = keyring.getAccounts();
+                for (const account of accounts) {
+                    if (excludePublicKey && account === excludePublicKey) continue;
+
+                    if (keyring.hasKeys()) {
+                        const hash = keyring.getQuantumPublicKeyHash();
+                        if (hash) {
+                            hashes.push(hash.toLowerCase());
+                        }
+                    }
+                }
+            }
+            // For HD keyrings, check each account's derived quantum key
+            if (keyring instanceof HdKeyring) {
+                const accounts = keyring.getAccounts();
+                for (const account of accounts) {
+                    if (excludePublicKey && account === excludePublicKey) continue;
+
+                    const wallet = keyring.getWallet(account);
+                    if (wallet?.mldsaKeypair) {
+                        const hash = wallet.address.toHex().replace('0x', '');
+                        hashes.push(hash.toLowerCase());
+                    }
+                }
+            }
+        }
+
+        return hashes;
+    };
+
+    /**
      * Set quantum key for a simple keyring account (for migration)
      */
     setQuantumKey = async (publicKey: string, quantumPrivateKey: string): Promise<void> => {
         const keyring = this.getKeyringForAccount(publicKey);
         if (keyring instanceof SimpleKeyring) {
+            // Get existing key hashes before import
+            const existingHashes = this.getAllQuantumKeyHashes(publicKey);
+
+            // Import the key
             keyring.importQuantumKey(quantumPrivateKey);
+
+            // Check if the imported key's hash matches any existing key
+            const newHash = keyring.getQuantumPublicKeyHash();
+            if (newHash && existingHashes.includes(newHash.toLowerCase())) {
+                // Revert the import by clearing the quantum key
+                (keyring as SimpleKeyring & { clearQuantumKey: () => void }).clearQuantumKey();
+                throw new Error('This quantum key is already associated with another account. Each account must have a unique quantum key.');
+            }
+
             await this.persistAllKeyrings();
             this._updateMemStoreKeyrings();
             this.fullUpdate();
