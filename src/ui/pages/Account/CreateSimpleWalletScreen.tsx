@@ -624,9 +624,11 @@ function Step3({
 
                 setPreviewAddress(address);
 
+                const key = kp.publicKey.toString('hex');
+
                 // Query on-chain for existing MLDSA key linkage
-                const pubKeyInfo = await Web3API.provider.getPublicKeysInfoRaw(address);
-                const info = pubKeyInfo[address];
+                const pubKeyInfo = await Web3API.provider.getPublicKeysInfoRaw(key);
+                const info = pubKeyInfo[key];
                 if (info && !('error' in info) && info.mldsaHashedPublicKey) {
                     setOnChainLinkedKey(info.mldsaHashedPublicKey);
                 } else {
