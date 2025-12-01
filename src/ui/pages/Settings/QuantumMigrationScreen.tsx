@@ -245,7 +245,8 @@ export default function QuantumMigrationScreen() {
                                     borderRadius: '8px',
                                     wordBreak: 'break-all',
                                     fontFamily: 'monospace',
-                                    fontSize: '12px'
+                                    fontSize: '12px',
+                                    color: 'white'
                                 }}>
                                 {quantumPublicKeyHash ? `0x${quantumPublicKeyHash}` : 'Loading...'}
                             </div>
@@ -332,7 +333,8 @@ export default function QuantumMigrationScreen() {
                                     borderRadius: '8px',
                                     wordBreak: 'break-all',
                                     fontFamily: 'monospace',
-                                    fontSize: '12px'
+                                    fontSize: '12px',
+                                    color: 'white'
                                 }}>
                                 {quantumPublicKeyHash ? `0x${quantumPublicKeyHash}` : 'Loading...'}
                             </div>
