@@ -131,7 +131,8 @@ export default function ReceiveScreen() {
                                                     fontFamily: 'monospace',
                                                     fontSize: '11px',
                                                     wordBreak: 'break-all',
-                                                    lineHeight: 1.4
+                                                    lineHeight: 1.4,
+                                                    color: '#ffffff'
                                                 }}>
                                                 {quantumPublicKeyHash}
                                             </div>

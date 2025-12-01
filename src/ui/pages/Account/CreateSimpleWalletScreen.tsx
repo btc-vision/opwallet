@@ -15,8 +15,7 @@ import {
     LoadingOutlined,
     PlusCircleOutlined,
     SafetyOutlined,
-    WalletOutlined,
-    WarningOutlined
+    WalletOutlined
 } from '@ant-design/icons';
 import { EcKeyPair, MLDSASecurityLevel, Wallet } from '@btc-vision/transaction';
 import { getMLDSAConfig, QuantumBIP32Factory } from '@btc-vision/bip32';
@@ -1061,37 +1060,6 @@ function Step3({
             {/* Import Existing Key Form */}
             {quantumMode === 'import' && (
                 <>
-                    {/* Show expected hash if on-chain key exists */}
-                    {onChainLinkedKey && (
-                        <div
-                            style={{
-                                background: 'rgba(243, 116, 19, 0.1)',
-                                border: '1px solid rgba(243, 116, 19, 0.3)',
-                                borderRadius: '10px',
-                                padding: '12px',
-                                marginBottom: '8px'
-                            }}>
-                            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
-                                <WarningOutlined style={{ fontSize: 14, color: colors.main, marginTop: '2px' }} />
-                                <div style={{ fontSize: '11px', color: colors.text, lineHeight: '1.4' }}>
-                                    The imported key&#39;s public key hash must match:
-                                    <div
-                                        style={{
-                                            marginTop: '6px',
-                                            padding: '6px',
-                                            background: 'rgba(0, 0, 0, 0.2)',
-                                            borderRadius: '4px',
-                                            fontFamily: 'monospace',
-                                            fontSize: '9px',
-                                            wordBreak: 'break-all'
-                                        }}>
-                                        {onChainLinkedKey}
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    )}
-
                     <div>
                         <label
                             style={{
