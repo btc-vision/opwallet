@@ -1,9 +1,9 @@
-import { CSSProperties, memo, useMemo } from 'react';
+import { CSSProperties, memo, useMemo, type RefObject } from 'react';
 
 export interface IframeProps {
     preview: string;
     style?: CSSProperties;
-    ref: any;
+    ref: RefObject<HTMLIFrameElement | null>;
 }
 
 const Iframe = ({ preview, style, ref }: IframeProps) => {
@@ -12,10 +12,9 @@ const Iframe = ({ preview, style, ref }: IframeProps) => {
             <iframe
                 onClick={(e) => e.preventDefault()}
                 ref={ref}
-                style={Object.assign({}, { pointerEvents: 'none' }, style)} // prevent events in iframe
+                style={Object.assign({}, { pointerEvents: 'none', overflow: 'hidden' }, style)} // prevent events in iframe
                 src={preview}
                 sandbox="allow-scripts"
-                scrolling="no"
                 loading="lazy"></iframe>
         ),
         [preview]

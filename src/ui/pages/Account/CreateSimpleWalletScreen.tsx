@@ -7,7 +7,7 @@ import { Column, Content, Header, Layout, Row, Text } from '@/ui/components';
 import { useTools } from '@/ui/components/ActionComponent';
 import { AddressTypeCard } from '@/ui/components/AddressTypeCard';
 import { satoshisToAmount, useWallet } from '@/ui/utils';
-import { CheckCircleFilled, ImportOutlined, InfoCircleOutlined, KeyOutlined, LoadingOutlined, WalletOutlined } from '@ant-design/icons';
+import { CheckCircleFilled, ImportOutlined, InfoCircleOutlined, KeyOutlined, LoadingOutlined, SafetyOutlined, WalletOutlined } from '@ant-design/icons';
 import { EcKeyPair } from '@btc-vision/transaction';
 import { ethers } from 'ethers';
 
@@ -393,6 +393,7 @@ function Step2({
 
     useEffect(() => {
         void run();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [contextData.wif]);
 
     useEffect(() => {
@@ -414,12 +415,38 @@ function Step2({
         return hdPathOptions.findIndex((v) => v.addressType === contextData.addressType);
     }, [hdPathOptions, contextData.addressType]);
 
+    const [quantumKeyInput, setQuantumKeyInput] = useState('');
+    const [quantumKeyError, setQuantumKeyError] = useState('');
+
+    const validateQuantumKey = (key: string): boolean => {
+        if (!key) return true; // Optional field
+        const cleanKey = key.replace('0x', '').trim();
+        if (!/^[0-9a-fA-F]{128}$/.test(cleanKey)) {
+            setQuantumKeyError('Quantum key must be 128 hex characters (64 bytes)');
+            return false;
+        }
+        setQuantumKeyError('');
+        return true;
+    };
+
     const onNext = async () => {
         try {
             const pk =
                 contextData.keyKind === 'rawHex' ? contextData.wif.replace(/^0x/, '').toLowerCase() : contextData.wif;
 
-            await wallet.createKeyringWithPrivateKey(pk, contextData.addressType);
+            // Validate quantum key if provided
+            if (contextData.importQuantumKey && quantumKeyInput) {
+                if (!validateQuantumKey(quantumKeyInput)) {
+                    return;
+                }
+            }
+
+            // Pass quantum private key if provided
+            const quantumKey = contextData.importQuantumKey && quantumKeyInput
+                ? quantumKeyInput.replace('0x', '').trim()
+                : undefined;
+
+            await wallet.createKeyringWithPrivateKey(pk, contextData.addressType, undefined, quantumKey);
             navigate(RouteTypes.MainScreen);
         } catch (e) {
             tools.toastError((e as Error).message);
@@ -537,6 +564,85 @@ function Step2({
                 })}
             </div>
 
+            {/* Post-Quantum Key Section */}
+            <div
+                style={{
+                    background: 'rgba(139, 92, 246, 0.1)',
+                    border: '1px solid rgba(139, 92, 246, 0.3)',
+                    borderRadius: '10px',
+                    padding: '12px',
+                    marginTop: '8px'
+                }}>
+                <div
+                    style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        marginBottom: contextData.importQuantumKey ? '12px' : '0'
+                    }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <SafetyOutlined style={{ fontSize: 16, color: '#8B5CF6' }} />
+                        <div>
+                            <div style={{ fontSize: '13px', fontWeight: 600, color: colors.text }}>
+                                Import Quantum Key
+                            </div>
+                            <div style={{ fontSize: '11px', color: colors.textFaded }}>
+                                For OPNet compatibility
+                            </div>
+                        </div>
+                    </div>
+                    <button
+                        style={{
+                            padding: '4px 12px',
+                            background: contextData.importQuantumKey ? '#8B5CF6' : colors.buttonBg,
+                            border: 'none',
+                            borderRadius: '6px',
+                            color: contextData.importQuantumKey ? colors.background : colors.text,
+                            fontSize: '12px',
+                            fontWeight: 500,
+                            cursor: 'pointer'
+                        }}
+                        onClick={() => updateContextData({ importQuantumKey: !contextData.importQuantumKey })}>
+                        {contextData.importQuantumKey ? 'Enabled' : 'Optional'}
+                    </button>
+                </div>
+
+                {contextData.importQuantumKey && (
+                    <div>
+                        <textarea
+                            style={{
+                                width: '100%',
+                                minHeight: '60px',
+                                padding: '10px',
+                                background: colors.inputBg,
+                                border: quantumKeyError ? `1px solid ${colors.error}` : `1px solid ${colors.containerBorder}`,
+                                borderRadius: '8px',
+                                color: colors.text,
+                                fontSize: '11px',
+                                fontFamily: 'monospace',
+                                resize: 'vertical',
+                                outline: 'none'
+                            }}
+                            placeholder="Enter 128-character hex MLDSA private key (optional - one will be generated if not provided)"
+                            value={quantumKeyInput}
+                            onChange={(e) => {
+                                setQuantumKeyInput(e.target.value);
+                                setQuantumKeyError('');
+                            }}
+                        />
+                        {quantumKeyError && (
+                            <div style={{ fontSize: '11px', color: colors.error, marginTop: '4px' }}>
+                                {quantumKeyError}
+                            </div>
+                        )}
+                        <div style={{ fontSize: '10px', color: colors.textFaded, marginTop: '6px' }}>
+                            If you have an existing quantum key from another wallet, enter it here.
+                            Otherwise, a new key will be generated automatically.
+                        </div>
+                    </div>
+                )}
+            </div>
+
             {/* Import Button */}
             <button
                 style={{
@@ -580,6 +686,8 @@ interface ContextData {
     addressType: AddressTypes;
     step1Completed: boolean;
     tabType: TabType;
+    quantumPrivateKey?: string;
+    importQuantumKey: boolean;
 }
 
 interface UpdateContextDataParams {
@@ -588,6 +696,8 @@ interface UpdateContextDataParams {
     addressType?: AddressTypes;
     step1Completed?: boolean;
     tabType?: TabType;
+    quantumPrivateKey?: string;
+    importQuantumKey?: boolean;
 }
 
 function isLikelyHexPriv(s: string) {
@@ -601,7 +711,9 @@ export default function CreateSimpleWalletScreen() {
         keyKind: 'wif',
         addressType: AddressTypes.P2WPKH,
         step1Completed: false,
-        tabType: TabType.STEP1
+        tabType: TabType.STEP1,
+        quantumPrivateKey: '',
+        importQuantumKey: false
     });
 
     const updateContextData = useCallback(

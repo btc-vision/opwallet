@@ -75,7 +75,14 @@ export default function SendOpNetScreen() {
                     // Fetch public key from the address
                     const pubKey = await Web3API.provider.getPublicKeyInfo(toInfo.address, false);
                     if (pubKey) {
-                        setPublicKey(pubKey.toString());
+                        const pubKeyHex = pubKey.toHex ? pubKey.toHex() : pubKey.toString();
+                        // Check for zero address (user not found on-chain)
+                        if (pubKeyHex === '0x' + '00'.repeat(32) || pubKeyHex === '00'.repeat(32)) {
+                            setPublicKey('');
+                            setError('User not found on-chain. This wallet has not performed any OPNet transactions yet.');
+                        } else {
+                            setPublicKey(pubKeyHex);
+                        }
                     } else {
                         setPublicKey('');
                     }

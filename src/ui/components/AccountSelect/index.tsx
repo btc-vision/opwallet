@@ -1,8 +1,10 @@
+import { useEffect, useState } from 'react';
 import { RouteTypes, useNavigate } from '@/ui/pages/MainRoute';
 import { useCurrentAccount } from '@/ui/state/accounts/hooks';
-import { copyToClipboard, shortAddress } from '@/ui/utils';
-import { CopyOutlined } from '@ant-design/icons';
+import { copyToClipboard, shortAddress, useWallet } from '@/ui/utils';
+import { CopyOutlined, WarningOutlined } from '@ant-design/icons';
 
+import { KEYRING_TYPE } from '@/shared/constant';
 import { AddressTypes } from '@/shared/types';
 import { useCurrentKeyring } from '@/ui/state/keyrings/hooks';
 import { useTools } from '../ActionComponent';
@@ -11,11 +13,35 @@ import './index.less';
 
 const AccountSelect = () => {
     const navigate = useNavigate();
+    const wallet = useWallet();
 
     const currentAccount = useCurrentAccount();
     const currentKeyring = useCurrentKeyring();
     const tools = useTools();
     const address = currentAccount.address;
+
+    const [needsQuantumMigration, setNeedsQuantumMigration] = useState(false);
+
+    // Check if quantum migration is needed
+    useEffect(() => {
+        const checkQuantumStatus = async () => {
+            try {
+                if (currentKeyring.type === KEYRING_TYPE.SimpleKeyring) {
+                    try {
+                        await wallet.getOPNetWallet();
+                        setNeedsQuantumMigration(false);
+                    } catch {
+                        setNeedsQuantumMigration(true);
+                    }
+                } else {
+                    setNeedsQuantumMigration(false);
+                }
+            } catch {
+                setNeedsQuantumMigration(false);
+            }
+        };
+        void checkQuantumStatus();
+    }, [currentKeyring, wallet]);
 
     const getAddressTypeLabel = (type: AddressTypes): string => {
         const typeLabels: Partial<Record<AddressTypes, string>> = {
@@ -52,6 +78,22 @@ const AccountSelect = () => {
                 <div className="op_account_details">
                     <div className="op_account_name_row">
                         <span className="op_account_name">{shortAddress(currentAccount?.alianName, 8)}</span>
+                        {needsQuantumMigration && (
+                            <span
+                                title="Post-quantum migration required"
+                                style={{
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    width: '18px',
+                                    height: '18px',
+                                    borderRadius: '50%',
+                                    backgroundColor: 'rgba(243, 116, 19, 0.2)',
+                                    marginLeft: '4px'
+                                }}>
+                                <WarningOutlined style={{ fontSize: 10, color: '#f37413' }} />
+                            </span>
+                        )}
                         <span
                             className="op_account_type_badge"
                             style={{

@@ -153,9 +153,9 @@ export function decodeCreatePool(selector: InteractionType, reader: BinaryReader
     const floorPrice = reader.readU256();
     const initialLiquidity = reader.readU128();
     const receiver = decodeString(reader);
-    const antiBotEnabledFor = Number(reader.readU16());
+    const antiBotEnabledFor = reader.readU16();
     const antiBotMaximumTokensPerReservation = reader.readU256();
-    const maxReservesIn5BlocksPercent = Number(reader.readU16());
+    const maxReservesIn5BlocksPercent = reader.readU16();
 
     return {
         selector,
@@ -179,9 +179,9 @@ export function decodeCreatePoolWithSignature(
     const floorPrice = reader.readU256();
     const initialLiquidity = reader.readU128();
     const receiver = decodeString(reader);
-    const antiBotEnabledFor = Number(reader.readU16());
+    const antiBotEnabledFor = reader.readU16();
     const antiBotMaximumTokensPerReservation = reader.readU256();
-    const maxReservesIn5BlocksPercent = Number(reader.readU16());
+    const maxReservesIn5BlocksPercent = reader.readU16();
 
     return {
         selector,

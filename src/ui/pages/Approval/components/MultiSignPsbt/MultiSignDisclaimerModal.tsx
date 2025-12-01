@@ -11,8 +11,8 @@ export default function MultiSignDisclaimerModal({
     onContinue
 }: {
     txCount: number;
-    onClose: any;
-    onContinue: any;
+    onClose: () => void;
+    onContinue: () => void;
 }) {
     return (
         <BottomModal onClose={onClose}>
@@ -20,10 +20,7 @@ export default function MultiSignDisclaimerModal({
                 <Row justifyBetween itemsCenter style={{ height: 20 }}>
                     <Row />
                     <Text text="MultiSign Disclaimer" textCenter size="md" />
-                    <Row
-                        onClick={() => {
-                            onClose();
-                        }}>
+                    <Row onClick={onClose}>
                         <CloseOutlined />
                     </Row>
                 </Row>
@@ -36,15 +33,13 @@ export default function MultiSignDisclaimerModal({
                     <Text
                         mt="lg"
                         style={{ fontSize: fontSizes.sm, lineHeight: 2 }}
-                        text={`By proceeding, you confirm that you’ve read and accepted this disclaimer.`}></Text>
+                        text={`By proceeding, you confirm that you've read and accepted this disclaimer.`}></Text>
                 </Column>
 
                 <Button
                     text={`Sign all ${txCount} transactions at once`}
                     preset="primaryV2"
-                    onClick={() => {
-                        onContinue();
-                    }}
+                    onClick={onContinue}
                 />
             </Column>
         </BottomModal>

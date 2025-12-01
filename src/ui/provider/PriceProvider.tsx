@@ -41,7 +41,7 @@ export function PriceProvider({ children }: { children: ReactNode }) {
         wallet
             .getBtcPrice()
             .then(setBtcPrice)
-            .catch((e) => {
+            .catch((_e: unknown) => {
                 setBtcPrice(0);
             })
             .finally(() => {

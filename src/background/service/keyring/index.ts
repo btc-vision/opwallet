@@ -880,6 +880,21 @@ class KeyringService extends EventEmitter {
     };
 
     /**
+     * Generate a new quantum key for a simple keyring account
+     */
+    generateQuantumKey = async (publicKey: string): Promise<void> => {
+        const keyring = this.getKeyringForAccount(publicKey);
+        if (keyring instanceof SimpleKeyring) {
+            keyring.generateFreshQuantumKey();
+            await this.persistAllKeyrings();
+            this._updateMemStoreKeyrings();
+            this.fullUpdate();
+        } else {
+            throw new Error('Can only generate quantum key for Simple Key Pair wallets');
+        }
+    };
+
+    /**
      * Check if an account needs quantum migration
      * Note: In wallet-sdk 2.0, SimpleKeyring always generates a quantum key on creation
      * This method checks if for some reason the quantum key is missing

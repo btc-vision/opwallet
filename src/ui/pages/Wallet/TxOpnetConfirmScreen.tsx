@@ -155,8 +155,14 @@ export default function TxOpnetConfirmScreen() {
     const getPubKey = async (to: string) => {
         let pubKey: Address;
         const pubKeyStr: string = to.replace('0x', '');
+
+        // Check for 32-byte values (likely MLDSA public key hash, not valid address)
+        if (pubKeyStr.length === 64 && /^[0-9a-fA-F]+$/.test(pubKeyStr)) {
+            throw new Error('32-byte values are not valid Bitcoin addresses. This may be an MLDSA public key hash - please use the recipient\'s Bitcoin address instead.');
+        }
+
         if (
-            (pubKeyStr.length === 64 || pubKeyStr.length === 66 || pubKeyStr.length === 130) &&
+            (pubKeyStr.length === 66 || pubKeyStr.length === 130) &&
             pubKeyStr.match(/^[0-9a-fA-F]+$/) !== null
         ) {
             pubKey = Address.fromString(pubKeyStr);
@@ -165,6 +171,13 @@ export default function TxOpnetConfirmScreen() {
         }
 
         if (!pubKey) throw new Error('public key not found');
+
+        // Check for zero address (user not found on-chain)
+        const pubKeyHex = pubKey.toHex ? pubKey.toHex() : pubKey.toString();
+        if (pubKeyHex === '0x' + '00'.repeat(32) || pubKeyHex === '00'.repeat(32)) {
+            throw new Error('User not found on-chain. This wallet has not performed any OPNet transactions yet.');
+        }
+
         return pubKey;
     };
 

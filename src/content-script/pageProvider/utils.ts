@@ -34,7 +34,7 @@ const domReadyCall = (callback: () => void): void => {
     // }
 };
 
-const $ = document.querySelector.bind(document);
+const $ = (selector: string): Element | null => document.querySelector(selector);
 
 function isPushEventHandlerMethod(instance: PushEventHandlers, event: string): event is keyof PushEventHandlers {
     return typeof instance[event as keyof PushEventHandlers] === 'function';

@@ -39,6 +39,7 @@ import EditWalletNameScreen from './Settings/EditWalletNameScreen';
 import ExportMnemonicsScreen from './Settings/ExportMnemonicsScreen';
 import ExportPrivateKeyScreen from './Settings/ExportPrivateKeyScreen';
 import NetworkTypeScreen from './Settings/NetworkTypeScreen';
+import QuantumMigrationScreen from './Settings/QuantumMigrationScreen';
 import UpgradeNoticeScreen from './Settings/UpgradeNoticeScreen';
 import ReceiveScreen from './Wallet/ReceiveScreen';
 import TxConfirmScreen from './Wallet/TxConfirmScreen';
@@ -94,7 +95,8 @@ export enum RouteTypes {
     ImportNFTScreen = 'ImportNFTScreen',
     NFTTabScreen = 'NFTTabScreen',
     NFTSendScreen = 'NFTSendScreen',
-    ImportTokenScreen = 'ImportTokenScreen'
+    ImportTokenScreen = 'ImportTokenScreen',
+    QuantumMigrationScreen = 'QuantumMigrationScreen'
 }
 
 type Routes = {
@@ -268,6 +270,10 @@ export const routes: Routes = {
     ImportTokenScreen: {
         path: '/import-token',
         element: <ImportTokenScreen />
+    },
+    QuantumMigrationScreen: {
+        path: '/settings/quantum-migration',
+        element: <QuantumMigrationScreen />
     }
 };
 

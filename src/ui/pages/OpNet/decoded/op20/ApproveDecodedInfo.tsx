@@ -19,8 +19,8 @@ export function ApproveDecodedInfo(props: DecodedApproveProps) {
     const interactionType = props.interactionType;
     const decoded = props.decoded;
 
-    const amount = new BigNumber(decoded.amount.toString()).div(new BigNumber(10).pow(contractInfo.decimals || 8));
-    const balanceFormatted = amount.toFormat(6).toString();
+    const amount = new BigNumber(String(decoded.amount)).div(new BigNumber(10).pow(contractInfo.decimals || 8));
+    const balanceFormatted = amount.toFormat(6);
 
     const slicedAddress = sliceAddress(decoded.spender);
 

@@ -23,7 +23,7 @@ export const UpgradePopover = ({ onClose }: { onClose: () => void }) => {
             .then((res) => {
                 setVersionDetail(res);
             })
-            .catch((e) => {
+            .catch((e: unknown) => {
                 console.log(e);
             });
     }, [versionInfo.newVersion]);

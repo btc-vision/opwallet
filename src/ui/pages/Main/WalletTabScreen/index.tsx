@@ -1,10 +1,11 @@
 import React, { CSSProperties, useEffect, useState } from 'react';
 
-import { AddressFlagType } from '@/shared/constant';
+import { AddressFlagType, KEYRING_TYPE } from '@/shared/constant';
 import { UTXO_CONFIG } from '@/shared/config';
 import { checkAddressFlag } from '@/shared/utils';
 import { Column, Content, Footer, Header, Image, Layout } from '@/ui/components';
 import AccountSelect from '@/ui/components/AccountSelect';
+import { QuantumMigrationBanner } from '@/ui/components/QuantumMigrationBanner';
 import { DisableUnconfirmedsPopover } from '@/ui/components/DisableUnconfirmedPopover';
 import { NavTabBar } from '@/ui/components/NavTabBar';
 import { UpgradePopover } from '@/ui/components/UpgradePopover';
@@ -110,6 +111,29 @@ export default function WalletTabScreen() {
     const { checkUTXOLimit, checkUTXOWarning, navigateToConsolidation } = useConsolidation();
 
     const [showDisableUnconfirmedUtxoNotice, setShowDisableUnconfirmedUtxoNotice] = useState(false);
+    const [needsQuantumMigration, setNeedsQuantumMigration] = useState(false);
+
+    // Check if quantum migration is needed (SimpleKeyring without quantum key)
+    useEffect(() => {
+        const checkQuantumStatus = async () => {
+            try {
+                if (currentKeyring.type === KEYRING_TYPE.SimpleKeyring) {
+                    // Try to get the OPNet wallet - if it fails, migration needed
+                    try {
+                        await wallet.getOPNetWallet();
+                        setNeedsQuantumMigration(false);
+                    } catch {
+                        setNeedsQuantumMigration(true);
+                    }
+                } else {
+                    setNeedsQuantumMigration(false);
+                }
+            } catch {
+                setNeedsQuantumMigration(false);
+            }
+        };
+        void checkQuantumStatus();
+    }, [currentKeyring, wallet]);
 
     useEffect(() => {
         void (async () => {
@@ -260,6 +284,15 @@ export default function WalletTabScreen() {
                     )}
 
                     <AccountSelect />
+
+                    {/* Quantum Migration Banner */}
+                    {needsQuantumMigration && (
+                        <div style={{ marginTop: '8px' }}>
+                            <QuantumMigrationBanner
+                                onMigrate={() => navigate(RouteTypes.QuantumMigrationScreen)}
+                            />
+                        </div>
+                    )}
 
                     <div
                         style={{
