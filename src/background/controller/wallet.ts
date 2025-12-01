@@ -2172,6 +2172,7 @@ export class WalletController {
         try {
             await keyringService.setQuantumKey(account.pubkey, quantumPrivateKey);
         } catch (err) {
+            console.log(err);
             throw new WalletControllerError(`Failed to set quantum key: ${String(err)}`);
         }
     };

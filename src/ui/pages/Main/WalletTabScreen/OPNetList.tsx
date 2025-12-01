@@ -94,6 +94,7 @@ export function OPNetList() {
     const [hasHiddenTokens, setHasHiddenTokens] = useState(false);
     const [showModal, setShowModal] = useState(false);
     const [modalToken, setModalToken] = useState<string | null>(null);
+    const [migrationWarningShown, setMigrationWarningShown] = useState(false);
 
     const storageKey = `opnetTokens_${chainType}_${currentAccount.pubkey}`;
     const initializationKey = `opnetTokens_initialized_${chainType}_${currentAccount.pubkey}`;
@@ -191,6 +192,23 @@ export function OPNetList() {
 
     // Fetch balance for a single token
     const fetchTokenBalance = async (address: string): Promise<TokenWithBalance | null> => {
+        // Check if quantum migration is complete
+        if (!currentAccount.quantumPublicKeyHash) {
+            if (!migrationWarningShown) {
+                tools.toastWarning('Unable to load balance: Post-quantum migration not completed');
+                setMigrationWarningShown(true);
+            }
+            return {
+                address,
+                name: 'Migration Required',
+                amount: 0n,
+                divisibility: 8,
+                symbol: '???',
+                isLoading: false,
+                loadError: true
+            };
+        }
+
         try {
             // Set loading state for this token
             setTokenBalancesMap((prev) => {
@@ -223,9 +241,7 @@ export function OPNetList() {
 
             const contract = getContract<IOP20Contract>(address, OP_20_ABI, Web3API.provider, Web3API.network);
 
-            const userAddress = currentAccount.quantumPublicKeyHash
-                ? Address.fromString(currentAccount.quantumPublicKeyHash, currentAccount.pubkey)
-                : Address.fromString(currentAccount.pubkey, currentAccount.pubkey);
+            const userAddress = Address.fromString(currentAccount.quantumPublicKeyHash, currentAccount.pubkey);
             const balance = await contract.balanceOf(userAddress);
 
             return {

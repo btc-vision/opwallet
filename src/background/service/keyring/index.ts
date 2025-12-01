@@ -497,17 +497,19 @@ class KeyringService extends EventEmitter {
      * Export quantum private key for an account
      */
     exportQuantumAccount = (publicKey: string): string | undefined => {
-        const keyring = this.getKeyringForAccount(publicKey);
-        if (keyring instanceof SimpleKeyring) {
-            // SimpleKeyring has single key - no publicKey param needed
-            return keyring.exportQuantumPrivateKey();
-        } else if (keyring instanceof HdKeyring) {
-            // HD keyrings derive quantum keys from mnemonic, so we can export them
-            const wallet = keyring.getWallet(publicKey);
-            if (wallet) {
-                return wallet.quantumPrivateKeyHex;
+        try {
+            const keyring = this.getKeyringForAccount(publicKey);
+            if (keyring instanceof SimpleKeyring) {
+                // SimpleKeyring has single key - no publicKey param needed
+                return keyring.exportQuantumPrivateKey();
+            } else if (keyring instanceof HdKeyring) {
+                // HD keyrings derive quantum keys from mnemonic, so we can export them
+                const wallet = keyring.getWallet(publicKey);
+                if (wallet) {
+                    return wallet.quantumPrivateKeyHex;
+                }
             }
-        }
+        } catch {}
         return undefined;
     };
 
@@ -765,8 +767,6 @@ class KeyringService extends EventEmitter {
         }
 
         return new EmptyKeyring();
-
-        // throw new Error('No keyring found for the requested account.');
     };
 
     displayForKeyring = (
@@ -780,12 +780,23 @@ class KeyringService extends EventEmitter {
         for (const pubkey of accounts) {
             let quantumPublicKey: string | undefined;
 
-            // Get quantum public key if available
-            if (keyring instanceof HdKeyring || keyring instanceof SimpleKeyring) {
-                const qpk = keyring.getQuantumPublicKey(pubkey);
-                if (qpk) {
-                    quantumPublicKey = Buffer.from(qpk).toString('hex');
+            // Get quantum public key if available (use safe getter that doesn't throw)
+            try {
+                if (keyring instanceof HdKeyring) {
+                    const qpk = keyring.getQuantumPublicKey(pubkey);
+                    if (qpk) {
+                        quantumPublicKey = Buffer.from(qpk).toString('hex');
+                    }
+                } else if (keyring instanceof SimpleKeyring) {
+                    // Use safe getter for SimpleKeyring that returns undefined instead of throwing
+                    const qpk = keyring.getQuantumPublicKeyOrUndefined();
+                    if (qpk) {
+                        quantumPublicKey = qpk;
+                    }
                 }
+            } catch {
+                // Quantum key not available - this is expected for wallets that need migration
+                quantumPublicKey = undefined;
             }
 
             all_accounts.push({
