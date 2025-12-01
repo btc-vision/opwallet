@@ -153,10 +153,10 @@ export default function SettingsTabScreen() {
     }, [wallet]);
 
     const isCustomHdPath = useMemo(() => {
-        const item = ADDRESS_TYPES[currentKeyring.addressType];
+        const item = ADDRESS_TYPES.find((t) => t.value === currentKeyring.addressType);
         return (
             currentKeyring.hdPath !== '' &&
-            item.hdPath !== currentKeyring.hdPath &&
+            item?.hdPath !== currentKeyring.hdPath &&
             currentKeyring.type !== KEYRING_TYPE.HdKeyring
         );
     }, [currentKeyring]);
@@ -171,11 +171,8 @@ export default function SettingsTabScreen() {
         }
 
         if (v.action == 'addressType') {
-            const item = ADDRESS_TYPES[currentKeyring.addressType];
-            const hdPath = currentKeyring.hdPath || item.hdPath;
-            if (currentKeyring.type === KEYRING_TYPE.SimpleKeyring) {
-                v.value = item.name;
-            } else {
+            const item = ADDRESS_TYPES.find((t) => t.value === currentKeyring.addressType);
+            if (item) {
                 v.value = item.name;
             }
         }

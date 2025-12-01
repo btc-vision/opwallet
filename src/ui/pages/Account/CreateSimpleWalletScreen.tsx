@@ -1,14 +1,14 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { ADDRESS_TYPES } from '@/shared/constant';
-import { AddressAssets, AddressType } from '@/shared/types';
+import { AddressAssets, AddressTypes } from '@/shared/types';
 import { getBitcoinLibJSNetwork } from '@/shared/web3/Web3API';
 import { Column, Content, Header, Layout, Row, Text } from '@/ui/components';
 import { useTools } from '@/ui/components/ActionComponent';
 import { AddressTypeCard } from '@/ui/components/AddressTypeCard';
 import { satoshisToAmount, useWallet } from '@/ui/utils';
 import { CheckCircleFilled, ImportOutlined, InfoCircleOutlined, KeyOutlined, LoadingOutlined, WalletOutlined } from '@ant-design/icons';
-import { EcKeyPair, Wallet } from '@btc-vision/transaction';
+import { EcKeyPair } from '@btc-vision/transaction';
 import { ethers } from 'ethers';
 
 import { RouteTypes, useNavigate } from '../MainRoute';
@@ -70,7 +70,7 @@ function Step1({ updateContextData }: { updateContextData: (params: UpdateContex
 
         // try WIF first
         try {
-            Wallet.fromWif(raw, bitcoinNetwork);
+            EcKeyPair.fromWIF(raw, bitcoinNetwork);
             keyKind = 'wif';
         } catch (e) {
             console.error(e);
@@ -340,24 +340,19 @@ function Step2({
         const addresses: string[] = [];
         const balancesMap: Record<string, AddressAssets> = {};
 
-        const getAddrForType = (t: AddressType) => {
-            if (contextData.keyKind === 'wif') {
-                const w = Wallet.fromWif(contextData.wif, bitcoinNetwork);
-                if (t === AddressType.P2TR) return w.p2tr;
-                if (t === AddressType.P2SH_P2WPKH) return w.segwitLegacy;
-                if (t === AddressType.P2WPKH) return w.p2wpkh;
-                return EcKeyPair.getLegacyAddress(
-                    Wallet.fromWif(contextData.wif, bitcoinNetwork).keypair,
+        const getAddrForType = (t: AddressTypes) => {
+            // For both WIF and raw hex, use EcKeyPair methods for address derivation
+            const kp = contextData.keyKind === 'wif'
+                ? EcKeyPair.fromWIF(contextData.wif, bitcoinNetwork)
+                : EcKeyPair.fromPrivateKey(
+                    Buffer.from(contextData.wif.replace(/^0x/, '').trim(), 'hex'),
                     bitcoinNetwork
                 );
-            } else {
-                const buf = Buffer.from(contextData.wif.replace(/^0x/, '').trim(), 'hex');
-                const kp = EcKeyPair.fromPrivateKey(buf, bitcoinNetwork);
-                if (t === AddressType.P2TR) return EcKeyPair.getTaprootAddress(kp, bitcoinNetwork);
-                if (t === AddressType.P2SH_P2WPKH) return EcKeyPair.getLegacySegwitAddress(kp, bitcoinNetwork);
-                if (t === AddressType.P2WPKH) return EcKeyPair.getP2WPKHAddress(kp, bitcoinNetwork);
-                return EcKeyPair.getLegacyAddress(kp, bitcoinNetwork);
-            }
+
+            if (t === AddressTypes.P2TR) return EcKeyPair.getTaprootAddress(kp, bitcoinNetwork);
+            if (t === AddressTypes.P2SH_OR_P2SH_P2WPKH) return EcKeyPair.getLegacySegwitAddress(kp, bitcoinNetwork);
+            if (t === AddressTypes.P2WPKH) return EcKeyPair.getP2WPKHAddress(kp, bitcoinNetwork);
+            return EcKeyPair.getLegacyAddress(kp, bitcoinNetwork);
         };
 
         for (const opt of hdPathOptions) {
@@ -385,9 +380,9 @@ function Step2({
             }
         }
 
-        let recommended: AddressType = hdPathOptions[recommendedIndex].addressType;
+        let recommended: AddressTypes = hdPathOptions[recommendedIndex].addressType;
         if (maxSatoshis === 0) {
-            recommended = AddressType.P2TR;
+            recommended = AddressTypes.P2TR;
         }
 
         updateContextData({ addressType: recommended });
@@ -582,7 +577,7 @@ type KeyKind = 'wif' | 'rawHex';
 interface ContextData {
     wif: string;
     keyKind: KeyKind;
-    addressType: AddressType;
+    addressType: AddressTypes;
     step1Completed: boolean;
     tabType: TabType;
 }
@@ -590,7 +585,7 @@ interface ContextData {
 interface UpdateContextDataParams {
     wif?: string;
     keyKind?: KeyKind;
-    addressType?: AddressType;
+    addressType?: AddressTypes;
     step1Completed?: boolean;
     tabType?: TabType;
 }
@@ -604,7 +599,7 @@ export default function CreateSimpleWalletScreen() {
     const [contextData, setContextData] = useState<ContextData>({
         wif: '',
         keyKind: 'wif',
-        addressType: AddressType.P2WPKH,
+        addressType: AddressTypes.P2WPKH,
         step1Completed: false,
         tabType: TabType.STEP1
     });

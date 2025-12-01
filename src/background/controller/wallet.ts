@@ -9,7 +9,7 @@ import {
     preferenceService,
     sessionService
 } from '@/background/service';
-import { DisplayedKeyring, Keyring, SavedVault } from '@/background/service/keyring';
+import { DisplayedKeyring, EmptyKeyring, Keyring, SavedVault } from '@/background/service/keyring';
 import { WalletSaveList } from '@/background/service/preference';
 import { BroadcastTransactionOptions } from '@/content-script/pageProvider/Web3Provider.js';
 import { UTXO_CONFIG } from '@/shared/config';
@@ -35,13 +35,15 @@ import {
     Account,
     AddressRecentHistory,
     AddressSummary,
-    AddressType,
+    AddressTypes,
     AddressUserToSignInput,
     AppSummary,
     BitcoinBalance,
     DecodedPsbt,
     NetworkType,
+    networkTypeToOPNet,
     PublicKeyUserToSignInput,
+    QuantumKeyStatus,
     SignPsbtOptions,
     ToSignInput,
     TxHistoryItem,
@@ -69,15 +71,15 @@ import {
     Wallet
 } from '@btc-vision/transaction';
 import {
-    AbstractWallet,
-    genPsbtOfBIP322Simple,
-    getSignatureFromPsbtOfBIP322Simple,
-    KeystoneKeyring,
-    publicKeyToAddress,
-    scriptPkToAddress,
-    signMessageOfBIP322Simple,
-    toPsbtNetwork
+    generateBip322Psbt,
+    extractBip322Signature,
+    publicKeyToAddressWithNetworkType,
+    scriptPubKeyToAddress,
+    signBip322MessageWithNetworkType,
+    toNetwork
 } from '@btc-vision/wallet-sdk';
+import type { AbstractWallet } from '@btc-vision/wallet-sdk';
+import { createHash } from 'crypto';
 
 import { customNetworksManager } from '@/shared/utils/CustomNetworksManager';
 import {
@@ -179,11 +181,11 @@ export class WalletController {
      * Initialize alias names for newly created or imported accounts.
      * @throws WalletControllerError
      */
-    public initAlianNames = async (): Promise<void> => {
+    public initAlianNames = (): void => {
         try {
             preferenceService.changeInitAlianNameStatus();
             const contacts = this.listContact();
-            const keyrings = await keyringService.getAllDisplayedKeyrings();
+            const keyrings = keyringService.getAllDisplayedKeyrings();
 
             keyrings.forEach((v) => {
                 v.accounts.forEach((w, index) => {
@@ -224,7 +226,7 @@ export class WalletController {
             sessionService.broadcastEvent(SessionEvent.unlock);
 
             if (!alianNameInited && alianNames.length === 0) {
-                await this.initAlianNames();
+                this.initAlianNames();
             }
             this._resetTimeout();
 
@@ -248,7 +250,7 @@ export class WalletController {
      */
     public lockWallet = async (): Promise<void> => {
         try {
-            await keyringService.setLocked();
+            keyringService.setLocked();
             sessionService.broadcastEvent(SessionEvent.accountsChanged, []);
             sessionService.broadcastEvent(SessionEvent.lock);
             eventBus.emit(EVENTS.broadcastToUI, {
@@ -444,13 +446,13 @@ export class WalletController {
         const keyring = keyringService.getKeyringForAccount(pubkey, type);
         if (!keyring) return null;
 
-        const privateKey = keyring.exportAccount(pubkey);
+        const privateKey = keyringService.exportAccount(pubkey);
         if (!privateKey) {
             throw new WalletControllerError('No private key found for the given pubkey');
         }
 
         const networkType = this.getNetworkType();
-        const network = toPsbtNetwork(networkType);
+        const network = toNetwork(networkTypeToOPNet(networkType));
 
         const wif = EcKeyPair.fromPrivateKey(Buffer.from(privateKey, 'hex'), network).toWIF();
         return {
@@ -476,13 +478,13 @@ export class WalletController {
         const keyring = keyringService.getKeyringForAccount(pubkey, type);
         if (!keyring) return null;
 
-        const privateKey = keyring.exportAccount(pubkey);
+        const privateKey = keyringService.exportAccount(pubkey);
         if (!privateKey) {
             throw new WalletControllerError('No private key found for the given pubkey');
         }
 
         const networkType = this.getNetworkType();
-        const network = toPsbtNetwork(networkType);
+        const network = toNetwork(networkTypeToOPNet(networkType));
 
         const wif = EcKeyPair.fromPrivateKey(Buffer.from(privateKey, 'hex'), network).toWIF();
         return {
@@ -492,13 +494,42 @@ export class WalletController {
     };
 
     /**
+     * Get the OPNet Wallet instance with quantum keys for the current account.
+     * This is needed for OPNet transaction signing which requires both classical and quantum keys.
+     * @throws WalletControllerError if keys cannot be retrieved
+     */
+    public getOPNetWallet = async (): Promise<Wallet> => {
+        const account = await this.getCurrentAccount();
+        if (!account) {
+            throw new WalletControllerError('No current account');
+        }
+
+        const wifData = this.getInternalPrivateKey({
+            pubkey: account.pubkey,
+            type: account.type
+        });
+
+        if (!wifData) {
+            throw new WalletControllerError('Could not retrieve private key');
+        }
+
+        // Get quantum private key from keyring
+        const quantumPrivateKey = keyringService.exportQuantumAccount(account.pubkey);
+        if (!quantumPrivateKey) {
+            throw new WalletControllerError('Could not retrieve quantum private key. Quantum migration may be required.');
+        }
+
+        return Wallet.fromWif(wifData.wif, quantumPrivateKey, Web3API.network);
+    };
+
+    /**
      * Export a BIP39 mnemonic from a given keyring.
      * @throws WalletControllerError if the keyring lacks a mnemonic
      */
     public getMnemonics = async (
         password: string,
         keyring: WalletKeyring
-    ): Promise<{ mnemonic: string | undefined; hdPath: string | undefined; passphrase: string | undefined }> => {
+    ): Promise<{ mnemonic: string; addressType: AddressTypes; passphrase: string | undefined }> => {
         const isValid = await this.verifyPassword(password);
 
         if (!isValid) {
@@ -511,16 +542,18 @@ export class WalletController {
         if (!('mnemonic' in serialized) || serialized.mnemonic === undefined || serialized.mnemonic === null) {
             throw new WalletControllerError('No mnemonic found in keyring');
         }
-        if (!('hdPath' in serialized) || serialized.hdPath === undefined || serialized.hdPath === null) {
-            throw new WalletControllerError('No hdPath found in keyring');
-        }
 
         const passphrase =
             serialized.passphrase !== undefined && serialized.passphrase !== null ? serialized.passphrase : undefined;
 
+        // Get addressType from serialized data (for HD keyrings)
+        const addressType = 'addressType' in serialized && serialized.addressType !== undefined
+            ? serialized.addressType
+            : AddressTypes.P2WPKH;
+
         return {
             mnemonic: serialized.mnemonic,
-            hdPath: serialized.hdPath,
+            addressType,
             passphrase
         };
     };
@@ -531,12 +564,14 @@ export class WalletController {
      */
     public createKeyringWithPrivateKey = async (
         data: string,
-        addressType: AddressType,
-        alianName?: string
+        addressType: AddressTypes,
+        alianName?: string,
+        quantumPrivateKey?: string
     ): Promise<void> => {
-        let originKeyring: Keyring;
+        let originKeyring: Keyring | EmptyKeyring;
         try {
-            originKeyring = await keyringService.importPrivateKey(data, addressType);
+            const network = getBitcoinLibJSNetwork(this.getNetworkType());
+            originKeyring = await keyringService.importPrivateKey(data, addressType, network, quantumPrivateKey);
         } catch (e) {
             console.warn('Something went wrong while attempting to load keyring', e);
             throw new WalletControllerError(`Could not import private key: ${String(e)}`, {
@@ -582,7 +617,7 @@ export class WalletController {
         mnemonic: string,
         hdPath: string,
         passphrase: string,
-        addressType: AddressType,
+        addressType: AddressTypes,
         accountCount: number
     ): Promise<void> => {
         try {
@@ -621,7 +656,7 @@ export class WalletController {
         mnemonic: string,
         hdPath: string,
         passphrase: string,
-        addressType: AddressType,
+        addressType: AddressTypes,
         accountCount = 1
     ): Promise<WalletKeyring> => {
         const activeIndexes: number[] = [];
@@ -633,8 +668,8 @@ export class WalletController {
         const originKeyring = keyringService.createTmpKeyring('HD Key Tree', {
             mnemonic,
             activeIndexes,
-            hdPath,
             passphrase,
+            addressType,
             network: getBitcoinLibJSNetwork(network)
         });
 
@@ -647,11 +682,13 @@ export class WalletController {
      */
     public createTmpKeyringWithPrivateKey = async (
         privateKey: string,
-        addressType: AddressType
+        addressType: AddressTypes,
+        quantumPrivateKey?: string
     ): Promise<WalletKeyring> => {
         const network = this.getNetworkType();
         const originKeyring = keyringService.createTmpKeyring(KEYRING_TYPE.SimpleKeyring, {
-            privateKeys: [privateKey],
+            privateKey,
+            quantumPrivateKey,
             network: getBitcoinLibJSNetwork(network)
         });
 
@@ -661,88 +698,8 @@ export class WalletController {
         return await this.displayedKeyringToWalletKeyring(displayedKeyring, -1, false);
     };
 
-    /**
-     * Create a temporary Keystone keyring from UR data.
-     */
-    public createTmpKeyringWithKeystone = async (
-        urType: string,
-        urCbor: string,
-        addressType: AddressType,
-        hdPath: string,
-        accountCount: number
-    ): Promise<WalletKeyring> => {
-        const tmpKeyring = new KeystoneKeyring();
-        await tmpKeyring.initFromUR(urType, urCbor);
-        if (hdPath.length >= 13) {
-            tmpKeyring.changeChangeAddressHdPath(hdPath);
-            tmpKeyring.addAccounts(accountCount);
-        } else {
-            tmpKeyring.changeHdPath(ADDRESS_TYPES[addressType].hdPath);
-            if (accountCount) {
-                tmpKeyring.addAccounts(accountCount);
-            }
-        }
-
-        const opts = tmpKeyring.serialize();
-        const originKeyring = keyringService.createTmpKeyring(KEYRING_TYPE.KeystoneKeyring, opts);
-        const displayedKeyring = keyringService.displayForKeyring(originKeyring, addressType, -1);
-        preferenceService.setShowSafeNotice(false);
-        return this.displayedKeyringToWalletKeyring(displayedKeyring, -1, false);
-    };
-
-    /**
-     * Create a persistent Keystone keyring from UR data, with optional pubkey filtering.
-     * @throws WalletControllerError
-     */
-    public createKeyringWithKeystone = async (
-        urType: string,
-        urCbor: string,
-        addressType: AddressType,
-        hdPath: string,
-        accountCount = 1,
-        filterPubkey: string[] = []
-    ): Promise<void> => {
-        try {
-            const originKeyring = await keyringService.createKeyringWithKeystone(
-                urType,
-                urCbor,
-                addressType,
-                hdPath,
-                accountCount
-            );
-
-            if (filterPubkey?.length > 0) {
-                const accounts = originKeyring.getAccounts();
-                accounts.forEach((account) => {
-                    if (!filterPubkey.includes(account)) {
-                        originKeyring.removeAccount(account);
-                    }
-                });
-            }
-
-            const displayedKeyring = keyringService.displayForKeyring(
-                originKeyring,
-                addressType,
-                keyringService.keyrings.length - 1
-            );
-
-            const walletKeyring = await this.displayedKeyringToWalletKeyring(
-                displayedKeyring,
-                keyringService.keyrings.length - 1
-            );
-
-            this.changeKeyring(walletKeyring);
-            await preferenceService.setShowSafeNotice(false);
-        } catch (err) {
-            throw new WalletControllerError(`Could not create keyring with Keystone data: ${String(err)}`, {
-                urType,
-                urCbor,
-                addressType,
-                hdPath,
-                accountCount
-            });
-        }
-    };
+    // Note: Keystone hardware wallet support has been deprecated in wallet-sdk 2.0
+    // createTmpKeyringWithKeystone and createKeyringWithKeystone methods removed
 
     /**
      * Remove an entire keyring by index, then switch to another if it exists.
@@ -763,7 +720,7 @@ export class WalletController {
         }
     };
 
-    public getKeyringByType = (type: string): Keyring | undefined => {
+    public getKeyringByType = (type: string): Keyring | EmptyKeyring | undefined => {
         return keyringService.getKeyringByType(type);
     };
 
@@ -812,7 +769,7 @@ export class WalletController {
      * Change the active addressType for a keyring. This can refresh the derived addresses, etc.
      * @throws WalletControllerError
      */
-    public changeAddressType = async (addressType: AddressType): Promise<void> => {
+    public changeAddressType = async (addressType: AddressTypes): Promise<void> => {
         try {
             const currentAccount = await this.getCurrentAccount();
             const currentKeyringIndex = preferenceService.getCurrentKeyringIndex();
@@ -884,7 +841,7 @@ export class WalletController {
         } else {
             // No custom toSignInputs => auto-detect
             const networkType = this.getNetworkType();
-            const psbtNetwork = toPsbtNetwork(networkType);
+            const psbtNetwork = toNetwork(networkTypeToOPNet(networkType));
 
             const psbt = typeof _psbt === 'string' ? Psbt.fromHex(_psbt, { network: psbtNetwork }) : _psbt;
 
@@ -899,7 +856,7 @@ export class WalletController {
                 }
                 const isSigned = v.finalScriptSig ?? v.finalScriptWitness;
                 if (script && !isSigned) {
-                    const address = scriptPkToAddress(script, networkType);
+                    const address = scriptPubKeyToAddress(script, psbtNetwork);
                     if (account.address === address) {
                         toSignInputs.push({
                             index: idx,
@@ -926,7 +883,7 @@ export class WalletController {
         const __keyring = keyringService.keyrings[keyring.index];
 
         const networkType = this.getNetworkType();
-        const psbtNetwork = toPsbtNetwork(networkType);
+        const psbtNetwork = toNetwork(networkTypeToOPNet(networkType));
 
         if (!toSignInputs) {
             // For backward compatibility
@@ -936,7 +893,7 @@ export class WalletController {
         // Attempt to fix missing tapInternalKey for P2TR inputs
         psbt.data.inputs.forEach((v) => {
             const isNotSigned = !(v.finalScriptSig ?? v.finalScriptWitness);
-            const isP2TR = keyring.addressType === AddressType.P2TR || keyring.addressType === AddressType.M44_P2TR;
+            const isP2TR = keyring.addressType === AddressTypes.P2TR;
             const lostInternalPubkey = !v.tapInternalKey;
 
             if (isNotSigned && isP2TR && lostInternalPubkey) {
@@ -950,36 +907,6 @@ export class WalletController {
                 }
             }
         });
-
-        // Keystone special handling
-        if (keyring.type === KEYRING_TYPE.KeystoneKeyring) {
-            const _keyring = __keyring as KeystoneKeyring;
-            if (!_keyring.mfp) {
-                throw new WalletControllerError('No master fingerprint found in Keystone keyring');
-            }
-
-            toSignInputs.forEach((input) => {
-                const isP2TR = keyring.addressType === AddressType.P2TR || keyring.addressType === AddressType.M44_P2TR;
-                const bip32Derivation = {
-                    masterFingerprint: Buffer.from(_keyring.mfp, 'hex'),
-                    path: `${keyring.hdPath}/${account.index}`,
-                    pubkey: Buffer.from(account.pubkey, 'hex')
-                };
-
-                if (isP2TR) {
-                    psbt.data.inputs[input.index].tapBip32Derivation = [
-                        {
-                            ...bip32Derivation,
-                            pubkey: bip32Derivation.pubkey.subarray(1),
-                            leafHashes: []
-                        }
-                    ];
-                } else {
-                    psbt.data.inputs[input.index].bip32Derivation = [bip32Derivation];
-                }
-            });
-            return psbt;
-        }
 
         // Normal keyring
         const signedPsbt = keyringService.signTransaction(__keyring, psbt, toSignInputs);
@@ -1006,7 +933,7 @@ export class WalletController {
     };
 
     /**
-     * ECDSA or Schnorr message signing for the current account.
+     * ECDSA message signing for the current account.
      * @throws WalletControllerError
      */
     public signMessage = async (message: string | Buffer): Promise<string> => {
@@ -1014,7 +941,11 @@ export class WalletController {
         if (!account) {
             throw new WalletControllerError('No current account');
         }
-        return keyringService.signMessage(account.pubkey, account.type, message);
+        // Convert message to hex string if Buffer
+        const messageHex = typeof message === 'string'
+            ? Buffer.from(message, 'utf8').toString('hex')
+            : message.toString('hex');
+        return keyringService.signData(account.pubkey, messageHex, 'ecdsa');
     };
 
     /**
@@ -1030,11 +961,7 @@ export class WalletController {
         const account = await this.getCurrentAccount();
         if (!account) throw new WalletControllerError('No current account');
 
-        const wifWallet = this.getInternalPrivateKey({
-            pubkey: account.pubkey,
-            type: account.type
-        } as Account);
-        if (!wifWallet) throw new WalletControllerError('Could not retrieve internal private key');
+        const wallet = await this.getOPNetWallet();
 
         let requiredMinimum = 0;
         let tries = 0;
@@ -1049,7 +976,7 @@ export class WalletController {
             tries++;
 
             try {
-                signed = await this.signInteractionInternal(account, wifWallet, interactionParameters, requiredMinimum);
+                signed = await this.signInteractionInternal(account, wallet, interactionParameters, requiredMinimum);
             } catch (err: unknown) {
                 const msg = err as Error;
 
@@ -1102,15 +1029,7 @@ export class WalletController {
     public cancelTransaction = async (
         params: ICancelTransactionParametersWithoutSigner
     ): Promise<CancelledTransaction> => {
-        const account = await this.getCurrentAccount();
-        if (!account) throw new WalletControllerError('No current account');
-
-        const wifWallet = this.getInternalPrivateKey({
-            pubkey: account.pubkey,
-            type: account.type
-        } as Account);
-
-        if (!wifWallet) throw new WalletControllerError('Could not retrieve internal private key');
+        const wallet = await this.getOPNetWallet();
 
         try {
             const utxos = params.utxos.map((u) => {
@@ -1173,12 +1092,11 @@ export class WalletController {
                         nonWitnessUtxo
                     };
                 }) || [];
-
-            const walletGet: Wallet = Wallet.fromWif(wifWallet.wif, Web3API.network);
             const cancelParameters: ICancelTransactionParameters = {
                 ...params,
                 utxos,
-                signer: walletGet.keypair,
+                signer: wallet.keypair,
+                mldsaSigner: wallet.mldsaKeypair,
                 network: Web3API.network,
                 feeRate: Number(params.feeRate.toString()),
                 compiledTargetScript: params.compiledTargetScript,
@@ -1189,7 +1107,7 @@ export class WalletController {
 
             return await Web3API.transactionFactory.createCancellableTransaction(cancelParameters);
         } catch (err) {
-            throw new WalletControllerError(`Failed to deploy contract: ${String(err)}`, { params });
+            throw new WalletControllerError(`Failed to cancel transaction: ${String(err)}`, { params });
         }
     };
 
@@ -1198,15 +1116,7 @@ export class WalletController {
      * @throws WalletControllerError
      */
     public deployContract = async (params: IDeploymentParametersWithoutSigner): Promise<DeploymentResult> => {
-        const account = await this.getCurrentAccount();
-        if (!account) throw new WalletControllerError('No current account');
-
-        const wifWallet = this.getInternalPrivateKey({
-            pubkey: account.pubkey,
-            type: account.type
-        } as Account);
-
-        if (!wifWallet) throw new WalletControllerError('Could not retrieve internal private key');
+        const wallet = await this.getOPNetWallet();
 
         try {
             const utxos = params.utxos.map((u) => {
@@ -1271,12 +1181,12 @@ export class WalletController {
                 }) || [];
 
             const challenge = await Web3API.provider.getChallenge();
-            const walletGet: Wallet = Wallet.fromWif(wifWallet.wif, Web3API.network);
             const deployContractParameters: IDeploymentParameters = {
                 ...params,
                 utxos,
                 challenge,
-                signer: walletGet.keypair,
+                signer: wallet.keypair,
+                mldsaSigner: wallet.mldsaKeypair,
                 network: Web3API.network,
                 feeRate: Number(params.feeRate.toString()),
                 gasSatFee:
@@ -1314,12 +1224,7 @@ export class WalletController {
         const account = await this.getCurrentAccount();
         if (!account) throw new WalletControllerError('No current account');
 
-        const wifWallet = this.getInternalPrivateKey({
-            pubkey: account.pubkey,
-            type: account.type
-        } as Account);
-
-        if (!wifWallet) throw new WalletControllerError('Could not retrieve internal private key');
+        const wallet = await this.getOPNetWallet();
 
         let interactionResponse: InteractionResponse | undefined;
         let requiredMinimum = 0;
@@ -1336,7 +1241,7 @@ export class WalletController {
             try {
                 const { response } = await this.signInteractionInternal(
                     account,
-                    wifWallet,
+                    wallet,
                     interactionParameters,
                     requiredMinimum
                 );
@@ -1406,12 +1311,17 @@ export class WalletController {
         if (!account) throw new WalletControllerError('No current account');
         const networkType = this.getNetworkType();
         try {
-            return await signMessageOfBIP322Simple({
+            const result = await signBip322MessageWithNetworkType(
                 message,
-                address: account.address,
-                networkType,
-                wallet: this as unknown as AbstractWallet
-            });
+                account.address,
+                networkTypeToOPNet(networkType),
+                async (psbt: Psbt) => {
+                    const toSignInputs = await this.formatOptionsToSignInputs(psbt);
+                    await this.signPsbt(psbt, toSignInputs, false);
+                    return psbt;
+                }
+            );
+            return result.signature;
         } catch (err) {
             throw new WalletControllerError(`Failed to sign BIP322 message: ${String(err)}`, {
                 message,
@@ -1715,12 +1625,31 @@ export class WalletController {
         const accounts: Account[] = [];
 
         for (let j = 0; j < displayedKeyring.accounts.length; j++) {
-            const { pubkey } = displayedKeyring.accounts[j];
-            const address = publicKeyToAddress(pubkey, addressType, networkType);
+            const { pubkey, quantumPublicKey } = displayedKeyring.accounts[j];
+            const address = publicKeyToAddressWithNetworkType(pubkey, addressType, networkTypeToOPNet(networkType));
             const accountKey = `${key}#${j}`;
             const defaultName = this.getAlianName(pubkey) ?? this._generateAlianName(type, j + 1);
             const alianName = await preferenceService.getAccountAlianName(accountKey, defaultName);
             const flag = preferenceService.getAddressFlag(address);
+
+            // Calculate quantum public key hash and determine status
+            let quantumPublicKeyHash: string | undefined;
+            let quantumKeyStatus: QuantumKeyStatus;
+
+            if (quantumPublicKey) {
+                // Calculate SHA256 hash of quantum public key
+                quantumPublicKeyHash = createHash('sha256')
+                    .update(Buffer.from(quantumPublicKey, 'hex'))
+                    .digest('hex');
+                quantumKeyStatus = QuantumKeyStatus.MIGRATED;
+            } else if (type === KEYRING_TYPE.HdKeyring) {
+                // HD keyrings auto-derive quantum keys
+                quantumKeyStatus = QuantumKeyStatus.NOT_REQUIRED;
+            } else {
+                // Simple keyring without quantum key
+                quantumKeyStatus = QuantumKeyStatus.NOT_MIGRATED;
+            }
+
             accounts.push({
                 type,
                 pubkey,
@@ -1728,12 +1657,14 @@ export class WalletController {
                 alianName,
                 index: j,
                 key: accountKey,
-                flag
+                flag,
+                quantumPublicKeyHash,
+                quantumKeyStatus
             });
         }
         const hdPath =
-            type === KEYRING_TYPE.HdKeyring || type === KEYRING_TYPE.KeystoneKeyring
-                ? displayedKeyring.keyring.hdPath
+            type === KEYRING_TYPE.HdKeyring
+                ? displayedKeyring.keyring.getHdPath()
                 : '';
         const alianName = await preferenceService.getKeyringAlianName(
             key,
@@ -1755,7 +1686,7 @@ export class WalletController {
      * Return all keyrings (non-empty) in a typed array of WalletKeyring.
      */
     public getKeyrings = async (): Promise<WalletKeyring[]> => {
-        const displayedKeyrings = await keyringService.getAllDisplayedKeyrings();
+        const displayedKeyrings = keyringService.getAllDisplayedKeyrings();
         const keyrings: WalletKeyring[] = [];
 
         for (const displayedKeyring of displayedKeyrings) {
@@ -1774,7 +1705,7 @@ export class WalletController {
      */
     public getCurrentKeyring = async (): Promise<WalletKeyring | null> => {
         let currentKeyringIndex = preferenceService.getCurrentKeyringIndex();
-        const displayedKeyrings = await keyringService.getAllDisplayedKeyrings();
+        const displayedKeyrings = keyringService.getAllDisplayedKeyrings();
         if (currentKeyringIndex === undefined) {
             const currentAccount = await this.getCurrentAccount();
             for (let i = 0; i < displayedKeyrings.length; i++) {
@@ -1839,7 +1770,7 @@ export class WalletController {
      */
     public getEditingKeyring = async (): Promise<WalletKeyring> => {
         const editingKeyringIndex = preferenceService.getEditingKeyringIndex();
-        const displayedKeyrings = await keyringService.getAllDisplayedKeyrings();
+        const displayedKeyrings = keyringService.getAllDisplayedKeyrings();
         const displayedKeyring = displayedKeyrings[editingKeyringIndex];
         return this.displayedKeyringToWalletKeyring(displayedKeyring, editingKeyringIndex);
     };
@@ -2169,136 +2100,93 @@ export class WalletController {
         return openapiService.getVersionDetail(version);
     };
 
+    // Note: Keystone hardware wallet methods (checkKeyringMethod, genSignPsbtUr, parseSignPsbtUr,
+    // genSignMsgUr, parseSignMsgUr) have been removed in wallet-sdk 2.0
+
     /**
-     * Check whether a method exists on the current keyring (Keystone).
+     * Sign data with MLDSA (post-quantum) signature.
      * @throws WalletControllerError
      */
-    public checkKeyringMethod = async (method: string): Promise<{ account: Account; keyring: Keyring }> => {
+    public signMLDSA = async (data: string | Buffer): Promise<string> => {
         const account = await this.getCurrentAccount();
-        if (!account) throw new WalletControllerError('No current account');
-
-        const keyring = keyringService.getKeyringForAccount(account.pubkey);
-        if (!keyring) {
-            throw new WalletControllerError('Keyring does not exist for current account', { account });
+        if (!account) {
+            throw new WalletControllerError('No current account');
         }
-
-        // @ts-expect-error
-        if (!keyring[method]) {
-            throw new WalletControllerError(`Keyring does not have "${method}" method`, { method });
-        }
-
-        return { account, keyring };
-    };
-
-    /**
-     * Create a UR from a psbt that can be signed by e.g. Keystone device.
-     * @throws WalletControllerError
-     */
-    public genSignPsbtUr = async (psbtHex: string): Promise<{ type: string; cbor: string }> => {
-        const { keyring } = await this.checkKeyringMethod('genSignPsbtUr');
         try {
-            return await (keyring as KeystoneKeyring).genSignPsbtUr(psbtHex);
+            const signature = keyringService.signMLDSA(account.pubkey, data);
+            return Buffer.from(signature).toString('hex');
         } catch (err) {
-            throw new WalletControllerError(`Failed to generate sign PSBT UR: ${String(err)}`, { psbtHex });
+            throw new WalletControllerError(`Failed to sign with MLDSA: ${String(err)}`);
         }
     };
 
     /**
-     * Parse a signPsbt UR and optionally finalize the PSBT.
+     * Get the quantum public key for the current account.
+     * Returns the hex-encoded quantum public key or undefined if not available.
+     */
+    public getQuantumPublicKey = async (): Promise<string | undefined> => {
+        const account = await this.getCurrentAccount();
+        if (!account) {
+            throw new WalletControllerError('No current account');
+        }
+        const qpk = keyringService.getQuantumPublicKey(account.pubkey);
+        return qpk ? Buffer.from(qpk).toString('hex') : undefined;
+    };
+
+    /**
+     * Get the quantum public key hash (SHA256) for the current account.
+     * This is the value that gets linked on-chain.
+     */
+    public getQuantumPublicKeyHash = async (): Promise<string | undefined> => {
+        const qpk = await this.getQuantumPublicKey();
+        if (!qpk) return undefined;
+        return createHash('sha256').update(Buffer.from(qpk, 'hex')).digest('hex');
+    };
+
+    /**
+     * Check if the current account needs quantum key migration.
+     * Only applies to WIF-imported (SimpleKeyring) wallets.
+     */
+    public needsQuantumMigration = async (): Promise<boolean> => {
+        const account = await this.getCurrentAccount();
+        if (!account) {
+            throw new WalletControllerError('No current account');
+        }
+        return keyringService.needsQuantumMigration(account.pubkey);
+    };
+
+    /**
+     * Set/migrate quantum key for a WIF-imported wallet.
      * @throws WalletControllerError
      */
-    public parseSignPsbtUr = async (
-        type: string,
-        cbor: string,
-        isFinalize = true
-    ): Promise<{ psbtHex: string; rawtx?: string }> => {
-        const { keyring } = await this.checkKeyringMethod('parseSignPsbtUr');
+    public setQuantumKey = async (quantumPrivateKey: string): Promise<void> => {
+        const account = await this.getCurrentAccount();
+        if (!account) {
+            throw new WalletControllerError('No current account');
+        }
         try {
-            const psbtHex = await (keyring as KeystoneKeyring).parseSignPsbtUr(type, cbor);
-            const psbt = Psbt.fromHex(psbtHex);
-            if (isFinalize) {
-                psbt.finalizeAllInputs();
-            }
-            return {
-                psbtHex: psbt.toHex(),
-                rawtx: isFinalize ? psbt.extractTransaction().toHex() : undefined
-            };
+            await keyringService.setQuantumKey(account.pubkey, quantumPrivateKey);
         } catch (err) {
-            throw new WalletControllerError(`Failed to parse sign PSBT UR: ${String(err)}`, {
-                type,
-                cbor,
-                isFinalize
-            });
+            throw new WalletControllerError(`Failed to set quantum key: ${String(err)}`);
         }
     };
 
     /**
-     * Create a UR for message signing, possibly with BIP322-simple logic.
+     * Export both classical and quantum private keys for the current account.
+     * Only works for SimpleKeyring (WIF-imported) wallets.
      * @throws WalletControllerError
      */
-    public genSignMsgUr = async (text: string, msgType?: string): Promise<string | { type: string; cbor: string }> => {
-        if (msgType === 'bip322-simple') {
-            const account = await this.getCurrentAccount();
-            if (!account) throw new WalletControllerError('No current account');
-            try {
-                const psbt = genPsbtOfBIP322Simple({
-                    message: text,
-                    address: account.address,
-                    networkType: this.getNetworkType()
-                });
-                const toSignInputs = await this.formatOptionsToSignInputs(psbt);
-                await this.signPsbt(psbt, toSignInputs, false);
-                return await this.genSignPsbtUr(psbt.toHex());
-            } catch (err) {
-                throw new WalletControllerError(`Failed bip322-simple UR generation: ${String(err)}`, {
-                    text,
-                    msgType
-                });
-            }
+    public exportPrivateKeyWithQuantum = async (): Promise<{ classicalPrivateKey: string; quantumPrivateKey?: string }> => {
+        const account = await this.getCurrentAccount();
+        if (!account) {
+            throw new WalletControllerError('No current account');
         }
-        const { account, keyring } = await this.checkKeyringMethod('genSignMsgUr');
         try {
-            return await (keyring as KeystoneKeyring).genSignMsgUr(account.pubkey, text);
+            const classicalPrivateKey = keyringService.exportAccount(account.pubkey);
+            const quantumPrivateKey = keyringService.exportQuantumAccount(account.pubkey);
+            return { classicalPrivateKey, quantumPrivateKey };
         } catch (err) {
-            throw new WalletControllerError(`Failed to generate sign message UR: ${String(err)}`, {
-                text,
-                msgType
-            });
-        }
-    };
-
-    /**
-     * Parse a signMsg UR. If bip322-simple, finalize PSBT and extract signature.
-     * @throws WalletControllerError
-     */
-    public parseSignMsgUr = async (type: string, cbor: string, msgType: string): Promise<{ signature: string }> => {
-        if (msgType === 'bip322-simple') {
-            try {
-                const res = await this.parseSignPsbtUr(type, cbor, false);
-                const psbt = Psbt.fromHex(res.psbtHex);
-                psbt.finalizeAllInputs();
-                return {
-                    signature: getSignatureFromPsbtOfBIP322Simple(psbt)
-                };
-            } catch (err) {
-                throw new WalletControllerError(`Failed bip322-simple UR parsing: ${String(err)}`, {
-                    type,
-                    cbor
-                });
-            }
-        }
-
-        const { keyring } = await this.checkKeyringMethod('parseSignMsgUr');
-        try {
-            const sig = await (keyring as KeystoneKeyring).parseSignMsgUr(type, cbor);
-            sig.signature = Buffer.from(sig.signature, 'hex').toString('base64');
-            return sig;
-        } catch (err) {
-            throw new WalletControllerError(`Failed to parse sign message UR: ${String(err)}`, {
-                type,
-                cbor,
-                msgType
-            });
+            throw new WalletControllerError(`Failed to export private keys: ${String(err)}`);
         }
     };
 
@@ -2348,8 +2236,8 @@ export class WalletController {
             csv1_total_amount: '0',
             csv1_unlocked_amount: '0',
             csv1_locked_amount: '0',
-            p2wda_pending_amount: '0',
             p2wda_total_amount: '0',
+            p2wda_pending_amount: '0',
             consolidation_amount: '0',
             consolidation_unspent_amount: '0',
             consolidation_unspent_count: 0,
@@ -2738,11 +2626,10 @@ export class WalletController {
 
     private signInteractionInternal = async (
         account: Account,
-        wifWallet: { hex: string; wif: string },
+        wallet: Wallet,
         interactionParameters: InteractionParametersWithoutSigner,
         requiredMinimum = 0
     ): Promise<{ response: InteractionResponse; utxos: UTXOs }> => {
-        const wallet = Wallet.fromWif(wifWallet.wif, Web3API.network);
         const challenge = await Web3API.provider.getChallenge();
 
         // Process UTXOs using the new method
@@ -2779,6 +2666,7 @@ export class WalletController {
             challenge,
             utxos,
             signer: wallet.keypair,
+            mldsaSigner: wallet.mldsaKeypair,
             network: Web3API.network,
             feeRate: interactionParameters.feeRate,
             priorityFee: BigInt((interactionParameters.priorityFee as unknown as string) || 0n),
@@ -2798,7 +2686,7 @@ export class WalletController {
      * Retrieve a keyring by type if it exists; else throw.
      * @throws WalletControllerError if no matching keyring found
      */
-    private _getKeyringByType = (type: string): Keyring => {
+    private _getKeyringByType = (type: string): Keyring | EmptyKeyring => {
         const found = keyringService.getKeyringsByType(type)[0];
         if (found) return found;
         throw new WalletControllerError(`No ${type} keyring found`);

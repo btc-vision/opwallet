@@ -11,7 +11,7 @@ import { useSetSpendUnavailableUtxosCallback } from '@/ui/state/transactions/hoo
 import { colors } from '@/ui/theme/colors';
 import { fontSizes } from '@/ui/theme/font';
 import { satoshisToAmount, shortUtxo, useWallet } from '@/ui/utils';
-import { UnspentOutput } from '@btc-vision/wallet-sdk';
+import { UnspentOutput } from '@/shared/types';
 
 type UnavailableUnspentOutput = UnspentOutput & {
     height?: number;
@@ -86,8 +86,6 @@ export default function UnavailableUtxoScreen() {
                                             </Row>
 
                                             <Row>
-                                                {item.inscriptions.length > 0 ? <AssetTag type="Inscription" /> : null}
-                                                {item.atomicals.length > 0 ? <AssetTag type="ARC20" /> : null}
                                                 {item.height === UNCONFIRMED_HEIGHT ? (
                                                     <AssetTag type="Unconfirmed" />
                                                 ) : null}

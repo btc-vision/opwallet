@@ -2,7 +2,7 @@ import { useCallback } from 'react';
 
 import { useTools } from '@/ui/components/ActionComponent';
 import { sleep, useWallet } from '@/ui/utils';
-import { UnspentOutput } from '@btc-vision/wallet-sdk';
+import { UnspentOutput } from '@/shared/types';
 
 import { AppState } from '..';
 import { useAppDispatch, useAppSelector } from '../hooks';

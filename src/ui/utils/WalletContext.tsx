@@ -5,6 +5,7 @@ import { AddressFlagType, ChainId, ChainType, CustomNetwork } from '@/shared/con
 import {
     Account,
     AddressSummary,
+    AddressTypes,
     AppSummary,
     BitcoinBalance,
     DecodedPsbt,
@@ -14,14 +15,14 @@ import {
     SignPsbtOptions,
     TickPriceItem,
     TxHistoryItem,
+    UnspentOutput,
     VersionDetail,
     WalletConfig,
     WalletKeyring
 } from '@/shared/types';
 import { ApprovalData, ApprovalResponse } from '@/shared/types/Approval';
 import { Psbt } from '@btc-vision/bitcoin';
-import { InteractionParametersWithoutSigner } from '@btc-vision/transaction';
-import { AddressType, UnspentOutput } from '@btc-vision/wallet-sdk';
+import { InteractionParametersWithoutSigner, Wallet } from '@btc-vision/transaction';
 import { createContext, ReactNode, useContext } from 'react';
 
 export interface WalletController {
@@ -87,12 +88,14 @@ export interface WalletController {
 
     getInternalPrivateKey(account: { pubkey: string; type: string }): Promise<{ hex: string; wif: string }>;
 
+    getOPNetWallet(): Promise<Wallet>;
+
     getMnemonics(
         password: string,
         keyring: WalletKeyring
     ): Promise<{ mnemonic: string | undefined; hdPath: string | undefined; passphrase: string | undefined }>;
 
-    createKeyringWithPrivateKey(data: string, addressType: AddressType, alianName?: string): Promise<Account[]>;
+    createKeyringWithPrivateKey(data: string, addressType: AddressTypes, alianName?: string): Promise<Account[]>;
 
     getPreMnemonics(): Promise<SavedVault[] | null>;
 
@@ -104,25 +107,25 @@ export interface WalletController {
         mnemonic: string,
         hdPath: string,
         passphrase: string,
-        addressType: AddressType,
+        addressType: AddressTypes,
         accountCount: number
     ): Promise<{ address: string; type: string }[]>;
 
     createKeyringWithKeystone(
         urType: string,
         urCbor: string,
-        addressType: AddressType,
+        addressType: AddressTypes,
         hdPath: string,
         accountCount: number,
         filterPubkey?: string[]
     ): Promise<{ address: string; type: string }[]>;
 
-    createTmpKeyringWithPrivateKey(privateKey: string, addressType: AddressType): Promise<WalletKeyring>;
+    createTmpKeyringWithPrivateKey(privateKey: string, addressType: AddressTypes): Promise<WalletKeyring>;
 
     createTmpKeyringWithKeystone(
         urType: string,
         urCbor: string,
-        addressType: AddressType,
+        addressType: AddressTypes,
         hdPath: string,
         accountCount?: number
     ): Promise<WalletKeyring>;
@@ -131,7 +134,7 @@ export interface WalletController {
         mnemonic: string,
         hdPath: string,
         passphrase: string,
-        addressType: AddressType,
+        addressType: AddressTypes,
         accountCount?: number
     ): Promise<WalletKeyring>;
 
@@ -193,7 +196,7 @@ export interface WalletController {
 
     setKeyringAlianName(keyring: WalletKeyring, name: string): Promise<WalletKeyring>;
 
-    changeAddressType(addressType: AddressType): Promise<void>;
+    changeAddressType(addressType: AddressTypes): Promise<void>;
 
     setAccountAlianName(account: Account, name: string): Promise<Account>;
 

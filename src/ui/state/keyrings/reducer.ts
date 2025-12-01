@@ -1,4 +1,4 @@
-import { Account, AddressType, WalletKeyring } from '@/shared/types';
+import { Account, AddressTypes, WalletKeyring } from '@/shared/types';
 import { createSlice } from '@reduxjs/toolkit';
 
 import { updateVersion } from '../global/actions';
@@ -12,7 +12,7 @@ const initialKeyring: WalletKeyring = {
     key: '',
     index: 0,
     type: '',
-    addressType: AddressType.P2TR,
+    addressType: AddressTypes.P2TR,
     accounts: [],
     alianName: '',
     hdPath: ''

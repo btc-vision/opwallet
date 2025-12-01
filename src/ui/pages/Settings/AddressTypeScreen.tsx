@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 
-import { AddressAssets, AddressType } from '@/shared/types';
+import { AddressAssets, AddressTypes } from '@/shared/types';
 import { Column, Content, Header, Layout, Text } from '@/ui/components';
 import { useTools } from '@/ui/components/ActionComponent';
 import { useCurrentAccount, useReloadAccounts } from '@/ui/state/accounts/hooks';
@@ -45,8 +45,8 @@ interface AddressTypeItemProps {
     onClick: () => void;
 }
 
-type AddressTypes = Array<{
-    value: AddressType;
+type AddressTypesList = Array<{
+    value: AddressTypes;
     name: string;
     address: string;
     assets: AddressAssets;
@@ -350,7 +350,7 @@ export default function AddressTypeScreen() {
     }, []);
 
     const addressTypes = useMemo(() => {
-        const types: AddressTypes = [];
+        const types: AddressTypesList = [];
 
         const addressEntries = Object.entries(addresses) as [keyof typeof addresses, string][];
 
@@ -360,25 +360,25 @@ export default function AddressTypeScreen() {
             const assets = addressAssets[address];
             if (!assets) continue;
 
-            // Map the key to proper AddressType enum values
-            let addressType: AddressType;
+            // Map the key to proper AddressTypes enum values
+            let addressType: AddressTypes;
             let name = '';
 
             switch (key) {
                 case 'p2tr':
-                    addressType = AddressType.P2TR;
+                    addressType = AddressTypes.P2TR;
                     name = 'Taproot';
                     break;
                 case 'p2wpkh':
-                    addressType = AddressType.P2WPKH;
+                    addressType = AddressTypes.P2WPKH;
                     name = 'Native SegWit';
                     break;
                 case 'p2shp2wpkh':
-                    addressType = AddressType.P2SH_P2WPKH;
+                    addressType = AddressTypes.P2SH_OR_P2SH_P2WPKH;
                     name = 'Nested SegWit';
                     break;
                 case 'p2pkh':
-                    addressType = AddressType.P2PKH;
+                    addressType = AddressTypes.P2PKH;
                     name = 'Legacy';
                     break;
                 default:
@@ -395,7 +395,7 @@ export default function AddressTypeScreen() {
         return types;
     }, [addresses, addressAssets]);
 
-    const handleAddressTypeChange = async (item: AddressTypes[number]) => {
+    const handleAddressTypeChange = async (item: AddressTypesList[number]) => {
         if (item.value === currentKeyring.addressType) {
             return;
         }
@@ -414,7 +414,7 @@ export default function AddressTypeScreen() {
         }
     };
 
-    const getDescription = (item: AddressTypes[number]) => {
+    const getDescription = (item: AddressTypesList[number]) => {
         if (item.name === 'P2TR') {
             return 'Taproot - Lower fees, enhanced privacy';
         } else if (item.name === 'P2WPKH') {

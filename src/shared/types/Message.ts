@@ -21,6 +21,6 @@ export interface SendRequestPayload {
 
 export interface SendResponsePayload {
     ident: number;
-    res: any;
+    res: unknown;
     err?: SerializedWalletError;
 }

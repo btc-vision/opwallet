@@ -1,7 +1,7 @@
 import { useCallback } from 'react';
 
 import { useApproval, useWallet } from '@/ui/utils';
-import { AddressType } from '@btc-vision/wallet-sdk';
+import { AddressTypes } from '@/shared/types';
 
 import { AppState } from '..';
 import { useAppDispatch, useAppSelector } from '../hooks';
@@ -48,7 +48,7 @@ export function useCreateAccountCallback() {
             mnemonics: string,
             hdPath: string,
             passphrase: string,
-            addressType: AddressType,
+            addressType: AddressTypes,
             accountCount: number
         ) => {
             await wallet.createKeyringWithMnemonics(mnemonics, hdPath, passphrase, addressType, accountCount);
@@ -65,7 +65,7 @@ export function useImportAccountsFromKeystoneCallback() {
         async (
             urType: string,
             urCbor: string,
-            addressType: AddressType,
+            addressType: AddressTypes,
             accountCount: number,
             hdPath: string,
             filterPubkey?: string[]

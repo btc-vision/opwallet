@@ -144,14 +144,8 @@ export default function TxOpnetConfirmScreen() {
         void setWallet();
     });
 
-    const getWallet = useCallback(async () => {
-        const currentWalletAddress = await wallet.getCurrentAccount();
-        const pubkey = currentWalletAddress.pubkey;
-        const wifWallet = await wallet.getInternalPrivateKey({
-            pubkey: pubkey,
-            type: currentWalletAddress.type
-        });
-        return Wallet.fromWif(wifWallet.wif, Web3API.network);
+    const getOPNetWallet = useCallback(async () => {
+        return wallet.getOPNetWallet();
     }, [wallet]);
 
     const handleCancel = () => {
@@ -167,7 +161,7 @@ export default function TxOpnetConfirmScreen() {
         ) {
             pubKey = Address.fromString(pubKeyStr);
         } else {
-            pubKey = await Web3API.provider.getPublicKeyInfo(to);
+            pubKey = await Web3API.provider.getPublicKeyInfo(to, false);
         }
 
         if (!pubKey) throw new Error('public key not found');
@@ -175,7 +169,7 @@ export default function TxOpnetConfirmScreen() {
     };
 
     const transferToken = async (parameters: TransferParameters) => {
-        const userWallet = await getWallet();
+        const userWallet = await getOPNetWallet();
         const currentWalletAddress = await wallet.getCurrentAccount();
         const contract: IOP20Contract = getContract<IOP20Contract>(
             parameters.contractAddress,
@@ -191,6 +185,7 @@ export default function TxOpnetConfirmScreen() {
 
             const interactionParameters: TransactionParameters = {
                 signer: userWallet.keypair, // The keypair that will sign the transaction
+                mldsaSigner: userWallet.mldsaKeypair, // The ML-DSA keypair for quantum-resistant signing
                 refundTo: currentWalletAddress.address, // Refund the rest of the funds to this address
                 maximumAllowedSatToSpend: parameters.priorityFee, // The maximum we want to allocate to this transaction in satoshis
                 feeRate: parameters.feeRate, // We need to provide a fee rate
@@ -226,7 +221,7 @@ export default function TxOpnetConfirmScreen() {
     const airdrop = async (parameters: AirdropParameters) => {
         const contractAddress = parameters.contractAddress;
         const currentWalletAddress = await wallet.getCurrentAccount();
-        const userWallet = await getWallet();
+        const userWallet = await getOPNetWallet();
 
         const contract: AirdropInterface = getContract<AirdropInterface>(
             contractAddress,
@@ -244,6 +239,7 @@ export default function TxOpnetConfirmScreen() {
         const airdropData = await contract.airdrop(addressMap);
         const interactionParameters: TransactionParameters = {
             signer: userWallet.keypair, // The keypair that will sign the transaction
+            mldsaSigner: userWallet.mldsaKeypair, // The ML-DSA keypair for quantum-resistant signing
             refundTo: currentWalletAddress.address, // Refund the rest of the funds to this address
             maximumAllowedSatToSpend: parameters.priorityFee, // The maximum we want to allocate to this transaction in satoshis
             feeRate: parameters.feeRate, // We need to provide a fee rate
@@ -268,7 +264,7 @@ export default function TxOpnetConfirmScreen() {
     const sendBTC = async (parameters: SendBitcoinParameters) => {
         try {
             const currentWalletAddress = await wallet.getCurrentAccount();
-            const userWallet = await getWallet();
+            const userWallet = await getOPNetWallet();
 
             // Determine which address to send from and get UTXOs
             let fromAddress = currentWalletAddress.address;
@@ -351,6 +347,7 @@ export default function TxOpnetConfirmScreen() {
                 amount: BitcoinUtils.expandToDecimals(parameters.inputAmount, 8),
                 utxos: utxos,
                 signer: userWallet.keypair,
+                mldsaSigner: userWallet.mldsaKeypair,
                 network: Web3API.network,
                 feeRate: parameters.feeRate,
                 priorityFee: 0n,
@@ -394,7 +391,7 @@ export default function TxOpnetConfirmScreen() {
     const deployContract = async (parameters: DeployContractParameters) => {
         try {
             const currentWalletAddress = await wallet.getCurrentAccount();
-            const userWallet = await getWallet();
+            const userWallet = await getOPNetWallet();
 
             const utxos: UTXO[] = await Web3API.getAllUTXOsForAddresses([currentWalletAddress.address], 1_000_000n); // maximum fee a contract can pay
 
@@ -409,6 +406,7 @@ export default function TxOpnetConfirmScreen() {
                 challenge,
                 utxos: utxos,
                 signer: userWallet.keypair,
+                mldsaSigner: userWallet.mldsaKeypair,
                 network: Web3API.network,
                 feeRate: parameters.feeRate,
                 priorityFee: parameters.priorityFee ?? 0n,
@@ -478,7 +476,7 @@ export default function TxOpnetConfirmScreen() {
     const mint = async (parameters: MintParameters) => {
         try {
             const currentWalletAddress = await wallet.getCurrentAccount();
-            const userWallet = await getWallet();
+            const userWallet = await getOPNetWallet();
 
             const contract = getContract<IOP20Contract>(
                 parameters.contractAddress,
@@ -493,6 +491,7 @@ export default function TxOpnetConfirmScreen() {
 
             const interactionParameters: TransactionParameters = {
                 signer: userWallet.keypair, // The keypair that will sign the transaction
+                mldsaSigner: userWallet.mldsaKeypair, // The ML-DSA keypair for quantum-resistant signing
                 refundTo: currentWalletAddress.address, // Refund the rest of the funds to this address
                 maximumAllowedSatToSpend: parameters.priorityFee, // The maximum we want to allocate to this transaction in satoshis
                 feeRate: parameters.feeRate, // We need to provide a fee rate
@@ -518,7 +517,7 @@ export default function TxOpnetConfirmScreen() {
     const sendNFT = async (parameters: SendNFTParameters) => {
         try {
             const currentWalletAddress = await wallet.getCurrentAccount();
-            const userWallet = await getWallet();
+            const userWallet = await getOPNetWallet();
 
             const addy =
                 AddressVerificator.detectAddressType(parameters.collectionAddress, Web3API.network) ===
@@ -545,6 +544,7 @@ export default function TxOpnetConfirmScreen() {
 
             const interactionParameters: TransactionParameters = {
                 signer: userWallet.keypair,
+                mldsaSigner: userWallet.mldsaKeypair,
                 refundTo: currentWalletAddress.address,
                 maximumAllowedSatToSpend: parameters.priorityFee,
                 feeRate: parameters.feeRate,

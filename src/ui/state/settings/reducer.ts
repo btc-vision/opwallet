@@ -1,12 +1,12 @@
 import { ChainType, DEFAULT_LOCKTIME_ID } from '@/shared/constant';
-import { AddressType, NetworkType, WalletConfig } from '@/shared/types';
+import { AddressTypes, NetworkType, WalletConfig } from '@/shared/types';
 import { createSlice } from '@reduxjs/toolkit';
 
 import { updateVersion } from '../global/actions';
 
 export interface SettingsState {
     locale: string;
-    addressType: AddressType;
+    addressType: AddressTypes;
     networkType: NetworkType;
     chainType: ChainType;
     walletConfig: WalletConfig;
@@ -16,7 +16,7 @@ export interface SettingsState {
 
 export const initialState: SettingsState = {
     locale: 'English',
-    addressType: AddressType.P2TR,
+    addressType: AddressTypes.P2TR,
     networkType: NetworkType.MAINNET,
     chainType: ChainType.BITCOIN_MAINNET,
     walletConfig: {
@@ -42,7 +42,7 @@ const slice = createSlice({
             action: {
                 payload: {
                     locale?: string;
-                    addressType?: AddressType;
+                    addressType?: AddressTypes;
                     networkType?: NetworkType;
                     walletConfig?: WalletConfig;
                     skippedVersion?: string;

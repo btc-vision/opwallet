@@ -14,7 +14,7 @@ import { useImportAccountsFromKeystoneCallback } from '@/ui/state/global/hooks';
 import { colors } from '@/ui/theme/colors';
 import { useLocationState, useWallet } from '@/ui/utils';
 import { ScanOutlined } from '@ant-design/icons';
-import { AddressType } from '@btc-vision/wallet-sdk';
+import { AddressTypes } from '@/shared/types';
 
 import { isWalletError } from '@/shared/utils/errors';
 import { RouteTypes, useNavigate } from '../MainRoute';
@@ -125,7 +125,7 @@ function Step2({ onBack, onNext }: { onBack: () => void; onNext: (data: { type: 
 }
 
 interface Group {
-    type: AddressType;
+    type: AddressTypes;
     address_arr: string[];
     pubkey_arr: string[];
     satoshis_arr: number[];
@@ -144,7 +144,7 @@ function Step3({
     const navigate = useNavigate();
     const wallet = useWallet();
     const tools = useTools();
-    const [addressType, setAddressType] = useState(AddressType.P2WPKH);
+    const [addressType, setAddressType] = useState(AddressTypes.P2WPKH);
     const addressTypes = useMemo(() => {
         return ADDRESS_TYPES.filter((item) => item.displayIndex < 4).sort((a, b) => a.displayIndex - b.displayIndex);
     }, []);
@@ -265,7 +265,7 @@ function Step3({
                 const saveAddressType = contextData.customHdPath.split('/')[1];
                 // find address type index by hdpath contains the saveAddressType
                 const saveAddressTypeIndex = addressTypes.findIndex((v) => v.hdPath.includes(saveAddressType));
-                const saveAddressTypeEnum = AddressType[saveAddressTypeIndex] as unknown as AddressType;
+                const saveAddressTypeEnum = addressTypes[saveAddressTypeIndex]?.value;
                 // remove the groups which is not equal to saveAddressType
                 groups = groups.filter((v) => v.type === saveAddressTypeEnum);
             }
@@ -295,7 +295,7 @@ function Step3({
         tools.showLoading(false);
     };
 
-    const getItems = (groups: Group[], addressType: AddressType) => {
+    const getItems = (groups: Group[], addressType: AddressTypes) => {
         // if (!groups[addressType]) {
         //   return [];
         // }

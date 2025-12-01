@@ -1,16 +1,97 @@
-export enum AddressType {
-    P2PKH,
-    P2WPKH,
-    P2TR,
-    P2SH_P2WPKH,
-    M44_P2WPKH,
-    M44_P2TR
+// Re-export AddressTypes from @btc-vision/transaction as the canonical address type
+export { AddressTypes, OPNetNetwork } from '@btc-vision/transaction';
+import { AddressTypes, OPNetNetwork } from '@btc-vision/transaction';
+
+// Type alias for AddressType - use AddressTypes everywhere
+export type AddressType = AddressTypes;
+
+// Legacy enum for backward compatibility with existing storage
+// This maps old numeric values to new string values for migration
+export enum LegacyAddressType {
+    P2PKH = 0,
+    P2WPKH = 1,
+    P2TR = 2,
+    P2SH_P2WPKH = 3,
+    M44_P2WPKH = 4,
+    M44_P2TR = 5
 }
 
+// Conversion functions for storage migration
+export function legacyToAddressTypes(legacy: LegacyAddressType): AddressTypes {
+    switch (legacy) {
+        case LegacyAddressType.P2PKH:
+            return AddressTypes.P2PKH;
+        case LegacyAddressType.P2WPKH:
+        case LegacyAddressType.M44_P2WPKH:
+            return AddressTypes.P2WPKH;
+        case LegacyAddressType.P2TR:
+        case LegacyAddressType.M44_P2TR:
+            return AddressTypes.P2TR;
+        case LegacyAddressType.P2SH_P2WPKH:
+            return AddressTypes.P2SH_OR_P2SH_P2WPKH;
+        default:
+            return AddressTypes.P2TR;
+    }
+}
+
+// Check if a value is a legacy numeric address type
+export function isLegacyAddressType(value: unknown): value is LegacyAddressType {
+    return typeof value === 'number' && value >= 0 && value <= 5;
+}
+
+// Convert string AddressTypes to storage-safe format and back
+export function addressTypesToStorage(addressType: AddressTypes): string {
+    return addressType;
+}
+
+export function storageToAddressTypes(stored: string | number): AddressTypes {
+    // Handle legacy numeric types from old storage
+    if (typeof stored === 'number') {
+        if (isLegacyAddressType(stored)) {
+            return legacyToAddressTypes(stored);
+        }
+        return AddressTypes.P2TR;
+    }
+    // Already a string type
+    if (Object.values(AddressTypes).includes(stored as AddressTypes)) {
+        return stored as AddressTypes;
+    }
+    // Default fallback
+    return AddressTypes.P2TR;
+}
+
+// NetworkType - keep local enum but map to OPNetNetwork
 export enum NetworkType {
-    MAINNET,
-    TESTNET,
-    REGTEST
+    MAINNET = 0,
+    TESTNET = 1,
+    REGTEST = 2
+}
+
+// Convert between NetworkType and OPNetNetwork
+export function networkTypeToOPNet(networkType: NetworkType): OPNetNetwork {
+    switch (networkType) {
+        case NetworkType.MAINNET:
+            return OPNetNetwork.Mainnet;
+        case NetworkType.TESTNET:
+            return OPNetNetwork.Testnet;
+        case NetworkType.REGTEST:
+            return OPNetNetwork.Regtest;
+        default:
+            return OPNetNetwork.Mainnet;
+    }
+}
+
+export function opNetToNetworkType(opNetNetwork: OPNetNetwork): NetworkType {
+    switch (opNetNetwork) {
+        case OPNetNetwork.Mainnet:
+            return NetworkType.MAINNET;
+        case OPNetNetwork.Testnet:
+            return NetworkType.TESTNET;
+        case OPNetNetwork.Regtest:
+            return NetworkType.REGTEST;
+        default:
+            return NetworkType.MAINNET;
+    }
 }
 
 export enum RestoreWalletType {
@@ -27,9 +108,9 @@ export interface BitcoinBalance {
     btc_confirm_amount: string;
     btc_pending_amount: string;
 
-    csv75_total_amount?: string;
-    csv75_unlocked_amount?: string;
-    csv75_locked_amount?: string;
+    csv75_total_amount: string;
+    csv75_unlocked_amount: string;
+    csv75_locked_amount: string;
 
     csv2_total_amount: string;
     csv2_unlocked_amount: string;
@@ -122,8 +203,11 @@ export interface UTXO {
     vout: number;
     satoshis: number;
     scriptPk: string;
-    addressType: AddressType;
+    addressType: AddressTypes;
 }
+
+// Alias for backward compatibility with UI code
+export type UnspentOutput = UTXO;
 
 export enum TxType {
     SIGN_TX,
@@ -161,10 +245,18 @@ export interface WalletKeyring {
     key: string;
     index: number;
     type: string;
-    addressType: AddressType;
+    addressType: AddressTypes;
     accounts: Account[];
     alianName: string;
     hdPath: string;
+}
+
+// Quantum key status for accounts
+export enum QuantumKeyStatus {
+    NOT_REQUIRED = 'not_required',     // HD wallet - can derive from mnemonic
+    NOT_MIGRATED = 'not_migrated',     // WIF/private key import - needs migration
+    MIGRATED = 'migrated',             // WIF/private key with quantum key assigned
+    LINKED_ON_CHAIN = 'linked_on_chain' // Key is linked on blockchain
 }
 
 export interface Account {
@@ -178,6 +270,9 @@ export interface Account {
     balance?: number;
     key: string;
     flag: number;
+    // Quantum/MLDSA key info
+    quantumPublicKeyHash?: string;  // SHA256 of MLDSA public key
+    quantumKeyStatus?: QuantumKeyStatus;
 }
 
 export enum RiskType {

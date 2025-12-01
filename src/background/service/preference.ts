@@ -1,7 +1,7 @@
 import { AddressFlagType, CHAINS, ChainType, CustomNetwork, DEFAULT_LOCKTIME_ID, EVENTS } from '@/shared/constant';
 import eventBus from '@/shared/eventBus';
 import { SessionEvent } from '@/shared/interfaces/SessionEvent';
-import { Account, AddressType, AppSummary, NetworkType, TxHistoryItem } from '@/shared/types';
+import { Account, AddressTypes, AppSummary, NetworkType, TxHistoryItem, storageToAddressTypes } from '@/shared/types';
 import { compareVersions } from 'compare-versions';
 import cloneDeep from 'lodash/cloneDeep';
 import browser from '../webapi/browser';
@@ -24,7 +24,7 @@ export interface PreferenceStore {
     currentVersion: string;
     firstOpen: boolean;
     currency: string;
-    addressType: AddressType;
+    addressType: AddressTypes | number; // Support both for migration
     networkType: NetworkType;
     chainType: ChainType;
     keyringAlianNames: Record<string, string>;
@@ -62,7 +62,7 @@ const DEFAULTS = {
         currentVersion: '0',
         firstOpen: false,
         currency: 'USD',
-        addressType: AddressType.P2TR,
+        addressType: AddressTypes.P2TR,
         networkType: NetworkType.REGTEST, // DEFAULT NETWORK
         chainType: ChainType.BITCOIN_REGTEST,
         keyringAlianNames: {},
@@ -115,7 +115,10 @@ class PreferenceService {
         }
 
         if (this.store.addressType === undefined || this.store.addressType === null) {
-            this.store.addressType = AddressType.P2WPKH;
+            this.store.addressType = AddressTypes.P2WPKH;
+        } else if (typeof this.store.addressType === 'number') {
+            // Migrate legacy numeric address types to string
+            this.store.addressType = storageToAddressTypes(this.store.addressType);
         }
 
         if (!this.store.networkType) {
@@ -300,7 +303,12 @@ class PreferenceService {
         await this.persist();
     };
 
-    getAddressType = () => {
+    getAddressType = (): AddressTypes => {
+        // Always return AddressTypes string enum
+        if (typeof this.store.addressType === 'number') {
+            return storageToAddressTypes(this.store.addressType);
+        }
+        // After the type check, this.store.addressType is narrowed to AddressTypes
         return this.store.addressType;
     };
 

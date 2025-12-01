@@ -44,7 +44,7 @@ export const AddOpNetToken = ({
                 const pubKey = Address.fromString(tokenAddress);
                 const network = Web3API.network;
 
-                if (!pubKey.isValid(network)) {
+                if (!pubKey.isValidLegacyPublicKey(network)) {
                     tools.toastError('The pubkey is invalid.');
                     return;
                 }

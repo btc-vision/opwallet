@@ -20,7 +20,7 @@ import {
     SendOutlined,
     SwapOutlined
 } from '@ant-design/icons';
-import { AddressMap, Wallet } from '@btc-vision/transaction';
+import { AddressMap } from '@btc-vision/transaction';
 
 import { RouteTypes, useNavigate } from '../MainRoute';
 
@@ -65,24 +65,12 @@ export default function OpNetTokenScreen() {
     const [copied, setCopied] = useState(false);
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
-    const getWallet = useCallback(async () => {
-        const currentWalletAddress = await wallet.getCurrentAccount();
-        const pubkey = currentWalletAddress.pubkey;
-
-        const wifWallet = await wallet.getInternalPrivateKey({
-            pubkey: pubkey,
-            type: currentWalletAddress.type
-        });
-
-        return Wallet.fromWif(wifWallet.wif, Web3API.network);
-    }, [wallet]);
-
     useEffect(() => {
         const getAddress = async () => {
             try {
                 await Web3API.setNetwork(await wallet.getChainType());
 
-                const myWallet = await getWallet();
+                const myWallet = await wallet.getOPNetWallet();
                 const contract: IOP20Contract = getContract<IOP20Contract>(
                     params.address,
                     OP_20_ABI,
@@ -136,7 +124,7 @@ export default function OpNetTokenScreen() {
         };
 
         void getAddress();
-    }, [account.address, getWallet, params.address, tools, unitBtc, wallet]);
+    }, [account.address, params.address, tools, unitBtc, wallet]);
 
     const enableTransfer = useMemo(() => {
         return tokenSummary.amount && tokenSummary.amount > 0n;

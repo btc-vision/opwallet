@@ -1,4 +1,4 @@
-import { UnspentOutput } from '@btc-vision/wallet-sdk';
+import { UnspentOutput } from '@/shared/types';
 import { createSlice } from '@reduxjs/toolkit';
 
 import { updateVersion } from '../global/actions';

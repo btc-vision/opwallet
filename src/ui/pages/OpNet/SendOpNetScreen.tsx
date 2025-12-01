@@ -73,7 +73,7 @@ export default function SendOpNetScreen() {
                     setPublicKey(pubKeyStr);
                 } else {
                     // Fetch public key from the address
-                    const pubKey = await Web3API.provider.getPublicKeyInfo(toInfo.address);
+                    const pubKey = await Web3API.provider.getPublicKeyInfo(toInfo.address, false);
                     if (pubKey) {
                         setPublicKey(pubKey.toString());
                     } else {

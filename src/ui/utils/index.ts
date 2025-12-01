@@ -125,7 +125,7 @@ export function useLocationState<T>() {
 }
 
 export function numberWithCommas(value: string, maxFixed: number, isFixed = false) {
-    const [integerPart, decimalPart] = value.toString().split('.');
+    const [integerPart, decimalPart] = value.split('.');
     const integerPartWithCommas = integerPart.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
     if (maxFixed === 0) {
         // no decimal

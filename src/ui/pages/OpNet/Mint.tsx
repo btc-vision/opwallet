@@ -17,8 +17,6 @@ import {
     RocketOutlined,
     ThunderboltOutlined
 } from '@ant-design/icons';
-import { Wallet } from '@btc-vision/transaction';
-
 import { RouteTypes, useNavigate } from '../MainRoute';
 
 const colors = {
@@ -52,24 +50,12 @@ export default function Mint() {
     const [address, setAddress] = useState<string | null>(null);
     const [isLoadingSupply, setIsLoadingSupply] = useState(true);
 
-    const getWallet = useCallback(async () => {
-        const currentWalletAddress = await wallet.getCurrentAccount();
-        const pubkey = currentWalletAddress.pubkey;
-
-        const wifWallet = await wallet.getInternalPrivateKey({
-            pubkey: pubkey,
-            type: currentWalletAddress.type
-        });
-
-        return Wallet.fromWif(wifWallet.wif, Web3API.network);
-    }, [wallet]);
-
     const cb = useCallback(async () => {
-        const wallet = await getWallet();
-        setAddress(wallet.address.toString());
+        const opnetWallet = await wallet.getOPNetWallet();
+        setAddress(opnetWallet.address.toString());
         setDisabled(false);
         setError('');
-    }, [getWallet]);
+    }, [wallet]);
 
     useEffect(() => {
         setDisabled(true);

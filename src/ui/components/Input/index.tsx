@@ -109,14 +109,19 @@ function AmountInput(props: InputProps) {
     } = props;
     const $style = Object.assign({}, $baseInputStyle, $inputStyleOverride, disabled ? { color: colors.textDim } : {});
 
+    // All hooks must be called before any conditional returns
+    const [inputValue, setInputValue] = useState(props.value ?? '');
+    const [validAmount, setValidAmount] = useState(props.value ?? '');
+
+    useEffect(() => {
+        if (onAmountInputChange) {
+            onAmountInputChange(validAmount);
+        }
+    }, [validAmount, onAmountInputChange]);
+
     if (!onAmountInputChange) {
         return <div />;
     }
-    const [inputValue, setInputValue] = useState(props.value ?? '');
-    const [validAmount, setValidAmount] = useState(props.value ?? '');
-    useEffect(() => {
-        onAmountInputChange(validAmount);
-    }, [validAmount]);
 
     const handleInputAmount = (e: React.ChangeEvent<HTMLInputElement>) => {
         const value = e.target.value;
@@ -173,27 +178,29 @@ function AmountInput(props: InputProps) {
 export const AddressInput = (props: InputProps) => {
     const { placeholder, onAddressInputChange, addressInputData, style: $inputStyleOverride, ...rest } = props;
 
+    // All hooks must be called before any conditional returns
+    const [validAddress, setValidAddress] = useState(addressInputData?.address ?? '');
+    const [parseAddress, setParseAddress] = useState(addressInputData?.domain ? addressInputData.address : '');
+    const [parseError, setParseError] = useState('');
+    const [formatError, setFormatError] = useState('');
+    const [inputVal, setInputVal] = useState(addressInputData?.domain || addressInputData?.address || '');
+    const [parseName, setParseName] = useState('');
+    const [searching, setSearching] = useState(false);
+    const wallet = useWallet();
+    const tools = useTools();
+
+    useEffect(() => {
+        if (onAddressInputChange) {
+            onAddressInputChange({
+                address: validAddress,
+                domain: parseAddress ? inputVal : ''
+            });
+        }
+    }, [validAddress, onAddressInputChange, parseAddress, inputVal]);
+
     if (!addressInputData || !onAddressInputChange) {
         return <div />;
     }
-    const [validAddress, setValidAddress] = useState(addressInputData.address);
-    const [parseAddress, setParseAddress] = useState(addressInputData.domain ? addressInputData.address : '');
-    const [parseError, setParseError] = useState('');
-    const [formatError, setFormatError] = useState('');
-
-    const [inputVal, setInputVal] = useState(addressInputData.domain || addressInputData.address);
-
-    const [parseName, setParseName] = useState('');
-    const wallet = useWallet();
-    const tools = useTools();
-    useEffect(() => {
-        onAddressInputChange({
-            address: validAddress,
-            domain: parseAddress ? inputVal : ''
-        });
-    }, [validAddress]);
-
-    const [searching, setSearching] = useState(false);
 
     const resetState = () => {
         if (parseError) {
