@@ -21,7 +21,7 @@ import {
 } from '@/shared/types';
 import { ApprovalData, ApprovalResponse } from '@/shared/types/Approval';
 import { Psbt } from '@btc-vision/bitcoin';
-import { InteractionParametersWithoutSigner, Wallet } from '@btc-vision/transaction';
+import { InteractionParametersWithoutSigner } from '@btc-vision/transaction';
 import { createContext, ReactNode, useContext } from 'react';
 
 export interface WalletController {
@@ -87,7 +87,7 @@ export interface WalletController {
 
     getInternalPrivateKey(account: { pubkey: string; type: string }): Promise<{ hex: string; wif: string }>;
 
-    getOPNetWallet(): Promise<Wallet>;
+    getOPNetWallet(): Promise<[string, string, string]>;
 
     getWalletAddress(): Promise<[string, string]>;
 

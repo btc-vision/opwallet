@@ -70,10 +70,6 @@ export default function Mint() {
 
     useEffect(() => {
         const setWallet = async () => {
-            if (!address) {
-                throw new Error('Wallet address not set');
-            }
-
             setIsLoadingSupply(true);
             try {
                 await Web3API.setNetwork(await wallet.getChainType());
@@ -81,8 +77,7 @@ export default function Mint() {
                     prop.address,
                     OP_20_ABI,
                     Web3API.provider,
-                    Web3API.network,
-                    address
+                    Web3API.network
                 );
 
                 const maxSupply = await contract.maximumSupply();
@@ -97,7 +92,7 @@ export default function Mint() {
         };
 
         void setWallet();
-    }, [address, prop.address, tools, wallet]);
+    }, [prop.address, tools, wallet]);
 
     const handleNext = () => {
         if (!address) return;

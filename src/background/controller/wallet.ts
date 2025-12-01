@@ -495,7 +495,7 @@ export class WalletController {
      * This is needed for OPNet transaction signing which requires both classical and quantum keys.
      * @throws WalletControllerError if keys cannot be retrieved
      */
-    public getOPNetWallet = async (): Promise<Wallet> => {
+    public getOPNetWallet = async (): Promise<[string, string, string]> => {
         const account = await this.getCurrentAccount();
         if (!account) {
             throw new WalletControllerError('No current account');
@@ -521,13 +521,15 @@ export class WalletController {
         const privateKey = quantumPrivateKey.slice(0, quantumPrivateKey.length - 64);
         const chainCode = quantumPrivateKey.slice(quantumPrivateKey.length - 64);
 
-        return Wallet.fromWif(
+        return [wifData.wif, privateKey, chainCode];
+
+        /*return Wallet.fromWif(
             wifData.wif,
             privateKey,
             Web3API.network,
             MLDSASecurityLevel.LEVEL2,
             Buffer.from(chainCode, 'hex')
-        );
+        );*/
     };
 
     /**
@@ -736,9 +738,6 @@ export class WalletController {
         return await this.displayedKeyringToWalletKeyring(displayedKeyring, -1, false);
     };
 
-    // Note: Keystone hardware wallet support has been deprecated in wallet-sdk 2.0
-    // createTmpKeyringWithKeystone and createKeyringWithKeystone methods removed
-
     /**
      * Remove an entire keyring by index, then switch to another if it exists.
      * @throws WalletControllerError
@@ -757,6 +756,9 @@ export class WalletController {
             throw new WalletControllerError(`Could not remove keyring: ${String(err)}`, { keyring });
         }
     };
+
+    // Note: Keystone hardware wallet support has been deprecated in wallet-sdk 2.0
+    // createTmpKeyringWithKeystone and createKeyringWithKeystone methods removed
 
     public getKeyringByType = (type: string): Keyring | EmptyKeyring | undefined => {
         return keyringService.getKeyringByType(type);
@@ -998,7 +1000,7 @@ export class WalletController {
         const account = await this.getCurrentAccount();
         if (!account) throw new WalletControllerError('No current account');
 
-        const wallet = await this.getOPNetWallet();
+        const wallet = await this.getWalletSigner();
 
         let requiredMinimum = 0;
         let tries = 0;
@@ -1066,7 +1068,7 @@ export class WalletController {
     public cancelTransaction = async (
         params: ICancelTransactionParametersWithoutSigner
     ): Promise<CancelledTransaction> => {
-        const wallet = await this.getOPNetWallet();
+        const wallet = await this.getWalletSigner();
 
         try {
             const utxos = params.utxos.map((u) => {
@@ -1153,7 +1155,7 @@ export class WalletController {
      * @throws WalletControllerError
      */
     public deployContract = async (params: IDeploymentParametersWithoutSigner): Promise<DeploymentResult> => {
-        const wallet = await this.getOPNetWallet();
+        const wallet = await this.getWalletSigner();
 
         try {
             const utxos = params.utxos.map((u) => {
@@ -1261,7 +1263,7 @@ export class WalletController {
         const account = await this.getCurrentAccount();
         if (!account) throw new WalletControllerError('No current account');
 
-        const wallet = await this.getOPNetWallet();
+        const wallet = await this.getWalletSigner();
 
         let interactionResponse: InteractionResponse | undefined;
         let requiredMinimum = 0;
@@ -2134,9 +2136,6 @@ export class WalletController {
         return openapiService.getVersionDetail(version);
     };
 
-    // Note: Keystone hardware wallet methods (checkKeyringMethod, genSignPsbtUr, parseSignPsbtUr,
-    // genSignMsgUr, parseSignMsgUr) have been removed in wallet-sdk 2.0
-
     /**
      * Sign data with MLDSA (post-quantum) signature.
      * @throws WalletControllerError
@@ -2153,6 +2152,9 @@ export class WalletController {
             throw new WalletControllerError(`Failed to sign with MLDSA: ${String(err)}`);
         }
     };
+
+    // Note: Keystone hardware wallet methods (checkKeyringMethod, genSignPsbtUr, parseSignPsbtUr,
+    // genSignMsgUr, parseSignMsgUr) have been removed in wallet-sdk 2.0
 
     /**
      * Get the quantum public key for the current account.
@@ -2283,6 +2285,17 @@ export class WalletController {
             }
         }, timeConfig.time) as unknown as number;
     };
+
+    private async getWalletSigner(): Promise<Wallet> {
+        const data = await this.getOPNetWallet();
+        return Wallet.fromWif(
+            data[0],
+            data[1],
+            Web3API.network,
+            MLDSASecurityLevel.LEVEL2,
+            Buffer.from(data[2], 'hex')
+        );
+    }
 
     private getEmptyBalance(): BitcoinBalance {
         return {

@@ -15,6 +15,7 @@ import { useAccountAddress } from '@/ui/state/accounts/hooks';
 import { copyToClipboard, useWallet } from '@/ui/utils';
 import { getMLDSAConfig, MLDSASecurityLevel } from '@btc-vision/bip32';
 import { networks } from '@btc-vision/bitcoin';
+import { Address } from '@btc-vision/transaction';
 
 // Get the expected MLDSA key size for LEVEL2
 const MLDSA_CONFIG = getMLDSAConfig(MLDSASecurityLevel.LEVEL2, networks.bitcoin);
@@ -79,30 +80,17 @@ export default function QuantumMigrationScreen() {
                 }
 
                 // For HD wallets, quantum keys are auto-derived
-                if (isHd) {
-                    setHasQuantumKey(true);
-                    // Get quantum public key hash
-                    const opnetWallet = await wallet.getOPNetWallet();
-                    if (opnetWallet.mldsaKeypair) {
-                        const addressHex = opnetWallet.address.toHex();
-                        if (addressHex) {
-                            setQuantumPublicKeyHash(addressHex.replace('0x', ''));
-                        }
+                try {
+                    const opnetWallet = await wallet.getWalletAddress();
+
+                    const address2 = Address.fromString(opnetWallet[0], opnetWallet[1]);
+                    const addressHex = address2.toHex();
+                    if (addressHex) {
+                        setHasQuantumKey(true);
+                        setQuantumPublicKeyHash(addressHex.replace('0x', ''));
                     }
-                } else {
-                    // For Simple keyrings, check if quantum key exists
-                    try {
-                        const opnetWallet = await wallet.getOPNetWallet();
-                        if (opnetWallet.mldsaKeypair) {
-                            setHasQuantumKey(true);
-                            const addressHex = opnetWallet.address.toHex();
-                            if (addressHex) {
-                                setQuantumPublicKeyHash(addressHex.replace('0x', ''));
-                            }
-                        }
-                    } catch {
-                        setHasQuantumKey(false);
-                    }
+                } catch (e) {
+                    setHasQuantumKey(false);
                 }
             } catch (e) {
                 console.error('Error checking quantum status:', e);
@@ -141,16 +129,12 @@ export default function QuantumMigrationScreen() {
 
         setImporting(true);
         try {
-            console.log('[QuantumMigration] Starting import, key length:', cleanKey.length);
-
             // Import quantum key for the current account
             // The SDK's importQuantumKey handles both key-only and key+chaincode formats
             await wallet.setQuantumKey(cleanKey);
-            console.log('[QuantumMigration] setQuantumKey completed');
 
             // Verify the imported key matches the on-chain linked key (if any)
             const opnetWallet = await wallet.getOPNetWallet();
-            console.log('[QuantumMigration] getOPNetWallet completed, mldsaKeypair:', !!opnetWallet.mldsaKeypair);
 
             if (opnetWallet.mldsaKeypair) {
                 const importedKeyHash = opnetWallet.address.toHex().replace('0x', '');

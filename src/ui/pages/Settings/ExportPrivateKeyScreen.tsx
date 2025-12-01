@@ -59,9 +59,7 @@ export default function ExportPrivateKeyScreen() {
             if (isSimpleKeyring) {
                 try {
                     const opnetWallet = await wallet.getOPNetWallet();
-                    if (opnetWallet.quantumPrivateKeyHex) {
-                        setQuantumPrivateKey(opnetWallet.quantumPrivateKeyHex);
-                    }
+                    setQuantumPrivateKey(opnetWallet[1]);
                 } catch (e) {
                     console.error('Could not retrieve quantum private key:', e);
                 }
