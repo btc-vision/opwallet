@@ -531,6 +531,33 @@ export class WalletController {
     };
 
     /**
+     * Get wallet address information without exposing private keys.
+     * This is a safe method to call from the UI to get address information.
+     * @returns Array of [mldsaHashPubKey, legacyPublicKey]
+     * @throws WalletControllerError if keys cannot be retrieved
+     */
+    public getWalletAddress = async (): Promise<[string, string]> => {
+        const account = await this.getCurrentAccount();
+        if (!account) {
+            throw new WalletControllerError('No current account');
+        }
+
+        // Get quantum public key from keyring to calculate hash
+        const quantumPublicKey = keyringService.getQuantumPublicKey(account.pubkey);
+        if (!quantumPublicKey) {
+            throw new WalletControllerError(
+                'Could not retrieve quantum public key. Quantum migration may be required.'
+            );
+        }
+
+        // Calculate SHA256 hash of the MLDSA public key
+        const mldsaHashPubKey = Buffer.from(MessageSigner.sha256(Buffer.from(quantumPublicKey, 'hex'))).toString('hex');
+
+        // Return [mldsaHashPubKey, legacyPublicKey]
+        return [mldsaHashPubKey, account.pubkey];
+    };
+
+    /**
      * Export a BIP39 mnemonic from a given keyring.
      * @throws WalletControllerError if the keyring lacks a mnemonic
      */

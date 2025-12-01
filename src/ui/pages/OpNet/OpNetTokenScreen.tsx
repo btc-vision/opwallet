@@ -20,7 +20,7 @@ import {
     SendOutlined,
     SwapOutlined
 } from '@ant-design/icons';
-import { AddressMap } from '@btc-vision/transaction';
+import { Address, AddressMap } from '@btc-vision/transaction';
 
 import { RouteTypes, useNavigate } from '../MainRoute';
 
@@ -70,13 +70,14 @@ export default function OpNetTokenScreen() {
             try {
                 await Web3API.setNetwork(await wallet.getChainType());
 
-                const myWallet = await wallet.getOPNetWallet();
+                const [mldsaHashPubKey, legacyPubKey] = await wallet.getWalletAddress();
+                const userAddress = Address.fromString(mldsaHashPubKey, legacyPubKey);
                 const contract: IOP20Contract = getContract<IOP20Contract>(
                     params.address,
                     OP_20_ABI,
                     Web3API.provider,
                     Web3API.network,
-                    myWallet.address
+                    userAddress
                 );
 
                 const contractInfo: ContractInformation | false | undefined = await Web3API.queryContractInformation(
@@ -88,7 +89,7 @@ export default function OpNetTokenScreen() {
                 }
 
                 try {
-                    const balance = await contract.balanceOf(myWallet.address);
+                    const balance = await contract.balanceOf(userAddress);
                     const newSummaryData = {
                         address: params.address,
                         name: contractInfo.name ?? '',
@@ -106,11 +107,11 @@ export default function OpNetTokenScreen() {
 
                 try {
                     const deployer = await contract.deployer();
-                    setIsOwner(myWallet.address.equals(deployer.properties.deployer));
+                    setIsOwner(userAddress.equals(deployer.properties.deployer));
                 } catch {
                     try {
                         const addy: AddressMap<bigint> = new AddressMap();
-                        addy.set(myWallet.address, 100000000n);
+                        addy.set(userAddress, 100000000n);
                         await contract.airdrop(addy);
                         setIsOwner(true);
                     } catch {}

@@ -28,7 +28,7 @@ const AccountSelect = () => {
             try {
                 if (currentKeyring.type === KEYRING_TYPE.SimpleKeyring) {
                     try {
-                        await wallet.getOPNetWallet();
+                        await wallet.getWalletAddress();
                         setNeedsQuantumMigration(false);
                     } catch {
                         setNeedsQuantumMigration(true);

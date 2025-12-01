@@ -27,12 +27,9 @@ export default function ReceiveScreen() {
         const fetchQuantumInfo = async () => {
             setLoadingQuantum(true);
             try {
-                const opnetWallet = await wallet.getOPNetWallet();
-                if (opnetWallet.address) {
-                    const hashHex = opnetWallet.address.toHex();
-                    if (hashHex) {
-                        setQuantumPublicKeyHash(hashHex);
-                    }
+                const [mldsaHashPubKey] = await wallet.getWalletAddress();
+                if (mldsaHashPubKey) {
+                    setQuantumPublicKeyHash(mldsaHashPubKey);
                 }
             } catch (e) {
                 console.error('Error fetching quantum public key:', e);

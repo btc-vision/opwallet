@@ -128,9 +128,9 @@ export default function WalletTabScreen() {
         const checkQuantumStatus = async () => {
             try {
                 if (currentKeyring.type === KEYRING_TYPE.SimpleKeyring) {
-                    // Try to get the OPNet wallet - if it fails, migration needed
+                    // Try to get the wallet address - if it fails, migration needed
                     try {
-                        await wallet.getOPNetWallet();
+                        await wallet.getWalletAddress();
                         setNeedsQuantumMigration(false);
                     } catch {
                         setNeedsQuantumMigration(true);

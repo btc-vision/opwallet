@@ -89,6 +89,8 @@ export interface WalletController {
 
     getOPNetWallet(): Promise<Wallet>;
 
+    getWalletAddress(): Promise<[string, string]>;
+
     getMnemonics(
         password: string,
         keyring: WalletKeyring

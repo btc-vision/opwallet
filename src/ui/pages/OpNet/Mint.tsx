@@ -17,6 +17,7 @@ import {
     RocketOutlined,
     ThunderboltOutlined
 } from '@ant-design/icons';
+import { Address } from '@btc-vision/transaction';
 import { RouteTypes, useNavigate } from '../MainRoute';
 
 const colors = {
@@ -47,12 +48,13 @@ export default function Mint() {
     const wallet = useWallet();
     const [maxSupply, setMaxSupply] = useState<bigint>(0n);
     const [note, setNote] = useState<string>('');
-    const [address, setAddress] = useState<string | null>(null);
+    const [address, setAddress] = useState<Address | null>(null);
     const [isLoadingSupply, setIsLoadingSupply] = useState(true);
 
     const cb = useCallback(async () => {
-        const opnetWallet = await wallet.getOPNetWallet();
-        setAddress(opnetWallet.address.toString());
+        const [mldsaHashPubKey, legacyPubKey] = await wallet.getWalletAddress();
+        const userAddress = Address.fromString(mldsaHashPubKey, legacyPubKey);
+        setAddress(userAddress);
         setDisabled(false);
         setError('');
     }, [wallet]);
@@ -68,6 +70,10 @@ export default function Mint() {
 
     useEffect(() => {
         const setWallet = async () => {
+            if (!address) {
+                throw new Error('Wallet address not set');
+            }
+
             setIsLoadingSupply(true);
             try {
                 await Web3API.setNetwork(await wallet.getChainType());
@@ -75,7 +81,8 @@ export default function Mint() {
                     prop.address,
                     OP_20_ABI,
                     Web3API.provider,
-                    Web3API.network
+                    Web3API.network,
+                    address
                 );
 
                 const maxSupply = await contract.maximumSupply();
@@ -90,14 +97,14 @@ export default function Mint() {
         };
 
         void setWallet();
-    }, [prop.address, tools, wallet]);
+    }, [address, prop.address, tools, wallet]);
 
     const handleNext = () => {
         if (!address) return;
 
         const txInfo: MintParameters = {
             contractAddress: prop.address,
-            to: address,
+            to: address.toHex(),
             inputAmount: Number(inputAmount),
             header: 'Mint Token',
             features: {
