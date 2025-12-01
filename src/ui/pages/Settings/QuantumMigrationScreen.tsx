@@ -133,34 +133,28 @@ export default function QuantumMigrationScreen() {
             // The SDK's importQuantumKey handles both key-only and key+chaincode formats
             await wallet.setQuantumKey(cleanKey);
 
-            // Verify the imported key matches the on-chain linked key (if any)
-            const opnetWallet = await wallet.getOPNetWallet();
+            // Verify the imported key by getting the wallet address (will throw if no quantum key)
+            const [mldsaHashPubKey, legacyPubKey] = await wallet.getWalletAddress();
+            const importedKeyHash = mldsaHashPubKey;
+            console.log('[QuantumMigration] Imported key hash:', importedKeyHash.slice(0, 16) + '...');
 
-            if (opnetWallet.mldsaKeypair) {
-                const importedKeyHash = opnetWallet.address.toHex().replace('0x', '');
-                console.log('[QuantumMigration] Imported key hash:', importedKeyHash.slice(0, 16) + '...');
-
-                // If there's an on-chain linked key, verify it matches
-                if (onChainLinkedKey) {
-                    const onChainClean = onChainLinkedKey.replace('0x', '');
-                    if (importedKeyHash.toLowerCase() !== onChainClean.toLowerCase()) {
-                        // Key doesn't match! We need to revert and show error
-                        setError(
-                            `Key mismatch! The imported key's hash (0x${importedKeyHash.slice(0, 8)}...) does not match the on-chain linked key (0x${onChainClean.slice(0, 8)}...). Please import the correct key that was previously linked to this wallet.`
-                        );
-                        setImporting(false);
-                        return;
-                    }
+            // If there's an on-chain linked key, verify it matches
+            if (onChainLinkedKey) {
+                const onChainClean = onChainLinkedKey.replace('0x', '');
+                if (importedKeyHash.toLowerCase() !== onChainClean.toLowerCase()) {
+                    // Key doesn't match! We need to revert and show error
+                    setError(
+                        `Key mismatch! The imported key's hash (0x${importedKeyHash.slice(0, 8)}...) does not match the on-chain linked key (0x${onChainClean.slice(0, 8)}...). Please import the correct key that was previously linked to this wallet.`
+                    );
+                    setImporting(false);
+                    return;
                 }
-
-                tools.toastSuccess('Quantum key imported successfully');
-                setHasQuantumKey(true);
-                setQuantumPublicKeyHash(importedKeyHash);
-                setImportMode(false);
-            } else {
-                console.error('[QuantumMigration] No mldsaKeypair after import!');
-                setError('Failed to import quantum key: Key was not properly initialized');
             }
+
+            tools.toastSuccess('Quantum key imported successfully');
+            setHasQuantumKey(true);
+            setQuantumPublicKeyHash(importedKeyHash);
+            setImportMode(false);
         } catch (e) {
             console.error('[QuantumMigration] Import error:', e);
             setError((e as Error).message);
@@ -184,14 +178,9 @@ export default function QuantumMigrationScreen() {
             await wallet.generateQuantumKey();
             tools.toastSuccess('New quantum key generated successfully');
             setHasQuantumKey(true);
-            // Refresh status
-            const opnetWallet = await wallet.getOPNetWallet();
-            if (opnetWallet.mldsaKeypair) {
-                const addressHex = opnetWallet.address.toHex();
-                if (addressHex) {
-                    setQuantumPublicKeyHash(addressHex.replace('0x', ''));
-                }
-            }
+            // Refresh status - getWalletAddress returns [mldsaHashPubKey, legacyPubKey]
+            const [mldsaHashPubKey] = await wallet.getWalletAddress();
+            setQuantumPublicKeyHash(mldsaHashPubKey);
         } catch (e) {
             tools.toastError((e as Error).message);
         } finally {
