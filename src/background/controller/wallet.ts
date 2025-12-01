@@ -14,7 +14,6 @@ import { WalletSaveList } from '@/background/service/preference';
 import { BroadcastTransactionOptions } from '@/content-script/pageProvider/Web3Provider.js';
 import { UTXO_CONFIG } from '@/shared/config';
 import {
-    ADDRESS_TYPES,
     AddressFlagType,
     AUTO_LOCKTIMES,
     BRAND_ALIAN_TYPE_TEXT,
@@ -71,14 +70,11 @@ import {
     Wallet
 } from '@btc-vision/transaction';
 import {
-    generateBip322Psbt,
-    extractBip322Signature,
     publicKeyToAddressWithNetworkType,
     scriptPubKeyToAddress,
     signBip322MessageWithNetworkType,
     toNetwork
 } from '@btc-vision/wallet-sdk';
-import type { AbstractWallet } from '@btc-vision/wallet-sdk';
 import { createHash } from 'crypto';
 
 import { customNetworksManager } from '@/shared/utils/CustomNetworksManager';
@@ -248,7 +244,7 @@ export class WalletController {
      * Lock the wallet. This clears sensitive info from memory.
      * @throws WalletControllerError
      */
-    public lockWallet = async (): Promise<void> => {
+    public lockWallet = (): void => {
         try {
             keyringService.setLocked();
             sessionService.broadcastEvent(SessionEvent.accountsChanged, []);
@@ -516,7 +512,9 @@ export class WalletController {
         // Get quantum private key from keyring
         const quantumPrivateKey = keyringService.exportQuantumAccount(account.pubkey);
         if (!quantumPrivateKey) {
-            throw new WalletControllerError('Could not retrieve quantum private key. Quantum migration may be required.');
+            throw new WalletControllerError(
+                'Could not retrieve quantum private key. Quantum migration may be required.'
+            );
         }
 
         return Wallet.fromWif(wifData.wif, quantumPrivateKey, Web3API.network);
@@ -547,9 +545,10 @@ export class WalletController {
             serialized.passphrase !== undefined && serialized.passphrase !== null ? serialized.passphrase : undefined;
 
         // Get addressType from serialized data (for HD keyrings)
-        const addressType = 'addressType' in serialized && serialized.addressType !== undefined
-            ? serialized.addressType
-            : AddressTypes.P2WPKH;
+        const addressType =
+            'addressType' in serialized && serialized.addressType !== undefined
+                ? serialized.addressType
+                : AddressTypes.P2WPKH;
 
         return {
             mnemonic: serialized.mnemonic,
@@ -942,9 +941,8 @@ export class WalletController {
             throw new WalletControllerError('No current account');
         }
         // Convert message to hex string if Buffer
-        const messageHex = typeof message === 'string'
-            ? Buffer.from(message, 'utf8').toString('hex')
-            : message.toString('hex');
+        const messageHex =
+            typeof message === 'string' ? Buffer.from(message, 'utf8').toString('hex') : message.toString('hex');
         return keyringService.signData(account.pubkey, messageHex, 'ecdsa');
     };
 
@@ -1638,9 +1636,7 @@ export class WalletController {
 
             if (quantumPublicKey) {
                 // Calculate SHA256 hash of quantum public key
-                quantumPublicKeyHash = createHash('sha256')
-                    .update(Buffer.from(quantumPublicKey, 'hex'))
-                    .digest('hex');
+                quantumPublicKeyHash = createHash('sha256').update(Buffer.from(quantumPublicKey, 'hex')).digest('hex');
                 quantumKeyStatus = QuantumKeyStatus.MIGRATED;
             } else if (type === KEYRING_TYPE.HdKeyring) {
                 // HD keyrings auto-derive quantum keys
@@ -1662,10 +1658,7 @@ export class WalletController {
                 quantumKeyStatus
             });
         }
-        const hdPath =
-            type === KEYRING_TYPE.HdKeyring
-                ? displayedKeyring.keyring.getHdPath()
-                : '';
+        const hdPath = type === KEYRING_TYPE.HdKeyring ? displayedKeyring.keyring.getHdPath() : '';
         const alianName = await preferenceService.getKeyringAlianName(
             key,
             initName ? `${KEYRING_TYPES[type].alianName} #${index + 1}` : ''
@@ -2176,7 +2169,10 @@ export class WalletController {
      * Only works for SimpleKeyring (WIF-imported) wallets.
      * @throws WalletControllerError
      */
-    public exportPrivateKeyWithQuantum = async (): Promise<{ classicalPrivateKey: string; quantumPrivateKey?: string }> => {
+    public exportPrivateKeyWithQuantum = async (): Promise<{
+        classicalPrivateKey: string;
+        quantumPrivateKey?: string;
+    }> => {
         const account = await this.getCurrentAccount();
         if (!account) {
             throw new WalletControllerError('No current account');
@@ -2213,9 +2209,9 @@ export class WalletController {
 
         const timeId = preferenceService.getAutoLockTimeId();
         const timeConfig = AUTO_LOCKTIMES[timeId] || AUTO_LOCKTIMES[DEFAULT_LOCKTIME_ID];
-        this.timer = setTimeout(async () => {
+        this.timer = setTimeout(() => {
             try {
-                await this.lockWallet();
+                this.lockWallet();
             } catch (err) {
                 console.error('Failed to auto-lock wallet:', err);
             }

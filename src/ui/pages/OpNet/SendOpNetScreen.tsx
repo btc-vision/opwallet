@@ -106,6 +106,13 @@ export default function SendOpNetScreen() {
             return;
         }
 
+        // Check for 32-byte values (likely MLDSA public key hash, not valid address)
+        const cleanAddress = toInfo.address.replace('0x', '');
+        if (cleanAddress.length === 64 && /^[0-9a-fA-F]+$/.test(cleanAddress)) {
+            setError('32-byte values are not valid Bitcoin addresses. This may be an MLDSA public key hash - please use the recipient\'s Bitcoin address instead.');
+            return;
+        }
+
         if (!inputAmount.trim()) {
             return;
         }
@@ -416,7 +423,7 @@ export default function SendOpNetScreen() {
                         placeholder="0.00"
                         value={inputAmount}
                         onAmountInputChange={setInputAmount}
-                        runesDecimal={divisibility}
+                        decimalPlaces={divisibility}
                         style={{
                             background: colors.inputBg,
                             border: `1px solid ${colors.containerBorder}`,

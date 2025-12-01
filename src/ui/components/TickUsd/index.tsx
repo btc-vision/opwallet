@@ -1,12 +1,11 @@
 import { BigNumber } from 'bignumber.js';
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo } from 'react';
 
 import { TickPriceItem } from '@/shared/types';
 import { Row, Text } from '@/ui/components';
 import { BtcUsd } from '@/ui/components/BtcUsd';
 import { Sizes, TextProps } from '@/ui/components/Text';
 import type { ColorTypes } from '@/ui/theme/colors';
-import { useWallet } from '@/ui/utils';
 
 function PriceChangePercent({ change, size }: { change: number; size?: Sizes }) {
     if (change === 0) {
@@ -44,50 +43,7 @@ export function TickUsd(
         if (!price) return 0;
 
         return new BigNumber(balance).multipliedBy(price.curPrice).toNumber();
-    }, []);
-
-    return <BtcUsd sats={sats} color={color} size={size} {...props} />;
-}
-
-export function TickUsdWithoutPrice(
-    props: {
-        tick: string;
-        balance: string;
-        type: 'runes' | 'brc20';
-        color?: ColorTypes;
-        size?: Sizes;
-    } & TextProps
-) {
-    const { tick, balance, type, color = 'textDim', size = 'xs' } = props;
-
-    const wallet = useWallet();
-
-    const [shown, setShown] = useState(false);
-    const [price, setPrice] = useState<TickPriceItem | undefined>(undefined);
-
-    useEffect(() => {
-        setShown(false);
-
-        if (tick) {
-            (type === 'brc20' ? wallet.getBrc20sPrice : wallet.getRunesPrice)([tick])
-                .then((priceMap) => {
-                    setPrice(priceMap[tick]);
-                    setShown(true);
-                })
-                .catch(() => {
-                    setShown(false);
-                });
-        }
-    }, [tick]);
-
-    const sats = useMemo(() => {
-        if (!price) return 0;
-
-        return new BigNumber(balance).multipliedBy(price.curPrice).toNumber();
-    }, [price, balance]);
-
-    // if api call is failed, don't show anything
-    if (!shown) return <></>;
+    }, [balance, price]);
 
     return <BtcUsd sats={sats} color={color} size={size} {...props} />;
 }

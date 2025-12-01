@@ -13,7 +13,6 @@ import {
     ParsedSignMsgUr,
     ParsedSignPsbtUr,
     SignPsbtOptions,
-    TickPriceItem,
     TxHistoryItem,
     UnspentOutput,
     VersionDetail,
@@ -201,10 +200,6 @@ export interface WalletController {
     setAccountAlianName(account: Account, name: string): Promise<Account>;
 
     getBtcPrice(): Promise<number>;
-
-    getBrc20sPrice(ticks: string[]): Promise<Record<string, TickPriceItem>>;
-
-    getRunesPrice(ticks: string[]): Promise<Record<string, TickPriceItem>>;
 
     setEditingKeyring(keyringIndex: number): Promise<void>;
 

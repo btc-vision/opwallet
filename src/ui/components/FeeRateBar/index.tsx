@@ -135,7 +135,6 @@ export function FeeRateBar({ readonly, onChange }: { readonly?: boolean; onChang
                 <Input
                     preset="amount"
                     placeholder={'sat/vB'}
-                    runesDecimal={1}
                     value={feeRateInputVal}
                     onAmountInputChange={(amount) => {
                         adjustFeeRateInput(amount);

@@ -151,17 +151,6 @@ export interface SignPsbtApprovalParams {
             memos: string[];
             feeRate: number;
         };
-        sendInscriptionParams?: {
-            toAddress: string;
-            inscriptionId: string;
-            feeRate: number;
-        };
-        sendRunesParams?: {
-            toAddress: string;
-            runeid: string;
-            amount: string;
-            feeRate: number;
-        };
     };
     session?: Session;
 }

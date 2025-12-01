@@ -276,7 +276,7 @@ export default function Mint() {
                                     setInputAmount(formattedMaxSupply);
                                 }
                             }}
-                            runesDecimal={prop.divisibility}
+                            decimalPlaces={prop.divisibility}
                             style={{
                                 background: colors.inputBg,
                                 border: `1px solid ${colors.containerBorder}`,

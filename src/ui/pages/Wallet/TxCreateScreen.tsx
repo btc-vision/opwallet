@@ -1330,7 +1330,7 @@ export default function TxCreateScreen() {
                                             fontWeight: 600,
                                             marginBottom: '4px'
                                         }}>
-                                        WARNING: ENABLING THIS WILL ALSO CONSOLIDATE YOUR ORDINALS!
+                                        WARNING: SMALL UTXOS WILL BE INCLUDED
                                     </div>
                                     <div
                                         style={{
@@ -1338,9 +1338,8 @@ export default function TxCreateScreen() {
                                             color: colors.textFaded,
                                             lineHeight: '1.4'
                                         }}>
-                                        Small UTXOs may contain ordinals, inscriptions, or other digital artifacts.
-                                        These will be included in the transaction and may be permanently moved or
-                                        consolidated.
+                                        Small UTXOs will be included in the transaction and consolidated.
+                                        This helps reduce fragmentation but may increase transaction fees.
                                     </div>
                                 </div>
                             </div>
@@ -1385,8 +1384,7 @@ export default function TxCreateScreen() {
                                         color: colors.textFaded,
                                         lineHeight: '1.4'
                                     }}>
-                                    This option helps reduce UTXO fragmentation and can lower future transaction fees,
-                                    but should be used with caution if you hold ordinals or inscriptions.
+                                    This option helps reduce UTXO fragmentation and can lower future transaction fees.
                                 </div>
                             </div>
                         </label>

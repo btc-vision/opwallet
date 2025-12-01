@@ -31,8 +31,7 @@ export interface InputProps {
     onAmountInputChange?: (amount: string) => void;
     disabled?: boolean;
     disableDecimal?: boolean;
-    enableBrc20Decimal?: boolean;
-    runesDecimal?: number;
+    decimalPlaces?: number;
     enableMax?: boolean;
     onMaxClick?: () => void;
 }
@@ -101,13 +100,11 @@ function AmountInput(props: InputProps) {
         disabled,
         style: $inputStyleOverride,
         disableDecimal,
-        enableBrc20Decimal,
-        runesDecimal,
+        decimalPlaces,
         enableMax,
         onMaxClick,
         ...rest
     } = props;
-    const $style = Object.assign({}, $baseInputStyle, $inputStyleOverride, disabled ? { color: colors.textDim } : {});
 
     // All hooks must be called before any conditional returns
     const [inputValue, setInputValue] = useState(props.value ?? '');
@@ -131,23 +128,11 @@ function AmountInput(props: InputProps) {
                 setInputValue(value);
             }
         } else {
-            if (enableBrc20Decimal) {
-                if (/^\d+\.?\d{0,18}$/.test(value) || value === '') {
-                    setValidAmount(value);
-                    setInputValue(value);
-                }
-            } else if (runesDecimal !== undefined) {
-                // Up to `runesDecimal` decimal places
-                const decimalRegex = new RegExp(`^\\d+\\.?\\d{0,${runesDecimal}}$`);
-                if (decimalRegex.test(value) || value === '') {
-                    setInputValue(value);
-                    setValidAmount(value);
-                }
-            } else {
-                if (/^\d*\.?\d{0,8}$/.test(value) || value === '') {
-                    setValidAmount(value);
-                    setInputValue(value);
-                }
+            const maxDecimals = decimalPlaces ?? 8;
+            const decimalRegex = new RegExp(`^\\d*\\.?\\d{0,${maxDecimals}}$`);
+            if (decimalRegex.test(value) || value === '') {
+                setValidAmount(value);
+                setInputValue(value);
             }
         }
     };
