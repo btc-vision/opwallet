@@ -11,7 +11,7 @@ import { KEYRING_TYPE } from '@/shared/constant';
 import Web3API from '@/shared/web3/Web3API';
 import { Button, Card, Column, Content, Footer, Header, Input, Layout, Row, Text } from '@/ui/components';
 import { useTools } from '@/ui/components/ActionComponent';
-import { useAccountAddress } from '@/ui/state/accounts/hooks';
+import { useAccountPublicKey } from '@/ui/state/accounts/hooks';
 import { copyToClipboard, useWallet } from '@/ui/utils';
 import { getMLDSAConfig, MLDSASecurityLevel } from '@btc-vision/bip32';
 import { networks } from '@btc-vision/bitcoin';
@@ -40,7 +40,7 @@ const CHAINCODE_HEX_CHARS = 64;
 export default function QuantumMigrationScreen() {
     const wallet = useWallet();
     const tools = useTools();
-    const address = useAccountAddress();
+    const address = useAccountPublicKey();
 
     const [loading, setLoading] = useState(true);
     const [isHdWallet, setIsHdWallet] = useState(false);
@@ -67,8 +67,8 @@ export default function QuantumMigrationScreen() {
 
                 // Check on-chain linkage first
                 try {
-                    const pubKeyInfo = await Web3API.provider.getPublicKeysInfoRaw(address);
-                    const info = pubKeyInfo[address];
+                    const pubKeyInfo = await Web3API.provider.getPublicKeysInfoRaw(address.pubkey);
+                    const info = pubKeyInfo[address.pubkey];
                     if (info && !('error' in info) && info.mldsaHashedPublicKey) {
                         setOnChainLinkedKey(info.mldsaHashedPublicKey);
                         setIsLinkedOnChain(true);
