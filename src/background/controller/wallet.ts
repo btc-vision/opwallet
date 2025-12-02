@@ -621,9 +621,37 @@ export class WalletController {
     ): Promise<void> => {
         if (!quantumPrivateKey) throw new Error('You must provide a quantum private key to import a private key.');
 
+        const network = getBitcoinLibJSNetwork(this.getNetworkType());
+
+        // Check if this private key is already imported by deriving the public key first
+        let keypair: ReturnType<typeof EcKeyPair.fromWIF> | ReturnType<typeof EcKeyPair.fromPrivateKey>;
+        try {
+            const cleanData = data.replace('0x', '');
+            // Try to parse as WIF first, then as hex private key
+            if (cleanData.length === 51 || cleanData.length === 52) {
+                keypair = EcKeyPair.fromWIF(data, network);
+            } else {
+                keypair = EcKeyPair.fromPrivateKey(Buffer.from(cleanData, 'hex'), network);
+            }
+        } catch (e) {
+            throw new WalletControllerError(`Invalid private key format: ${String(e)}`, { data, addressType });
+        }
+
+        const pubkey = keypair.publicKey.toString('hex');
+        const derivedAddress = publicKeyToAddressWithNetworkType(pubkey, addressType, networkTypeToOPNet(this.getNetworkType()));
+
+        // Check if this address already exists in any keyring
+        const existingAccounts = await this.getAccounts();
+        const duplicate = existingAccounts.find((account) => account.address === derivedAddress);
+        if (duplicate) {
+            throw new WalletControllerError(
+                `This wallet has already been imported. Address: ${derivedAddress.slice(0, 10)}...${derivedAddress.slice(-6)}`,
+                { address: derivedAddress }
+            );
+        }
+
         let originKeyring: Keyring | EmptyKeyring;
         try {
-            const network = getBitcoinLibJSNetwork(this.getNetworkType());
             originKeyring = await keyringService.importPrivateKey(data, addressType, network, quantumPrivateKey);
         } catch (e) {
             console.warn('Something went wrong while attempting to load keyring', e);

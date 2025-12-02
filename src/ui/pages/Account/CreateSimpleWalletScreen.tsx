@@ -82,10 +82,11 @@ function Step1({ updateContextData }: { updateContextData: (params: UpdateContex
 
         const raw = wif.trim();
         let keyKind: KeyKind | null = null;
+        let keypair: ReturnType<typeof EcKeyPair.fromWIF> | null = null;
 
         // try WIF first
         try {
-            EcKeyPair.fromWIF(raw, bitcoinNetwork);
+            keypair = EcKeyPair.fromWIF(raw, bitcoinNetwork);
             keyKind = 'wif';
         } catch (e) {
             console.error(e);
@@ -95,16 +96,46 @@ function Step1({ updateContextData }: { updateContextData: (params: UpdateContex
         if (!keyKind && isLikelyHexPriv(raw)) {
             try {
                 const buf = Buffer.from(raw.replace(/^0x/, ''), 'hex');
-                EcKeyPair.fromPrivateKey(buf, bitcoinNetwork);
+                keypair = EcKeyPair.fromPrivateKey(buf, bitcoinNetwork);
                 keyKind = 'rawHex';
             } catch (e) {
                 console.error(e);
             }
         }
 
-        if (!keyKind) {
+        if (!keyKind || !keypair) {
             tools.toastError(`Invalid private key format`);
             return;
+        }
+
+        // Check if this wallet is already imported by checking all address types
+        const existingAccounts = await wallet.getAccounts();
+        const pubkey = keypair.publicKey.toString('hex');
+
+        // Check all address types for this public key
+        for (const addrType of ADDRESS_TYPES) {
+            if (addrType.displayIndex < 0) continue;
+
+            let address = '';
+            try {
+                if (addrType.value === AddressTypes.P2TR) {
+                    address = EcKeyPair.getTaprootAddress(keypair, bitcoinNetwork);
+                } else if (addrType.value === AddressTypes.P2SH_OR_P2SH_P2WPKH) {
+                    address = EcKeyPair.getLegacySegwitAddress(keypair, bitcoinNetwork);
+                } else if (addrType.value === AddressTypes.P2WPKH) {
+                    address = EcKeyPair.getP2WPKHAddress(keypair, bitcoinNetwork);
+                } else {
+                    address = EcKeyPair.getLegacyAddress(keypair, bitcoinNetwork);
+                }
+            } catch {
+                continue;
+            }
+
+            const duplicate = existingAccounts.find((acc) => acc.address === address || acc.pubkey === pubkey);
+            if (duplicate) {
+                tools.toastError(`This wallet has already been imported`);
+                return;
+            }
         }
 
         updateContextData({
