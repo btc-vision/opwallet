@@ -508,7 +508,7 @@ class KeyringService extends EventEmitter {
                 if (wallet) {
                     // Include chaincode at the end to match SimpleKeyring format
                     const privateKeyHex = wallet.quantumPrivateKeyHex;
-                    const chainCodeHex = wallet.chainCode.toString('hex');
+                    const chainCodeHex = Buffer.from(wallet.chainCode).toString('hex');
                     return privateKeyHex + chainCodeHex;
                 }
             }

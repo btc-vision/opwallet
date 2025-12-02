@@ -149,8 +149,6 @@ export default function TxOpnetConfirmScreen() {
     const getOPNetWallet = useCallback(async () => {
         const data = await wallet.getOPNetWallet();
 
-        console.log('data', data);
-
         return Wallet.fromWif(
             data[0],
             data[1],
