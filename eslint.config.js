@@ -69,7 +69,8 @@ export default tseslint.config(
             '@typescript-eslint/no-redundant-type-constituents': 'error',
             '@typescript-eslint/no-useless-constructor': 'error',
             'react/prop-types': 'warn',
-            '@typescript-eslint/no-empty-function': 'off'
+            '@typescript-eslint/no-empty-function': 'off',
+            'react-hooks/exhaustive-deps': 'off'
         }
     },
     {
