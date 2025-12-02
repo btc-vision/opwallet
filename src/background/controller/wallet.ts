@@ -7,7 +7,9 @@ import {
     openapiService,
     permissionService,
     preferenceService,
-    sessionService
+    sessionService,
+    transactionHistoryService,
+    transactionStatusPoller
 } from '@/background/service';
 import { DisplayedKeyring, EmptyKeyring, Keyring, SavedVault } from '@/background/service/keyring';
 import { WalletSaveList } from '@/background/service/preference';
@@ -93,6 +95,11 @@ import { Buffer } from 'buffer';
 import { ContactBookItem, ContactBookStore } from '../service/contactBook';
 import { OpenApiService } from '../service/openapi';
 import { ConnectedSite } from '../service/permission';
+import {
+    RecordTransactionInput,
+    TransactionOrigin,
+    TransactionType
+} from '@/shared/types/TransactionHistory';
 
 export interface BalanceCacheEntry {
     balance: BitcoinBalance;
@@ -229,6 +236,9 @@ export class WalletController {
 
             // Start cache cleanup timer
             this._startCacheCleanup();
+
+            // Start transaction status polling
+            transactionStatusPoller.start();
         } catch (err) {
             throw new WalletControllerError(`Unlock failed: ${String(err)}`, { passwordProvided: !!password });
         }
@@ -257,6 +267,9 @@ export class WalletController {
 
             // Clear cache and stop cleanup timer
             this._clearBalanceCache();
+
+            // Stop transaction status polling
+            transactionStatusPoller.stop();
         } catch (err) {
             throw new WalletControllerError(`Lock wallet failed: ${String(err)}`);
         }
@@ -993,7 +1006,8 @@ export class WalletController {
      * @throws WalletControllerError
      */
     public signAndBroadcastInteraction = async (
-        interactionParameters: InteractionParametersWithoutSigner
+        interactionParameters: InteractionParametersWithoutSigner,
+        origin: TransactionOrigin = { type: 'internal' }
     ): Promise<
         [BroadcastedTransaction, BroadcastedTransaction, import('@btc-vision/transaction').UTXO[], RawChallenge]
     > => {
@@ -1056,6 +1070,21 @@ export class WalletController {
             if (interTx.error) throw new WalletControllerError(interTx.error);
 
             Web3API.provider.utxoManager.spentUTXO(account.address, utxos, response.nextUTXOs);
+
+            // Record transaction in history
+            void this.recordTransaction(
+                {
+                    txid: interTx.result || '',
+                    fundingTxid: fundingTx.result,
+                    type: TransactionType.OPNET_INTERACTION,
+                    from: account.address,
+                    to: interactionParameters.to,
+                    contractAddress: interactionParameters.to,
+                    fee: Number(response.estimatedFees),
+                    feeRate: interactionParameters.feeRate
+                },
+                origin
+            );
 
             return [fundingTx, interTx, response.nextUTXOs, response.challenge];
         } catch (err) {
@@ -2853,6 +2882,78 @@ export class WalletController {
         if (expiredKeys.length > 0) {
             console.log(`Cleaned up ${expiredKeys.length} expired balance cache entries`);
         }
+    };
+
+    /**
+     * Record a transaction in the history
+     */
+    public recordTransaction = async (
+        params: RecordTransactionInput,
+        origin: TransactionOrigin = { type: 'internal' }
+    ): Promise<void> => {
+        try {
+            const account = await this.getCurrentAccount();
+            if (!account) {
+                console.warn('[WalletController] Cannot record transaction: no current account');
+                return;
+            }
+
+            const chainType = this.getChainType();
+
+            await transactionHistoryService.addTransaction(chainType, account.pubkey, {
+                ...params,
+                origin
+            });
+
+            // Trigger immediate status poll
+            void transactionStatusPoller.pollNow();
+
+            console.log(`[WalletController] Recorded transaction: ${params.txid} (${params.type})`);
+        } catch (error) {
+            console.error('[WalletController] Failed to record transaction:', error);
+            // Don't throw - transaction recording failure shouldn't break the main flow
+        }
+    };
+
+    /**
+     * Get transaction history for current account
+     */
+    public getTransactionHistory = async (): Promise<import('@/shared/types/TransactionHistory').TransactionHistoryItem[]> => {
+        const account = await this.getCurrentAccount();
+        if (!account) {
+            return [];
+        }
+
+        const chainType = this.getChainType();
+        return transactionHistoryService.getHistory(chainType, account.pubkey);
+    };
+
+    /**
+     * Get filtered transaction history for current account
+     */
+    public getFilteredTransactionHistory = async (
+        filter?: import('@/shared/types/TransactionHistory').TransactionHistoryFilter
+    ): Promise<import('@/shared/types/TransactionHistory').TransactionHistoryItem[]> => {
+        const account = await this.getCurrentAccount();
+        if (!account) {
+            return [];
+        }
+
+        const chainType = this.getChainType();
+        return transactionHistoryService.getFilteredHistory(chainType, account.pubkey, filter);
+    };
+
+    /**
+     * Clear transaction history for current account
+     */
+    public clearTransactionHistory = async (): Promise<void> => {
+        const account = await this.getCurrentAccount();
+        if (!account) {
+            return;
+        }
+
+        const chainType = this.getChainType();
+        await transactionHistoryService.clearHistory(chainType, account.pubkey);
     };
 }
 

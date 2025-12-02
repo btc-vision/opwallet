@@ -707,10 +707,7 @@ export default function WalletTabScreen() {
                             <ActionButton
                                 label="History"
                                 icon={<HistoryOutlined style={{ fontSize: 18, color: colors.text }} />}
-                                onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
-                                    e.stopPropagation();
-                                    window.open(explorerUrl, '_blank');
-                                }}
+                                onClick={() => navigate(RouteTypes.HistoryScreen)}
                             />
                         </div>
                     </div>
