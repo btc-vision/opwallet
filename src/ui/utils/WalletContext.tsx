@@ -289,6 +289,11 @@ export interface WalletController {
     getFilteredTransactionHistory(filter?: TransactionHistoryFilter): Promise<TransactionHistoryItem[]>;
 
     clearTransactionHistory(): Promise<void>;
+
+    recordTransaction(
+        params: import('@/shared/types/TransactionHistory').RecordTransactionInput,
+        origin?: import('@/shared/types/TransactionHistory').TransactionOrigin
+    ): Promise<void>;
 }
 
 const WalletContext = createContext<{
