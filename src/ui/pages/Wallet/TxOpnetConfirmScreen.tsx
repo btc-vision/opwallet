@@ -166,14 +166,11 @@ export default function TxOpnetConfirmScreen() {
         let pubKey: Address;
         const pubKeyStr: string = to.replace('0x', '');
 
-        // Check for 32-byte values (likely MLDSA public key hash, not valid address)
-        if (pubKeyStr.length === 64 && /^[0-9a-fA-F]+$/.test(pubKeyStr)) {
-            throw new Error(
-                "32-byte values are not valid Bitcoin addresses. This may be an MLDSA public key hash - please use the recipient's Bitcoin address instead."
-            );
-        }
-
-        if ((pubKeyStr.length === 66 || pubKeyStr.length === 130) && pubKeyStr.match(/^[0-9a-fA-F]+$/) !== null) {
+        // Allow 32-byte hex (MLDSA public key hash), 33-byte (compressed pubkey), or 65-byte (uncompressed pubkey)
+        if (
+            (pubKeyStr.length === 64 || pubKeyStr.length === 66 || pubKeyStr.length === 130) &&
+            pubKeyStr.match(/^[0-9a-fA-F]+$/) !== null
+        ) {
             pubKey = Address.fromString(pubKeyStr);
         } else {
             pubKey = await Web3API.provider.getPublicKeyInfo(to, false);
