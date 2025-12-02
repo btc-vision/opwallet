@@ -506,7 +506,10 @@ class KeyringService extends EventEmitter {
                 // HD keyrings derive quantum keys from mnemonic, so we can export them
                 const wallet = keyring.getWallet(publicKey);
                 if (wallet) {
-                    return wallet.quantumPrivateKeyHex;
+                    // Include chaincode at the end to match SimpleKeyring format
+                    const privateKeyHex = wallet.quantumPrivateKeyHex;
+                    const chainCodeHex = wallet.chainCode.toString('hex');
+                    return privateKeyHex + chainCodeHex;
                 }
             }
         } catch {}

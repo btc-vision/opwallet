@@ -9,6 +9,7 @@ import {
 } from '@/shared/types/TransactionHistory';
 
 import storage from '../webapi/storage';
+import { browserStorageLocalGet } from '../webapi/browser';
 
 const STORAGE_VERSION = 1;
 const MAX_TRANSACTIONS = 200;
@@ -225,8 +226,6 @@ class TransactionHistoryService {
      * Get all history storage keys
      */
     private async getAllHistoryKeys(): Promise<string[]> {
-        // Access browser storage to get all keys
-        const { browserStorageLocalGet } = await import('../webapi/browser');
         const allData = await browserStorageLocalGet(null);
         return Object.keys(allData).filter((key) => key.startsWith('txHistory_'));
     }
