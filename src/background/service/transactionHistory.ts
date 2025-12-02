@@ -100,8 +100,29 @@ class TransactionHistoryService {
             }
         }
 
-        // Sort by timestamp descending (newest first)
-        return transactions.sort((a, b) => b.timestamp - a.timestamp);
+        // Sort: pending first, then by block height descending (newest blocks first), then by timestamp
+        return transactions.sort((a, b) => {
+            // Pending transactions always on top
+            const aIsPending = a.status === TransactionStatus.PENDING;
+            const bIsPending = b.status === TransactionStatus.PENDING;
+            if (aIsPending && !bIsPending) return -1;
+            if (!aIsPending && bIsPending) return 1;
+
+            // Both pending: sort by timestamp (newest first)
+            if (aIsPending && bIsPending) {
+                return b.timestamp - a.timestamp;
+            }
+
+            // Both confirmed: sort by block height (highest/newest first)
+            if (a.blockHeight !== undefined && b.blockHeight !== undefined) {
+                if (a.blockHeight !== b.blockHeight) {
+                    return b.blockHeight - a.blockHeight;
+                }
+            }
+
+            // If no block height, fall back to timestamp
+            return b.timestamp - a.timestamp;
+        });
     }
 
     /**
