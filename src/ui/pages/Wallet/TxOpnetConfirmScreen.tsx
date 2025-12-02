@@ -441,7 +441,8 @@ export default function TxOpnetConfirmScreen() {
                 calldata: calldata,
                 optionalInputs: [],
                 optionalOutputs: [],
-                note: parameters.note
+                note: parameters.note,
+                linkMLDSAPublicKeyToAddress: true
             };
 
             const sendTransact: DeploymentResult =
