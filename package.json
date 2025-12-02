@@ -52,7 +52,7 @@
         "@btc-vision/passworder": "1.0.0",
         "@btc-vision/post-quantum": "^0.5.2",
         "@btc-vision/transaction": "^1.7.12",
-        "@btc-vision/wallet-sdk": "^2.0.9",
+        "@btc-vision/wallet-sdk": "file:../wallet-sdk",
         "@eslint/js": "9.38.0",
         "@fortawesome/fontawesome-svg-core": "^7.0.0",
         "@fortawesome/free-regular-svg-icons": "^7.0.0",
