@@ -9,6 +9,7 @@ export enum TransactionType {
     OPNET_INTERACTION = 'opnet_interaction',
     CONTRACT_DEPLOYMENT = 'contract_deployment',
     TOKEN_TRANSFER = 'token_transfer',
+    TOKEN_RECEIVE = 'token_receive',
     CANCEL_TRANSACTION = 'cancel_transaction'
 }
 

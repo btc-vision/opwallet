@@ -71,16 +71,20 @@ class TransactionHistoryService {
 
         if (filter) {
             if (filter.types && filter.types.length > 0) {
-                transactions = transactions.filter((tx) => filter.types!.includes(tx.type));
+                const types = filter.types;
+                transactions = transactions.filter((tx) => types.includes(tx.type));
             }
             if (filter.statuses && filter.statuses.length > 0) {
-                transactions = transactions.filter((tx) => filter.statuses!.includes(tx.status));
+                const statuses = filter.statuses;
+                transactions = transactions.filter((tx) => statuses.includes(tx.status));
             }
-            if (filter.startDate) {
-                transactions = transactions.filter((tx) => tx.timestamp >= filter.startDate!);
+            if (filter.startDate !== undefined) {
+                const startDate = filter.startDate;
+                transactions = transactions.filter((tx) => tx.timestamp >= startDate);
             }
-            if (filter.endDate) {
-                transactions = transactions.filter((tx) => tx.timestamp <= filter.endDate!);
+            if (filter.endDate !== undefined) {
+                const endDate = filter.endDate;
+                transactions = transactions.filter((tx) => tx.timestamp <= endDate);
             }
             if (filter.search) {
                 const searchLower = filter.search.toLowerCase();

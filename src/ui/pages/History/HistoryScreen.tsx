@@ -54,6 +54,8 @@ function getTypeIcon(type: TransactionType) {
             return <DeploymentUnitOutlined style={{ color: colors.warning }} />;
         case TransactionType.TOKEN_TRANSFER:
             return <SendOutlined style={{ color: colors.main }} />;
+        case TransactionType.TOKEN_RECEIVE:
+            return <WalletOutlined style={{ color: colors.success }} />;
         case TransactionType.CANCEL_TRANSACTION:
             return <CloseCircleOutlined style={{ color: colors.error }} />;
         default:
@@ -61,18 +63,27 @@ function getTypeIcon(type: TransactionType) {
     }
 }
 
-function getTypeLabel(type: TransactionType): string {
-    switch (type) {
+function getTypeLabel(tx: TransactionHistoryItem): string {
+    const formatAmount = (amount: string | undefined, symbol: string | undefined, decimals?: number) => {
+        if (!amount) return '';
+        // Format the display amount if available, otherwise use raw amount
+        const displayAmount = tx.amountDisplay || amount;
+        return ` ${displayAmount} ${symbol || 'BTC'}`;
+    };
+
+    switch (tx.type) {
         case TransactionType.BTC_TRANSFER:
-            return 'Sent BTC';
+            return `Sent${formatAmount(tx.amount, 'BTC')}`;
         case TransactionType.BTC_RECEIVE:
-            return 'Received BTC';
+            return `Received${formatAmount(tx.amount, 'BTC')}`;
         case TransactionType.OPNET_INTERACTION:
-            return 'Contract Interaction';
+            return tx.contractMethod ? `${tx.contractMethod}` : 'Contract Interaction';
         case TransactionType.CONTRACT_DEPLOYMENT:
             return 'Contract Deployment';
         case TransactionType.TOKEN_TRANSFER:
-            return 'Token Transfer';
+            return `Sent${formatAmount(tx.amount, tx.tokenSymbol)}`;
+        case TransactionType.TOKEN_RECEIVE:
+            return `Received${formatAmount(tx.amount, tx.tokenSymbol)}`;
         case TransactionType.CANCEL_TRANSACTION:
             return 'Cancelled Transaction';
         default:
@@ -164,7 +175,7 @@ function TransactionItem({ tx, onClick }: TransactionItemProps) {
                 <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
                         <span style={{ fontSize: 13, fontWeight: 500, color: colors.text }}>
-                            {getTypeLabel(tx.type)}
+                            {getTypeLabel(tx)}
                         </span>
                         {tx.origin.type === 'external' && (
                             <span

@@ -265,7 +265,7 @@ export default function TransactionDetailScreen() {
                                 label="Funding TX"
                                 value={shortenAddress(tx.fundingTxid)}
                                 copyable
-                                onCopy={() => handleCopy('fundingTxid', tx.fundingTxid!)}
+                                onCopy={() => handleCopy('fundingTxid', tx.fundingTxid ?? '')}
                                 copied={copiedField === 'fundingTxid'}
                                 external={`https://opscan.org/tx/${tx.fundingTxid}`}
                             />
@@ -300,7 +300,7 @@ export default function TransactionDetailScreen() {
                                 label="To"
                                 value={shortenAddress(tx.to)}
                                 copyable
-                                onCopy={() => handleCopy('to', tx.to!)}
+                                onCopy={() => handleCopy('to', tx.to ?? '')}
                                 copied={copiedField === 'to'}
                             />
                         )}
@@ -310,7 +310,7 @@ export default function TransactionDetailScreen() {
                                 label="Contract"
                                 value={shortenAddress(tx.contractAddress)}
                                 copyable
-                                onCopy={() => handleCopy('contract', tx.contractAddress!)}
+                                onCopy={() => handleCopy('contract', tx.contractAddress ?? '')}
                                 copied={copiedField === 'contract'}
                                 external={`https://opscan.org/address/${tx.contractAddress}`}
                             />
