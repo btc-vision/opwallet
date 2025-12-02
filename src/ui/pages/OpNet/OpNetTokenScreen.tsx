@@ -225,39 +225,17 @@ export default function OpNetTokenScreen() {
         <Layout>
             <Header onBack={() => window.history.go(-1)} title={tokenSummary.symbol} />
 
-            <Content style={{ padding: '16px', backgroundColor: colors.background, display: 'flex', flexDirection: 'column', minHeight: '100%' }}>
-                {/* Balance Card */}
-                <div
-                    style={{
-                        background: colors.cardBg,
-                        borderRadius: 12,
-                        padding: '20px 16px',
-                        marginBottom: 12,
-                        textAlign: 'center'
-                    }}>
-                    <div style={{ fontSize: 11, color: colors.textFaded, marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.5 }}>
-                        Balance
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'center', gap: 8 }}>
-                        <span style={{ fontSize: 32, fontWeight: 700, color: colors.text }}>
-                            {formattedBalance}
-                        </span>
-                        <span style={{ fontSize: 16, fontWeight: 500, color: colors.main }}>
-                            {tokenSummary.symbol}
-                        </span>
-                    </div>
-                </div>
-
+            <Content style={{ padding: '16px', backgroundColor: colors.background }}>
                 {/* Token Info Card */}
                 <div
                     style={{
                         background: colors.cardBg,
                         borderRadius: 12,
-                        padding: '14px',
+                        padding: '16px',
                         marginBottom: 16
                     }}>
-                    {/* Token row: Logo + Name + Badge */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
+                    {/* Top row: Logo + Name + Badge */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
                         {/* Logo */}
                         <div
                             style={{
@@ -334,6 +312,23 @@ export default function OpNetTokenScreen() {
                                 flexShrink: 0
                             }}>
                             {isPegged ? 'OP-20S' : 'OP-20'}
+                        </div>
+                    </div>
+
+                    {/* Balance */}
+                    <div
+                        style={{
+                            background: 'rgba(243, 116, 19, 0.08)',
+                            borderRadius: 8,
+                            padding: '12px',
+                            marginBottom: 12,
+                            textAlign: 'center'
+                        }}>
+                        <div style={{ fontSize: 10, color: colors.textFaded, marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                            Balance
+                        </div>
+                        <div style={{ fontSize: 20, fontWeight: 700, color: colors.text }}>
+                            {formattedBalance} <span style={{ fontSize: 14, fontWeight: 500, color: colors.textSecondary }}>{tokenSummary.symbol}</span>
                         </div>
                     </div>
 
@@ -444,9 +439,6 @@ export default function OpNetTokenScreen() {
                     </div>
                 </div>
 
-                {/* Spacer to push remove button to bottom */}
-                <div style={{ flex: 1 }} />
-
                 {/* Remove Token */}
                 <button
                     style={{
@@ -459,8 +451,7 @@ export default function OpNetTokenScreen() {
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        gap: 6,
-                        marginTop: 'auto'
+                        gap: 6
                     }}
                     onClick={() => setShowDeleteConfirm(true)}>
                     <DeleteOutlined style={{ fontSize: 13, color: colors.error }} />
