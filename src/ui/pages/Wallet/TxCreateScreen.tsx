@@ -18,7 +18,6 @@ import {
     DownOutlined,
     FileTextOutlined,
     InfoCircleOutlined,
-    LoadingOutlined,
     LockOutlined,
     SendOutlined,
     ThunderboltOutlined,
@@ -91,6 +90,7 @@ export default function TxCreateScreen() {
     const [error, setError] = useState('');
     const [showP2PKWarning, setDisplayP2PKWarning] = useState(false);
     const [showP2OPWarning, setDisplayP2OPWarning] = useState(false);
+    const [show32ByteError, setShow32ByteError] = useState(false);
     const [autoAdjust, setAutoAdjust] = useState(false);
     const [note, setNote] = useState<string>('');
     const [checked, setChecked] = useState(false);
@@ -391,6 +391,17 @@ export default function TxCreateScreen() {
                 setDisplayP2OPWarning(false);
                 return;
             }
+
+            // Block 32-byte values (64 hex chars) - these are not valid recipient addresses
+            const cleanAddress = address.startsWith('0x') ? address.slice(2) : address;
+            if (cleanAddress.length === 64 && /^[0-9a-fA-F]+$/.test(cleanAddress)) {
+                setDisplayP2PKWarning(false);
+                setDisplayP2OPWarning(false);
+                setShow32ByteError(true);
+                return;
+            }
+
+            setShow32ByteError(false);
 
             const type = AddressVerificator.detectAddressType(address, Web3API.network);
 
@@ -1100,6 +1111,49 @@ export default function TxCreateScreen() {
                                             opacity: 0.9
                                         }}>
                                         Cannot send BTC directly to contract addresses.
+                                    </span>
+                                </div>
+                            </div>
+                        )}
+
+                        {show32ByteError && (
+                            <div
+                                style={{
+                                    marginTop: '8px',
+                                    padding: '8px',
+                                    background: `${colors.error}15`,
+                                    border: `1px solid ${colors.error}30`,
+                                    borderRadius: '8px',
+                                    display: 'flex',
+                                    gap: '6px'
+                                }}>
+                                <InfoCircleOutlined
+                                    style={{
+                                        fontSize: 12,
+                                        color: colors.error,
+                                        flexShrink: 0
+                                    }}
+                                />
+                                <div>
+                                    <span
+                                        style={{
+                                            fontSize: '11px',
+                                            color: colors.error,
+                                            lineHeight: '1.4',
+                                            fontWeight: 600
+                                        }}>
+                                        Invalid Recipient
+                                    </span>
+                                    <span
+                                        style={{
+                                            fontSize: '11px',
+                                            color: colors.error,
+                                            lineHeight: '1.4',
+                                            display: 'block',
+                                            marginTop: '4px',
+                                            opacity: 0.9
+                                        }}>
+                                        Cannot send to 32-byte values. Please use a valid Bitcoin address.
                                     </span>
                                 </div>
                             </div>
