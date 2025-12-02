@@ -81,16 +81,27 @@ export default function WalletTabScreen() {
 
     const untweakedPublicKey = useAccountPublicKey();
 
+    const [address, setAddress] = useState<Address | null>(null);
+
     // untweakedPublicKey.mldsa can be UNDEFINED if the account is not quantum-enabled! we need to handle this gracefully, no error!
     // Address.fromString requires (mldsaHashedKey, legacyKey) - use pubkey for both if no mldsa
-    const address = untweakedPublicKey
-        ? untweakedPublicKey.mldsa
-            ? Address.fromString(untweakedPublicKey.mldsa, untweakedPublicKey.pubkey)
-            : Address.fromString(
-                  '0x0000000000000000000000000000000000000000000000000000000000000000',
-                  untweakedPublicKey.pubkey
-              )
-        : null;
+    useEffect(() => {
+        console.log('untweakedPublicKey', untweakedPublicKey);
+
+        if (untweakedPublicKey.mldsa) {
+            setAddress(Address.fromString(untweakedPublicKey.mldsa, untweakedPublicKey.pubkey));
+        } else if (untweakedPublicKey.pubkey) {
+            setAddress(
+                Address.fromString(
+                    '0x0000000000000000000000000000000000000000000000000000000000000000',
+                    untweakedPublicKey.pubkey
+                )
+            );
+        } else {
+            console.warn(`No public key available for account?`);
+            setAddress(null);
+        }
+    }, [untweakedPublicKey.pubkey, untweakedPublicKey.mldsa]);
 
     const tweakedPublicKey = address ? address.toHex() : '';
     const publicKey = address ? '0x' + address.originalPublicKeyBuffer().toString('hex') : '';
