@@ -1,5 +1,6 @@
 import { permissionService, sessionService } from '@/background/service';
 import { CHAINS, CHAINS_MAP, ChainType, NETWORK_TYPES, VERSION } from '@/shared/constant';
+import { TransactionOrigin, TransactionType } from '@/shared/types/TransactionHistory';
 
 import { Session } from '@/background/service/session';
 import { SessionEvent } from '@/shared/interfaces/SessionEvent';
@@ -282,8 +283,15 @@ export class ProviderController {
     signAndBroadcastInteraction = async (request: {
         approvalRes: boolean;
         data: { params: DetailedInteractionParameters };
+        session?: Session;
     }) => {
-        return wallet.signAndBroadcastInteraction(request.data.params.interactionParameters);
+        const origin: TransactionOrigin = {
+            type: 'external',
+            siteUrl: request.session?.origin,
+            siteName: request.session?.name,
+            siteIcon: request.session?.icon
+        };
+        return wallet.signAndBroadcastInteraction(request.data.params.interactionParameters, origin);
     };
 
     @Reflect.metadata('APPROVAL', [

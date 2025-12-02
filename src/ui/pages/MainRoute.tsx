@@ -52,6 +52,8 @@ import NFTTabScreen from '@/ui/pages/Main/NFTTabScreen';
 import ImportSelectionScreen from '@/ui/pages/Wallet/ImportSelectionScreen';
 import NFTSendScreen from '@/ui/pages/Wallet/NFTSendScreen';
 import ImportTokenScreen from '@/ui/pages/Wallet/ImportOP20Screen';
+import HistoryScreen from '@/ui/pages/History/HistoryScreen';
+import TransactionDetailScreen from '@/ui/pages/History/TransactionDetailScreen';
 
 export enum RouteTypes {
     BoostScreen = 'BoostScreen',
@@ -95,7 +97,9 @@ export enum RouteTypes {
     NFTTabScreen = 'NFTTabScreen',
     NFTSendScreen = 'NFTSendScreen',
     ImportTokenScreen = 'ImportTokenScreen',
-    QuantumMigrationScreen = 'QuantumMigrationScreen'
+    QuantumMigrationScreen = 'QuantumMigrationScreen',
+    HistoryScreen = 'HistoryScreen',
+    TransactionDetailScreen = 'TransactionDetailScreen'
 }
 
 type Routes = {
@@ -273,6 +277,14 @@ export const routes: Routes = {
     QuantumMigrationScreen: {
         path: '/settings/quantum-migration',
         element: <QuantumMigrationScreen />
+    },
+    HistoryScreen: {
+        path: '/history',
+        element: <HistoryScreen />
+    },
+    TransactionDetailScreen: {
+        path: '/history/transaction',
+        element: <TransactionDetailScreen />
     }
 };
 

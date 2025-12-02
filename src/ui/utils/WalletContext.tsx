@@ -20,6 +20,7 @@ import {
     WalletKeyring
 } from '@/shared/types';
 import { ApprovalData, ApprovalResponse } from '@/shared/types/Approval';
+import { TransactionHistoryFilter, TransactionHistoryItem } from '@/shared/types/TransactionHistory';
 import { Psbt } from '@btc-vision/bitcoin';
 import { InteractionParametersWithoutSigner } from '@btc-vision/transaction';
 import { createContext, ReactNode, useContext } from 'react';
@@ -281,6 +282,18 @@ export interface WalletController {
     setQuantumKey(quantumPrivateKey: string): Promise<void>;
 
     generateQuantumKey(): Promise<void>;
+
+    // Transaction history
+    getTransactionHistory(): Promise<TransactionHistoryItem[]>;
+
+    getFilteredTransactionHistory(filter?: TransactionHistoryFilter): Promise<TransactionHistoryItem[]>;
+
+    clearTransactionHistory(): Promise<void>;
+
+    recordTransaction(
+        params: import('@/shared/types/TransactionHistory').RecordTransactionInput,
+        origin?: import('@/shared/types/TransactionHistory').TransactionOrigin
+    ): Promise<void>;
 }
 
 const WalletContext = createContext<{

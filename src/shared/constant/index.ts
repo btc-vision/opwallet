@@ -268,7 +268,7 @@ export const DEFAULT_CHAINS_MAP: { [key in ChainType]?: TypeChain<key> } = {
         unit: 'rBTC',
         icon: './images/artifacts/bitcoin-testnet.svg',
         networkType: NetworkType.REGTEST,
-        opnetUrl: 'https://regtest.opnet.org',
+        opnetUrl: 'https://regtest2.opnet.org',
         endpoints: ['https://wallet.opnet.org'],
         mempoolSpaceUrl: 'https://mempool.opnet.org',
         faucetUrl: 'https://faucet.opnet.org/',

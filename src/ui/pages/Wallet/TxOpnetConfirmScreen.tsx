@@ -9,6 +9,7 @@ import {
     SourceType,
     TransferParameters
 } from '@/shared/interfaces/RawTxParameters';
+import { RecordTransactionInput, TransactionType } from '@/shared/types/TransactionHistory';
 import Web3API from '@/shared/web3/Web3API';
 import { Column, Content, Footer, Header, Layout, Text } from '@/ui/components';
 import { ContextType, useTools } from '@/ui/components/ActionComponent';
@@ -165,14 +166,11 @@ export default function TxOpnetConfirmScreen() {
         let pubKey: Address;
         const pubKeyStr: string = to.replace('0x', '');
 
-        // Check for 32-byte values (likely MLDSA public key hash, not valid address)
-        if (pubKeyStr.length === 64 && /^[0-9a-fA-F]+$/.test(pubKeyStr)) {
-            throw new Error(
-                "32-byte values are not valid Bitcoin addresses. This may be an MLDSA public key hash - please use the recipient's Bitcoin address instead."
-            );
-        }
-
-        if ((pubKeyStr.length === 66 || pubKeyStr.length === 130) && pubKeyStr.match(/^[0-9a-fA-F]+$/) !== null) {
+        // Allow 32-byte hex (MLDSA public key hash), 33-byte (compressed pubkey), or 65-byte (uncompressed pubkey)
+        if (
+            (pubKeyStr.length === 64 || pubKeyStr.length === 66 || pubKeyStr.length === 130) &&
+            pubKeyStr.match(/^[0-9a-fA-F]+$/) !== null
+        ) {
             pubKey = Address.fromString(pubKeyStr);
         } else {
             pubKey = await Web3API.provider.getPublicKeyInfo(to, false);
@@ -223,6 +221,23 @@ export default function TxOpnetConfirmScreen() {
                     parameters.tokens[0].divisibility
                 )} ${symbol.properties.symbol}`
             );
+
+            // Record transaction in history
+            const txRecord: RecordTransactionInput = {
+                txid: sendTransaction.transactionId || '',
+                type: TransactionType.TOKEN_TRANSFER,
+                from: currentWalletAddress.address,
+                to: parameters.to,
+                amount: parameters.inputAmount.toString(),
+                amountDisplay: `${BitcoinUtils.formatUnits(parameters.inputAmount, parameters.tokens[0].divisibility)} ${symbol.properties.symbol}`,
+                tokenSymbol: symbol.properties.symbol,
+                tokenDecimals: parameters.tokens[0].divisibility,
+                tokenAddress: parameters.contractAddress,
+                contractAddress: parameters.contractAddress,
+                fee: Number(parameters.priorityFee || 0),
+                feeRate: parameters.feeRate
+            };
+            void wallet.recordTransaction(txRecord);
 
             // Store the next UTXO in localStorage
             navigate(RouteTypes.TxSuccessScreen, { txid: sendTransaction.transactionId });
@@ -279,6 +294,20 @@ export default function TxOpnetConfirmScreen() {
         }
 
         tools.toastSuccess(`You have successfully airdropped tokens to ${addressMap.size} addresses`);
+
+        // Record transaction in history
+        const txRecord: RecordTransactionInput = {
+            txid: sendTransaction.transactionId || '',
+            type: TransactionType.OPNET_INTERACTION,
+            from: currentWalletAddress.address,
+            contractAddress: contractAddress,
+            contractMethod: 'airdrop',
+            fee: Number(parameters.priorityFee || 0),
+            feeRate: parameters.feeRate,
+            note: `Airdrop to ${addressMap.size} addresses`
+        };
+        void wallet.recordTransaction(txRecord);
+
         navigate(RouteTypes.TxSuccessScreen, { txid: sendTransaction.transactionId, contractAddress: contractAddress });
     };
 
@@ -405,6 +434,19 @@ export default function TxOpnetConfirmScreen() {
             // Update UTXO manager for the correct address
             Web3API.provider.utxoManager.spentUTXO(fromAddress, utxos, sendTransact.nextUTXOs);
 
+            // Record transaction in history
+            const txRecord: RecordTransactionInput = {
+                txid: sendTransaction.result || '',
+                type: TransactionType.BTC_TRANSFER,
+                from: fromAddress,
+                to: parameters.to,
+                amount: BitcoinUtils.expandToDecimals(parameters.inputAmount, 8).toString(),
+                amountDisplay: `${parameters.inputAmount} BTC`,
+                fee: 0, // Fee calculated by network
+                feeRate: parameters.feeRate
+            };
+            void wallet.recordTransaction(txRecord);
+
             navigate(RouteTypes.TxSuccessScreen, { txid: sendTransaction.result });
         } catch (e) {
             tools.toastError(`Error: ${(e as Error).message}`);
@@ -480,6 +522,18 @@ export default function TxOpnetConfirmScreen() {
 
                 tools.toastSuccess(`You have successfully deployed ${sendTransact.contractAddress}`);
 
+                // Record transaction in history
+                const txRecord: RecordTransactionInput = {
+                    txid: secondTransaction.result || '',
+                    fundingTxid: firstTransaction.result,
+                    type: TransactionType.CONTRACT_DEPLOYMENT,
+                    from: currentWalletAddress.address,
+                    contractAddress: sendTransact.contractAddress,
+                    fee: Number(parameters.priorityFee || 0),
+                    feeRate: parameters.feeRate
+                };
+                void wallet.recordTransaction(txRecord);
+
                 navigate(RouteTypes.TxSuccessScreen, {
                     txid: secondTransaction.result,
                     contractAddress: sendTransact.contractAddress
@@ -533,6 +587,24 @@ export default function TxOpnetConfirmScreen() {
             }
 
             tools.toastSuccess(`You have successfully minted ${parameters.inputAmount} ${parameters.tokens[0].symbol}`);
+
+            // Record transaction in history
+            const txRecord: RecordTransactionInput = {
+                txid: sendTransaction.transactionId || '',
+                type: TransactionType.OPNET_INTERACTION,
+                from: currentWalletAddress.address,
+                to: parameters.to,
+                amount: value.toString(),
+                amountDisplay: `${parameters.inputAmount} ${parameters.tokens[0].symbol}`,
+                tokenSymbol: parameters.tokens[0].symbol,
+                tokenDecimals: parameters.tokens[0].divisibility,
+                contractAddress: parameters.contractAddress,
+                contractMethod: 'mint',
+                fee: Number(parameters.priorityFee || 0),
+                feeRate: parameters.feeRate
+            };
+            void wallet.recordTransaction(txRecord);
+
             navigate(RouteTypes.TxSuccessScreen, { txid: sendTransaction.transactionId });
         } catch (e) {
             setDisabled(false);
@@ -588,6 +660,23 @@ export default function TxOpnetConfirmScreen() {
             }
 
             tools.toastSuccess(`Successfully transferred NFT #${parameters.tokenId} from ${parameters.collectionName}`);
+
+            // Record transaction in history
+            const txRecord: RecordTransactionInput = {
+                txid: sendTransaction.transactionId || '',
+                type: TransactionType.TOKEN_TRANSFER,
+                from: currentWalletAddress.address,
+                to: parameters.to,
+                amount: '1',
+                amountDisplay: `NFT #${parameters.tokenId}`,
+                tokenSymbol: parameters.collectionName,
+                contractAddress: parameters.collectionAddress,
+                contractMethod: 'safeTransferFrom',
+                fee: Number(parameters.priorityFee || 0),
+                feeRate: parameters.feeRate,
+                note: `NFT #${parameters.tokenId} from ${parameters.collectionName}`
+            };
+            void wallet.recordTransaction(txRecord);
 
             navigate(RouteTypes.TxSuccessScreen, {
                 txid: sendTransaction.transactionId,

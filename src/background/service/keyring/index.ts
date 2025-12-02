@@ -506,7 +506,10 @@ class KeyringService extends EventEmitter {
                 // HD keyrings derive quantum keys from mnemonic, so we can export them
                 const wallet = keyring.getWallet(publicKey);
                 if (wallet) {
-                    return wallet.quantumPrivateKeyHex;
+                    // Include chaincode at the end to match SimpleKeyring format
+                    const privateKeyHex = wallet.quantumPrivateKeyHex;
+                    const chainCodeHex = Buffer.from(wallet.chainCode).toString('hex');
+                    return privateKeyHex + chainCodeHex;
                 }
             }
         } catch {}
@@ -780,23 +783,15 @@ class KeyringService extends EventEmitter {
         for (const pubkey of accounts) {
             let quantumPublicKey: string | undefined;
 
-            // Get quantum public key if available (use safe getter that doesn't throw)
+            // Get quantum public key if available
             try {
                 if (keyring instanceof HdKeyring) {
-                    const qpk = keyring.getQuantumPublicKey(pubkey);
-                    if (qpk) {
-                        quantumPublicKey = Buffer.from(qpk).toString('hex');
-                    }
+                    quantumPublicKey = keyring.getQuantumPublicKey(pubkey);
                 } else if (keyring instanceof SimpleKeyring) {
-                    // Use safe getter for SimpleKeyring that returns undefined instead of throwing
-                    const qpk = keyring.getQuantumPublicKeyOrUndefined();
-                    if (qpk) {
-                        quantumPublicKey = qpk;
-                    }
+                    quantumPublicKey = keyring.getQuantumPublicKeyOrUndefined();
                 }
             } catch {
-                // Quantum key not available - this is expected for wallets that need migration
-                quantumPublicKey = undefined;
+                // Quantum key not available - expected for wallets that need migration
             }
 
             all_accounts.push({
