@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { BitcoinUtils } from 'opnet';
 
 import { Column, Content, Header, Layout, OPNetLoader } from '@/ui/components';
 import { useNavigate, RouteTypes } from '@/ui/pages/MainRoute';
@@ -64,26 +65,42 @@ function getTypeIcon(type: TransactionType) {
 }
 
 function getTypeLabel(tx: TransactionHistoryItem): string {
-    const formatAmount = (amount: string | undefined, symbol: string | undefined, decimals?: number) => {
+    const formatBtcAmount = (amount: string | undefined): string => {
         if (!amount) return '';
-        // Format the display amount if available, otherwise use raw amount
-        const displayAmount = tx.amountDisplay || amount;
-        return ` ${displayAmount} ${symbol || 'BTC'}`;
+        // If amountDisplay is already set, use it (it already includes formatting)
+        if (tx.amountDisplay) {
+            return ` ${tx.amountDisplay}`;
+        }
+        // Otherwise format the raw satoshi amount
+        const formatted = BitcoinUtils.formatUnits(BigInt(amount), 8);
+        return ` ${formatted} BTC`;
+    };
+
+    const formatTokenAmount = (amount: string | undefined, symbol: string | undefined, decimals?: number): string => {
+        if (!amount) return '';
+        // If amountDisplay is already set, use it
+        if (tx.amountDisplay) {
+            return ` ${tx.amountDisplay}`;
+        }
+        // Otherwise format with token decimals
+        const dec = decimals ?? tx.tokenDecimals ?? 8;
+        const formatted = BitcoinUtils.formatUnits(BigInt(amount), dec);
+        return ` ${formatted} ${symbol || ''}`;
     };
 
     switch (tx.type) {
         case TransactionType.BTC_TRANSFER:
-            return `Sent${formatAmount(tx.amount, 'BTC')}`;
+            return `Sent${formatBtcAmount(tx.amount)}`;
         case TransactionType.BTC_RECEIVE:
-            return `Received${formatAmount(tx.amount, 'BTC')}`;
+            return `Received${formatBtcAmount(tx.amount)}`;
         case TransactionType.OPNET_INTERACTION:
             return tx.contractMethod ? `${tx.contractMethod}` : 'Contract Interaction';
         case TransactionType.CONTRACT_DEPLOYMENT:
             return 'Contract Deployment';
         case TransactionType.TOKEN_TRANSFER:
-            return `Sent${formatAmount(tx.amount, tx.tokenSymbol)}`;
+            return `Sent${formatTokenAmount(tx.amount, tx.tokenSymbol, tx.tokenDecimals)}`;
         case TransactionType.TOKEN_RECEIVE:
-            return `Received${formatAmount(tx.amount, tx.tokenSymbol)}`;
+            return `Received${formatTokenAmount(tx.amount, tx.tokenSymbol, tx.tokenDecimals)}`;
         case TransactionType.CANCEL_TRANSACTION:
             return 'Cancelled Transaction';
         default:
