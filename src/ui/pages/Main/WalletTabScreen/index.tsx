@@ -11,6 +11,7 @@ import { NavTabBar } from '@/ui/components/NavTabBar';
 import { UpgradePopover } from '@/ui/components/UpgradePopover';
 import { BalanceDisplay } from '@/ui/pages/Main/WalletTabScreen/components/BalanceDisplay';
 import {
+    useAccountAddress,
     useAccountBalance,
     useAccountPublicKey,
     useAddressSummary,
@@ -80,6 +81,7 @@ export default function WalletTabScreen() {
     const navigate = useNavigate();
 
     const untweakedPublicKey = useAccountPublicKey();
+    const bitcoinAddress = useAccountAddress();
 
     const [address, setAddress] = useState<Address | null>(null);
 
@@ -563,13 +565,13 @@ export default function WalletTabScreen() {
                                     noBreakStyle={$noBreakStyle}
                                 />
 
-                                {/* Metadata: CSV Badge and Public Key */}
+                                {/* Metadata: CSV Badge, MLDSA Key, and Bitcoin Address */}
                                 {!showBalanceDetails && (
                                     <div
                                         style={{
                                             display: 'flex',
+                                            flexDirection: 'column',
                                             alignItems: 'center',
-                                            justifyContent: 'center',
                                             gap: '6px',
                                             marginTop: '4px'
                                         }}>
@@ -589,15 +591,84 @@ export default function WalletTabScreen() {
                                             </span>
                                         )}
 
-                                        {/* Public Key Display */}
+                                        {/* MLDSA Key and Bitcoin Address Row */}
                                         <div
                                             style={{
                                                 display: 'flex',
                                                 alignItems: 'center',
-                                                justifyContent: 'space-between',
-                                                gap: '12px'
+                                                justifyContent: 'center',
+                                                gap: '8px',
+                                                flexWrap: 'wrap'
                                             }}>
-                                            <Tooltip title="Click to copy public key" placement="top">
+                                            {/* MLDSA Key Display - only show if wallet is migrated */}
+                                            {untweakedPublicKey.mldsa && (
+                                                <Tooltip title="Click to copy MLDSA public key hash" placement="top">
+                                                    <button
+                                                        style={{
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            gap: '4px',
+                                                            padding: '3px 8px',
+                                                            background: 'rgba(139, 92, 246, 0.1)',
+                                                            border: '1px solid rgba(139, 92, 246, 0.3)',
+                                                            borderRadius: '6px',
+                                                            cursor: 'pointer',
+                                                            transition: 'all 0.15s',
+                                                            maxWidth: '130px'
+                                                        }}
+                                                        onClick={async (e) => {
+                                                            e.stopPropagation();
+                                                            await copyToClipboard(tweakedPublicKey);
+                                                            tools.toastSuccess('MLDSA key copied');
+                                                        }}
+                                                        onMouseEnter={(e) => {
+                                                            e.currentTarget.style.background = 'rgba(139, 92, 246, 0.2)';
+                                                            e.currentTarget.style.borderColor = 'rgba(139, 92, 246, 0.5)';
+                                                        }}
+                                                        onMouseLeave={(e) => {
+                                                            e.currentTarget.style.background = 'rgba(139, 92, 246, 0.1)';
+                                                            e.currentTarget.style.borderColor = 'rgba(139, 92, 246, 0.3)';
+                                                        }}>
+                                                        <span
+                                                            style={{
+                                                                fontSize: '9px',
+                                                                color: '#8B5CF6',
+                                                                fontWeight: 600
+                                                            }}>
+                                                            MLDSA
+                                                        </span>
+                                                        <span
+                                                            style={{
+                                                                fontSize: '10px',
+                                                                color: '#8B5CF6',
+                                                                fontFamily: 'monospace',
+                                                                overflow: 'hidden',
+                                                                textOverflow: 'ellipsis',
+                                                                whiteSpace: 'nowrap'
+                                                            }}>
+                                                            {tweakedPublicKey.slice(0, 6)}...{tweakedPublicKey.slice(-4)}
+                                                        </span>
+                                                        <svg
+                                                            width="10"
+                                                            height="10"
+                                                            viewBox="0 0 24 24"
+                                                            fill="none"
+                                                            xmlns="http://www.w3.org/2000/svg"
+                                                            style={{ flexShrink: 0 }}>
+                                                            <path
+                                                                d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2M12 11v6M9 14h6M15 4H9a1 1 0 0 0-1 1v2a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V5a1 1 0 0 0-1-1z"
+                                                                stroke="#8B5CF6"
+                                                                strokeWidth="2"
+                                                                strokeLinecap="round"
+                                                                strokeLinejoin="round"
+                                                            />
+                                                        </svg>
+                                                    </button>
+                                                </Tooltip>
+                                            )}
+
+                                            {/* Bitcoin Address Display */}
+                                            <Tooltip title="Click to copy Bitcoin address" placement="top">
                                                 <button
                                                     style={{
                                                         display: 'flex',
@@ -609,12 +680,12 @@ export default function WalletTabScreen() {
                                                         borderRadius: '6px',
                                                         cursor: 'pointer',
                                                         transition: 'all 0.15s',
-                                                        maxWidth: '120px'
+                                                        maxWidth: '130px'
                                                     }}
                                                     onClick={async (e) => {
                                                         e.stopPropagation();
-                                                        await copyToClipboard(publicKey);
-                                                        tools.toastSuccess('Copied');
+                                                        await copyToClipboard(bitcoinAddress);
+                                                        tools.toastSuccess('Address copied');
                                                     }}
                                                     onMouseEnter={(e) => {
                                                         e.currentTarget.style.background = 'rgba(243, 116, 19, 0.2)';
@@ -626,6 +697,14 @@ export default function WalletTabScreen() {
                                                     }}>
                                                     <span
                                                         style={{
+                                                            fontSize: '9px',
+                                                            color: colors.main,
+                                                            fontWeight: 600
+                                                        }}>
+                                                        BTC
+                                                    </span>
+                                                    <span
+                                                        style={{
                                                             fontSize: '10px',
                                                             color: colors.main,
                                                             fontFamily: 'monospace',
@@ -633,9 +712,8 @@ export default function WalletTabScreen() {
                                                             textOverflow: 'ellipsis',
                                                             whiteSpace: 'nowrap'
                                                         }}>
-                                                        {publicKey.slice(0, 6)}...{publicKey.slice(-4)}
+                                                        {bitcoinAddress.slice(0, 6)}...{bitcoinAddress.slice(-4)}
                                                     </span>
-
                                                     <svg
                                                         width="10"
                                                         height="10"
