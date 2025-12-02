@@ -11,6 +11,7 @@ import { Image } from './Image';
 import { Input } from './Input';
 import { Layout } from './Layout';
 import { Logo } from './Logo';
+import { OPNetLoader } from './OPNetLoader';
 import { Row } from './Row';
 import { Select } from './Select';
 import { Text } from './Text';
@@ -30,6 +31,7 @@ export {
     Input,
     Layout,
     Logo,
+    OPNetLoader,
     Row,
     Select,
     Text,

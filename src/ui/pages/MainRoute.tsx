@@ -2,9 +2,8 @@ import { ReactElement, useCallback, useEffect, useMemo, useRef } from 'react';
 import { HashRouter, Route, Routes, useNavigate as useNavigateOrigin } from 'react-router-dom';
 
 import TxCreateScreen from '@/ui/pages/Wallet/TxCreateScreen';
-import { LoadingOutlined } from '@ant-design/icons';
 
-import { Content, Icon } from '../components';
+import { Content, OPNetLoader } from '../components';
 import { accountActions } from '../state/accounts/reducer';
 import { useIsReady, useIsUnlocked } from '../state/global/hooks';
 import { globalActions } from '../state/global/reducer';
@@ -390,12 +389,11 @@ const Main = () => {
                     width: '100vw',
                     height: '100vh',
                     overflowY: 'auto',
-                    overflowX: 'hidden'
+                    overflowX: 'hidden',
+                    backgroundColor: '#212121'
                 }}>
                 <Content justifyCenter itemsCenter>
-                    <Icon>
-                        <LoadingOutlined />
-                    </Icon>
+                    <OPNetLoader size={140} text="Loading" />
                 </Content>
             </div>
         );
