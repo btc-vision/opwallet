@@ -1141,7 +1141,8 @@ export class WalletController {
                 compiledTargetScript: params.compiledTargetScript,
                 optionalOutputs: params.optionalOutputs || [],
                 optionalInputs: optionalInputs,
-                note: params.note
+                note: params.note,
+                linkMLDSAPublicKeyToAddress: true
             };
 
             return await Web3API.transactionFactory.createCancellableTransaction(cancelParameters);
@@ -1244,7 +1245,8 @@ export class WalletController {
                     : undefined,
                 optionalOutputs: params.optionalOutputs || [],
                 optionalInputs: optionalInputs,
-                note: params.note
+                note: params.note,
+                linkMLDSAPublicKeyToAddress: true
             };
 
             return await Web3API.transactionFactory.signDeployment(deployContractParameters);
@@ -2754,7 +2756,8 @@ export class WalletController {
             optionalInputs,
             optionalOutputs,
             contract: interactionParameters.contract,
-            note: interactionParameters.note
+            note: interactionParameters.note,
+            linkMLDSAPublicKeyToAddress: true
         };
 
         const response = await Web3API.transactionFactory.signInteraction(submit);
