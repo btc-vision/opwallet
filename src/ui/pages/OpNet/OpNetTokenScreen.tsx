@@ -6,20 +6,12 @@ import { OPTokenInfo } from '@/shared/types';
 import { addressShortner } from '@/shared/utils';
 import Web3API from '@/shared/web3/Web3API';
 import { ContractInformation } from '@/shared/web3/interfaces/ContractInformation';
-import { Column, Content, Header, Layout, Text } from '@/ui/components';
+import { Column, Content, Header, Layout, OPNetLoader, Text } from '@/ui/components';
 import { useTools } from '@/ui/components/ActionComponent';
 import { useCurrentAccount } from '@/ui/state/accounts/hooks';
 import { useBTCUnit } from '@/ui/state/settings/hooks';
 import { copyToClipboard, useLocationState, useWallet } from '@/ui/utils';
-import {
-    CheckOutlined,
-    CopyOutlined,
-    DeleteOutlined,
-    EditOutlined,
-    LoadingOutlined,
-    SendOutlined,
-    SwapOutlined
-} from '@ant-design/icons';
+import { CheckOutlined, CopyOutlined, DeleteOutlined, EditOutlined, SendOutlined, SwapOutlined } from '@ant-design/icons';
 import { Address, AddressMap } from '@btc-vision/transaction';
 
 import { RouteTypes, useNavigate } from '../MainRoute';
@@ -172,8 +164,7 @@ export default function OpNetTokenScreen() {
             <Layout>
                 <Content itemsCenter justifyCenter>
                     <Column itemsCenter justifyCenter style={{ minHeight: 250 }}>
-                        <LoadingOutlined style={{ fontSize: 24, color: colors.main }} />
-                        <Text text="Loading..." color="textDim" size="sm" style={{ marginTop: 8 }} />
+                        <OPNetLoader size={80} text="Loading" />
                     </Column>
                 </Content>
             </Layout>

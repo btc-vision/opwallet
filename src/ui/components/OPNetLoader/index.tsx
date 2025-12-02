@@ -12,7 +12,6 @@ export interface OPNetLoaderProps {
 const OPNET_ORANGE = '#ee771b';
 
 export function OPNetLoader({ size = 120, text }: OPNetLoaderProps) {
-    const scale = size / 120;
     const ringSize = size * 1.5;
     const logoWidth = size;
     const logoHeight = size * 0.68;
@@ -22,7 +21,7 @@ export function OPNetLoader({ size = 120, text }: OPNetLoaderProps) {
         flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
-        gap: `${16 * scale}px`,
+        gap: '16px',
         fontFamily: typography.primary.regular
     };
 
@@ -36,13 +35,12 @@ export function OPNetLoader({ size = 120, text }: OPNetLoaderProps) {
     };
 
     const textStyle: CSSProperties = {
-        color: 'rgba(255, 255, 255, 0.8)',
-        fontSize: `${11 * scale}px`,
-        letterSpacing: `${1.5 * scale}px`,
-        textTransform: 'uppercase',
+        color: 'rgba(255, 255, 255, 0.85)',
+        fontSize: '14px',
+        fontFamily: typography.primary.regular,
         display: 'flex',
         alignItems: 'center',
-        gap: `${2 * scale}px`
+        gap: '2px'
     };
 
     return (

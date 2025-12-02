@@ -3,7 +3,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ADDRESS_TYPES } from '@/shared/constant';
 import { AddressAssets, AddressTypes } from '@/shared/types';
 import Web3API, { getBitcoinLibJSNetwork } from '@/shared/web3/Web3API';
-import { Column, Content, Header, Layout, Text } from '@/ui/components';
+import { Column, Content, Header, Layout, OPNetLoader, Text } from '@/ui/components';
 import { useTools } from '@/ui/components/ActionComponent';
 import { AddressTypeCard } from '@/ui/components/AddressTypeCard';
 import { satoshisToAmount, useWallet } from '@/ui/utils';
@@ -12,7 +12,6 @@ import {
     ImportOutlined,
     InfoCircleOutlined,
     KeyOutlined,
-    LoadingOutlined,
     PlusCircleOutlined,
     SafetyOutlined,
     WalletOutlined
@@ -437,8 +436,7 @@ function Step2({
     if (loading) {
         return (
             <Column itemsCenter justifyCenter style={{ minHeight: 300 }}>
-                <LoadingOutlined style={{ fontSize: 24, color: colors.main }} />
-                <Text text="Loading addresses..." color="textDim" size="sm" style={{ marginTop: 12 }} />
+                <OPNetLoader size={60} text="Loading addresses" />
             </Column>
         );
     }
@@ -779,8 +777,7 @@ function Step3({
     if (loading) {
         return (
             <Column itemsCenter justifyCenter style={{ minHeight: 300 }}>
-                <LoadingOutlined style={{ fontSize: 24, color: colors.main }} />
-                <Text text="Checking on-chain key status..." color="textDim" size="sm" style={{ marginTop: 12 }} />
+                <OPNetLoader size={60} text="Checking key status" />
             </Column>
         );
     }

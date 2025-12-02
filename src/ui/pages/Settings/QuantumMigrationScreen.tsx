@@ -1,15 +1,9 @@
 import { useEffect, useState } from 'react';
-import {
-    CheckCircleOutlined,
-    InfoCircleOutlined,
-    LinkOutlined,
-    LoadingOutlined,
-    WarningOutlined
-} from '@ant-design/icons';
+import { CheckCircleOutlined, InfoCircleOutlined, LinkOutlined, WarningOutlined } from '@ant-design/icons';
 
 import { KEYRING_TYPE } from '@/shared/constant';
 import Web3API from '@/shared/web3/Web3API';
-import { Button, Card, Column, Content, Footer, Header, Input, Layout, Row, Text } from '@/ui/components';
+import { Button, Card, Column, Content, Footer, Header, Input, Layout, OPNetLoader, Row, Text } from '@/ui/components';
 import { useTools } from '@/ui/components/ActionComponent';
 import { useAccountPublicKey } from '@/ui/state/accounts/hooks';
 import { copyToClipboard, useWallet } from '@/ui/utils';
@@ -193,8 +187,7 @@ export default function QuantumMigrationScreen() {
             <Layout>
                 <Header title="Post-Quantum Migration" onBack={() => window.history.go(-1)} />
                 <Content itemsCenter justifyCenter>
-                    <LoadingOutlined style={{ fontSize: 32, color: colors.main }} />
-                    <Text text="Checking quantum key status..." mt="md" />
+                    <OPNetLoader size={60} text="Checking status" />
                 </Content>
             </Layout>
         );

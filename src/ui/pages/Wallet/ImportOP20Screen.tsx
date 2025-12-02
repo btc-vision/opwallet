@@ -1,12 +1,12 @@
 import Web3API from '@/shared/web3/Web3API';
-import { Column, Content, Header, Input, Layout } from '@/ui/components';
+import { Column, Content, Header, Input, Layout, OPNetLoader } from '@/ui/components';
 import { useTools } from '@/ui/components/ActionComponent';
 import { Image } from '@/ui/components/Image';
 import { fontSizes } from '@/ui/theme/font';
 import { RouteTypes, useNavigate } from '@/ui/pages/MainRoute';
 import { useCurrentAccount } from '@/ui/state/accounts/hooks';
 import { useChainType } from '@/ui/state/settings/hooks';
-import { DollarOutlined, LoadingOutlined } from '@ant-design/icons';
+import { DollarOutlined } from '@ant-design/icons';
 import { Address, AddressTypes, AddressVerificator } from '@btc-vision/transaction';
 import { useEffect, useState } from 'react';
 
@@ -325,10 +325,7 @@ export default function ImportTokenScreen() {
                                 textAlign: 'center',
                                 padding: '20px'
                             }}>
-                            <LoadingOutlined style={{ fontSize: 24, color: colors.main }} />
-                            <div style={{ marginTop: '8px', color: colors.textFaded, fontSize: '12px' }}>
-                                Fetching token information...
-                            </div>
+                            <OPNetLoader size={50} text="Fetching token" />
                         </div>
                     )}
 

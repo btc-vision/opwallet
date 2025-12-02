@@ -1,11 +1,11 @@
 import Web3API from '@/shared/web3/Web3API';
-import { Column, Content, Header, Input, Layout } from '@/ui/components';
+import { Column, Content, Header, Input, Layout, OPNetLoader } from '@/ui/components';
 import { AsyncImage } from '@/ui/components/AsyncImage';
 import { useTools } from '@/ui/components/ActionComponent';
 import { RouteTypes, useNavigate } from '@/ui/pages/MainRoute';
 import { useCurrentAccount } from '@/ui/state/accounts/hooks';
 import { useChainType } from '@/ui/state/settings/hooks';
-import { LoadingOutlined, PictureOutlined } from '@ant-design/icons';
+import { PictureOutlined } from '@ant-design/icons';
 import { AddressTypes, AddressVerificator } from '@btc-vision/transaction';
 import { useEffect, useState } from 'react';
 
@@ -188,10 +188,7 @@ export default function ImportNFTScreen() {
                                 textAlign: 'center',
                                 padding: '20px'
                             }}>
-                            <LoadingOutlined style={{ fontSize: 24, color: colors.main }} />
-                            <div style={{ marginTop: '8px', color: colors.textFaded, fontSize: '12px' }}>
-                                Fetching collection information...
-                            </div>
+                            <OPNetLoader size={50} text="Fetching collection" />
                         </div>
                     )}
 

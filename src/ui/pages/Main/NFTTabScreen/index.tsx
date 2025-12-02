@@ -1,7 +1,7 @@
 import { NFTMetadata } from '@/shared/interfaces/RawTxParameters';
 import ImageService from '@/shared/services/ImageService';
 import Web3API, { OwnedNFT } from '@/shared/web3/Web3API';
-import { Column, Content, Footer, Header, Layout, Row } from '@/ui/components';
+import { Column, Content, Footer, Header, Layout, OPNetLoader, Row } from '@/ui/components';
 import { AsyncImage } from '@/ui/components/AsyncImage';
 import { CopyableAddress } from '@/ui/components/CopyableAddress';
 import { NavTabBar } from '@/ui/components/NavTabBar';
@@ -344,10 +344,7 @@ export default function NFTTabScreen() {
             <Content style={{ padding: '0' }}>
                 {loadingNFTs ? (
                     <div style={{ textAlign: 'center', padding: '40px' }}>
-                        <LoadingOutlined style={{ fontSize: 32, color: colors.main }} />
-                        <div style={{ marginTop: '12px', color: colors.textFaded, fontSize: '12px' }}>
-                            Loading your NFTs...
-                        </div>
+                        <OPNetLoader size={60} text="Loading NFTs" />
                     </div>
                 ) : (
                     <>

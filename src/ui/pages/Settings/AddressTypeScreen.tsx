@@ -1,19 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
 
 import { AddressAssets, AddressTypes } from '@/shared/types';
-import { Column, Content, Header, Layout, Text } from '@/ui/components';
+import { Column, Content, Header, Layout, OPNetLoader, Text } from '@/ui/components';
 import { useTools } from '@/ui/components/ActionComponent';
 import { useCurrentAccount, useReloadAccounts } from '@/ui/state/accounts/hooks';
 import { useCurrentKeyring } from '@/ui/state/keyrings/hooks';
 import { copyToClipboard, satoshisToAmount, useWallet } from '@/ui/utils';
-import {
-    CheckCircleFilled,
-    CheckOutlined,
-    CopyOutlined,
-    InfoCircleOutlined,
-    LoadingOutlined,
-    WalletOutlined
-} from '@ant-design/icons';
+import { CheckCircleFilled, CheckOutlined, CopyOutlined, InfoCircleOutlined, WalletOutlined } from '@ant-design/icons';
 
 import { getBitcoinLibJSNetwork } from '@/shared/web3/Web3API';
 import { useBTCUnit } from '@/ui/state/settings/hooks';
@@ -446,10 +439,7 @@ export default function AddressTypeScreen() {
                         justifyContent: 'center',
                         minHeight: '300px'
                     }}>
-                    <Column itemsCenter>
-                        <LoadingOutlined style={{ fontSize: 24, color: colors.main }} />
-                        <Text text="Loading addresses..." color="textDim" style={{ marginTop: 12 }} />
-                    </Column>
+                    <OPNetLoader size={70} text="Loading addresses" />
                 </Content>
             </Layout>
         );
@@ -583,16 +573,13 @@ export default function AddressTypeScreen() {
                             left: 0,
                             right: 0,
                             bottom: 0,
-                            background: 'rgba(0, 0, 0, 0.8)',
+                            background: 'rgba(0, 0, 0, 0.85)',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
                             zIndex: 1000
                         }}>
-                        <Column itemsCenter>
-                            <LoadingOutlined style={{ fontSize: 24, color: colors.main }} />
-                            <Text text="Switching address type..." color="text" style={{ marginTop: 12 }} />
-                        </Column>
+                        <OPNetLoader size={70} text="Switching address" />
                     </div>
                 )}
             </Content>

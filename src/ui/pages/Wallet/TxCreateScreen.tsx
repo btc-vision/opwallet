@@ -5,7 +5,7 @@ import { useLocation } from 'react-router-dom';
 import { COIN_DUST } from '@/shared/constant';
 import { Action, Features, SendBitcoinParameters, SourceType } from '@/shared/interfaces/RawTxParameters';
 import Web3API from '@/shared/web3/Web3API';
-import { Column, Content, Header, Input, Layout } from '@/ui/components';
+import { Column, Content, Header, Input, Layout, OPNetLoader } from '@/ui/components';
 import { FeeRateBar } from '@/ui/components/FeeRateBar';
 import { BalanceDisplay } from '@/ui/pages/Main/WalletTabScreen/components/BalanceDisplay';
 import { RouteTypes, useNavigate } from '@/ui/pages/MainRoute';
@@ -653,17 +653,9 @@ export default function TxCreateScreen() {
                             <div
                                 style={{
                                     textAlign: 'center',
-                                    padding: '60px 20px'
+                                    padding: '40px 20px'
                                 }}>
-                                <LoadingOutlined style={{ fontSize: 32, color: colors.main }} />
-                                <div
-                                    style={{
-                                        fontSize: '14px',
-                                        color: colors.textFaded,
-                                        marginTop: '16px'
-                                    }}>
-                                    Loading balances...
-                                </div>
+                                <OPNetLoader size={60} text="Loading balances" />
                             </div>
                         ) : (
                             <div

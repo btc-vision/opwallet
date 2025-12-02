@@ -1,4 +1,4 @@
-import { CloseOutlined, LoadingOutlined } from '@ant-design/icons';
+import { CloseOutlined } from '@ant-design/icons';
 import { Modal } from 'antd';
 import BigNumber from 'bignumber.js';
 import { useCallback, useEffect, useState } from 'react';
@@ -10,7 +10,7 @@ import { getContract, IOP20Contract, OP_20_ABI } from 'opnet';
 import { OPTokenInfo } from '@/shared/types';
 import { Address, AddressTypes, AddressVerificator } from '@btc-vision/transaction';
 
-import { Column, Text } from '@/ui/components';
+import { Column, OPNetLoader, Text } from '@/ui/components';
 import { useTools } from '@/ui/components/ActionComponent';
 import OpNetBalanceCard from '@/ui/components/OpNetBalanceCard';
 import { useCurrentAccount } from '@/ui/state/accounts/hooks';
@@ -440,8 +440,7 @@ export function OPNetList() {
     if (isInitializing) {
         return (
             <Column style={{ minHeight: 150 }} itemsCenter justifyCenter>
-                <LoadingOutlined style={{ fontSize: 24, color: colors.main }} />
-                <Text text="Loading tokens..." color="textDim" size="sm" style={{ marginTop: 8 }} />
+                <OPNetLoader size={60} text="Loading tokens" />
             </Column>
         );
     }
@@ -507,8 +506,7 @@ export function OPNetList() {
                 <div>
                     {currentPageBalances.length === 0 && currentPageAddresses.length > 0 ? (
                         <Column style={{ padding: 30 }} itemsCenter justifyCenter>
-                            <LoadingOutlined style={{ fontSize: 20, color: colors.main }} />
-                            <Text text="Loading balances..." color="textDim" size="sm" style={{ marginTop: 8 }} />
+                            <OPNetLoader size={50} text="Loading balances" />
                         </Column>
                     ) : (
                         <>
