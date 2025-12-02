@@ -6,12 +6,21 @@ import { OPTokenInfo } from '@/shared/types';
 import { addressShortner } from '@/shared/utils';
 import Web3API from '@/shared/web3/Web3API';
 import { ContractInformation } from '@/shared/web3/interfaces/ContractInformation';
-import { Column, Content, Header, Layout, OPNetLoader, Text } from '@/ui/components';
+import { Content, Header, Layout, OPNetLoader } from '@/ui/components';
 import { useTools } from '@/ui/components/ActionComponent';
 import { useCurrentAccount } from '@/ui/state/accounts/hooks';
 import { useBTCUnit } from '@/ui/state/settings/hooks';
 import { copyToClipboard, useLocationState, useWallet } from '@/ui/utils';
-import { CheckOutlined, CopyOutlined, DeleteOutlined, EditOutlined, SendOutlined, SwapOutlined } from '@ant-design/icons';
+import {
+    CheckOutlined,
+    CopyOutlined,
+    DeleteOutlined,
+    ExportOutlined,
+    InfoCircleOutlined,
+    SendOutlined,
+    SwapOutlined,
+    ToolOutlined
+} from '@ant-design/icons';
 import { Address, AddressMap } from '@btc-vision/transaction';
 
 import { RouteTypes, useNavigate } from '../MainRoute';
@@ -23,16 +32,16 @@ interface LocationState {
 const colors = {
     main: '#f37413',
     background: '#212121',
-    text: '#dbdbdb',
-    textFaded: 'rgba(219, 219, 219, 0.7)',
-    buttonBg: '#434343',
-    buttonHoverBg: 'rgba(85, 85, 85, 0.3)',
-    containerBg: '#434343',
-    containerBgFaded: '#292929',
-    containerBorder: '#303030',
+    text: '#ffffff',
+    textSecondary: '#dbdbdb',
+    textFaded: 'rgba(255, 255, 255, 0.5)',
+    cardBg: '#2a2a2a',
+    buttonPrimary: '#f37413',
+    buttonSecondary: '#3a3a3a',
+    border: 'rgba(255, 255, 255, 0.08)',
     success: '#4ade80',
     error: '#ef4444',
-    warning: '#fbbf24'
+    warning: '#f59e0b'
 };
 
 export default function OpNetTokenScreen() {
@@ -54,6 +63,7 @@ export default function OpNetTokenScreen() {
 
     const [loading, setLoading] = useState(true);
     const [isOwner, setIsOwner] = useState(false);
+    const [isPegged, setIsPegged] = useState(false);
     const [copied, setCopied] = useState(false);
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
@@ -108,6 +118,16 @@ export default function OpNetTokenScreen() {
                         setIsOwner(true);
                     } catch {}
                 }
+
+                // Check if OP-20S (pegged asset) by calling pegUpdatedAt()
+                try {
+                    const calldata = contract.encodeCalldata('pegUpdatedAt', []);
+                    const result = await Web3API.provider.call(params.address, calldata);
+                    // If we get a result without error, it's an OP-20S token
+                    setIsPegged(result && !('error' in result));
+                } catch {
+                    setIsPegged(false);
+                }
             } catch (error) {
                 console.error('Error loading token:', error);
                 tools.toastError('Failed to load token information');
@@ -125,12 +145,40 @@ export default function OpNetTokenScreen() {
 
     const formattedBalance = useMemo(() => {
         if (!tokenSummary.amount) return '0';
-        const value = new BigNumber(BitcoinUtils.formatUnits(tokenSummary.amount, tokenSummary.divisibility)).toFixed(
-            Math.min(tokenSummary.divisibility, 6)
-        );
-        return Number(value).toLocaleString('en-US', {
+        const value = new BigNumber(BitcoinUtils.formatUnits(tokenSummary.amount, tokenSummary.divisibility));
+
+        const Q = new BigNumber('1000000000000000'); // 10^15
+        const T = new BigNumber('1000000000000'); // 10^12
+        const B = new BigNumber('1000000000'); // 10^9
+        const M = new BigNumber('1000000'); // 10^6
+        const K = new BigNumber('100000'); // 10^5
+
+        // Large numbers: use K/M/B/T/Q suffixes
+        if (value.gte(Q)) {
+            return value.div(Q).toFixed(2) + 'Q';
+        } else if (value.gte(T)) {
+            return value.div(T).toFixed(2) + 'T';
+        } else if (value.gte(B)) {
+            return value.div(B).toFixed(2) + 'B';
+        } else if (value.gte(M)) {
+            return value.div(M).toFixed(2) + 'M';
+        } else if (value.gte(K)) {
+            return value.div(new BigNumber('1000')).toFixed(1) + 'K';
+        }
+
+        // Small numbers: show significant decimals
+        if (value.gt(0) && value.lt(0.0001)) {
+            // Very small - show up to 8 decimals, trim trailing zeros
+            return value.toFixed(Math.min(tokenSummary.divisibility, 8)).replace(/\.?0+$/, '');
+        } else if (value.gt(0) && value.lt(1)) {
+            // Small - show up to 6 decimals
+            return value.toFixed(Math.min(tokenSummary.divisibility, 6)).replace(/\.?0+$/, '');
+        }
+
+        // Normal numbers
+        return value.toNumber().toLocaleString('en-US', {
             minimumFractionDigits: 0,
-            maximumFractionDigits: Math.min(tokenSummary.divisibility, 6)
+            maximumFractionDigits: Math.min(tokenSummary.divisibility, 4)
         });
     }, [tokenSummary]);
 
@@ -138,7 +186,7 @@ export default function OpNetTokenScreen() {
         await copyToClipboard(data);
         setCopied(true);
         setTimeout(() => setCopied(false), 2000);
-        tools.toastSuccess('Copied!');
+        tools.toastSuccess('Copied');
     };
 
     const deleteToken = useCallback(async () => {
@@ -155,17 +203,19 @@ export default function OpNetTokenScreen() {
             localStorage.setItem(storageKey, JSON.stringify(updatedTokens));
         }
 
-        tools.toastSuccess('Token removed successfully');
+        tools.toastSuccess('Token removed');
         window.history.go(-1);
     }, [account.pubkey, tokenSummary.address, tools, wallet]);
+
+    const openExplorer = () => {
+        window.open(`https://opscan.org/address/${tokenSummary.address}`, '_blank', 'noopener noreferrer');
+    };
 
     if (loading) {
         return (
             <Layout>
-                <Content itemsCenter justifyCenter>
-                    <Column itemsCenter justifyCenter style={{ minHeight: 250 }}>
-                        <OPNetLoader size={80} text="Loading" />
-                    </Column>
+                <Content itemsCenter justifyCenter style={{ backgroundColor: colors.background }}>
+                    <OPNetLoader size={80} text="Loading token" />
                 </Content>
             </Layout>
         );
@@ -173,279 +223,252 @@ export default function OpNetTokenScreen() {
 
     return (
         <Layout>
-            <Header
-                onBack={() => window.history.go(-1)}
-                title={tokenSummary.symbol}
-                RightComponent={
+            <Header onBack={() => window.history.go(-1)} title={tokenSummary.symbol} />
+
+            <Content style={{ padding: '16px', backgroundColor: colors.background, display: 'flex', flexDirection: 'column', minHeight: '100%' }}>
+                {/* Balance Card */}
+                <div
+                    style={{
+                        background: colors.cardBg,
+                        borderRadius: 12,
+                        padding: '20px 16px',
+                        marginBottom: 12,
+                        textAlign: 'center'
+                    }}>
+                    <div style={{ fontSize: 11, color: colors.textFaded, marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                        Balance
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'center', gap: 8 }}>
+                        <span style={{ fontSize: 32, fontWeight: 700, color: colors.text }}>
+                            {formattedBalance}
+                        </span>
+                        <span style={{ fontSize: 16, fontWeight: 500, color: colors.main }}>
+                            {tokenSummary.symbol}
+                        </span>
+                    </div>
+                </div>
+
+                {/* Token Info Card */}
+                <div
+                    style={{
+                        background: colors.cardBg,
+                        borderRadius: 12,
+                        padding: '14px',
+                        marginBottom: 16
+                    }}>
+                    {/* Token row: Logo + Name + Badge */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
+                        {/* Logo */}
+                        <div
+                            style={{
+                                width: 40,
+                                height: 40,
+                                borderRadius: 10,
+                                overflow: 'hidden',
+                                flexShrink: 0
+                            }}>
+                            {tokenSummary.logo ? (
+                                <img
+                                    src={tokenSummary.logo}
+                                    alt={tokenSummary.symbol}
+                                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                                />
+                            ) : (
+                                <div
+                                    style={{
+                                        width: '100%',
+                                        height: '100%',
+                                        background: `linear-gradient(135deg, ${colors.main} 0%, #d45a00 100%)`,
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center'
+                                    }}>
+                                    <span style={{ fontSize: 16, fontWeight: 700, color: '#fff' }}>
+                                        {tokenSummary.symbol?.charAt(0) || '?'}
+                                    </span>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Name + Symbol */}
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
+                                <span
+                                    style={{
+                                        fontSize: 15,
+                                        fontWeight: 600,
+                                        color: colors.text,
+                                        overflow: 'hidden',
+                                        textOverflow: 'ellipsis',
+                                        whiteSpace: 'nowrap'
+                                    }}>
+                                    {tokenSummary.name || tokenSummary.symbol}
+                                </span>
+                                {isOwner && (
+                                    <span
+                                        style={{
+                                            fontSize: 9,
+                                            fontWeight: 600,
+                                            color: colors.warning,
+                                            background: 'rgba(245, 158, 11, 0.15)',
+                                            padding: '2px 5px',
+                                            borderRadius: 4,
+                                            flexShrink: 0
+                                        }}>
+                                        OWNER
+                                    </span>
+                                )}
+                            </div>
+                            <div style={{ fontSize: 12, color: colors.textFaded }}>{tokenSummary.symbol}</div>
+                        </div>
+
+                        {/* Token Standard Badge */}
+                        <div
+                            style={{
+                                fontSize: 10,
+                                fontWeight: 500,
+                                color: isPegged ? colors.success : colors.main,
+                                background: isPegged ? 'rgba(74, 222, 128, 0.1)' : 'rgba(243, 116, 19, 0.1)',
+                                padding: '4px 8px',
+                                borderRadius: 5,
+                                flexShrink: 0
+                            }}>
+                            {isPegged ? 'OP-20S' : 'OP-20'}
+                        </div>
+                    </div>
+
+                    {/* Contract Address */}
+                    <div
+                        style={{
+                            background: 'rgba(255, 255, 255, 0.03)',
+                            borderRadius: 8,
+                            padding: '10px 12px',
+                            cursor: 'pointer'
+                        }}
+                        onClick={() => copy(tokenSummary.address)}>
+                        <div style={{ fontSize: 10, color: colors.textFaded, marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                            Contract Address
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                            <span style={{ fontSize: 12, color: colors.textSecondary, fontFamily: 'monospace' }}>
+                                {addressShortner(tokenSummary.address)}
+                            </span>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                {copied ? (
+                                    <CheckOutlined style={{ fontSize: 13, color: colors.success }} />
+                                ) : (
+                                    <CopyOutlined style={{ fontSize: 13, color: colors.textFaded }} />
+                                )}
+                                <ExportOutlined
+                                    style={{ fontSize: 13, color: colors.textFaded }}
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        openExplorer();
+                                    }}
+                                />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Actions Section */}
+                <div style={{ marginBottom: 16 }}>
+                    <div
+                        style={{
+                            fontSize: 11,
+                            color: colors.textFaded,
+                            textTransform: 'uppercase',
+                            letterSpacing: 0.5,
+                            marginBottom: 10
+                        }}>
+                        Actions
+                    </div>
+                    <div style={{ display: 'flex', gap: 10 }}>
                     <button
                         style={{
-                            background: 'transparent',
+                            flex: 1,
+                            padding: '14px',
+                            background: enableTransfer ? colors.buttonPrimary : colors.buttonSecondary,
                             border: 'none',
-                            cursor: 'pointer',
-                            padding: '6px',
+                            borderRadius: 10,
+                            cursor: enableTransfer ? 'pointer' : 'not-allowed',
+                            opacity: enableTransfer ? 1 : 0.5,
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
-                            borderRadius: '6px'
-                        }}
-                        onClick={() => setShowDeleteConfirm(true)}>
-                        <DeleteOutlined style={{ fontSize: 16, color: colors.textFaded }} />
-                    </button>
-                }
-            />
-
-            <Content style={{ padding: '12px' }}>
-                {/* Compact Token Info Card */}
-                <div
-                    style={{
-                        background: colors.buttonHoverBg,
-                        borderRadius: '14px',
-                        padding: '16px',
-                        marginBottom: '12px',
-                        textAlign: 'center'
-                    }}>
-                    {/* Token Logo */}
-                    {tokenSummary.logo ? (
-                        <img
-                            src={tokenSummary.logo}
-                            alt={tokenSummary.symbol}
-                            style={{
-                                width: 48,
-                                height: 48,
-                                borderRadius: '12px',
-                                marginBottom: '12px'
-                            }}
-                        />
-                    ) : (
-                        <div
-                            style={{
-                                width: 48,
-                                height: 48,
-                                borderRadius: '12px',
-                                background: `linear-gradient(135deg, ${colors.main} 0%, ${colors.main}80 100%)`,
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                margin: '0 auto 12px'
-                            }}>
-                            <span style={{ fontSize: 18, fontWeight: 'bold', color: colors.background }}>
-                                {tokenSummary.symbol?.charAt(0) || '?'}
-                            </span>
-                        </div>
-                    )}
-
-                    {/* Balance */}
-                    <div
-                        style={{
-                            fontSize: '24px',
-                            fontWeight: '700',
-                            color: colors.text,
-                            marginBottom: '2px'
-                        }}>
-                        {formattedBalance}
-                    </div>
-
-                    <div
-                        style={{
-                            fontSize: '14px',
-                            fontWeight: '600',
-                            color: colors.main,
-                            marginBottom: '8px'
-                        }}>
-                        {tokenSummary.symbol}
-                    </div>
-
-                    {/* Token Name */}
-                    <div
-                        style={{
-                            fontSize: '12px',
-                            color: colors.textFaded,
-                            marginBottom: '12px'
-                        }}>
-                        {tokenSummary.name}
-                    </div>
-
-                    {/* Address with Copy */}
-                    <button
-                        style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: '6px',
-                            padding: '6px 10px',
-                            background: colors.containerBgFaded,
-                            border: 'none',
-                            borderRadius: '8px',
-                            cursor: 'pointer',
-                            transition: 'all 0.2s'
-                        }}
-                        onClick={() => copy(tokenSummary.address)}>
-                        <span
-                            style={{
-                                fontSize: '11px',
-                                color: colors.textFaded,
-                                fontFamily: 'monospace'
-                            }}>
-                            {addressShortner(tokenSummary.address)}
-                        </span>
-                        {copied ? (
-                            <CheckOutlined style={{ fontSize: 11, color: colors.success }} />
-                        ) : (
-                            <CopyOutlined style={{ fontSize: 11, color: colors.textFaded }} />
-                        )}
-                    </button>
-
-                    {/* Owner Badge */}
-                    {isOwner && (
-                        <div
-                            style={{
-                                marginLeft: '4px',
-                                marginTop: '8px',
-                                padding: '3px 8px',
-                                background: `${colors.warning}20`,
-                                border: `1px solid ${colors.warning}40`,
-                                borderRadius: '12px',
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: '4px'
-                            }}>
-                            <span style={{ fontSize: '10px', color: colors.warning, fontWeight: 600 }}>OWNER</span>
-                        </div>
-                    )}
-                </div>
-
-                {/* Action Buttons */}
-                <div
-                    style={{
-                        display: 'grid',
-                        gridTemplateColumns: '1fr 1fr',
-                        gap: '8px',
-                        marginBottom: '12px'
-                    }}>
-                    <button
-                        style={{
-                            padding: '12px',
-                            background: enableTransfer ? colors.main : colors.buttonHoverBg,
-                            border: 'none',
-                            borderRadius: '10px',
-                            cursor: enableTransfer ? 'pointer' : 'not-allowed',
-                            transition: 'all 0.2s',
-                            display: 'flex',
-                            flexDirection: 'column',
-                            alignItems: 'center',
-                            gap: '4px',
-                            opacity: enableTransfer ? 1 : 0.5
+                            gap: 8
                         }}
                         disabled={!enableTransfer}
                         onClick={() => navigate(RouteTypes.SendOpNetScreen, tokenSummary)}>
-                        <SendOutlined
-                            style={{
-                                fontSize: 18,
-                                color: enableTransfer ? colors.background : colors.textFaded
-                            }}
-                        />
-                        <span
-                            style={{
-                                fontSize: '12px',
-                                fontWeight: 600,
-                                color: enableTransfer ? colors.background : colors.textFaded
-                            }}>
-                            Send
-                        </span>
+                        <SendOutlined style={{ fontSize: 15, color: '#fff' }} />
+                        <span style={{ fontSize: 14, fontWeight: 600, color: '#fff' }}>Send</span>
                     </button>
 
                     <button
                         style={{
-                            padding: '12px',
-                            background: colors.main,
-                            border: 'none',
-                            borderRadius: '10px',
+                            flex: 1,
+                            padding: '14px',
+                            background: colors.buttonSecondary,
+                            border: `1px solid ${colors.border}`,
+                            borderRadius: 10,
                             cursor: 'pointer',
-                            transition: 'all 0.2s',
-                            display: 'flex',
-                            flexDirection: 'column',
-                            alignItems: 'center',
-                            gap: '4px'
-                        }}
-                        onClick={() => {
-                            window.open('https://motoswap.org', '_blank', 'noopener noreferrer');
-                        }}>
-                        <SwapOutlined style={{ fontSize: 18, color: colors.background }} />
-                        <span
-                            style={{
-                                fontSize: '12px',
-                                fontWeight: 600,
-                                color: colors.background
-                            }}>
-                            Swap
-                        </span>
-                    </button>
-                </div>
-
-                {/* Mint Button for Owner */}
-                {isOwner && (
-                    <button
-                        style={{
-                            width: '100%',
-                            padding: '10px',
-                            background: colors.buttonBg,
-                            border: `1px solid ${colors.warning}40`,
-                            borderRadius: '10px',
-                            cursor: 'pointer',
-                            transition: 'all 0.2s',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
-                            gap: '6px',
-                            marginBottom: '12px'
+                            gap: 8
                         }}
-                        onClick={() => navigate(RouteTypes.Mint, tokenSummary)}>
-                        <EditOutlined style={{ fontSize: 16, color: colors.warning }} />
-                        <span
-                            style={{
-                                fontSize: '13px',
-                                fontWeight: 600,
-                                color: colors.warning
-                            }}>
-                            Mint Tokens
-                        </span>
+                        onClick={() => window.open('https://motoswap.org', '_blank', 'noopener noreferrer')}>
+                        <SwapOutlined style={{ fontSize: 15, color: colors.textSecondary }} />
+                        <span style={{ fontSize: 14, fontWeight: 600, color: colors.textSecondary }}>Swap</span>
                     </button>
-                )}
 
-                {/* Compact Token Info */}
-                <div
-                    style={{
-                        background: colors.containerBgFaded,
-                        borderRadius: '10px',
-                        padding: '12px'
-                    }}>
-                    <div
-                        style={{
-                            fontSize: '11px',
-                            fontWeight: 600,
-                            color: colors.textFaded,
-                            marginBottom: '8px',
-                            textTransform: 'uppercase',
-                            letterSpacing: '0.5px'
-                        }}>
-                        Details
-                    </div>
-
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                            <span style={{ fontSize: '12px', color: colors.textFaded }}>Decimals</span>
-                            <span style={{ fontSize: '12px', color: colors.text, fontWeight: 500 }}>
-                                {tokenSummary.divisibility}
-                            </span>
-                        </div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                            <span style={{ fontSize: '12px', color: colors.textFaded }}>Type</span>
-                            <span style={{ fontSize: '12px', color: colors.text, fontWeight: 500 }}>OP_20</span>
-                        </div>
+                    {isOwner && (
+                        <button
+                            style={{
+                                flex: 1,
+                                padding: '14px',
+                                background: 'rgba(245, 158, 11, 0.1)',
+                                border: `1px solid rgba(245, 158, 11, 0.3)`,
+                                borderRadius: 10,
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: 8
+                            }}
+                            onClick={() => navigate(RouteTypes.Mint, tokenSummary)}>
+                            <ToolOutlined style={{ fontSize: 15, color: colors.warning }} />
+                            <span style={{ fontSize: 14, fontWeight: 600, color: colors.warning }}>Mint</span>
+                        </button>
+                    )}
                     </div>
                 </div>
+
+                {/* Spacer to push remove button to bottom */}
+                <div style={{ flex: 1 }} />
+
+                {/* Remove Token */}
+                <button
+                    style={{
+                        width: '100%',
+                        padding: '12px',
+                        background: 'transparent',
+                        border: `1px solid rgba(239, 68, 68, 0.25)`,
+                        borderRadius: 10,
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: 6,
+                        marginTop: 'auto'
+                    }}
+                    onClick={() => setShowDeleteConfirm(true)}>
+                    <DeleteOutlined style={{ fontSize: 13, color: colors.error }} />
+                    <span style={{ fontSize: 13, color: colors.error }}>Remove Token</span>
+                </button>
             </Content>
 
-            {/* Delete Confirmation Modal */}
+            {/* Delete Modal */}
             {showDeleteConfirm && (
                 <div
                     style={{
@@ -454,50 +477,60 @@ export default function OpNetTokenScreen() {
                         left: 0,
                         right: 0,
                         bottom: 0,
-                        background: 'rgba(0, 0, 0, 0.8)',
+                        background: 'rgba(0, 0, 0, 0.85)',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
                         zIndex: 1000,
-                        padding: '16px'
+                        padding: 20
                     }}>
                     <div
                         style={{
-                            background: colors.containerBg,
-                            borderRadius: '12px',
-                            padding: '20px',
+                            background: colors.cardBg,
+                            borderRadius: 14,
+                            padding: 20,
                             width: '100%',
-                            maxWidth: '320px',
-                            border: `1px solid ${colors.containerBorder}`
+                            maxWidth: 300
                         }}>
                         <div
                             style={{
-                                fontSize: '16px',
-                                fontWeight: 600,
-                                color: colors.text,
-                                marginBottom: '8px'
+                                width: 40,
+                                height: 40,
+                                borderRadius: '50%',
+                                background: 'rgba(239, 68, 68, 0.1)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                margin: '0 auto 14px'
                             }}>
+                            <InfoCircleOutlined style={{ fontSize: 20, color: colors.error }} />
+                        </div>
+
+                        <div
+                            style={{ fontSize: 16, fontWeight: 600, color: colors.text, textAlign: 'center', marginBottom: 6 }}>
                             Remove Token?
                         </div>
                         <div
                             style={{
-                                fontSize: '13px',
+                                fontSize: 13,
                                 color: colors.textFaded,
-                                marginBottom: '16px',
-                                lineHeight: '1.4'
+                                textAlign: 'center',
+                                marginBottom: 20,
+                                lineHeight: 1.4
                             }}>
-                            Remove {tokenSummary.symbol} from your wallet? You can re-import it anytime.
+                            {tokenSummary.symbol} will be removed from your wallet.
                         </div>
-                        <div style={{ display: 'flex', gap: '8px' }}>
+
+                        <div style={{ display: 'flex', gap: 10 }}>
                             <button
                                 style={{
                                     flex: 1,
-                                    padding: '8px',
-                                    background: colors.buttonHoverBg,
-                                    border: `1px solid ${colors.containerBorder}`,
-                                    borderRadius: '8px',
-                                    color: colors.text,
-                                    fontSize: '13px',
+                                    padding: '11px',
+                                    background: colors.buttonSecondary,
+                                    border: 'none',
+                                    borderRadius: 8,
+                                    color: colors.textSecondary,
+                                    fontSize: 13,
                                     fontWeight: 600,
                                     cursor: 'pointer'
                                 }}
@@ -507,12 +540,12 @@ export default function OpNetTokenScreen() {
                             <button
                                 style={{
                                     flex: 1,
-                                    padding: '8px',
+                                    padding: '11px',
                                     background: colors.error,
                                     border: 'none',
-                                    borderRadius: '8px',
+                                    borderRadius: 8,
                                     color: '#fff',
-                                    fontSize: '13px',
+                                    fontSize: 13,
                                     fontWeight: 600,
                                     cursor: 'pointer'
                                 }}
