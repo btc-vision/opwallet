@@ -649,9 +649,12 @@ class KeyringService extends EventEmitter {
 
     /**
      * Restore keyring with migration support for legacy storage
+     * @param serialized - The serialized keyring data from vault
+     * @param networkOverride - Optional network to use instead of stored network (for network switching)
      */
     _restoreKeyring = (
-        serialized: SavedVault
+        serialized: SavedVault,
+        networkOverride?: Network
     ): {
         keyring: Keyring | EmptyKeyring;
         addressType: AddressTypes;
@@ -684,10 +687,13 @@ class KeyringService extends EventEmitter {
                 network?: Network;
             };
 
+            // Use network override if provided, otherwise use stored network
+            const network = networkOverride || hdData.network || legacyData.network;
+
             const keyring = new HdKeyring({
                 mnemonic: hdData.mnemonic || legacyData.mnemonic,
                 passphrase: hdData.passphrase || legacyData.passphrase,
-                network: hdData.network || legacyData.network,
+                network,
                 securityLevel: hdData.securityLevel || MLDSASecurityLevel.LEVEL2,
                 activeIndexes: hdData.activeIndexes || legacyData.activeIndexes,
                 addressType: hdData.addressType || addressType
@@ -715,10 +721,13 @@ class KeyringService extends EventEmitter {
                 throw new Error('No private key found in serialized data');
             }
 
+            // Use network override if provided, otherwise use stored network
+            const network = networkOverride || simpleData.network || legacyData.network;
+
             const keyring = new SimpleKeyring({
                 privateKey,
                 quantumPrivateKey: simpleData.quantumPrivateKey,
-                network: simpleData.network || legacyData.network,
+                network,
                 securityLevel: simpleData.securityLevel || MLDSASecurityLevel.LEVEL2
             });
 
@@ -981,6 +990,49 @@ class KeyringService extends EventEmitter {
     getKeyringType = (publicKey: string): string => {
         const keyring = this.getKeyringForAccount(publicKey);
         return keyring.type;
+    };
+
+    /**
+     * Update all keyrings to use a new network.
+     * This recreates all keyrings with the new network parameter while preserving their data.
+     * Must be called when the user switches networks to ensure keypairs are derived correctly.
+     * @param network - The new bitcoin network to use
+     */
+    updateKeyringsNetwork = async (network: Network): Promise<void> => {
+        if (!this.password) {
+            // Not unlocked - keyrings will be created with correct network on unlock
+            return;
+        }
+
+        // Serialize current keyrings to get their data
+        // Note: serialize() returns SDK types which are compatible but have readonly arrays
+        const serializedKeyrings = this.keyrings.map((keyring, index) => {
+            const serializedData = keyring.serialize();
+            return {
+                type: keyring.type,
+                data: serializedData as KeyringOptions,
+                addressType: this.addressTypes[index]
+            } as SavedVault;
+        });
+
+        // Clear current keyrings
+        this.clearKeyrings();
+
+        // Restore keyrings with the new network
+        for (const serialized of serializedKeyrings) {
+            try {
+                const { keyring, addressType } = this._restoreKeyring(serialized, network);
+                this.keyrings.push(keyring);
+                this.addressTypes.push(addressType);
+            } catch (e) {
+                console.error('Failed to restore keyring with new network:', e);
+            }
+        }
+
+        // Persist updated keyrings with new network
+        await this.persistAllKeyrings();
+        this._updateMemStoreKeyrings();
+        this.fullUpdate();
     };
 
     private generateMnemonic = (): string => {

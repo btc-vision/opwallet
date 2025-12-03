@@ -621,7 +621,7 @@ export class WalletController {
     ): Promise<void> => {
         if (!quantumPrivateKey) throw new Error('You must provide a quantum private key to import a private key.');
 
-        const network = getBitcoinLibJSNetwork(this.getNetworkType());
+        const network = getBitcoinLibJSNetwork(this.getNetworkType(), this.getChainType());
 
         // Check if this private key is already imported by deriving the public key first
         let keypair: ReturnType<typeof EcKeyPair.fromWIF> | ReturnType<typeof EcKeyPair.fromPrivateKey>;
@@ -702,12 +702,14 @@ export class WalletController {
         accountCount: number
     ): Promise<void> => {
         try {
+            const network = getBitcoinLibJSNetwork(this.getNetworkType(), this.getChainType());
             const originKeyring = await keyringService.createKeyringWithMnemonics(
                 mnemonic,
                 hdPath,
                 passphrase,
                 addressType,
-                accountCount
+                accountCount,
+                network
             );
             keyringService.removePreMnemonics();
 
@@ -745,13 +747,13 @@ export class WalletController {
             activeIndexes.push(i);
         }
 
-        const network = this.getNetworkType();
+        const network = getBitcoinLibJSNetwork(this.getNetworkType(), this.getChainType());
         const originKeyring = keyringService.createTmpKeyring('HD Key Tree', {
             mnemonic,
             activeIndexes,
             passphrase,
             addressType,
-            network: getBitcoinLibJSNetwork(network)
+            network
         });
 
         const displayedKeyring = keyringService.displayForKeyring(originKeyring, addressType, -1);
@@ -766,11 +768,11 @@ export class WalletController {
         addressType: AddressTypes,
         quantumPrivateKey?: string
     ): Promise<WalletKeyring> => {
-        const network = this.getNetworkType();
+        const network = getBitcoinLibJSNetwork(this.getNetworkType(), this.getChainType());
         const originKeyring = keyringService.createTmpKeyring(KEYRING_TYPE.SimpleKeyring, {
             privateKey,
             quantumPrivateKey,
-            network: getBitcoinLibJSNetwork(network)
+            network
         });
 
         const displayedKeyring = keyringService.displayForKeyring(originKeyring, addressType, -1);
@@ -1610,6 +1612,10 @@ export class WalletController {
             if (!chain) {
                 throw new WalletControllerError(`Chain ${chainType} not found in CHAINS_MAP`);
             }
+
+            // Update keyrings with the new network to ensure correct key derivation
+            const bitcoinNetwork = getBitcoinLibJSNetwork(chain.networkType, chainType);
+            await keyringService.updateKeyringsNetwork(bitcoinNetwork);
 
             await this.openapi.setEndpoints(chain.endpoints);
 
