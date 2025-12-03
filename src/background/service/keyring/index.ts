@@ -8,8 +8,8 @@ import { KEYRING_TYPE } from '@/shared/constant';
 import { AddressTypes, isLegacyAddressType, legacyToAddressTypes, storageToAddressTypes } from '@/shared/types';
 import { Network, networks, Psbt } from '@btc-vision/bitcoin';
 import * as encryptor from '@btc-vision/passworder';
+import { MLDSASecurityLevel, QuantumBIP32Interface } from '@btc-vision/transaction';
 import { HdKeyring, SimpleKeyring } from '@btc-vision/wallet-sdk';
-import { MLDSASecurityLevel } from '@btc-vision/transaction';
 import { ObservableStore } from '@metamask/obs-store';
 
 import i18n from '../i18n';
@@ -591,6 +591,20 @@ class KeyringService extends EventEmitter {
         return undefined;
     };
 
+    /**
+     * Get quantum keypair for an account
+     */
+    getQuantumKeypair = (publicKey: string): QuantumBIP32Interface | undefined => {
+        const keyring = this.getKeyringForAccount(publicKey);
+        if (keyring instanceof HdKeyring) {
+            const wallet = keyring.getWallet(publicKey);
+            return wallet.mldsaKeypair;
+        } else if (keyring instanceof SimpleKeyring) {
+            return keyring.getQuantumKeypair();
+        }
+        return undefined;
+    };
+
     persistAllKeyrings = async (): Promise<boolean> => {
         if (!this.password || typeof this.password !== 'string') {
             return Promise.reject(new Error('KeyringController - password is not a string'));
@@ -787,7 +801,11 @@ class KeyringService extends EventEmitter {
         index: number
     ): DisplayedKeyring => {
         const accounts = keyring.getAccounts();
-        const all_accounts: { pubkey: string; brandName: string; quantumPublicKey?: string }[] = [];
+        const all_accounts: {
+            pubkey: string;
+            brandName: string;
+            quantumPublicKey?: string;
+        }[] = [];
 
         for (const pubkey of accounts) {
             let quantumPublicKey: string | undefined;
@@ -825,7 +843,12 @@ class KeyringService extends EventEmitter {
 
     getAllVisibleAccountsArray = () => {
         const typedAccounts = this.getAllDisplayedKeyrings();
-        const result: { pubkey: string; type: string; brandName: string; quantumPublicKey?: string }[] = [];
+        const result: {
+            pubkey: string;
+            type: string;
+            brandName: string;
+            quantumPublicKey?: string;
+        }[] = [];
         typedAccounts.forEach((accountGroup) => {
             result.push(
                 ...accountGroup.accounts.map((account) => ({
@@ -842,7 +865,12 @@ class KeyringService extends EventEmitter {
 
     getAllPubkeys = () => {
         const keyrings = this.getAllDisplayedKeyrings();
-        const result: { pubkey: string; type: string; brandName: string; quantumPublicKey?: string }[] = [];
+        const result: {
+            pubkey: string;
+            type: string;
+            brandName: string;
+            quantumPublicKey?: string;
+        }[] = [];
         keyrings.forEach((accountGroup) => {
             result.push(
                 ...accountGroup.accounts.map((account) => ({

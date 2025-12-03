@@ -58,4 +58,26 @@ export class Web3Provider {
     public async broadcast(transactions: BroadcastTransactionOptions[]): Promise<BroadcastedTransaction[]> {
         return this.provider.broadcast(transactions);
     }
+
+    public async getMLDSAPublicKey(): Promise<string> {
+        return this.provider.getMLDSAPublicKey();
+    }
+
+    public async signMLDSAMessage(message: string): Promise<{
+        signature: string;
+        message: string;
+        publicKey: string;
+        securityLevel: number;
+    }> {
+        return this.provider.signMLDSAMessage(message);
+    }
+
+    public async verifyMLDSASignature(
+        message: string,
+        signature: string,
+        publicKey: string,
+        securityLevel: number
+    ): Promise<boolean> {
+        return this.provider.verifyMLDSASignature(message, signature, publicKey, securityLevel);
+    }
 }
