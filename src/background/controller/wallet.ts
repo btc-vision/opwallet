@@ -69,6 +69,7 @@ import {
     InteractionResponse,
     MessageSigner,
     MLDSASecurityLevel,
+    QuantumBIP32Factory,
     RawChallenge,
     UTXO as TransactionUTXO,
     Wallet
@@ -80,6 +81,7 @@ import {
     toNetwork
 } from '@btc-vision/wallet-sdk';
 
+import { RecordTransactionInput, TransactionOrigin, TransactionType } from '@/shared/types/TransactionHistory';
 import { customNetworksManager } from '@/shared/utils/CustomNetworksManager';
 import {
     address as bitcoinAddress,
@@ -95,11 +97,6 @@ import { Buffer } from 'buffer';
 import { ContactBookItem, ContactBookStore } from '../service/contactBook';
 import { OpenApiService } from '../service/openapi';
 import { ConnectedSite } from '../service/permission';
-import {
-    RecordTransactionInput,
-    TransactionOrigin,
-    TransactionType
-} from '@/shared/types/TransactionHistory';
 
 export interface BalanceCacheEntry {
     balance: BitcoinBalance;
@@ -240,7 +237,9 @@ export class WalletController {
             // Start transaction status polling
             transactionStatusPoller.start();
         } catch (err) {
-            throw new WalletControllerError(`Unlock failed: ${String(err)}`, { passwordProvided: !!password });
+            throw new WalletControllerError(`Unlock failed: ${String(err)}`, {
+                passwordProvided: !!password
+            });
         }
     };
 
@@ -573,13 +572,35 @@ export class WalletController {
     };
 
     /**
+     * Get the MLDSA (quantum) public key for the current account.
+     * @returns The MLDSA public key as a hex string
+     * @throws WalletControllerError if keys cannot be retrieved
+     */
+    public getMLDSAPublicKey = async (): Promise<string> => {
+        const account = await this.getCurrentAccount();
+        if (!account) throw new WalletControllerError('No current account');
+
+        const quantumPublicKey = keyringService.getQuantumPublicKey(account.pubkey);
+        if (!quantumPublicKey)
+            throw new WalletControllerError(
+                'Could not retrieve quantum public key. Quantum migration may be required.'
+            );
+
+        return quantumPublicKey;
+    };
+
+    /**
      * Export a BIP39 mnemonic from a given keyring.
      * @throws WalletControllerError if the keyring lacks a mnemonic
      */
     public getMnemonics = async (
         password: string,
         keyring: WalletKeyring
-    ): Promise<{ mnemonic: string; addressType: AddressTypes; passphrase: string | undefined }> => {
+    ): Promise<{
+        mnemonic: string;
+        addressType: AddressTypes;
+        passphrase: string | undefined;
+    }> => {
         const isValid = await this.verifyPassword(password);
 
         if (!isValid) {
@@ -624,7 +645,7 @@ export class WalletController {
         const network = getBitcoinLibJSNetwork(this.getNetworkType());
 
         // Check if this private key is already imported by deriving the public key first
-        let keypair: ReturnType<typeof EcKeyPair.fromWIF> | ReturnType<typeof EcKeyPair.fromPrivateKey>;
+        let keypair: ReturnType<typeof EcKeyPair.fromWIF>;
         try {
             const cleanData = data.replace('0x', '');
             // Try to parse as WIF first, then as hex private key
@@ -638,7 +659,11 @@ export class WalletController {
         }
 
         const pubkey = keypair.publicKey.toString('hex');
-        const derivedAddress = publicKeyToAddressWithNetworkType(pubkey, addressType, networkTypeToOPNet(this.getNetworkType()));
+        const derivedAddress = publicKeyToAddressWithNetworkType(
+            pubkey,
+            addressType,
+            networkTypeToOPNet(this.getNetworkType())
+        );
 
         // Check if this address already exists in any keyring
         const existingAccounts = await this.getAccounts();
@@ -1015,17 +1040,77 @@ export class WalletController {
 
     /**
      * ECDSA message signing for the current account.
+     * The message is SHA256 hashed before signing.
      * @throws WalletControllerError
      */
     public signMessage = async (message: string | Buffer): Promise<string> => {
         const account = await this.getCurrentAccount();
-        if (!account) {
-            throw new WalletControllerError('No current account');
-        }
-        // Convert message to hex string if Buffer
-        const messageHex =
-            typeof message === 'string' ? Buffer.from(message, 'utf8').toString('hex') : message.toString('hex');
-        return keyringService.signData(account.pubkey, messageHex, 'ecdsa');
+        if (!account) throw new WalletControllerError('No current account');
+
+        // Convert message to Buffer and hash it
+        const messageBuffer = typeof message === 'string' ? Buffer.from(message, 'utf8') : message;
+        const messageHash = MessageSigner.sha256(messageBuffer);
+
+        return keyringService.signData(account.pubkey, messageHash.toString('hex'), 'ecdsa');
+    };
+
+    /**
+     * MLDSA (quantum) message signing using MessageSigner from @btc-vision/transaction.
+     * @param message The message to sign (string or Buffer)
+     * @returns Object containing signature, message, publicKey (all as hex strings), and securityLevel
+     * @throws WalletControllerError
+     */
+    public signMLDSAMessage = async (
+        message: string | Buffer
+    ): Promise<{
+        signature: string;
+        message: string;
+        publicKey: string;
+        securityLevel: MLDSASecurityLevel;
+    }> => {
+        const account = await this.getCurrentAccount();
+        if (!account) throw new WalletControllerError('No current account');
+
+        const mldsaKeypair = keyringService.getQuantumKeypair(account.pubkey);
+        if (!mldsaKeypair)
+            throw new WalletControllerError('Could not retrieve quantum keypair. Quantum migration may be required.');
+
+        const signedMessage = MessageSigner.signMLDSAMessage(mldsaKeypair, message);
+
+        return {
+            signature: Buffer.from(signedMessage.signature).toString('hex'),
+            message: Buffer.from(signedMessage.message).toString('hex'),
+            publicKey: Buffer.from(signedMessage.publicKey).toString('hex'),
+            securityLevel: signedMessage.securityLevel
+        };
+    };
+
+    /**
+     * Verify an MLDSA (quantum) signature using MessageSigner from @btc-vision/transaction.
+     * @param message The original message that was signed
+     * @param signature The signature to verify (hex string)
+     * @param publicKey The MLDSA public key (hex string)
+     * @param securityLevel The MLDSA security level used for signing
+     * @returns true if signature is valid, false otherwise
+     */
+    public verifyMLDSASignature = (
+        message: string | Buffer,
+        signature: string,
+        publicKey: string,
+        securityLevel: MLDSASecurityLevel
+    ): boolean => {
+        const networkType = this.getNetworkType();
+        const network = toNetwork(networkTypeToOPNet(networkType));
+
+        // Create a dummy chain code (32 bytes of zeros) for verification purposes
+        // The chain code is not used for signature verification
+        const chainCode = Buffer.alloc(32);
+        const publicKeyBuffer = Buffer.from(publicKey, 'hex');
+        const signatureBuffer = Buffer.from(signature, 'hex');
+
+        const mldsaKeypair = QuantumBIP32Factory.fromPublicKey(publicKeyBuffer, chainCode, network, securityLevel);
+
+        return MessageSigner.verifyMLDSASignature(mldsaKeypair, message, signatureBuffer);
     };
 
     /**
@@ -2946,7 +3031,9 @@ export class WalletController {
     /**
      * Get transaction history for current account
      */
-    public getTransactionHistory = async (): Promise<import('@/shared/types/TransactionHistory').TransactionHistoryItem[]> => {
+    public getTransactionHistory = async (): Promise<
+        import('@/shared/types/TransactionHistory').TransactionHistoryItem[]
+    > => {
         const account = await this.getCurrentAccount();
         if (!account) {
             return [];

@@ -1,6 +1,6 @@
 import { permissionService, sessionService } from '@/background/service';
 import { CHAINS, CHAINS_MAP, ChainType, NETWORK_TYPES, VERSION } from '@/shared/constant';
-import { TransactionOrigin, TransactionType } from '@/shared/types/TransactionHistory';
+import { TransactionOrigin } from '@/shared/types/TransactionHistory';
 
 import { Session } from '@/background/service/session';
 import { SessionEvent } from '@/shared/interfaces/SessionEvent';
@@ -191,6 +191,45 @@ export class ProviderController {
         const account = await wallet.getCurrentAccount();
         if (!account) return '';
         return account.pubkey;
+    };
+
+    @Reflect.metadata('SAFE', true)
+    getMLDSAPublicKey = async () => {
+        return wallet.getMLDSAPublicKey();
+    };
+
+    @Reflect.metadata('APPROVAL', [
+        ApprovalType.SignText,
+        (req: { data: { params: { message: string; type?: string } } }) => {
+            req.data.params.type = 'mldsa';
+        }
+    ])
+    signMLDSAMessage = async ({
+        data: {
+            params: { message }
+        }
+    }: {
+        data: { params: { message: string } };
+    }) => {
+        return wallet.signMLDSAMessage(message);
+    };
+
+    @Reflect.metadata('SAFE', true)
+    verifyMLDSASignature = ({
+        data: {
+            params: { message, signature, publicKey, securityLevel }
+        }
+    }: {
+        data: {
+            params: {
+                message: string;
+                signature: string;
+                publicKey: string;
+                securityLevel: number;
+            };
+        };
+    }) => {
+        return wallet.verifyMLDSASignature(message, signature, publicKey, securityLevel);
     };
 
     @Reflect.metadata('SAFE', true)

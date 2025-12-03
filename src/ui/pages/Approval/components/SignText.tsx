@@ -8,6 +8,7 @@ import { useApproval } from '@/ui/utils';
 
 import { ParsedSignMsgUr } from '@/shared/types';
 import { SignTextApprovalParams } from '@/shared/types/Approval';
+import { ExperimentOutlined } from '@ant-design/icons';
 import KeystoneSignScreen from '../../Wallet/KeystoneSignScreen';
 
 export interface Props {
@@ -21,6 +22,9 @@ export default function SignText({ params: { data, session } }: Props) {
     const account = useCurrentAccount();
     const [isKeystoneSigning, setIsKeystoneSigning] = useState(false);
     const [step, setStep] = useState<SigningStep>('review');
+
+    const isQuantum = data.type === 'mldsa';
+    const quantumPurple = '#8B5CF6';
 
     const handleCancel = () => {
         rejectApproval();
@@ -65,13 +69,39 @@ export default function SignText({ params: { data, session } }: Props) {
                 </Header>
                 <Column gap="lg" style={{ padding: '0 16px' }}>
                     <Column gap="sm" mt="xl">
-                        <Text text="Sign Message" preset="title-bold" textCenter />
-                        <Text
-                            text={step === 'review' ? 'Review the message below' : 'Confirm your signature'}
-                            preset="sub"
-                            textCenter
-                            style={{ opacity: 0.7 }}
-                        />
+                        {isQuantum ? (
+                            <>
+                                <Row justifyCenter itemsCenter gap="sm">
+                                    <ExperimentOutlined style={{ fontSize: 24, color: quantumPurple }} />
+                                    <Text
+                                        text="Quantum Proof Signature"
+                                        preset="title-bold"
+                                        textCenter
+                                        style={{ color: quantumPurple }}
+                                    />
+                                </Row>
+                                <Text
+                                    text={
+                                        step === 'review'
+                                            ? 'Review the message for quantum-safe signing'
+                                            : 'Confirm your quantum signature'
+                                    }
+                                    preset="sub"
+                                    textCenter
+                                    style={{ opacity: 0.7 }}
+                                />
+                            </>
+                        ) : (
+                            <>
+                                <Text text="Sign Message" preset="title-bold" textCenter />
+                                <Text
+                                    text={step === 'review' ? 'Review the message below' : 'Confirm your signature'}
+                                    preset="sub"
+                                    textCenter
+                                    style={{ opacity: 0.7 }}
+                                />
+                            </>
+                        )}
                     </Column>
 
                     {step === 'review' && (
@@ -79,8 +109,10 @@ export default function SignText({ params: { data, session } }: Props) {
                             <Card
                                 style={{
                                     marginTop: '8px',
-                                    backgroundColor: 'rgba(0, 0, 0, 0.3)',
-                                    border: '1px solid rgba(255, 255, 255, 0.1)'
+                                    backgroundColor: isQuantum ? 'rgba(139, 92, 246, 0.1)' : 'rgba(0, 0, 0, 0.3)',
+                                    border: isQuantum
+                                        ? '1px solid rgba(139, 92, 246, 0.3)'
+                                        : '1px solid rgba(255, 255, 255, 0.1)'
                                 }}>
                                 <Column gap="sm">
                                     <Text
@@ -134,15 +166,25 @@ export default function SignText({ params: { data, session } }: Props) {
                             <Card
                                 style={{
                                     marginTop: '8px',
-                                    backgroundColor: 'rgba(243, 116, 19, 0.1)',
-                                    border: '1px solid rgba(243, 116, 19, 0.3)'
+                                    backgroundColor: isQuantum ? 'rgba(139, 92, 246, 0.1)' : 'rgba(243, 116, 19, 0.1)',
+                                    border: isQuantum
+                                        ? '1px solid rgba(139, 92, 246, 0.3)'
+                                        : '1px solid rgba(243, 116, 19, 0.3)'
                                 }}>
                                 <Column gap="md">
-                                    <Text text="You are about to sign this message with your wallet." textCenter />
+                                    <Text
+                                        text={
+                                            isQuantum
+                                                ? 'You are about to create a quantum-safe signature.'
+                                                : 'You are about to sign this message with your wallet.'
+                                        }
+                                        textCenter
+                                    />
                                     <Text
                                         preset="sub"
                                         textCenter
-                                        color="warning"
+                                        style={{ color: isQuantum ? quantumPurple : undefined }}
+                                        color={isQuantum ? undefined : 'warning'}
                                         text="Only proceed if you trust this site and understand what you are signing."
                                     />
                                 </Column>
@@ -151,13 +193,27 @@ export default function SignText({ params: { data, session } }: Props) {
                             <Card
                                 style={{
                                     padding: '12px 16px',
-                                    backgroundColor: 'rgba(0, 0, 0, 0.2)',
-                                    border: '1px solid rgba(255, 255, 255, 0.1)'
+                                    backgroundColor: isQuantum ? 'rgba(139, 92, 246, 0.15)' : 'rgba(0, 0, 0, 0.2)',
+                                    border: isQuantum
+                                        ? '1px solid rgba(139, 92, 246, 0.4)'
+                                        : '1px solid rgba(255, 255, 255, 0.1)'
                                 }}>
                                 <Column gap="sm">
-                                    <Row justifyBetween>
+                                    <Row justifyBetween itemsCenter>
                                         <Text text="Signature Type" preset="sub" size="sm" style={{ opacity: 0.6 }} />
-                                        <Text text={data.type || 'ecdsa'} preset="bold" size="sm" />
+                                        {isQuantum ? (
+                                            <Row itemsCenter gap="xs">
+                                                <ExperimentOutlined style={{ fontSize: 14, color: quantumPurple }} />
+                                                <Text
+                                                    text="Quantum Proof"
+                                                    preset="bold"
+                                                    size="sm"
+                                                    style={{ color: quantumPurple }}
+                                                />
+                                            </Row>
+                                        ) : (
+                                            <Text text={data.type || 'ecdsa'} preset="bold" size="sm" />
+                                        )}
                                     </Row>
                                 </Column>
                             </Card>
@@ -184,11 +240,17 @@ export default function SignText({ params: { data, session } }: Props) {
                     <Row full gap="md" style={{ padding: '16px' }}>
                         <Button text="Back" full preset="default" onClick={handleBack} style={{ flex: 1 }} />
                         <Button
-                            text="Confirm Signature"
+                            text={isQuantum ? 'Sign Quantum Proof' : 'Confirm Signature'}
                             full
                             preset="primary"
                             onClick={handleConfirm}
-                            style={{ flex: 1 }}
+                            style={{
+                                flex: 1,
+                                ...(isQuantum && {
+                                    backgroundColor: quantumPurple,
+                                    borderColor: quantumPurple
+                                })
+                            }}
                         />
                     </Row>
                 )}

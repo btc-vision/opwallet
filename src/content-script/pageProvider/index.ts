@@ -257,6 +257,50 @@ export class OpnetProvider extends EventEmitter {
         });
     };
 
+    getMLDSAPublicKey = async (): Promise<string> => {
+        return (await this._request({
+            method: 'getMLDSAPublicKey'
+        })) as Promise<string>;
+    };
+
+    signMLDSAMessage = async (
+        message: string
+    ): Promise<{
+        signature: string;
+        message: string;
+        publicKey: string;
+        securityLevel: number;
+    }> => {
+        return (await this._request({
+            method: 'signMLDSAMessage',
+            params: {
+                message
+            }
+        })) as Promise<{
+            signature: string;
+            message: string;
+            publicKey: string;
+            securityLevel: number;
+        }>;
+    };
+
+    verifyMLDSASignature = async (
+        message: string,
+        signature: string,
+        publicKey: string,
+        securityLevel: number
+    ): Promise<boolean> => {
+        return (await this._request({
+            method: 'verifyMLDSASignature',
+            params: {
+                message,
+                signature,
+                publicKey,
+                securityLevel
+            }
+        })) as Promise<boolean>;
+    };
+
     getBalance = async () => {
         return this._request({
             method: 'getBalance'
