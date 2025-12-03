@@ -1,5 +1,5 @@
 import Web3API from '@/shared/web3/Web3API';
-import { useAccountPublicKey } from '@/ui/state/accounts/hooks';
+import { useAccountAddress, useAccountPublicKey } from '@/ui/state/accounts/hooks';
 import { copyToClipboard, shortAddress } from '@/ui/utils';
 import {
     CheckOutlined,
@@ -54,9 +54,13 @@ export function AddressBar({
     p2wda_total_amount: string | undefined;
 }) {
     const tools = useTools();
-    const untweakedPublicKey = useAccountPublicKey();
+    const accountKey = useAccountPublicKey();
+    const bitcoinAddress = useAccountAddress();
 
-    const address = Address.fromString(untweakedPublicKey);
+    // Address.fromString requires (mldsaHashedKey, legacyKey) - mldsa can be undefined if not linked yet
+    const address = accountKey.mldsa
+        ? Address.fromString(accountKey.mldsa, accountKey.pubkey)
+        : Address.fromString(accountKey.pubkey, accountKey.pubkey);
     const tweakedPublicKey = address.toHex();
     const explorerUrl = `https://opscan.org/accounts/${tweakedPublicKey}`;
     const csv75Address = address.toCSV(75, Web3API.network).address;
@@ -90,8 +94,15 @@ export function AddressBar({
 
     const otherAddresses = [
         {
-            label: 'Public Key',
-            value: untweakedPublicKey,
+            label: 'MLDSA Public Key Hash',
+            value: tweakedPublicKey,
+            info: 'SHA256 hash of your ML-DSA quantum-resistant public key. This is your universal OPNet identity.',
+            showBalance: false
+        },
+        {
+            label: 'Classical Public Key',
+            value: accountKey.pubkey,
+            info: 'Your classical Bitcoin public key (for legacy compatibility).',
             showBalance: false
         },
         {
@@ -148,7 +159,7 @@ export function AddressBar({
                     position: 'relative',
                     overflow: 'hidden'
                 }}
-                onClick={() => handleCopy(tweakedPublicKey, true)}
+                onClick={() => handleCopy(bitcoinAddress, true)}
                 onMouseOver={(e) => {
                     e.currentTarget.style.background = colors.buttonBg;
                 }}
@@ -200,7 +211,7 @@ export function AddressBar({
                                     marginBottom: '2px',
                                     fontFamily: 'Inter-Regular, serif'
                                 }}>
-                                Primary Address
+                                Bitcoin Address
                             </div>
                             <div
                                 style={{
@@ -210,7 +221,7 @@ export function AddressBar({
                                     fontFamily: 'monospace',
                                     letterSpacing: '0.3px'
                                 }}>
-                                {shortAddress(tweakedPublicKey, 6)}
+                                {shortAddress(bitcoinAddress, 6)}
                             </div>
                         </div>
                     </div>

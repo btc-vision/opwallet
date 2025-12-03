@@ -1,12 +1,12 @@
 import Web3API from '@/shared/web3/Web3API';
-import { Column, Content, Header, Input, Layout } from '@/ui/components';
+import { Column, Content, Header, Input, Layout, OPNetLoader } from '@/ui/components';
 import { useTools } from '@/ui/components/ActionComponent';
 import { Image } from '@/ui/components/Image';
 import { fontSizes } from '@/ui/theme/font';
 import { RouteTypes, useNavigate } from '@/ui/pages/MainRoute';
 import { useCurrentAccount } from '@/ui/state/accounts/hooks';
 import { useChainType } from '@/ui/state/settings/hooks';
-import { DollarOutlined, LoadingOutlined } from '@ant-design/icons';
+import { DollarOutlined } from '@ant-design/icons';
 import { Address, AddressTypes, AddressVerificator } from '@btc-vision/transaction';
 import { useEffect, useState } from 'react';
 
@@ -49,20 +49,20 @@ export default function ImportTokenScreen() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const [tokenInfo, setTokenInfo] = useState<TokenInfo | null>(null);
-    const [suggestedTokens, setSuggestedTokens] = useState<Array<{address: string, name: string, logo?: string}>>([]);
+    const [suggestedTokens, setSuggestedTokens] = useState<Array<{ address: string; name: string; logo?: string }>>([]);
 
     const storageKey = `opnetTokens_${chainType}_${currentAccount.pubkey}`;
 
     useEffect(() => {
         void (async () => {
             await Web3API.setNetwork(chainType);
-            
+
             // Check which default tokens are not currently stored
             const stored = JSON.parse(localStorage.getItem(storageKey) || '[]') as (StoredToken | string)[];
-            const storedAddresses = stored.map(t => typeof t === 'string' ? t : t.address);
-            
+            const storedAddresses = stored.map((t) => (typeof t === 'string' ? t : t.address));
+
             const suggestions = [];
-            
+
             // Get default token addresses from Web3API
             const moto = Web3API.motoAddressP2OP;
             const pill = Web3API.pillAddressP2OP;
@@ -71,8 +71,8 @@ export default function ImportTokenScreen() {
             if (moto && !storedAddresses.includes(moto)) {
                 try {
                     const info = await Web3API.queryContractInformation(moto);
-                    suggestions.push({ 
-                        address: moto, 
+                    suggestions.push({
+                        address: moto,
                         name: 'Motoswap',
                         logo: info ? info.logo : undefined
                     });
@@ -83,8 +83,8 @@ export default function ImportTokenScreen() {
             if (pill && !storedAddresses.includes(pill)) {
                 try {
                     const info = await Web3API.queryContractInformation(pill);
-                    suggestions.push({ 
-                        address: pill, 
+                    suggestions.push({
+                        address: pill,
                         name: 'Pill',
                         logo: info ? info.logo : undefined
                     });
@@ -92,7 +92,7 @@ export default function ImportTokenScreen() {
                     suggestions.push({ address: pill, name: 'Pill' });
                 }
             }
-            
+
             setSuggestedTokens(suggestions);
         })();
     }, [chainType, storageKey]);
@@ -179,10 +179,10 @@ export default function ImportTokenScreen() {
             // Add as plain string (address only) to match OPNetList format
             stored.push(tokenInfo.address);
             localStorage.setItem(storageKey, JSON.stringify(stored));
-            
+
             // Remove from suggested tokens if it's already imported
-            setSuggestedTokens(prev => prev.filter(t => t.address !== tokenInfo.address));
-            
+            setSuggestedTokens((prev) => prev.filter((t) => t.address !== tokenInfo.address));
+
             tools.toastSuccess('Token imported successfully');
 
             navigate(RouteTypes.MainScreen);
@@ -281,7 +281,9 @@ export default function ImportTokenScreen() {
                                 color: colors.textFaded,
                                 marginBottom: '16px'
                             }}>
-                            {suggestedTokens.length > 0 ? 'Pick a suggested token or enter the OP_20 token contract address to import' : 'Enter the OP_20 token contract address to import'}
+                            {suggestedTokens.length > 0
+                                ? 'Pick a suggested token or enter the OP_20 token contract address to import'
+                                : 'Enter the OP_20 token contract address to import'}
                         </p>
                     </div>
 
@@ -323,10 +325,7 @@ export default function ImportTokenScreen() {
                                 textAlign: 'center',
                                 padding: '20px'
                             }}>
-                            <LoadingOutlined style={{ fontSize: 24, color: colors.main }} />
-                            <div style={{ marginTop: '8px', color: colors.textFaded, fontSize: '12px' }}>
-                                Fetching token information...
-                            </div>
+                            <OPNetLoader size={50} text="Fetching token" />
                         </div>
                     )}
 

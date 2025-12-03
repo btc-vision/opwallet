@@ -15,22 +15,22 @@ import {
     decodeAddLiquidity,
     decodeAirdrop,
     decodeAirdropWithAmount,
-    decodeIncreaseAllowance,
-    decodeDecreaseAllowance,
-    decodeIncreaseAllowanceBySignature,
-    decodeDecreaseAllowanceBySignature,
     decodeBurn,
     decodeCancelListing,
     decodeCreatePool,
     decodeCreatePoolWithSignature,
+    decodeDecreaseAllowance,
+    decodeDecreaseAllowanceBySignature,
+    decodeIncreaseAllowance,
+    decodeIncreaseAllowanceBySignature,
     decodeListLiquidity,
     decodeMint,
     decodeRemoveLiquidity,
     decodeReserve,
-    decodeSetFees,
-    decodeSwap,
     decodeSafeTransfer,
-    decodeSafeTransferFrom
+    decodeSafeTransferFrom,
+    decodeSetFees,
+    decodeSwap
 } from './decodeMethods';
 import { decodeDepositMotoChef } from './motochef/DepositDecodedInfo';
 import { decodeHarvestMotoChef } from './motochef/HarvestDecodedInfo';

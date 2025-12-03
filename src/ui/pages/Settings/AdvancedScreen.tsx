@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 
 import { AddressFlagType, AUTO_LOCKTIMES, DEFAULT_LOCKTIME_ID } from '@/shared/constant';
 import { checkAddressFlag } from '@/shared/utils';
-import { Column, Content, Header, Layout } from '@/ui/components';
+import { Column, Content, Header, Layout, OPNetLoader } from '@/ui/components';
 import { useTools } from '@/ui/components/ActionComponent';
 import { EnableUnconfirmedPopover } from '@/ui/components/EnableUnconfirmedPopover';
 import { Popover } from '@/ui/components/Popover';
@@ -12,13 +12,7 @@ import { useAppDispatch } from '@/ui/state/hooks';
 import { useAutoLockTimeId } from '@/ui/state/settings/hooks';
 import { settingsActions } from '@/ui/state/settings/reducer';
 import { useWallet } from '@/ui/utils';
-import {
-    CheckCircleFilled,
-    ClockCircleOutlined,
-    InfoCircleOutlined,
-    LoadingOutlined,
-    RightOutlined
-} from '@ant-design/icons';
+import { CheckCircleFilled, ClockCircleOutlined, InfoCircleOutlined, LoadingOutlined, RightOutlined } from '@ant-design/icons';
 
 const colors = {
     main: '#f37413',
@@ -67,7 +61,7 @@ export default function AdvancedScreen() {
                         justifyContent: 'center',
                         minHeight: '300px'
                     }}>
-                    <LoadingOutlined style={{ fontSize: 24, color: colors.main }} />
+                    <OPNetLoader size={70} text="Loading" />
                 </Content>
             </Layout>
         );

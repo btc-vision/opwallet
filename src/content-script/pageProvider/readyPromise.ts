@@ -42,11 +42,11 @@ class ReadyPromise {
             if (!task) {
                 continue;
             }
-    
+
             const { resolve, reject, fn } = task;
 
             let errored = false;
-            const response = await fn().catch((error) => {
+            const response = await fn().catch((error: unknown) => {
                 reject(error);
                 errored = true;
             });

@@ -2,7 +2,7 @@ import { Tooltip } from 'antd';
 import React, { useEffect, useMemo, useState } from 'react';
 
 import { KEYRING_TYPE } from '@/shared/constant';
-import { DecodedPsbt, ParsedSignPsbtUr, RawTxInfo, TickPriceItem, ToSignInput, TxType } from '@/shared/types';
+import { DecodedPsbt, ParsedSignPsbtUr, RawTxInfo, ToSignInput, TxType } from '@/shared/types';
 import { SignPsbtApprovalParams } from '@/shared/types/Approval';
 import { isWalletError } from '@/shared/utils/errors';
 import { Button, Card, Column, Content, Footer, Header, Icon, Image, Layout, Row, Text } from '@/ui/components';
@@ -23,11 +23,6 @@ export interface Props {
     params: SignPsbtApprovalParams;
     handleCancel?: () => void;
     handleConfirm?: (rawTxInfo?: RawTxInfo) => void;
-}
-
-interface InscriptioinInfo {
-    id: string;
-    isSent: boolean;
 }
 
 function SignTxDetails({ txInfo, type, rawTxInfo }: { txInfo: TxInfo; rawTxInfo?: RawTxInfo; type: TxType }) {
@@ -192,7 +187,6 @@ function Section({ title, children, extra }: { title: string; children?: React.R
 
 interface TxInfo {
     changedBalance: number;
-    changedInscriptions: InscriptioinInfo[];
     rawtx: string;
     psbtHex: string;
     toSignInputs: ToSignInput[];
@@ -202,7 +196,6 @@ interface TxInfo {
 
 const initTxInfo: TxInfo = {
     changedBalance: 0,
-    changedInscriptions: [],
     rawtx: '',
     psbtHex: '',
     toSignInputs: [],
@@ -222,7 +215,7 @@ const initTxInfo: TxInfo = {
 
 export default function SignPsbt({
     params: {
-        data: { psbtHex, options, type, sendBitcoinParams, sendInscriptionParams, sendRunesParams, rawTxInfo, ...rest },
+        data: { psbtHex, options, type, sendBitcoinParams, rawTxInfo },
         session
     },
     header,
@@ -244,28 +237,6 @@ export default function SignPsbt({
     const currentAccount = useCurrentAccount();
 
     const [isKeystoneSigning, setIsKeystoneSigning] = useState(false);
-
-    const [brc20PriceMap, setBrc20PriceMap] = useState<Record<string, TickPriceItem>>();
-    const [runesPriceMap, setRunesPriceMap] = useState<Record<string, TickPriceItem>>();
-
-    useEffect(() => {
-        if (txInfo?.decodedPsbt?.inputs) {
-            const runesMap: Record<string, boolean> = {};
-            const brc20Map: Record<string, boolean> = {};
-            if (Object.keys(runesMap).length > 0) {
-                wallet
-                    .getRunesPrice(Object.keys(runesMap))
-                    .then(setRunesPriceMap)
-                    .catch((e: unknown) => tools.toastError((e as Error).message));
-            }
-            if (Object.keys(brc20Map).length > 0) {
-                wallet
-                    .getBrc20sPrice(Object.keys(brc20Map))
-                    .then(setBrc20PriceMap)
-                    .catch((e: unknown) => tools.toastError((e as Error).message));
-            }
-        }
-    }, [txInfo]);
     const init = async () => {
         let txError = '';
         if (type === TxType.SIGN_TX) {
@@ -314,7 +285,6 @@ export default function SignPsbt({
         setTxInfo({
             decodedPsbt,
             changedBalance: 0,
-            changedInscriptions: [],
             psbtHex,
             rawtx: '',
             toSignInputs,
@@ -358,7 +328,7 @@ export default function SignPsbt({
 
     const detailsComponent = useMemo(() => {
         return <SignTxDetails txInfo={txInfo} rawTxInfo={rawTxInfo} type={type} />;
-    }, [txInfo, brc20PriceMap, runesPriceMap]);
+    }, [txInfo, rawTxInfo, type]);
 
     const isValidData = useMemo(() => {
         if (txInfo.psbtHex === '') {

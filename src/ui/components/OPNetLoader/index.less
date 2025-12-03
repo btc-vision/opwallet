@@ -1,0 +1,54 @@
+/* OPNet Loader Animations */
+
+/* Ring spin animation */
+@keyframes opnet-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* Logo pulse animation */
+@keyframes opnet-pulse {
+    0%, 100% {
+        opacity: 0.85;
+        filter: drop-shadow(0 0 4px rgba(238, 119, 27, 0.3));
+    }
+    50% {
+        opacity: 1;
+        filter: drop-shadow(0 0 16px rgba(238, 119, 27, 0.5));
+    }
+}
+
+/* Dot pulse animation for loading text */
+@keyframes opnet-dot-pulse {
+    0%, 20% {
+        opacity: 0;
+    }
+    40%, 100% {
+        opacity: 1;
+    }
+}
+
+/* Apply animations to elements */
+.opnet-ring-spin {
+    animation: opnet-spin 2s linear infinite;
+}
+
+.opnet-logo-pulse {
+    animation: opnet-pulse 2s ease-in-out infinite;
+}
+
+.opnet-dot-1 {
+    animation: opnet-dot-pulse 1.4s infinite;
+    animation-delay: 0s;
+}
+
+.opnet-dot-2 {
+    animation: opnet-dot-pulse 1.4s infinite;
+    animation-delay: 0.2s;
+}
+
+.opnet-dot-3 {
+    animation: opnet-dot-pulse 1.4s infinite;
+    animation-delay: 0.4s;
+}

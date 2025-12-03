@@ -5,7 +5,7 @@ import { useLocation } from 'react-router-dom';
 import { COIN_DUST } from '@/shared/constant';
 import { Action, Features, SendBitcoinParameters, SourceType } from '@/shared/interfaces/RawTxParameters';
 import Web3API from '@/shared/web3/Web3API';
-import { Column, Content, Header, Input, Layout } from '@/ui/components';
+import { Column, Content, Header, Input, Layout, OPNetLoader } from '@/ui/components';
 import { FeeRateBar } from '@/ui/components/FeeRateBar';
 import { BalanceDisplay } from '@/ui/pages/Main/WalletTabScreen/components/BalanceDisplay';
 import { RouteTypes, useNavigate } from '@/ui/pages/MainRoute';
@@ -18,7 +18,6 @@ import {
     DownOutlined,
     FileTextOutlined,
     InfoCircleOutlined,
-    LoadingOutlined,
     LockOutlined,
     SendOutlined,
     ThunderboltOutlined,
@@ -71,6 +70,8 @@ interface LocationState {
     consolidation?: ConsolidationParams;
 }
 
+const zeroHash = '0x0000000000000000000000000000000000000000000000000000000000000000';
+
 export default function TxCreateScreen() {
     const navigate = useNavigate();
     const location = useLocation();
@@ -89,10 +90,11 @@ export default function TxCreateScreen() {
     const [error, setError] = useState('');
     const [showP2PKWarning, setDisplayP2PKWarning] = useState(false);
     const [showP2OPWarning, setDisplayP2OPWarning] = useState(false);
+    const [show32ByteError, setShow32ByteError] = useState(false);
     const [autoAdjust, setAutoAdjust] = useState(false);
     const [note, setNote] = useState<string>('');
     const [checked, setChecked] = useState(false);
-    
+
     // UTXO Status section states
     const [showUTXOStatus, setShowUTXOStatus] = useState(false);
     const [utxoStatusActiveTab, setUtxoStatusActiveTab] = useState<'balance' | 'quotas'>('balance');
@@ -118,7 +120,10 @@ export default function TxCreateScreen() {
         const fetchAllBalances = async () => {
             setLoadingBalances(true);
             try {
-                const currentAddress = Address.fromString(account.pubkey);
+                // CSVs can be used even without quantum migration - use zero hash as fallback
+                const currentAddress = account.quantumPublicKeyHash
+                    ? Address.fromString(account.quantumPublicKeyHash, account.pubkey)
+                    : Address.fromString(zeroHash, account.pubkey);
 
                 // Get all balances in one call
                 const currentBalance = await wallet.getAddressBalance(account.address, account.pubkey);
@@ -380,33 +385,60 @@ export default function TxCreateScreen() {
 
     const onSetAddress = useCallback(
         (val: { address: string; domain: string }) => {
-            setDisplayP2PKWarning(false);
-            setDisplayP2OPWarning(false);
-
             const address = val.address;
-            if (!address) return;
+            if (!address) {
+                setDisplayP2PKWarning(false);
+                setDisplayP2OPWarning(false);
+                return;
+            }
+
+            // Block 32-byte values (64 hex chars) - these are not valid recipient addresses
+            const cleanAddress = address.startsWith('0x') ? address.slice(2) : address;
+            if (cleanAddress.length === 64 && /^[0-9a-fA-F]+$/.test(cleanAddress)) {
+                setDisplayP2PKWarning(false);
+                setDisplayP2OPWarning(false);
+                setShow32ByteError(true);
+                return;
+            }
+
+            setShow32ByteError(false);
 
             const type = AddressVerificator.detectAddressType(address, Web3API.network);
 
             if (type === null) {
+                setDisplayP2PKWarning(false);
+                setDisplayP2OPWarning(false);
                 setError(`Invalid recipient address`);
                 return;
             }
 
             if (type === AddressTypes.P2PK) {
+                // Convert P2PK to P2TR and show warning
+                const p2trAddress = Address.fromString(zeroHash, address).p2tr(Web3API.network);
                 setDisplayP2PKWarning(true);
-                setUiState({ toInfo: { ...val, address: Address.fromString(address).p2tr(Web3API.network) } });
+                setDisplayP2OPWarning(false);
+                setUiState({ toInfo: { ...val, address: p2trAddress } });
                 return;
             }
 
             if (type === AddressTypes.P2OP) {
+                setDisplayP2PKWarning(false);
                 setDisplayP2OPWarning(true);
                 return;
             }
 
+            // Only update if address actually changed to prevent infinite loop
+            // (happens when P2PK was converted to P2TR and triggers this callback again)
+            setDisplayP2OPWarning(false);
+            // Don't reset P2PK warning here - it should persist after conversion
+            if (type === AddressTypes.P2TR && showP2PKWarning) {
+                // This is the converted P2TR from a P2PK - don't reset warning, don't update state again
+                return;
+            }
+            setDisplayP2PKWarning(false);
             setUiState({ toInfo: val });
         },
-        [setUiState]
+        [setUiState, showP2PKWarning]
     );
 
     const handleSelectAddress = (balance: AddressBalance) => {
@@ -632,17 +664,9 @@ export default function TxCreateScreen() {
                             <div
                                 style={{
                                     textAlign: 'center',
-                                    padding: '60px 20px'
+                                    padding: '40px 20px'
                                 }}>
-                                <LoadingOutlined style={{ fontSize: 32, color: colors.main }} />
-                                <div
-                                    style={{
-                                        fontSize: '14px',
-                                        color: colors.textFaded,
-                                        marginTop: '16px'
-                                    }}>
-                                    Loading balances...
-                                </div>
+                                <OPNetLoader size={60} text="Loading balances" />
                             </div>
                         ) : (
                             <div
@@ -963,7 +987,7 @@ export default function TxCreateScreen() {
                             Change
                         </button>
                     </div>
-                    
+
                     {/* Recipient Section */}
                     <div
                         style={{
@@ -1087,6 +1111,49 @@ export default function TxCreateScreen() {
                                             opacity: 0.9
                                         }}>
                                         Cannot send BTC directly to contract addresses.
+                                    </span>
+                                </div>
+                            </div>
+                        )}
+
+                        {show32ByteError && (
+                            <div
+                                style={{
+                                    marginTop: '8px',
+                                    padding: '8px',
+                                    background: `${colors.error}15`,
+                                    border: `1px solid ${colors.error}30`,
+                                    borderRadius: '8px',
+                                    display: 'flex',
+                                    gap: '6px'
+                                }}>
+                                <InfoCircleOutlined
+                                    style={{
+                                        fontSize: 12,
+                                        color: colors.error,
+                                        flexShrink: 0
+                                    }}
+                                />
+                                <div>
+                                    <span
+                                        style={{
+                                            fontSize: '11px',
+                                            color: colors.error,
+                                            lineHeight: '1.4',
+                                            fontWeight: 600
+                                        }}>
+                                        Invalid Recipient
+                                    </span>
+                                    <span
+                                        style={{
+                                            fontSize: '11px',
+                                            color: colors.error,
+                                            lineHeight: '1.4',
+                                            display: 'block',
+                                            marginTop: '4px',
+                                            opacity: 0.9
+                                        }}>
+                                        Cannot send to 32-byte values. Please use a valid Bitcoin address.
                                     </span>
                                 </div>
                             </div>
@@ -1260,23 +1327,24 @@ export default function TxCreateScreen() {
                                     UTXO Status
                                 </span>
                             </div>
-                            <DownOutlined 
-                                style={{ 
-                                    fontSize: 10, 
+                            <DownOutlined
+                                style={{
+                                    fontSize: 10,
                                     color: colors.textFaded,
                                     transform: showUTXOStatus ? 'rotate(180deg)' : 'rotate(0deg)',
-                                    transition: 'transform 0.2s' 
-                                }} 
+                                    transition: 'transform 0.2s'
+                                }}
                             />
                         </button>
 
                         {showUTXOStatus && (
-                            <div style={{ 
-                                display: 'flex', 
-                                justifyContent: 'flex-start',
-                                animation: 'fadeIn 0.2s ease-in',
-                                width: '100%'
-                            }}>
+                            <div
+                                style={{
+                                    display: 'flex',
+                                    justifyContent: 'flex-start',
+                                    animation: 'fadeIn 0.2s ease-in',
+                                    width: '100%'
+                                }}>
                                 <BalanceDisplay
                                     accountBalance={accountBalance}
                                     showDetails={true}
@@ -1330,7 +1398,7 @@ export default function TxCreateScreen() {
                                             fontWeight: 600,
                                             marginBottom: '4px'
                                         }}>
-                                        WARNING: ENABLING THIS WILL ALSO CONSOLIDATE YOUR ORDINALS!
+                                        WARNING: SMALL UTXOS WILL BE INCLUDED
                                     </div>
                                     <div
                                         style={{
@@ -1338,9 +1406,8 @@ export default function TxCreateScreen() {
                                             color: colors.textFaded,
                                             lineHeight: '1.4'
                                         }}>
-                                        Small UTXOs may contain ordinals, inscriptions, or other digital artifacts.
-                                        These will be included in the transaction and may be permanently moved or
-                                        consolidated.
+                                        Small UTXOs will be included in the transaction and consolidated. This helps
+                                        reduce fragmentation but may increase transaction fees.
                                     </div>
                                 </div>
                             </div>
@@ -1385,8 +1452,7 @@ export default function TxCreateScreen() {
                                         color: colors.textFaded,
                                         lineHeight: '1.4'
                                     }}>
-                                    This option helps reduce UTXO fragmentation and can lower future transaction fees,
-                                    but should be used with caution if you hold ordinals or inscriptions.
+                                    This option helps reduce UTXO fragmentation and can lower future transaction fees.
                                 </div>
                             </div>
                         </label>

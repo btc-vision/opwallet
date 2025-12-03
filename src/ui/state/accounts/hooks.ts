@@ -22,9 +22,7 @@ export function useAccountBalance() {
     const accountsState = useAccountsState();
     const currentAccount = useCurrentAccount();
 
-    const balance = accountsState.balanceMap[currentAccount.address] || DEFAULT_BITCOIN_BALANCE;
-
-    return balance;
+    return accountsState.balanceMap[currentAccount.address] || DEFAULT_BITCOIN_BALANCE;
 }
 
 export function useAddressSummary() {
@@ -63,7 +61,11 @@ export function useAccountAddress() {
 
 export function useAccountPublicKey() {
     const currentAccount = useCurrentAccount();
-    return currentAccount.pubkey;
+
+    return {
+        pubkey: currentAccount.pubkey,
+        mldsa: currentAccount.quantumPublicKeyHash
+    };
 }
 
 export function useSetCurrentAccountCallback() {

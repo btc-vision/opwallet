@@ -1,39 +1,52 @@
-/// fork from https://github.com/MetaMask/KeyringController/blob/master/index.js
+/// Updated KeyringService for wallet-sdk 2.0 with MLDSA/quantum support
 import * as bip39 from 'bip39';
 import * as oldEncryptor from 'browser-passworder';
 import { EventEmitter } from 'events';
 import log from 'loglevel';
 
-import { ADDRESS_TYPES, KEYRING_TYPE } from '@/shared/constant';
-import { AddressType } from '@/shared/types';
+import { KEYRING_TYPE } from '@/shared/constant';
+import { AddressTypes, isLegacyAddressType, legacyToAddressTypes, storageToAddressTypes } from '@/shared/types';
 import { Network, networks, Psbt } from '@btc-vision/bitcoin';
 import * as encryptor from '@btc-vision/passworder';
-import {
-    DeserializeOption,
-    DeserializeOptionKeystone,
-    HdKeyring,
-    IKeyringBase,
-    KeyringOptions,
-    KeystoneKeyring,
-    SimpleKeyring,
-    SimpleKeyringOptions
-} from '@btc-vision/wallet-sdk';
+import { MLDSASecurityLevel, QuantumBIP32Interface } from '@btc-vision/transaction';
+import { HdKeyring, SimpleKeyring } from '@btc-vision/wallet-sdk';
 import { ObservableStore } from '@metamask/obs-store';
 
 import i18n from '../i18n';
 import preference from '../preference';
 import DisplayKeyring from './display';
 
+// Type for serialized keyring options
+export interface HdKeyringSerializedOptions {
+    mnemonic?: string;
+    passphrase?: string;
+    network?: Network;
+    securityLevel?: MLDSASecurityLevel;
+    activeIndexes?: number[];
+    addressType?: AddressTypes;
+}
+
+export interface SimpleKeyringSerializedOptions {
+    privateKey: string;
+    quantumPrivateKey?: string;
+    network?: Network;
+    securityLevel?: MLDSASecurityLevel;
+}
+
+export type KeyringOptions = HdKeyringSerializedOptions | SimpleKeyringSerializedOptions;
+
 export interface SavedVault {
     type: string;
     data: KeyringOptions;
-    addressType: AddressType;
+    addressType: AddressTypes | number; // Support both for migration
 }
+
+// Keyring type union - only HD and Simple now
+export type Keyring = HdKeyring | SimpleKeyring;
 
 export const KEYRING_SDK_TYPES = {
     SimpleKeyring,
-    HdKeyring,
-    KeystoneKeyring
+    HdKeyring
 };
 
 interface MemStoreState {
@@ -51,74 +64,18 @@ export interface DisplayedKeyring {
         type?: string;
         keyring?: DisplayKeyring;
         alianName?: string;
+        quantumPublicKey?: string;
     }[];
     keyring: DisplayKeyring;
-    addressType: AddressType;
+    addressType: AddressTypes;
     index: number;
 }
 
 export interface ToSignInput {
     index: number;
     publicKey: string;
-}
-
-export type Keyring =
-    | IKeyringBase<SimpleKeyringOptions>
-    | IKeyringBase<DeserializeOption>
-    | IKeyringBase<DeserializeOptionKeystone>
-    | IKeyringBase<{ network: Network }>;
-
-// TODO (typing): signInteraction, wrap and signAndBroadcastInteraction functions of EmptyKeyring and KeyringService are not used explicity.
-// For now, removed those functions from both EmptyKeyring and KeyringService classes.
-// If there is any reason for keeping them we should undo removing.
-class EmptyKeyring extends IKeyringBase<{ network: Network }> {
-    static type = KEYRING_TYPE.Empty;
-    type = KEYRING_TYPE.Empty;
-
-    // eslint-disable-next-line @typescript-eslint/no-useless-constructor
-    constructor() {
-        super();
-    }
-
-    addAccounts(n: number): string[] {
-        return [];
-    }
-
-    getAccounts(): string[] {
-        return [];
-    }
-
-    signTransaction(psbt: Psbt, inputs: ToSignInput[]): Psbt {
-        throw new Error('Method not implemented.');
-    }
-
-    signMessage(address: string, message: string | Buffer): string {
-        throw new Error('Method not implemented.');
-    }
-
-    verifyMessage(address: string, message: string, sig: string): Promise<boolean> {
-        throw new Error('Method not implemented.');
-    }
-
-    public signData(publicKey: string, data: string, type: 'ecdsa' | 'schnorr' = 'ecdsa'): string {
-        throw new Error('Method not implemented.');
-    }
-
-    exportAccount(address: string): string {
-        throw new Error('Method not implemented.');
-    }
-
-    removeAccount(address: string): void {
-        throw new Error('Method not implemented.');
-    }
-
-    serialize(): { network: Network } {
-        return { network: this.network };
-    }
-
-    deserialize(opts: unknown) {
-        return;
-    }
+    sighashTypes?: number[];
+    disableTweakSigner?: boolean;
 }
 
 export interface StoredData {
@@ -126,28 +83,68 @@ export interface StoredData {
     vault: string;
 }
 
+// Empty keyring for edge cases
+export class EmptyKeyring {
+    static type = KEYRING_TYPE.Empty;
+    type = KEYRING_TYPE.Empty;
+    network: Network = networks.bitcoin;
+
+    addAccounts(_n: number): string[] {
+        return [];
+    }
+
+    getAccounts(): string[] {
+        return [];
+    }
+
+    signTransaction(_psbt: Psbt, _inputs: ToSignInput[]): Psbt {
+        throw new Error('Method not implemented.');
+    }
+
+    signMessage(_publicKey: string, _message: string | Buffer): string {
+        throw new Error('Method not implemented.');
+    }
+
+    verifyMessage(_address: string, _message: string, _sig: string): Promise<boolean> {
+        throw new Error('Method not implemented.');
+    }
+
+    signData(_publicKey: string, _data: string, _type: 'ecdsa' | 'schnorr' = 'ecdsa'): string {
+        throw new Error('Method not implemented.');
+    }
+
+    exportAccount(_publicKey: string): string {
+        throw new Error('Method not implemented.');
+    }
+
+    removeAccount(_publicKey: string): void {
+        throw new Error('Method not implemented.');
+    }
+
+    serialize(): { network: Network } {
+        return { network: this.network };
+    }
+
+    deserialize(_opts: unknown) {
+        return;
+    }
+}
+
 class KeyringService extends EventEmitter {
-    //
-    // PUBLIC METHODS
-    //
-    keyringTypes: (typeof IKeyringBase)[];
     store!: ObservableStore<StoredData>;
     memStore: ObservableStore<MemStoreState>;
-    keyrings: Keyring[];
-    addressTypes: AddressType[];
+    keyrings: (Keyring | EmptyKeyring)[];
+    addressTypes: AddressTypes[];
     encryptor: typeof encryptor = encryptor;
     password: string | null = null;
 
     constructor() {
         super();
-        this.keyringTypes = Object.values(KEYRING_SDK_TYPES) as (typeof IKeyringBase)[];
         this.memStore = new ObservableStore({
             isUnlocked: false,
-            keyringTypes: this.keyringTypes.map((krt) => krt.type),
+            keyringTypes: [KEYRING_TYPE.HdKeyring, KEYRING_TYPE.SimpleKeyring],
             keyrings: [],
-            preMnemonics: '',
-            addressTypes: [],
-            keystone: null
+            preMnemonics: ''
         });
 
         this.keyrings = [];
@@ -175,43 +172,32 @@ class KeyringService extends EventEmitter {
         return !!this.store.getState().vault;
     };
 
-    /**
-     * Full Update
-     *
-     * Emits the `update` event and @returns a Promise that resolves to
-     * the current state.
-     *
-     * Frequently used to end asynchronous chains in this class,
-     * indicating consumers can often either listen for updates,
-     * or accept a state-resolving promise to consume their results.
-     *
-     * @returns {Object} The controller state.
-     */
     fullUpdate = (): MemStoreState => {
         this.emit('update', this.memStore.getState());
         return this.memStore.getState();
     };
 
     /**
-     * Import Keychain using Private key
-     *
-     * @returns  A Promise that resolves to the state.
+     * Import Keychain using Private key with optional quantum key
      */
     importPrivateKey = async (
         privateKey: string,
-        addressType: AddressType,
-        network: networks.Network = networks.bitcoin
+        addressType: AddressTypes,
+        network: Network = networks.bitcoin,
+        quantumPrivateKey?: string
     ) => {
         privateKey = privateKey.replace('0x', '');
 
         await this.persistAllKeyrings();
 
         const keyring = await this.addNewKeyring(
-            'Simple Key Pair',
+            KEYRING_TYPE.SimpleKeyring,
             {
-                privateKeys: [privateKey],
-                network
-            },
+                privateKey,
+                quantumPrivateKey,
+                network,
+                securityLevel: MLDSASecurityLevel.LEVEL2
+            } as SimpleKeyringSerializedOptions,
             addressType
         );
 
@@ -253,21 +239,15 @@ class KeyringService extends EventEmitter {
     };
 
     /**
-     * CreateNewVaultAndRestore Mnenoic
-     *
-     * Destroys any old encrypted storage,
-     * creates a new HD wallet from the given seed with 1 account.
-     *
-     * @emits KeyringController#unlock
-     * @param  seed - The BIP44-compliant seed phrase.
-     * @returns  A Promise that resolves to the state.
+     * Create HD keyring from mnemonic with quantum support
      */
     createKeyringWithMnemonics = async (
         seed: string,
-        hdPath: string,
+        _hdPath: string,
         passphrase: string,
-        addressType: AddressType,
-        accountCount: number
+        addressType: AddressTypes,
+        accountCount: number,
+        network: Network = networks.bitcoin
     ) => {
         if (accountCount < 1) {
             throw new Error(i18n.t('account count must be greater than 0'));
@@ -284,13 +264,15 @@ class KeyringService extends EventEmitter {
         }
 
         const keyring = await this.addNewKeyring(
-            'HD Key Tree',
+            KEYRING_TYPE.HdKeyring,
             {
                 mnemonic: seed,
                 activeIndexes,
-                hdPath,
-                passphrase
-            },
+                passphrase,
+                network,
+                securityLevel: MLDSASecurityLevel.LEVEL2,
+                addressType
+            } as HdKeyringSerializedOptions,
             addressType
         );
 
@@ -305,102 +287,33 @@ class KeyringService extends EventEmitter {
         return keyring;
     };
 
-    createKeyringWithKeystone = async (
-        urType: string,
-        urCbor: string,
-        addressType: AddressType,
-        hdPath: string,
-        accountCount: number
-    ) => {
-        if (accountCount < 1) {
-            throw new Error(i18n.t('account count must be greater than 0'));
-        }
-        await this.persistAllKeyrings();
-        const tmpKeyring = new KeystoneKeyring();
-        await tmpKeyring.initFromUR(urType, urCbor);
-        if (hdPath.length >= 13) {
-            tmpKeyring.changeChangeAddressHdPath(hdPath);
-            tmpKeyring.addAccounts(accountCount);
-        } else {
-            tmpKeyring.changeHdPath(ADDRESS_TYPES[addressType].hdPath);
-            tmpKeyring.addAccounts(accountCount);
-        }
-
-        const opts = tmpKeyring.serialize();
-        const keyring = await this.addNewKeyring(KEYRING_TYPE.KeystoneKeyring, opts, addressType);
-        const accounts = keyring.getAccounts();
-
-        if (!accounts[0]) {
-            throw new Error('KeyringController - First Account not found.');
-        }
-        this.setUnlocked();
-        return keyring;
-    };
-
-    addKeyring = async (keyring: Keyring, addressType: AddressType) => {
-        //const accounts = keyring.getAccounts();
-        //this.checkForDuplicate(keyring.type, accounts);
-
+    addKeyring = async (keyring: Keyring | EmptyKeyring, addressType: AddressTypes) => {
         this.keyrings.push(keyring);
-
         this.addressTypes.push(addressType);
         await this.persistAllKeyrings();
-        await this._updateMemStoreKeyrings();
+        this._updateMemStoreKeyrings();
         this.fullUpdate();
         return keyring;
     };
 
-    changeAddressType = async (keyringIndex: number, addressType: AddressType) => {
-        const keyring: Keyring = this.keyrings[keyringIndex];
-
-        // TODO: IMPORTANT, ADD A SETTING TO ENABLE THIS. (keyring-mnemonic)
-        /*if (keyring.type === KEYRING_TYPE.HdKeyring || keyring.type === KEYRING_TYPE.KeystoneKeyring) {
-            const hdPath = ADDRESS_TYPES[addressType].hdPath;
-            if ((keyring as KeystoneKeyring).hdPath !== hdPath && 'changeHdPath' in keyring) {
-                console.log('changeHdPath', hdPath);
-                (keyring as KeystoneKeyring).changeHdPath(hdPath);
-            }
-        }*/
-
+    changeAddressType = async (keyringIndex: number, addressType: AddressTypes) => {
         this.addressTypes[keyringIndex] = addressType;
         await this.persistAllKeyrings();
-        await this._updateMemStoreKeyrings();
+        this._updateMemStoreKeyrings();
         this.fullUpdate();
-        return keyring;
+        return this.keyrings[keyringIndex];
     };
 
-    /**
-     * Set Locked
-     * This method deallocates all secrets, and effectively locks MetaMask.
-     *
-     * @emits KeyringController#lock
-     * @returns {Promise<Object>} A Promise that resolves to the state.
-     */
-    setLocked = async (): Promise<MemStoreState> => {
-        // set locked
+    setLocked = (): MemStoreState => {
         this.password = null;
         this.memStore.updateState({ isUnlocked: false });
-        // remove keyrings
         this.keyrings = [];
         this.addressTypes = [];
-        await this._updateMemStoreKeyrings();
+        this._updateMemStoreKeyrings();
         this.emit('lock');
         return this.fullUpdate();
     };
 
-    /**
-     * Submit Password
-     *
-     * Attempts to decrypt the current vault and load its keyrings
-     * into memory.
-     *
-     * Temporarily also migrates any old-style vaults first, as well.
-     * (Pre MetaMask 3.0.0)
-     *
-     * @emits KeyringController#unlock
-     * @param {string} password - The keyring controller password.
-     * @returns {Promise<Object>} A Promise that resolves to the state.
-     */
     submitPassword = async (password: string): Promise<MemStoreState> => {
         const oldMethod = await this.verifyPassword(password);
         this.password = password;
@@ -411,7 +324,6 @@ class KeyringService extends EventEmitter {
             if (oldMethod) {
                 try {
                     await this.boot(password);
-
                     this.keyrings = await this.unlockKeyrings(password, false);
                 } catch (e) {
                     console.log('unlock failed (new)', e);
@@ -439,15 +351,14 @@ class KeyringService extends EventEmitter {
                     this.keyrings = await this.unlockKeyrings(oldPassword, false);
                 } catch (e) {
                     console.log('unlock failed (new)', e);
-                    throw e; // Re-throw to prevent password change with wrong old password
+                    throw e;
                 }
             } else {
                 console.log('unlock failed', e);
-                throw e; // Re-throw to prevent password change with wrong old password
+                throw e;
             }
         }
 
-        // Only proceed if unlock was successful
         this.password = newPassword;
 
         const encryptBooted = await this.encryptor.encrypt(newPassword, 'true');
@@ -460,19 +371,11 @@ class KeyringService extends EventEmitter {
         }
 
         await this.persistAllKeyrings();
-        await this._updateMemStoreKeyrings();
+        this._updateMemStoreKeyrings();
 
         this.fullUpdate();
     };
 
-    /**
-     * Verify Password
-     *
-     * Attempts to decrypt the current vault with a given password
-     * to verify its validity.
-     *
-     * @param {string} password
-     */
     verifyPassword = async (password: string): Promise<boolean> => {
         const encryptedBooted = this.store.getState().booted;
         if (!encryptedBooted) {
@@ -481,7 +384,6 @@ class KeyringService extends EventEmitter {
 
         if (encryptedBooted.includes('keyMetadata')) {
             const resp = (await this.encryptor.decrypt(password, encryptedBooted)) as string;
-
             return resp == 'true';
         }
 
@@ -490,48 +392,66 @@ class KeyringService extends EventEmitter {
     };
 
     /**
-     * Add New Keyring
-     *
-     * Adds a new Keyring of the given `type` to the vault
-     * and the current decrypted Keyrings array.
-     *
-     * All Keyring classes implement a unique `type` string,
-     * and this is used to retrieve them from the keyringTypes array.
-     *
-     * @param  type - The type of keyring to add.
-     * @param  opts - The constructor options for the keyring.
-     * @returns  The new keyring.
+     * Add a new keyring
      */
-    addNewKeyring = async (type: string, opts: KeyringOptions, addressType: AddressType): Promise<Keyring> => {
-        const Keyring = this.getKeyringClassForType(type) as typeof SimpleKeyring;
-        if (!Keyring) {
-            throw new Error(`Keyring type not found ${type}`);
-        }
+    addNewKeyring = async (
+        type: string,
+        opts: KeyringOptions,
+        addressType: AddressTypes
+    ): Promise<Keyring | EmptyKeyring> => {
+        let keyring: Keyring | EmptyKeyring;
 
-        const keyring = new Keyring(opts);
+        if (type === KEYRING_TYPE.HdKeyring) {
+            const hdOpts = opts as HdKeyringSerializedOptions;
+            keyring = new HdKeyring({
+                mnemonic: hdOpts.mnemonic,
+                passphrase: hdOpts.passphrase,
+                network: hdOpts.network,
+                securityLevel: hdOpts.securityLevel || MLDSASecurityLevel.LEVEL2,
+                activeIndexes: hdOpts.activeIndexes,
+                addressType: hdOpts.addressType || addressType
+            });
+        } else if (type === KEYRING_TYPE.SimpleKeyring) {
+            const simpleOpts = opts as SimpleKeyringSerializedOptions;
+            keyring = new SimpleKeyring({
+                privateKey: simpleOpts.privateKey,
+                quantumPrivateKey: simpleOpts.quantumPrivateKey,
+                network: simpleOpts.network,
+                securityLevel: simpleOpts.securityLevel || MLDSASecurityLevel.LEVEL2
+            });
+        } else if (type === KEYRING_TYPE.Empty) {
+            keyring = new EmptyKeyring();
+        } else {
+            throw new Error(`Keyring type not found: ${type}`);
+        }
 
         return await this.addKeyring(keyring, addressType);
     };
 
-    createTmpKeyring = (type: string, opts: KeyringOptions | undefined): Keyring => {
-        const Keyring = this.getKeyringClassForType(type) as typeof SimpleKeyring;
-        if (!Keyring) {
-            throw new Error(`Keyring type not found ${type}`);
+    createTmpKeyring = (type: string, opts: KeyringOptions | undefined): Keyring | EmptyKeyring => {
+        if (type === KEYRING_TYPE.HdKeyring && opts) {
+            const hdOpts = opts as HdKeyringSerializedOptions;
+            return new HdKeyring({
+                mnemonic: hdOpts.mnemonic,
+                passphrase: hdOpts.passphrase,
+                network: hdOpts.network,
+                securityLevel: hdOpts.securityLevel || MLDSASecurityLevel.LEVEL2,
+                activeIndexes: hdOpts.activeIndexes,
+                addressType: hdOpts.addressType
+            });
+        } else if (type === KEYRING_TYPE.SimpleKeyring && opts) {
+            const simpleOpts = opts as SimpleKeyringSerializedOptions;
+            return new SimpleKeyring({
+                privateKey: simpleOpts.privateKey,
+                quantumPrivateKey: simpleOpts.quantumPrivateKey,
+                network: simpleOpts.network,
+                securityLevel: simpleOpts.securityLevel || MLDSASecurityLevel.LEVEL2
+            });
         }
 
-        return new Keyring(opts);
+        return new EmptyKeyring();
     };
 
-    /**
-     * Checks for duplicate keypairs, using the the first account in the given
-     * array. Rejects if a duplicate is found.
-     *
-     * Only supports 'Simple Key Pair'.
-     *
-     * @param {string} type - The key pair type to check for.
-     * @param {Array<string>} newAccountArray - Array of new accounts.
-     * @returns {Array<string>} The account, if no duplicate is found.
-     */
     checkForDuplicate = (type: string, newAccountArray: string[]): string[] => {
         const keyrings = this.getKeyringsByType(type);
         const _accounts = keyrings.map((keyring) => keyring.getAccounts());
@@ -548,175 +468,163 @@ class KeyringService extends EventEmitter {
         return newAccountArray;
     };
 
-    /**
-     * Add New Account
-     *
-     * Calls the `addAccounts` method on the given keyring,
-     * and then saves those changes.
-     *
-     * @param {Keyring} selectedKeyring - The currently selected keyring.
-     * @returns {Promise<Object>} A Promise that resolves to the state.
-     */
-    addNewAccount = async (selectedKeyring: Keyring): Promise<string[]> => {
-        const accounts = selectedKeyring.addAccounts(1);
-        accounts.forEach((hexAccount) => {
-            this.emit('newAccount', hexAccount);
-        });
-        await this.persistAllKeyrings();
-        await this._updateMemStoreKeyrings();
-        this.fullUpdate();
-        return accounts;
-    };
-
-    /**
-     * Export Account
-     *
-     * Requests the private key from the keyring controlling
-     * the specified address.
-     *
-     * Returns a Promise that may resolve with the private key string.
-     *
-     * @param {string} address - The address of the account to export.
-     * @returns {Promise<string>} The private key of the account.
-     */
-    exportAccount = (address: string): string => {
-        const keyring = this.getKeyringForAccount(address);
-
-        const exportedAccount = keyring.exportAccount(address);
-        if (!exportedAccount) {
-            throw new Error('Account not found');
+    addNewAccount = async (selectedKeyring: Keyring | EmptyKeyring): Promise<string[]> => {
+        if (selectedKeyring instanceof HdKeyring) {
+            const accounts = selectedKeyring.addAccounts(1);
+            accounts.forEach((hexAccount: string) => {
+                this.emit('newAccount', hexAccount);
+            });
+            await this.persistAllKeyrings();
+            this._updateMemStoreKeyrings();
+            this.fullUpdate();
+            return accounts;
         }
+        // SimpleKeyring doesn't support adding accounts
+        throw new Error('Cannot add accounts to Simple Key Pair wallet');
+    };
 
-        return exportedAccount;
+    exportAccount = (publicKey: string): string => {
+        const keyring = this.getKeyringForAccount(publicKey);
+        if (keyring instanceof HdKeyring) {
+            return keyring.exportAccount(publicKey);
+        } else if (keyring instanceof SimpleKeyring) {
+            return keyring.exportPrivateKey();
+        }
+        throw new Error('Cannot export account from this keyring type');
     };
 
     /**
-     *
-     * Remove Account
-     *
-     * Removes a specific account from a keyring
-     * If the account is the last/only one then it also removes the keyring.
-     *
-     * @param {string} address - The address of the account to remove.
-     * @returns {Promise<void>} A Promise that resolves if the operation was successful.
+     * Export quantum private key for an account
      */
-    removeAccount = async (address: string, type: string, brand?: string): Promise<void> => {
-        const keyring = this.getKeyringForAccount(address, type);
+    exportQuantumAccount = (publicKey: string): string | undefined => {
+        try {
+            const keyring = this.getKeyringForAccount(publicKey);
+            if (keyring instanceof SimpleKeyring) {
+                // SimpleKeyring has single key - no publicKey param needed
+                return keyring.exportQuantumPrivateKey();
+            } else if (keyring instanceof HdKeyring) {
+                // HD keyrings derive quantum keys from mnemonic, so we can export them
+                const wallet = keyring.getWallet(publicKey);
+                if (wallet) {
+                    // Include chaincode at the end to match SimpleKeyring format
+                    const privateKeyHex = wallet.quantumPrivateKeyHex;
+                    const chainCodeHex = Buffer.from(wallet.chainCode).toString('hex');
+                    return privateKeyHex + chainCodeHex;
+                }
+            }
+        } catch {}
+        return undefined;
+    };
 
-        // Not all the keyrings support this, so we have to check
-        if (typeof keyring.removeAccount != 'function') {
+    removeAccount = async (publicKey: string, type: string, _brand?: string): Promise<void> => {
+        const keyring = this.getKeyringForAccount(publicKey, type);
+
+        if (keyring instanceof HdKeyring) {
+            keyring.removeAccount(publicKey);
+        } else {
             throw new Error(`Keyring ${keyring.type} doesn't support account removal operations`);
         }
-        keyring.removeAccount(address);
-        this.emit('removedAccount', address);
+        this.emit('removedAccount', publicKey);
         await this.persistAllKeyrings();
-        await this._updateMemStoreKeyrings();
+        this._updateMemStoreKeyrings();
         this.fullUpdate();
     };
 
     removeKeyring = async (keyringIndex: number): Promise<void> => {
         this.keyrings.splice(keyringIndex, 1);
+        this.addressTypes.splice(keyringIndex, 1);
 
         await this.persistAllKeyrings();
-        await this._updateMemStoreKeyrings();
+        this._updateMemStoreKeyrings();
         this.fullUpdate();
     };
 
-    /**
-     * Sign BTC Transaction
-     *
-     * Signs an BTC transaction object.
-     *
-     * @param btcTx - The transaction to sign.
-     * @param fromAddress - The transaction 'from' address.
-     * @returns  The signed transactio object.
-     */
-    signTransaction = (keyring: Keyring, psbt: Psbt, inputs: ToSignInput[]) => {
-        return keyring.signTransaction(psbt, inputs);
-    };
-
-    //
-    // SIGNING METHODS
-    //
-
-    /**
-     * Sign Message
-     *
-     * Attempts to sign the provided message parameters.
-     */
-    signMessage = (address: string, keyringType: string, message: string | Buffer) => {
-        const keyring = this.getKeyringForAccount(address, keyringType);
-        return keyring.signMessage(address, message);
+    signTransaction = (keyring: Keyring | EmptyKeyring, psbt: Psbt, inputs: ToSignInput[]) => {
+        if (keyring instanceof HdKeyring || keyring instanceof SimpleKeyring) {
+            return keyring.signTransaction(psbt, inputs);
+        }
+        throw new Error('Keyring does not support signing');
     };
 
     /**
-     * Decrypt Message
-     *
-     * Attempts to verify the provided message parameters.
+     * Sign arbitrary data with ecdsa or schnorr
      */
-    verifyMessage = (address: string, data: string, sig: string) => {
-        const keyring = this.getKeyringForAccount(address);
-        return keyring.verifyMessage(address, data, sig);
+    signData = (publicKey: string, data: string, type: 'ecdsa' | 'schnorr' = 'ecdsa'): string => {
+        const keyring = this.getKeyringForAccount(publicKey);
+        if (keyring instanceof HdKeyring) {
+            return keyring.signData(publicKey, data, type);
+        } else if (keyring instanceof SimpleKeyring) {
+            return keyring.signData(data, type);
+        }
+        throw new Error('Keyring does not support signing');
     };
 
     /**
-     * Sign Data
-     *
-     * Sign any content, but note that the content signed by this method is unreadable, so use it with caution.
-     *
+     * Sign with MLDSA (quantum) signature
      */
-    signData = (address: string, data: string, type: 'ecdsa' | 'schnorr' = 'ecdsa') => {
-        const keyring = this.getKeyringForAccount(address);
-        return keyring.signData(address, data, type);
+    signMLDSA = (publicKey: string, data: string | Buffer): Uint8Array => {
+        const keyring = this.getKeyringForAccount(publicKey);
+        const dataBuffer = typeof data === 'string' ? Buffer.from(data, 'hex') : data;
+
+        if (keyring instanceof HdKeyring) {
+            const wallet = keyring.getWallet(publicKey);
+            const signature = wallet.mldsaKeypair.sign(dataBuffer);
+            return signature instanceof Buffer ? signature : Buffer.from(signature);
+        } else if (keyring instanceof SimpleKeyring) {
+            const quantumKeypair = keyring.getQuantumKeypair();
+            const signature = quantumKeypair.sign(dataBuffer);
+            return signature instanceof Buffer ? signature : Buffer.from(signature);
+        }
+        throw new Error('Keyring does not support MLDSA signing');
     };
 
     /**
-     * Persist All Keyrings
-     *
-     * Iterates the current `keyrings` array,
-     * serializes each one into a serialized array,
-     * encrypts that array with the provided `password`,
-     * and persists that encrypted string to storage.
-     *
-     * @returns {Promise<boolean>} Resolves to true once keyrings are persisted.
+     * Get quantum public key for an account
      */
+    getQuantumPublicKey = (publicKey: string): string | undefined => {
+        const keyring = this.getKeyringForAccount(publicKey);
+        if (keyring instanceof HdKeyring) {
+            return keyring.getQuantumPublicKey(publicKey);
+        } else if (keyring instanceof SimpleKeyring) {
+            return keyring.getQuantumPublicKey();
+        }
+        return undefined;
+    };
+
+    /**
+     * Get quantum keypair for an account
+     */
+    getQuantumKeypair = (publicKey: string): QuantumBIP32Interface | undefined => {
+        const keyring = this.getKeyringForAccount(publicKey);
+        if (keyring instanceof HdKeyring) {
+            const wallet = keyring.getWallet(publicKey);
+            return wallet.mldsaKeypair;
+        } else if (keyring instanceof SimpleKeyring) {
+            return keyring.getQuantumKeypair();
+        }
+        return undefined;
+    };
+
     persistAllKeyrings = async (): Promise<boolean> => {
         if (!this.password || typeof this.password !== 'string') {
             return Promise.reject(new Error('KeyringController - password is not a string'));
         }
 
-        const serializedKeyrings = await Promise.all(
-            this.keyrings.map(async (keyring, index) => {
-                const serializedKeyringArray = await Promise.all([keyring.type, keyring.serialize()]);
-
-                return {
-                    type: serializedKeyringArray[0],
-                    data: serializedKeyringArray[1],
-                    addressType: this.addressTypes[index]
-                };
-            })
-        );
+        const serializedKeyrings = this.keyrings.map((keyring, index) => {
+            const serializedData = keyring.serialize();
+            return {
+                type: keyring.type,
+                data: serializedData,
+                addressType: this.addressTypes[index]
+            };
+        });
 
         const encryptedString = await this.encryptor.encrypt(this.password, serializedKeyrings as unknown as Buffer);
         this.store.updateState({ vault: encryptedString });
         return true;
     };
 
-    //
-    // PRIVATE METHODS
-    //
-
-    /**
-     * Unlock Keyrings
-     *
-     * Attempts to unlock the persisted encrypted storage,
-     * initializing the persisted keyrings to RAM.
-     *
-     * @param {string} password - The keyring controller password.
-     * @param {boolean} oldMethod - Whether to use the old method of decrypting the vault.
-     * @returns {Promise<IKeyringBase[]>} The keyrings.
-     */
-    unlockKeyrings = async (password: string, oldMethod: boolean): Promise<Keyring[]> => {
+    unlockKeyrings = async (password: string, oldMethod: boolean): Promise<(Keyring | EmptyKeyring)[]> => {
         const encryptedVault = this.store.getState().vault;
         if (!encryptedVault) {
             throw new Error(i18n.t('Cannot unlock without a previous vault'));
@@ -727,18 +635,18 @@ class KeyringService extends EventEmitter {
         const vault = oldMethod
             ? ((await oldEncryptor.decrypt(password, encryptedVault)) as SavedVault[])
             : ((await this.encryptor.decrypt(password, encryptedVault)) as SavedVault[]);
+
         for (const key of vault) {
             try {
                 const { keyring, addressType } = this._restoreKeyring(key);
-
                 this.keyrings.push(keyring);
                 this.addressTypes.push(addressType);
             } catch (e) {
-                // can not load.
+                console.error('Failed to restore keyring:', e);
             }
         }
 
-        await this._updateMemStoreKeyrings();
+        this._updateMemStoreKeyrings();
 
         if (oldMethod) {
             await this.persistAllKeyrings();
@@ -747,95 +655,117 @@ class KeyringService extends EventEmitter {
         return this.keyrings;
     };
 
-    /**
-     * Restore Keyring
-     *
-     * Attempts to initialize a new keyring from the provided serialized payload.
-     * On success, updates the memStore keyrings and returns the resulting
-     * keyring instance.
-     *
-     * @param {Object} serialized - The serialized keyring.
-     * @returns {Promise<Keyring>} The deserialized keyring.
-     */
-    restoreKeyring = async (serialized: SavedVault): Promise<Keyring> => {
+    restoreKeyring = (serialized: SavedVault): Keyring | EmptyKeyring => {
         const { keyring } = this._restoreKeyring(serialized);
-        await this._updateMemStoreKeyrings();
+        this._updateMemStoreKeyrings();
         return keyring;
     };
 
     /**
-     * Restore Keyring Helper
-     *
-     * Attempts to initialize a new keyring from the provided serialized payload.
-     * On success, returns the resulting keyring instance.
-     *
-     * @param {Object} serialized - The serialized keyring.
-     * @returns {keyring: Keyring, addressType: AddressType} The deserialized keyring.
+     * Restore keyring with migration support for legacy storage
+     * @param serialized - The serialized keyring data from vault
+     * @param networkOverride - Optional network to use instead of stored network (for network switching)
      */
     _restoreKeyring = (
-        serialized: SavedVault
+        serialized: SavedVault,
+        networkOverride?: Network
     ): {
-        keyring: Keyring;
-        addressType: AddressType;
+        keyring: Keyring | EmptyKeyring;
+        addressType: AddressTypes;
     } => {
-        const { type, data, addressType } = serialized;
+        const { type, data } = serialized;
+
+        // Handle address type migration from legacy numeric to string
+        let addressType: AddressTypes;
+        if (isLegacyAddressType(serialized.addressType)) {
+            addressType = legacyToAddressTypes(serialized.addressType);
+        } else if (typeof serialized.addressType === 'string') {
+            addressType = storageToAddressTypes(serialized.addressType);
+        } else {
+            addressType = preference.getAddressType();
+        }
+
         if (type === KEYRING_TYPE.Empty) {
-            const keyring = new EmptyKeyring();
-            return { keyring, addressType: addressType === undefined ? preference.getAddressType() : addressType };
+            return { keyring: new EmptyKeyring(), addressType };
         }
 
-        const Keyring = this.getKeyringClassForType(type) as typeof SimpleKeyring;
-        if (!Keyring) {
-            throw new Error(`Keyring type not found ${type}`);
+        if (type === KEYRING_TYPE.HdKeyring) {
+            const hdData = data as HdKeyringSerializedOptions;
+
+            // Handle legacy format migration
+            const legacyData = data as {
+                mnemonic?: string;
+                hdPath?: string;
+                passphrase?: string;
+                activeIndexes?: number[];
+                network?: Network;
+            };
+
+            // Use network override if provided, otherwise use stored network
+            const network = networkOverride || hdData.network || legacyData.network;
+
+            const keyring = new HdKeyring({
+                mnemonic: hdData.mnemonic || legacyData.mnemonic,
+                passphrase: hdData.passphrase || legacyData.passphrase,
+                network,
+                securityLevel: hdData.securityLevel || MLDSASecurityLevel.LEVEL2,
+                activeIndexes: hdData.activeIndexes || legacyData.activeIndexes,
+                addressType: hdData.addressType || addressType
+            });
+
+            const accounts = keyring.getAccounts();
+            if (!accounts.length) {
+                throw new Error('KeyringController - Keyring failed to deserialize');
+            }
+
+            return { keyring, addressType };
         }
 
-        const keyring = new Keyring();
-        keyring.deserialize(data);
+        if (type === KEYRING_TYPE.SimpleKeyring) {
+            const simpleData = data as SimpleKeyringSerializedOptions;
 
-        // getAccounts also validates the accounts for some keyrings
-        const accounts = keyring.getAccounts();
-        if (!accounts.length) {
-            throw new Error('KeyringController - Keyring failed to deserialize');
+            // Handle legacy format migration
+            const legacyData = data as {
+                privateKeys?: string[];
+                network?: Network;
+            };
+
+            const privateKey = simpleData.privateKey || legacyData.privateKeys?.[0];
+            if (!privateKey) {
+                throw new Error('No private key found in serialized data');
+            }
+
+            // Use network override if provided, otherwise use stored network
+            const network = networkOverride || simpleData.network || legacyData.network;
+
+            const keyring = new SimpleKeyring({
+                privateKey,
+                quantumPrivateKey: simpleData.quantumPrivateKey,
+                network,
+                securityLevel: simpleData.securityLevel || MLDSASecurityLevel.LEVEL2
+            });
+
+            const accounts = keyring.getAccounts();
+            if (!accounts.length) {
+                throw new Error('KeyringController - Keyring failed to deserialize');
+            }
+
+            return { keyring, addressType };
         }
 
-        return { keyring, addressType: addressType === undefined ? preference.getAddressType() : addressType };
+        // Handle Keystone keyring migration - convert to empty since it's no longer supported
+        if (type === KEYRING_TYPE.KeystoneKeyring) {
+            console.warn('Keystone keyring is no longer supported, skipping');
+            return { keyring: new EmptyKeyring(), addressType };
+        }
+
+        throw new Error(`Unknown keyring type: ${type}`);
     };
 
-    /**
-     * Get Keyring Class For Type
-     *
-     * Searches the current `keyringTypes` array
-     * for a Keyring class whose unique `type` property
-     * matches the provided `type`,
-     * returning it if it exists.
-     *
-     * @param {string} type - The type whose class to get.
-     * @returns {KeyringType | undefined} The class, if it exists.
-     */
-    getKeyringClassForType = <T extends typeof IKeyringBase>(type: string): T | undefined => {
-        return this.keyringTypes.find((kr) => kr.type === type) as T | undefined;
-    };
-
-    /**
-     * Get Keyrings by Type
-     *
-     * Gets all keyrings of the given type.
-     *
-     * @param {string} type - The keyring types to retrieve.
-     * @returns {Array<Keyring>} The keyrings.
-     */
-    getKeyringsByType = (type: string): Keyring[] => {
+    getKeyringsByType = (type: string): (Keyring | EmptyKeyring)[] => {
         return this.keyrings.filter((keyring) => keyring.type === type);
     };
 
-    /**
-     * Get Accounts
-     *
-     * Returns the public addresses of all current accounts
-     * managed by all currently unlocked keyrings.
-     *
-     * @returns {Promise<Array<string>>} The array of accounts.
-     */
     getAccounts = (): string[] => {
         const keyrings = this.keyrings || [];
         let addrs: string[] = [];
@@ -846,22 +776,13 @@ class KeyringService extends EventEmitter {
         return addrs;
     };
 
-    /**
-     * Get Keyring For Account
-     *
-     * Returns the currently initialized keyring that manages
-     * the specified `address` if one exists.
-     *
-     * @param {string} address - An account address.
-     * @returns {Keyring} The keyring of the account, if it exists.
-     */
     getKeyringForAccount = (
         pubkey: string,
         type?: string,
-        start?: number,
-        end?: number,
-        includeWatchKeyring = true
-    ): Keyring => {
+        _start?: number,
+        _end?: number,
+        _includeWatchKeyring = true
+    ): Keyring | EmptyKeyring => {
         log.debug(`KeyringController - getKeyringForAccount: ${pubkey}`);
         const keyrings = type ? this.keyrings.filter((keyring) => keyring.type === type) : this.keyrings;
         for (const keyring of keyrings) {
@@ -871,25 +792,42 @@ class KeyringService extends EventEmitter {
             }
         }
 
-        throw new Error('No keyring found for the requested account.');
+        return new EmptyKeyring();
     };
 
-    /**
-     * Display For Keyring
-     *
-     * Is used for adding the current keyrings to the state object.
-     * @param {Keyring} keyring
-     * @returns {Object} A keyring display object, with type and accounts properties.
-     */
-    displayForKeyring = (keyring: Keyring, addressType: AddressType, index: number): DisplayedKeyring => {
+    displayForKeyring = (
+        keyring: Keyring | EmptyKeyring,
+        addressType: AddressTypes,
+        index: number
+    ): DisplayedKeyring => {
         const accounts = keyring.getAccounts();
-        const all_accounts: { pubkey: string; brandName: string }[] = [];
+        const all_accounts: {
+            pubkey: string;
+            brandName: string;
+            quantumPublicKey?: string;
+        }[] = [];
+
         for (const pubkey of accounts) {
+            let quantumPublicKey: string | undefined;
+
+            // Get quantum public key if available
+            try {
+                if (keyring instanceof HdKeyring) {
+                    quantumPublicKey = keyring.getQuantumPublicKey(pubkey);
+                } else if (keyring instanceof SimpleKeyring) {
+                    quantumPublicKey = keyring.getQuantumPublicKeyOrUndefined();
+                }
+            } catch {
+                // Quantum key not available - expected for wallets that need migration
+            }
+
             all_accounts.push({
                 pubkey,
-                brandName: keyring.type
+                brandName: keyring.type,
+                quantumPublicKey
             });
         }
+
         return {
             type: keyring.type,
             accounts: all_accounts,
@@ -899,21 +837,25 @@ class KeyringService extends EventEmitter {
         };
     };
 
-    getAllDisplayedKeyrings = (): Promise<DisplayedKeyring[]> => {
-        return Promise.all(
-            this.keyrings.map((keyring, index) => this.displayForKeyring(keyring, this.addressTypes[index], index))
-        );
+    getAllDisplayedKeyrings = (): DisplayedKeyring[] => {
+        return this.keyrings.map((keyring, index) => this.displayForKeyring(keyring, this.addressTypes[index], index));
     };
 
-    getAllVisibleAccountsArray = async () => {
-        const typedAccounts = await this.getAllDisplayedKeyrings();
-        const result: { pubkey: string; type: string; brandName: string }[] = [];
+    getAllVisibleAccountsArray = () => {
+        const typedAccounts = this.getAllDisplayedKeyrings();
+        const result: {
+            pubkey: string;
+            type: string;
+            brandName: string;
+            quantumPublicKey?: string;
+        }[] = [];
         typedAccounts.forEach((accountGroup) => {
             result.push(
                 ...accountGroup.accounts.map((account) => ({
                     pubkey: account.pubkey,
                     brandName: account.brandName,
-                    type: accountGroup.type
+                    type: accountGroup.type,
+                    quantumPublicKey: account.quantumPublicKey
                 }))
             );
         });
@@ -921,15 +863,21 @@ class KeyringService extends EventEmitter {
         return result;
     };
 
-    getAllPubkeys = async () => {
-        const keyrings = await this.getAllDisplayedKeyrings();
-        const result: { pubkey: string; type: string; brandName: string }[] = [];
+    getAllPubkeys = () => {
+        const keyrings = this.getAllDisplayedKeyrings();
+        const result: {
+            pubkey: string;
+            type: string;
+            brandName: string;
+            quantumPublicKey?: string;
+        }[] = [];
         keyrings.forEach((accountGroup) => {
             result.push(
                 ...accountGroup.accounts.map((account) => ({
                     pubkey: account.pubkey,
                     brandName: account.brandName,
-                    type: accountGroup.type
+                    type: accountGroup.type,
+                    quantumPublicKey: account.quantumPublicKey
                 }))
             );
         });
@@ -937,13 +885,12 @@ class KeyringService extends EventEmitter {
         return result;
     };
 
-    hasPubkey = async (pubkey: string) => {
-        const addresses = await this.getAllPubkeys();
+    hasPubkey = (pubkey: string) => {
+        const addresses = this.getAllPubkeys();
         return !!addresses.find((item) => item.pubkey === pubkey);
     };
 
     clearKeyrings = (): void => {
-        // clear keyrings from memory
         this.keyrings = [];
         this.addressTypes = [];
         this.memStore.updateState({
@@ -951,35 +898,169 @@ class KeyringService extends EventEmitter {
         });
     };
 
-    /**
-     * Clear Keyrings
-     *
-     * Deallocates all currently managed keyrings and accounts.
-     * Used before initializing a new vault.
-     */
-
-    /**
-     * Update Memstore Keyrings
-     *
-     * Updates the in-memory keyrings, without persisting.
-     */
-    _updateMemStoreKeyrings = async (): Promise<void> => {
-        const keyrings = await Promise.all(
-            this.keyrings.map((keyring, index) => this.displayForKeyring(keyring, this.addressTypes[index], index))
+    _updateMemStoreKeyrings = (): void => {
+        const keyrings = this.keyrings.map((keyring, index) =>
+            this.displayForKeyring(keyring, this.addressTypes[index], index)
         );
-        return this.memStore.updateState({ keyrings });
+        this.memStore.updateState({ keyrings });
     };
 
-    /**
-     * Unlock Keyrings
-     *
-     * Unlocks the keyrings.
-     *
-     * @emits KeyringController#unlock
-     */
     setUnlocked = () => {
         this.memStore.updateState({ isUnlocked: true });
         this.emit('unlock');
+    };
+
+    /**
+     * Get all quantum public key hashes in use by all accounts (excluding specified one)
+     */
+    getAllQuantumKeyHashes = (excludePublicKey?: string): string[] => {
+        const hashes: string[] = [];
+
+        for (const keyring of this.keyrings) {
+            if (keyring instanceof SimpleKeyring) {
+                const accounts = keyring.getAccounts();
+                for (const account of accounts) {
+                    if (excludePublicKey && account === excludePublicKey) continue;
+
+                    // Use hasQuantumKey() to check if quantum key exists before trying to get hash
+                    if (keyring.hasQuantumKey()) {
+                        try {
+                            const hash = keyring.getQuantumPublicKeyHash();
+                            if (hash) {
+                                hashes.push(hash.toLowerCase());
+                            }
+                        } catch {
+                            // Quantum key not available - skip
+                        }
+                    }
+                }
+            }
+            // For HD keyrings, check each account's derived quantum key
+            if (keyring instanceof HdKeyring) {
+                const accounts = keyring.getAccounts();
+                for (const account of accounts) {
+                    if (excludePublicKey && account === excludePublicKey) continue;
+
+                    const wallet = keyring.getWallet(account);
+                    if (wallet?.mldsaKeypair) {
+                        const hash = wallet.address.toHex().replace('0x', '');
+                        hashes.push(hash.toLowerCase());
+                    }
+                }
+            }
+        }
+
+        return hashes;
+    };
+
+    /**
+     * Set quantum key for a simple keyring account (for migration)
+     */
+    setQuantumKey = async (publicKey: string, quantumPrivateKey: string): Promise<void> => {
+        const keyring = this.getKeyringForAccount(publicKey);
+        if (keyring instanceof SimpleKeyring) {
+            // Get existing key hashes before import
+            const existingHashes = this.getAllQuantumKeyHashes(publicKey);
+
+            // Import the key
+            keyring.importQuantumKey(quantumPrivateKey);
+
+            // Check if the imported key's hash matches any existing key
+            const newHash = keyring.getQuantumPublicKeyHash();
+            if (newHash && existingHashes.includes(newHash.toLowerCase())) {
+                // Revert the import by clearing the quantum key
+                (keyring as SimpleKeyring & { clearQuantumKey: () => void }).clearQuantumKey();
+                throw new Error(
+                    'This quantum key is already associated with another account. Each account must have a unique quantum key.'
+                );
+            }
+
+            await this.persistAllKeyrings();
+            this._updateMemStoreKeyrings();
+            this.fullUpdate();
+        } else {
+            throw new Error('Can only set quantum key for Simple Key Pair wallets');
+        }
+    };
+
+    /**
+     * Generate a new quantum key for a simple keyring account
+     */
+    generateQuantumKey = async (publicKey: string): Promise<void> => {
+        const keyring = this.getKeyringForAccount(publicKey);
+        if (keyring instanceof SimpleKeyring) {
+            keyring.generateFreshQuantumKey();
+            await this.persistAllKeyrings();
+            this._updateMemStoreKeyrings();
+            this.fullUpdate();
+        } else {
+            throw new Error('Can only generate quantum key for Simple Key Pair wallets');
+        }
+    };
+
+    /**
+     * Check if an account needs quantum migration
+     * Note: In wallet-sdk 2.0, SimpleKeyring always generates a quantum key on creation
+     * This method checks if for some reason the quantum key is missing
+     */
+    needsQuantumMigration = (publicKey: string): boolean => {
+        const keyring = this.getKeyringForAccount(publicKey);
+        if (keyring instanceof SimpleKeyring) {
+            return !keyring.hasKeys();
+        }
+        // HD keyrings auto-derive quantum keys, no migration needed
+        return false;
+    };
+
+    /**
+     * Get keyring type for account
+     */
+    getKeyringType = (publicKey: string): string => {
+        const keyring = this.getKeyringForAccount(publicKey);
+        return keyring.type;
+    };
+
+    /**
+     * Update all keyrings to use a new network.
+     * This recreates all keyrings with the new network parameter while preserving their data.
+     * Must be called when the user switches networks to ensure keypairs are derived correctly.
+     * @param network - The new bitcoin network to use
+     */
+    updateKeyringsNetwork = async (network: Network): Promise<void> => {
+        if (!this.password) {
+            // Not unlocked - keyrings will be created with correct network on unlock
+            return;
+        }
+
+        // Serialize current keyrings to get their data
+        // Note: serialize() returns SDK types which are compatible but have readonly arrays
+        const serializedKeyrings = this.keyrings.map((keyring, index) => {
+            const serializedData = keyring.serialize();
+            return {
+                type: keyring.type,
+                data: serializedData as KeyringOptions,
+                addressType: this.addressTypes[index]
+            } as SavedVault;
+        });
+
+        // Clear current keyrings
+        this.clearKeyrings();
+
+        // Restore keyrings with the new network
+        for (const serialized of serializedKeyrings) {
+            try {
+                const { keyring, addressType } = this._restoreKeyring(serialized, network);
+                this.keyrings.push(keyring);
+                this.addressTypes.push(addressType);
+            } catch (e) {
+                console.error('Failed to restore keyring with new network:', e);
+            }
+        }
+
+        // Persist updated keyrings with new network
+        await this.persistAllKeyrings();
+        this._updateMemStoreKeyrings();
+        this.fullUpdate();
     };
 
     private generateMnemonic = (): string => {

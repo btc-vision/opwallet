@@ -33,7 +33,7 @@ const openIndexPage = (route = ''): Promise<number | undefined> => {
 const queryCurrentActiveTab = async function () {
     try {
         const tabs = await browser.tabs.query({ active: true, currentWindow: true });
-        
+
         if (!tabs || tabs.length === 0) {
             return {};
         }
@@ -48,7 +48,7 @@ const queryCurrentActiveTab = async function () {
 
         return { id, title, origin, protocol, url };
     } catch (error) {
-        console.error("Failed to query active tab:", error);
+        console.error('Failed to query active tab:', error);
         return {};
     }
 };

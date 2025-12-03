@@ -1,7 +1,7 @@
 import { CheckCircleFilled } from '@ant-design/icons';
 import { useCallback, useMemo, useState } from 'react';
 
-import { AddressType, RestoreWalletType } from '@/shared/types';
+import { AddressTypes, RestoreWalletType } from '@/shared/types';
 import { Content, Header, Layout } from '@/ui/components';
 import { Step0 } from '@/ui/pages/Account/createHDWalletComponents/Step0';
 import { Step1_Create } from '@/ui/pages/Account/createHDWalletComponents/Step1_Create';
@@ -44,7 +44,7 @@ export default function CreateHDWalletScreen() {
         mnemonics: '',
         hdPath: '',
         passphrase: '',
-        addressType: AddressType.P2WPKH,
+        addressType: AddressTypes.P2WPKH,
         step1Completed: false,
         tabType: TabType.STEP1,
         restoreWalletType: RestoreWalletType.UNISAT,

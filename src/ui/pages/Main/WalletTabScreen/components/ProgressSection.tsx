@@ -113,7 +113,7 @@ export const ProgressSection: React.FC<ProgressSectionProps> = ({
                             }}
                         />
                     </div>
-                    
+
                     {/* Value text positioned at bottom right */}
                     <div
                         style={{

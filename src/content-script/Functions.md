@@ -1,6 +1,7 @@
 # Functions Documentation
 
-This document provides a detailed overview of the public functions exposed by the `OpnetProvider` injected into the webpage. Each function includes information about the parameters you need to pass and the expected return values.
+This document provides a detailed overview of the public functions exposed by the `OpnetProvider` injected into the
+webpage. Each function includes information about the parameters you need to pass and the expected return values.
 
 For full documentation, visit [docs.opnet.org](https://docs.opnet.org).
 
@@ -156,7 +157,10 @@ Signs raw data.
 
 ## **Bitcoin Transactions**
 
-### **`sendBitcoin(toAddress: string, satoshis: number, options?: { feeRate: number; memo?: string; memos?: string[] })`**
+### \*\*
+`sendBitcoin(toAddress: string, satoshis: number, options?: { feeRate: number; memo?: string; memos?: string[] })`
+
+\*\*
 
 Sends Bitcoin to a specified address.
 
@@ -312,4 +316,5 @@ The following events are emitted by the provider:
 
 ---
 
-This document serves as a quick reference for developers exploring the repository. For more details, visit [docs.opnet.org](https://docs.opnet.org).
+This document serves as a quick reference for developers exploring the repository. For more details,
+visit [docs.opnet.org](https://docs.opnet.org).

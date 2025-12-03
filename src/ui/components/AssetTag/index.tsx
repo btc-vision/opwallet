@@ -2,16 +2,12 @@ import { Row } from '../Row';
 import { Text } from '../Text';
 
 export interface AssetTagProps {
-    type: 'BRC20' | 'ARC20' | 'Inscription' | 'Unconfirmed' | 'RUNES';
+    type: 'Unconfirmed';
     small?: boolean;
 }
 
 const colors = {
-    BRC20: '#ABAE0B',
-    ARC20: '#2B4E8B',
-    Inscription: '#62A759',
-    Unconfirmed: '#BC9238',
-    RUNES: '#A14419'
+    Unconfirmed: '#BC9238'
 };
 
 export default function AssetTag(props: AssetTagProps) {

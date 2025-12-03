@@ -1,7 +1,7 @@
-import { CloseOutlined, LoadingOutlined } from '@ant-design/icons';
+import { CloseOutlined } from '@ant-design/icons';
 import { Modal } from 'antd';
 import BigNumber from 'bignumber.js';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import browser from 'webextension-polyfill';
 
 import Web3API from '@/shared/web3/Web3API';
@@ -10,7 +10,7 @@ import { getContract, IOP20Contract, OP_20_ABI } from 'opnet';
 import { OPTokenInfo } from '@/shared/types';
 import { Address, AddressTypes, AddressVerificator } from '@btc-vision/transaction';
 
-import { Column, Text } from '@/ui/components';
+import { Column, OPNetLoader, Text } from '@/ui/components';
 import { useTools } from '@/ui/components/ActionComponent';
 import OpNetBalanceCard from '@/ui/components/OpNetBalanceCard';
 import { useCurrentAccount } from '@/ui/state/accounts/hooks';
@@ -94,6 +94,7 @@ export function OPNetList() {
     const [hasHiddenTokens, setHasHiddenTokens] = useState(false);
     const [showModal, setShowModal] = useState(false);
     const [modalToken, setModalToken] = useState<string | null>(null);
+    const [migrationWarningShown, setMigrationWarningShown] = useState(false);
 
     const storageKey = `opnetTokens_${chainType}_${currentAccount.pubkey}`;
     const initializationKey = `opnetTokens_initialized_${chainType}_${currentAccount.pubkey}`;
@@ -191,6 +192,23 @@ export function OPNetList() {
 
     // Fetch balance for a single token
     const fetchTokenBalance = async (address: string): Promise<TokenWithBalance | null> => {
+        // Check if quantum migration is complete
+        if (!currentAccount.quantumPublicKeyHash) {
+            if (!migrationWarningShown) {
+                tools.toastWarning('Unable to load balance: Post-quantum migration not completed');
+                setMigrationWarningShown(true);
+            }
+            return {
+                address,
+                name: 'Migration Required',
+                amount: 0n,
+                divisibility: 8,
+                symbol: '???',
+                isLoading: false,
+                loadError: true
+            };
+        }
+
         try {
             // Set loading state for this token
             setTokenBalancesMap((prev) => {
@@ -223,7 +241,8 @@ export function OPNetList() {
 
             const contract = getContract<IOP20Contract>(address, OP_20_ABI, Web3API.provider, Web3API.network);
 
-            const balance = await contract.balanceOf(Address.fromString(currentAccount.pubkey));
+            const userAddress = Address.fromString(currentAccount.quantumPublicKeyHash, currentAccount.pubkey);
+            const balance = await contract.balanceOf(userAddress);
 
             return {
                 address,
@@ -421,8 +440,7 @@ export function OPNetList() {
     if (isInitializing) {
         return (
             <Column style={{ minHeight: 150 }} itemsCenter justifyCenter>
-                <LoadingOutlined style={{ fontSize: 24, color: colors.main }} />
-                <Text text="Loading tokens..." color="textDim" size="sm" style={{ marginTop: 8 }} />
+                <OPNetLoader size={60} text="Loading tokens" />
             </Column>
         );
     }
@@ -488,8 +506,7 @@ export function OPNetList() {
                 <div>
                     {currentPageBalances.length === 0 && currentPageAddresses.length > 0 ? (
                         <Column style={{ padding: 30 }} itemsCenter justifyCenter>
-                            <LoadingOutlined style={{ fontSize: 20, color: colors.main }} />
-                            <Text text="Loading balances..." color="textDim" size="sm" style={{ marginTop: 8 }} />
+                            <OPNetLoader size={50} text="Loading balances" />
                         </Column>
                     ) : (
                         <>

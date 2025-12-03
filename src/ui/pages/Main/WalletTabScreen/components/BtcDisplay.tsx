@@ -23,33 +23,41 @@ export function BtcDisplay({ balance }: { balance: string | number }) {
         //   show 3 decimal places for fractal bitcoin
         return (
             <>
-            <Row style={{ alignItems: 'flex-end', marginBottom: '3px' }} justifyCenter gap={'zero'}>
-                <span style={{
-                    background: 'linear-gradient(180deg, #e4e6eb, #f7931a)', // pick your gradient
-                    WebkitBackgroundClip: 'text',
-                    WebkitTextFillColor: 'transparent',
-                    fontSize: 30,
-                    fontWeight: 'bold',
-                }}>{intPart}</span>
-                {decPart && (
-                    <span style={{
-                        background: 'linear-gradient(180deg, #e4e6eb, #f7931a)', // pick your gradient
-                        WebkitBackgroundClip: 'text',
-                        WebkitTextFillColor: 'transparent',
-                        fontSize: 30,
-                        fontWeight: 'bold',
-                    }}>{'.' + decPart}</span>
-                )}
-                    <span style={{
-                        background: 'linear-gradient(180deg, #e4e6eb, #f7931a)', // pick your gradient
-                        WebkitBackgroundClip: 'text',
-                        WebkitTextFillColor: 'transparent',
-                        fontSize: 30,
-                        fontWeight: 'bold',
-                        marginLeft: '0.25em'
-                    }}>{btcUnit}</span>
-
-            </Row>
+                <Row style={{ alignItems: 'flex-end', marginBottom: '3px' }} justifyCenter gap={'zero'}>
+                    <span
+                        style={{
+                            background: 'linear-gradient(180deg, #e4e6eb, #f7931a)', // pick your gradient
+                            WebkitBackgroundClip: 'text',
+                            WebkitTextFillColor: 'transparent',
+                            fontSize: 30,
+                            fontWeight: 'bold'
+                        }}>
+                        {intPart}
+                    </span>
+                    {decPart && (
+                        <span
+                            style={{
+                                background: 'linear-gradient(180deg, #e4e6eb, #f7931a)', // pick your gradient
+                                WebkitBackgroundClip: 'text',
+                                WebkitTextFillColor: 'transparent',
+                                fontSize: 30,
+                                fontWeight: 'bold'
+                            }}>
+                            {'.' + decPart}
+                        </span>
+                    )}
+                    <span
+                        style={{
+                            background: 'linear-gradient(180deg, #e4e6eb, #f7931a)', // pick your gradient
+                            WebkitBackgroundClip: 'text',
+                            WebkitTextFillColor: 'transparent',
+                            fontSize: 30,
+                            fontWeight: 'bold',
+                            marginLeft: '0.25em'
+                        }}>
+                        {btcUnit}
+                    </span>
+                </Row>
             </>
         );
     }

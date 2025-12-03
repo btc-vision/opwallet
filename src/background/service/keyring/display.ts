@@ -1,39 +1,35 @@
-import { isHDKeyring, isKeystoneKeyring } from '@/background/utils/keyring';
+import { isHDKeyring } from '@/background/utils/keyring';
 import KeyringService, { Keyring } from './index';
+
+// Type for keyring that may be Keyring, EmptyKeyring, or HdKeyring
+type AnyKeyring = Keyring | { type: string; getAccounts(): string[] };
 
 class DisplayKeyring {
     accounts: string[] = [];
     type = '';
-    hdPath = '';
+    private currentPage = 0;
+    private readonly perPage = 5;
 
-    constructor(keyring: Keyring) {
-        if (isHDKeyring(keyring) || isKeystoneKeyring(keyring)){
-            this.hdPath = keyring.hdPath || '';
-        }
+    constructor(keyring: AnyKeyring) {
         this.accounts = keyring.getAccounts();
         this.type = keyring.type;
     }
 
-    // TODO (typing): If it's not planning to implement unlock function in any of the Keyring types in the future,
-    // we can remove this function completely as none of the Keyring implementations require it (checked wallet-sdk).
-    // unlock = async (): Promise<void> => {
-    //     const keyring = KeyringService.getKeyringForAccount(this.accounts[0], this.type);
-    //     if (keyring.unlock) await keyring.unlock();
-    // };
-
-    getFirstPage = async () => {
+    getFirstPage = () => {
         const keyring = KeyringService.getKeyringForAccount(this.accounts[0], this.type);
-        if (isHDKeyring(keyring) || isKeystoneKeyring(keyring)){
-            return await keyring.getFirstPage();
+        if (isHDKeyring(keyring)) {
+            this.currentPage = 0;
+            return keyring.getAddressesPage(this.currentPage, this.perPage);
         } else {
             return [];
         }
     };
 
-    getNextPage = async () => {
+    getNextPage = () => {
         const keyring = KeyringService.getKeyringForAccount(this.accounts[0], this.type);
-        if (isHDKeyring(keyring) || isKeystoneKeyring(keyring)){
-            return await keyring.getNextPage();
+        if (isHDKeyring(keyring)) {
+            this.currentPage++;
+            return keyring.getAddressesPage(this.currentPage, this.perPage);
         } else {
             return [];
         }
@@ -44,13 +40,22 @@ class DisplayKeyring {
         return keyring.getAccounts();
     };
 
-    activeAccounts = (indexes: number[]): string[] => {
+    activateAccounts = (indexes: number[]): string[] => {
         const keyring = KeyringService.getKeyringForAccount(this.accounts[0], this.type);
-        if (isHDKeyring(keyring) || isKeystoneKeyring(keyring)){
-            return keyring.activeAccounts(indexes);
+        if (isHDKeyring(keyring)) {
+            return keyring.activateAccounts(indexes);
         } else {
             return [];
         }
+    };
+
+    getHdPath = (): string => {
+        if (this.accounts.length === 0) return '';
+        const keyring = KeyringService.getKeyringForAccount(this.accounts[0], this.type);
+        if (isHDKeyring(keyring)) {
+            return keyring.hdPath;
+        }
+        return '';
     };
 }
 

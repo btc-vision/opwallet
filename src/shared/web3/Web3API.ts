@@ -11,7 +11,7 @@ import {
     UTXOs
 } from 'opnet';
 
-import { ChainType, ChainId as WalletChainId } from '@/shared/constant';
+import { ChainId as WalletChainId, ChainType } from '@/shared/constant';
 import { NetworkType } from '@/shared/types';
 import { customNetworksManager } from '@/shared/utils/CustomNetworksManager';
 import { contractLogoManager } from '@/shared/web3/contracts-logo/ContractLogoManager';

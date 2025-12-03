@@ -2,9 +2,8 @@ import { ReactElement, useCallback, useEffect, useMemo, useRef } from 'react';
 import { HashRouter, Route, Routes, useNavigate as useNavigateOrigin } from 'react-router-dom';
 
 import TxCreateScreen from '@/ui/pages/Wallet/TxCreateScreen';
-import { LoadingOutlined } from '@ant-design/icons';
 
-import { Content, Icon } from '../components';
+import { Content, OPNetLoader } from '../components';
 import { accountActions } from '../state/accounts/reducer';
 import { useIsReady, useIsUnlocked } from '../state/global/hooks';
 import { globalActions } from '../state/global/reducer';
@@ -39,6 +38,7 @@ import EditWalletNameScreen from './Settings/EditWalletNameScreen';
 import ExportMnemonicsScreen from './Settings/ExportMnemonicsScreen';
 import ExportPrivateKeyScreen from './Settings/ExportPrivateKeyScreen';
 import NetworkTypeScreen from './Settings/NetworkTypeScreen';
+import QuantumMigrationScreen from './Settings/QuantumMigrationScreen';
 import UpgradeNoticeScreen from './Settings/UpgradeNoticeScreen';
 import ReceiveScreen from './Wallet/ReceiveScreen';
 import TxConfirmScreen from './Wallet/TxConfirmScreen';
@@ -52,6 +52,8 @@ import NFTTabScreen from '@/ui/pages/Main/NFTTabScreen';
 import ImportSelectionScreen from '@/ui/pages/Wallet/ImportSelectionScreen';
 import NFTSendScreen from '@/ui/pages/Wallet/NFTSendScreen';
 import ImportTokenScreen from '@/ui/pages/Wallet/ImportOP20Screen';
+import HistoryScreen from '@/ui/pages/History/HistoryScreen';
+import TransactionDetailScreen from '@/ui/pages/History/TransactionDetailScreen';
 
 export enum RouteTypes {
     BoostScreen = 'BoostScreen',
@@ -94,7 +96,10 @@ export enum RouteTypes {
     ImportNFTScreen = 'ImportNFTScreen',
     NFTTabScreen = 'NFTTabScreen',
     NFTSendScreen = 'NFTSendScreen',
-    ImportTokenScreen = 'ImportTokenScreen'
+    ImportTokenScreen = 'ImportTokenScreen',
+    QuantumMigrationScreen = 'QuantumMigrationScreen',
+    HistoryScreen = 'HistoryScreen',
+    TransactionDetailScreen = 'TransactionDetailScreen'
 }
 
 type Routes = {
@@ -268,6 +273,18 @@ export const routes: Routes = {
     ImportTokenScreen: {
         path: '/import-token',
         element: <ImportTokenScreen />
+    },
+    QuantumMigrationScreen: {
+        path: '/settings/quantum-migration',
+        element: <QuantumMigrationScreen />
+    },
+    HistoryScreen: {
+        path: '/history',
+        element: <HistoryScreen />
+    },
+    TransactionDetailScreen: {
+        path: '/history/transaction',
+        element: <TransactionDetailScreen />
     }
 };
 
@@ -384,12 +401,11 @@ const Main = () => {
                     width: '100vw',
                     height: '100vh',
                     overflowY: 'auto',
-                    overflowX: 'hidden'
+                    overflowX: 'hidden',
+                    backgroundColor: '#212121'
                 }}>
                 <Content justifyCenter itemsCenter>
-                    <Icon>
-                        <LoadingOutlined />
-                    </Icon>
+                    <OPNetLoader size={140} text="Loading" />
                 </Content>
             </div>
         );

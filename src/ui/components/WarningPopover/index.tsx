@@ -26,7 +26,7 @@ export const WarningPopover = ({
 
                 <Column mt="lg">
                     {risks.map((risk, index) => (
-                        <Column key={'risk_' + index}>
+                        <Column key={`risk_${index}`}>
                             <Row>
                                 <Card
                                     preset="style2"

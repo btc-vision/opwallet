@@ -1,11 +1,6 @@
 import { CSSProperties } from 'react';
 
-import { colors } from '@/ui/theme/colors';
-import { fontSizes } from '@/ui/theme/font';
-import { spacing } from '@/ui/theme/spacing';
-import { LoadingOutlined } from '@ant-design/icons';
-
-import { Text } from '../../Text';
+import { OPNetLoader } from '../../OPNetLoader';
 import './index.less';
 
 export interface LoadingProps {
@@ -16,12 +11,11 @@ export interface LoadingProps {
 const $baseViewStyle: CSSProperties = {
     width: '100vw',
     height: '100vh',
-    backgroundColor: 'rgba(33,33,33,0.74)',
+    backgroundColor: 'rgba(33,33,33,0.85)',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    flexDirection: 'column',
-    gap: spacing.small
+    flexDirection: 'column'
 };
 
 export function Loading(props: LoadingProps) {
@@ -29,13 +23,7 @@ export function Loading(props: LoadingProps) {
     return (
         <div className="loading-container">
             <div style={$baseViewStyle}>
-                <LoadingOutlined
-                    style={{
-                        fontSize: fontSizes.icon,
-                        color: colors.orange
-                    }}
-                />
-                {text && <Text text={text} preset="title" color="orange" />}
+                <OPNetLoader size={120} text={text} />
             </div>
         </div>
     );

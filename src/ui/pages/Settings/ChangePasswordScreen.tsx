@@ -69,9 +69,9 @@ export default function ChangePasswordScreen() {
             if (isWalletError(err)) {
                 tools.toastError(err.message);
             } else {
-                tools.toastError("An unexpected error occurred.");
-                console.error("Non-WalletError caught: ", err);
-            }        
+                tools.toastError('An unexpected error occurred.');
+                console.error('Non-WalletError caught: ', err);
+            }
         }
     };
     return (

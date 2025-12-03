@@ -2,7 +2,7 @@ import bitcore from 'bitcore-lib';
 import { useEffect, useMemo, useState } from 'react';
 
 import { ADDRESS_TYPES, RESTORE_WALLETS } from '@/shared/constant';
-import { AddressType } from '@/shared/types';
+import { AddressTypes } from '@/shared/types';
 import Web3API from '@/shared/web3/Web3API';
 import { Button, Column, Icon, Input, Row, Text } from '@/ui/components';
 import { useTools } from '@/ui/components/ActionComponent';
@@ -67,7 +67,7 @@ export function Step2({
     const [previewAddresses, setPreviewAddresses] = useState<string[]>(hdPathOptions.map((v) => ''));
 
     const [scannedGroups, setScannedGroups] = useState<
-        { type: AddressType; address_arr: string[]; satoshis_arr: number[] }[]
+        { type: AddressTypes; address_arr: string[]; satoshis_arr: number[] }[]
     >([]);
 
     const [addressAssets, setAddressAssets] = useState<
@@ -180,7 +180,7 @@ export function Step2({
         setLoading(true);
 
         for (let i = 0; i < hdPathOptions.length; i++) {
-            if (hdPathOptions[i].addressType === AddressType.P2TR) {
+            if (hdPathOptions[i].addressType === AddressTypes.P2TR) {
                 setRecommendedTypeIndex(i);
                 break;
             }
@@ -254,7 +254,7 @@ export function Step2({
         tools.showLoading(true);
         try {
             const groups: {
-                type: AddressType;
+                type: AddressTypes;
                 address_arr: string[];
                 satoshis_arr: number[];
                 pubkey_arr: string[];

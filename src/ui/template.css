@@ -1,5 +1,5 @@
-@import "tailwindcss";
-@import "tailwindcss/utilities";
+@import 'tailwindcss';
+@import 'tailwindcss/utilities';
 
 /* Custom theme configuration for Tailwind v4 */
 @theme {
@@ -7,14 +7,14 @@
     --color-primary: rgb(234, 202, 68);
     --color-primary-active: #383535;
     --color-hard-black: #222121;
-    --color-soft-black: #2A2626;
-    --color-soft-white: #AAAAAA;
-    --color-custom-green: #4BB21A;
+    --color-soft-black: #2a2626;
+    --color-soft-white: #aaaaaa;
+    --color-custom-green: #4bb21a;
     --color-custom-green-rgba: rgba(75, 178, 26, 0.05);
-    --color-warn: #FA701A;
-    --color-warning: #FA701A;
-    --color-error: #CC3333;
-    --color-dark-error: #BB3333;
+    --color-warn: #fa701a;
+    --color-warning: #fa701a;
+    --color-error: #cc3333;
+    --color-dark-error: #bb3333;
 
     /* Custom spacing values */
     --spacing-0_5: 0.25rem;

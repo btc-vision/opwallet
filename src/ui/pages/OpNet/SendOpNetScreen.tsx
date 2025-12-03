@@ -17,7 +17,7 @@ import {
 import { AddressTypes, AddressVerificator } from '@btc-vision/transaction';
 import BigNumber from 'bignumber.js';
 import { BitcoinUtils } from 'opnet';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { RouteTypes, useNavigate } from '../MainRoute';
 
 BigNumber.config({ EXPONENTIAL_AT: 256 });
@@ -54,6 +54,15 @@ export default function SendOpNetScreen() {
 
     const balanceFormatted = new BigNumber(BitcoinUtils.formatUnits(balance, divisibility));
 
+    const handleAddressChange = useCallback((newInfo: { address: string; domain: string }) => {
+        setToInfo((prev) => {
+            if (prev.address === newInfo.address && prev.domain === newInfo.domain) {
+                return prev;
+            }
+            return newInfo;
+        });
+    }, []);
+
     // Fetch public key when address changes
     useEffect(() => {
         const fetchPublicKey = async () => {
@@ -73,9 +82,18 @@ export default function SendOpNetScreen() {
                     setPublicKey(pubKeyStr);
                 } else {
                     // Fetch public key from the address
-                    const pubKey = await Web3API.provider.getPublicKeyInfo(toInfo.address);
+                    const pubKey = await Web3API.provider.getPublicKeyInfo(toInfo.address, false);
                     if (pubKey) {
-                        setPublicKey(pubKey.toString());
+                        const pubKeyHex = pubKey.toHex ? pubKey.toHex() : pubKey.toString();
+                        // Check for zero address (user not found on-chain)
+                        if (pubKeyHex === '0x' + '00'.repeat(32) || pubKeyHex === '00'.repeat(32)) {
+                            setPublicKey('');
+                            setError(
+                                'User not found on-chain. This wallet has not performed any OPNet transactions yet.'
+                            );
+                        } else {
+                            setPublicKey(pubKeyHex);
+                        }
                     } else {
                         setPublicKey('');
                     }
@@ -276,7 +294,7 @@ export default function SendOpNetScreen() {
                     <Input
                         preset="address"
                         addressInputData={toInfo}
-                        onAddressInputChange={setToInfo}
+                        onAddressInputChange={handleAddressChange}
                         placeholder="Enter recipient address..."
                         autoFocus
                         style={{
@@ -416,7 +434,7 @@ export default function SendOpNetScreen() {
                         placeholder="0.00"
                         value={inputAmount}
                         onAmountInputChange={setInputAmount}
-                        runesDecimal={divisibility}
+                        decimalPlaces={divisibility}
                         style={{
                             background: colors.inputBg,
                             border: `1px solid ${colors.containerBorder}`,

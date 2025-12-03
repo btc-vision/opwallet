@@ -1,15 +1,17 @@
 import React, { CSSProperties, useEffect, useState } from 'react';
 
-import { AddressFlagType } from '@/shared/constant';
+import { AddressFlagType, KEYRING_TYPE } from '@/shared/constant';
 import { UTXO_CONFIG } from '@/shared/config';
 import { checkAddressFlag } from '@/shared/utils';
 import { Column, Content, Footer, Header, Image, Layout } from '@/ui/components';
 import AccountSelect from '@/ui/components/AccountSelect';
+import { QuantumMigrationBanner } from '@/ui/components/QuantumMigrationBanner';
 import { DisableUnconfirmedsPopover } from '@/ui/components/DisableUnconfirmedPopover';
 import { NavTabBar } from '@/ui/components/NavTabBar';
 import { UpgradePopover } from '@/ui/components/UpgradePopover';
 import { BalanceDisplay } from '@/ui/pages/Main/WalletTabScreen/components/BalanceDisplay';
 import {
+    useAccountAddress,
     useAccountBalance,
     useAccountPublicKey,
     useAddressSummary,
@@ -79,11 +81,30 @@ export default function WalletTabScreen() {
     const navigate = useNavigate();
 
     const untweakedPublicKey = useAccountPublicKey();
+    const bitcoinAddress = useAccountAddress();
 
-    const address = untweakedPublicKey ? Address.fromString(untweakedPublicKey) : null;
-    const tweakedPublicKey = address ? address.toHex() : '';
-    const publicKey = address ? '0x' + address.originalPublicKeyBuffer().toString('hex') : '';
-    const explorerUrl = address ? `https://opscan.org/accounts/${tweakedPublicKey}` : '';
+    const [address, setAddress] = useState<Address | null>(null);
+
+    // untweakedPublicKey.mldsa can be UNDEFINED if the account is not quantum-enabled! we need to handle this gracefully, no error!
+    // Address.fromString requires (mldsaHashedKey, legacyKey) - use pubkey for both if no mldsa
+    useEffect(() => {
+        if (untweakedPublicKey.mldsa) {
+            setAddress(Address.fromString(untweakedPublicKey.mldsa, untweakedPublicKey.pubkey));
+        } else if (untweakedPublicKey.pubkey) {
+            setAddress(
+                Address.fromString(
+                    '0x0000000000000000000000000000000000000000000000000000000000000000',
+                    untweakedPublicKey.pubkey
+                )
+            );
+        } else {
+            setAddress(null);
+        }
+    }, [untweakedPublicKey.pubkey, untweakedPublicKey.mldsa]);
+
+    const mldsaHashedPublicKey = address ? address.toHex() : '';
+    //const publicKey = address ? '0x' + address.originalPublicKeyBuffer().toString('hex') : '';
+    //const explorerUrl = address ? `https://opscan.org/accounts/${mldsaHashedPublicKey}` : '';
 
     const accountBalance = useAccountBalance();
     const fetchBalance = useFetchBalanceCallback();
@@ -110,6 +131,29 @@ export default function WalletTabScreen() {
     const { checkUTXOLimit, checkUTXOWarning, navigateToConsolidation } = useConsolidation();
 
     const [showDisableUnconfirmedUtxoNotice, setShowDisableUnconfirmedUtxoNotice] = useState(false);
+    const [needsQuantumMigration, setNeedsQuantumMigration] = useState(false);
+
+    // Check if quantum migration is needed (SimpleKeyring without quantum key)
+    useEffect(() => {
+        const checkQuantumStatus = async () => {
+            try {
+                if (currentKeyring.type === KEYRING_TYPE.SimpleKeyring) {
+                    // Try to get the wallet address - if it fails, migration needed
+                    try {
+                        await wallet.getWalletAddress();
+                        setNeedsQuantumMigration(false);
+                    } catch {
+                        setNeedsQuantumMigration(true);
+                    }
+                } else {
+                    setNeedsQuantumMigration(false);
+                }
+            } catch {
+                setNeedsQuantumMigration(false);
+            }
+        };
+        void checkQuantumStatus();
+    }, [currentKeyring, wallet]);
 
     useEffect(() => {
         void (async () => {
@@ -261,6 +305,13 @@ export default function WalletTabScreen() {
 
                     <AccountSelect />
 
+                    {/* Quantum Migration Banner */}
+                    {needsQuantumMigration && (
+                        <div style={{ marginTop: '8px' }}>
+                            <QuantumMigrationBanner onMigrate={() => navigate(RouteTypes.QuantumMigrationScreen)} />
+                        </div>
+                    )}
+
                     <div
                         style={{
                             position: 'relative',
@@ -314,7 +365,7 @@ export default function WalletTabScreen() {
 
                                     // Check if we've reached the error threshold (1500) to show red instead of yellow
                                     const errorThreshold = UTXO_CONFIG.ERROR_THRESHOLD;
-                                    const hasReachedError = 
+                                    const hasReachedError =
                                         accountBalance.unspent_utxos_count >= errorThreshold ||
                                         accountBalance.csv75_locked_utxos_count >= errorThreshold ||
                                         accountBalance.csv75_unlocked_utxos_count >= errorThreshold ||
@@ -346,10 +397,22 @@ export default function WalletTabScreen() {
                                             <div style={{ fontWeight: 600, color: alertColor, marginBottom: '4px' }}>
                                                 ⚠️ High UTXO Count
                                             </div>
-                                            <div style={{ fontSize: '9px', color: 'rgba(219, 219, 219, 0.7)', marginBottom: '8px' }}>
-                                                One or more UTXO categories has reached {warningThreshold} UTXOs. Consider consolidating now to avoid issues.
-                                                <strong style={{ display: 'block', marginTop: '4px', color: strongTextColor }}>
-                                                    If you exceed 2,000 UTXOs in any category, your balance will not be fully displayed.
+                                            <div
+                                                style={{
+                                                    fontSize: '9px',
+                                                    color: 'rgba(219, 219, 219, 0.7)',
+                                                    marginBottom: '8px'
+                                                }}>
+                                                One or more UTXO categories has reached {warningThreshold} UTXOs.
+                                                Consider consolidating now to avoid issues.
+                                                <strong
+                                                    style={{
+                                                        display: 'block',
+                                                        marginTop: '4px',
+                                                        color: strongTextColor
+                                                    }}>
+                                                    If you exceed 2,000 UTXOs in any category, your balance will not be
+                                                    fully displayed.
                                                 </strong>
                                             </div>
                                             <button
@@ -502,13 +565,13 @@ export default function WalletTabScreen() {
                                     noBreakStyle={$noBreakStyle}
                                 />
 
-                                {/* Metadata: CSV Badge and Public Key */}
+                                {/* Metadata: CSV Badge, MLDSA Key, and Bitcoin Address */}
                                 {!showBalanceDetails && (
                                     <div
                                         style={{
                                             display: 'flex',
+                                            flexDirection: 'column',
                                             alignItems: 'center',
-                                            justifyContent: 'center',
                                             gap: '6px',
                                             marginTop: '4px'
                                         }}>
@@ -528,15 +591,89 @@ export default function WalletTabScreen() {
                                             </span>
                                         )}
 
-                                        {/* Public Key Display */}
+                                        {/* MLDSA Key and Bitcoin Address Row */}
                                         <div
                                             style={{
                                                 display: 'flex',
                                                 alignItems: 'center',
-                                                justifyContent: 'space-between',
-                                                gap: '12px'
+                                                justifyContent: 'center',
+                                                gap: '8px',
+                                                flexWrap: 'wrap'
                                             }}>
-                                            <Tooltip title="Click to copy public key" placement="top">
+                                            {/* MLDSA Key Display - only show if wallet is migrated */}
+                                            {untweakedPublicKey.mldsa && (
+                                                <Tooltip title="Click to copy MLDSA public key hash" placement="top">
+                                                    <button
+                                                        style={{
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            gap: '4px',
+                                                            padding: '3px 8px',
+                                                            background: 'rgba(139, 92, 246, 0.1)',
+                                                            border: '1px solid rgba(139, 92, 246, 0.3)',
+                                                            borderRadius: '6px',
+                                                            cursor: 'pointer',
+                                                            transition: 'all 0.15s',
+                                                            maxWidth: '130px'
+                                                        }}
+                                                        onClick={async (e) => {
+                                                            e.stopPropagation();
+                                                            await copyToClipboard(mldsaHashedPublicKey);
+                                                            tools.toastSuccess('MLDSA key copied');
+                                                        }}
+                                                        onMouseEnter={(e) => {
+                                                            e.currentTarget.style.background =
+                                                                'rgba(139, 92, 246, 0.2)';
+                                                            e.currentTarget.style.borderColor =
+                                                                'rgba(139, 92, 246, 0.5)';
+                                                        }}
+                                                        onMouseLeave={(e) => {
+                                                            e.currentTarget.style.background =
+                                                                'rgba(139, 92, 246, 0.1)';
+                                                            e.currentTarget.style.borderColor =
+                                                                'rgba(139, 92, 246, 0.3)';
+                                                        }}>
+                                                        <span
+                                                            style={{
+                                                                fontSize: '9px',
+                                                                color: '#8B5CF6',
+                                                                fontWeight: 600
+                                                            }}>
+                                                            MLDSA
+                                                        </span>
+                                                        <span
+                                                            style={{
+                                                                fontSize: '10px',
+                                                                color: '#8B5CF6',
+                                                                fontFamily: 'monospace',
+                                                                overflow: 'hidden',
+                                                                textOverflow: 'ellipsis',
+                                                                whiteSpace: 'nowrap'
+                                                            }}>
+                                                            {mldsaHashedPublicKey.slice(0, 6)}...
+                                                            {mldsaHashedPublicKey.slice(-4)}
+                                                        </span>
+                                                        <svg
+                                                            width="10"
+                                                            height="10"
+                                                            viewBox="0 0 24 24"
+                                                            fill="none"
+                                                            xmlns="http://www.w3.org/2000/svg"
+                                                            style={{ flexShrink: 0 }}>
+                                                            <path
+                                                                d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2M12 11v6M9 14h6M15 4H9a1 1 0 0 0-1 1v2a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V5a1 1 0 0 0-1-1z"
+                                                                stroke="#8B5CF6"
+                                                                strokeWidth="2"
+                                                                strokeLinecap="round"
+                                                                strokeLinejoin="round"
+                                                            />
+                                                        </svg>
+                                                    </button>
+                                                </Tooltip>
+                                            )}
+
+                                            {/* Bitcoin Address Display */}
+                                            <Tooltip title="Click to copy Bitcoin address" placement="top">
                                                 <button
                                                     style={{
                                                         display: 'flex',
@@ -548,12 +685,12 @@ export default function WalletTabScreen() {
                                                         borderRadius: '6px',
                                                         cursor: 'pointer',
                                                         transition: 'all 0.15s',
-                                                        maxWidth: '120px'
+                                                        maxWidth: '130px'
                                                     }}
                                                     onClick={async (e) => {
                                                         e.stopPropagation();
-                                                        await copyToClipboard(publicKey);
-                                                        tools.toastSuccess('Copied');
+                                                        await copyToClipboard(bitcoinAddress);
+                                                        tools.toastSuccess('Address copied');
                                                     }}
                                                     onMouseEnter={(e) => {
                                                         e.currentTarget.style.background = 'rgba(243, 116, 19, 0.2)';
@@ -565,6 +702,14 @@ export default function WalletTabScreen() {
                                                     }}>
                                                     <span
                                                         style={{
+                                                            fontSize: '9px',
+                                                            color: colors.main,
+                                                            fontWeight: 600
+                                                        }}>
+                                                        BTC
+                                                    </span>
+                                                    <span
+                                                        style={{
                                                             fontSize: '10px',
                                                             color: colors.main,
                                                             fontFamily: 'monospace',
@@ -572,9 +717,8 @@ export default function WalletTabScreen() {
                                                             textOverflow: 'ellipsis',
                                                             whiteSpace: 'nowrap'
                                                         }}>
-                                                        {publicKey.slice(0, 6)}...{publicKey.slice(-4)}
+                                                        {bitcoinAddress.slice(0, 6)}...{bitcoinAddress.slice(-4)}
                                                     </span>
-
                                                     <svg
                                                         width="10"
                                                         height="10"
@@ -643,10 +787,7 @@ export default function WalletTabScreen() {
                             <ActionButton
                                 label="History"
                                 icon={<HistoryOutlined style={{ fontSize: 18, color: colors.text }} />}
-                                onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
-                                    e.stopPropagation();
-                                    window.open(explorerUrl, '_blank');
-                                }}
+                                onClick={() => navigate(RouteTypes.HistoryScreen)}
                             />
                         </div>
                     </div>

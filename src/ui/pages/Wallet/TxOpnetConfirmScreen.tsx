@@ -9,6 +9,7 @@ import {
     SourceType,
     TransferParameters
 } from '@/shared/interfaces/RawTxParameters';
+import { RecordTransactionInput, TransactionType } from '@/shared/types/TransactionHistory';
 import Web3API from '@/shared/web3/Web3API';
 import { Column, Content, Footer, Header, Layout, Text } from '@/ui/components';
 import { ContextType, useTools } from '@/ui/components/ActionComponent';
@@ -38,6 +39,7 @@ import {
     DeploymentResult,
     IDeploymentParameters,
     IFundingTransactionParameters,
+    MLDSASecurityLevel,
     UTXO,
     Wallet
 } from '@btc-vision/transaction';
@@ -144,14 +146,16 @@ export default function TxOpnetConfirmScreen() {
         void setWallet();
     });
 
-    const getWallet = useCallback(async () => {
-        const currentWalletAddress = await wallet.getCurrentAccount();
-        const pubkey = currentWalletAddress.pubkey;
-        const wifWallet = await wallet.getInternalPrivateKey({
-            pubkey: pubkey,
-            type: currentWalletAddress.type
-        });
-        return Wallet.fromWif(wifWallet.wif, Web3API.network);
+    const getOPNetWallet = useCallback(async () => {
+        const data = await wallet.getOPNetWallet();
+
+        return Wallet.fromWif(
+            data[0],
+            data[1],
+            Web3API.network,
+            MLDSASecurityLevel.LEVEL2,
+            Buffer.from(data[2], 'hex')
+        );
     }, [wallet]);
 
     const handleCancel = () => {
@@ -161,21 +165,30 @@ export default function TxOpnetConfirmScreen() {
     const getPubKey = async (to: string) => {
         let pubKey: Address;
         const pubKeyStr: string = to.replace('0x', '');
+
+        // Allow 32-byte hex (MLDSA public key hash), 33-byte (compressed pubkey), or 65-byte (uncompressed pubkey)
         if (
             (pubKeyStr.length === 64 || pubKeyStr.length === 66 || pubKeyStr.length === 130) &&
             pubKeyStr.match(/^[0-9a-fA-F]+$/) !== null
         ) {
             pubKey = Address.fromString(pubKeyStr);
         } else {
-            pubKey = await Web3API.provider.getPublicKeyInfo(to);
+            pubKey = await Web3API.provider.getPublicKeyInfo(to, false);
         }
 
         if (!pubKey) throw new Error('public key not found');
+
+        // Check for zero address (user not found on-chain)
+        const pubKeyHex = pubKey.toHex ? pubKey.toHex() : pubKey.toString();
+        if (pubKeyHex === '0x' + '00'.repeat(32) || pubKeyHex === '00'.repeat(32)) {
+            throw new Error('User not found on-chain. This wallet has not performed any OPNet transactions yet.');
+        }
+
         return pubKey;
     };
 
     const transferToken = async (parameters: TransferParameters) => {
-        const userWallet = await getWallet();
+        const userWallet = await getOPNetWallet();
         const currentWalletAddress = await wallet.getCurrentAccount();
         const contract: IOP20Contract = getContract<IOP20Contract>(
             parameters.contractAddress,
@@ -191,6 +204,7 @@ export default function TxOpnetConfirmScreen() {
 
             const interactionParameters: TransactionParameters = {
                 signer: userWallet.keypair, // The keypair that will sign the transaction
+                mldsaSigner: userWallet.mldsaKeypair, // The ML-DSA keypair for quantum-resistant signing
                 refundTo: currentWalletAddress.address, // Refund the rest of the funds to this address
                 maximumAllowedSatToSpend: parameters.priorityFee, // The maximum we want to allocate to this transaction in satoshis
                 feeRate: parameters.feeRate, // We need to provide a fee rate
@@ -207,6 +221,23 @@ export default function TxOpnetConfirmScreen() {
                     parameters.tokens[0].divisibility
                 )} ${symbol.properties.symbol}`
             );
+
+            // Record transaction in history
+            const txRecord: RecordTransactionInput = {
+                txid: sendTransaction.transactionId || '',
+                type: TransactionType.TOKEN_TRANSFER,
+                from: currentWalletAddress.address,
+                to: parameters.to,
+                amount: parameters.inputAmount.toString(),
+                amountDisplay: `${BitcoinUtils.formatUnits(parameters.inputAmount, parameters.tokens[0].divisibility)} ${symbol.properties.symbol}`,
+                tokenSymbol: symbol.properties.symbol,
+                tokenDecimals: parameters.tokens[0].divisibility,
+                tokenAddress: parameters.contractAddress,
+                contractAddress: parameters.contractAddress,
+                fee: Number(parameters.priorityFee || 0),
+                feeRate: parameters.feeRate
+            };
+            void wallet.recordTransaction(txRecord);
 
             // Store the next UTXO in localStorage
             navigate(RouteTypes.TxSuccessScreen, { txid: sendTransaction.transactionId });
@@ -226,7 +257,7 @@ export default function TxOpnetConfirmScreen() {
     const airdrop = async (parameters: AirdropParameters) => {
         const contractAddress = parameters.contractAddress;
         const currentWalletAddress = await wallet.getCurrentAccount();
-        const userWallet = await getWallet();
+        const userWallet = await getOPNetWallet();
 
         const contract: AirdropInterface = getContract<AirdropInterface>(
             contractAddress,
@@ -244,6 +275,7 @@ export default function TxOpnetConfirmScreen() {
         const airdropData = await contract.airdrop(addressMap);
         const interactionParameters: TransactionParameters = {
             signer: userWallet.keypair, // The keypair that will sign the transaction
+            mldsaSigner: userWallet.mldsaKeypair, // The ML-DSA keypair for quantum-resistant signing
             refundTo: currentWalletAddress.address, // Refund the rest of the funds to this address
             maximumAllowedSatToSpend: parameters.priorityFee, // The maximum we want to allocate to this transaction in satoshis
             feeRate: parameters.feeRate, // We need to provide a fee rate
@@ -262,13 +294,27 @@ export default function TxOpnetConfirmScreen() {
         }
 
         tools.toastSuccess(`You have successfully airdropped tokens to ${addressMap.size} addresses`);
+
+        // Record transaction in history
+        const txRecord: RecordTransactionInput = {
+            txid: sendTransaction.transactionId || '',
+            type: TransactionType.OPNET_INTERACTION,
+            from: currentWalletAddress.address,
+            contractAddress: contractAddress,
+            contractMethod: 'airdrop',
+            fee: Number(parameters.priorityFee || 0),
+            feeRate: parameters.feeRate,
+            note: `Airdrop to ${addressMap.size} addresses`
+        };
+        void wallet.recordTransaction(txRecord);
+
         navigate(RouteTypes.TxSuccessScreen, { txid: sendTransaction.transactionId, contractAddress: contractAddress });
     };
 
     const sendBTC = async (parameters: SendBitcoinParameters) => {
         try {
             const currentWalletAddress = await wallet.getCurrentAccount();
-            const userWallet = await getWallet();
+            const userWallet = await getOPNetWallet();
 
             // Determine which address to send from and get UTXOs
             let fromAddress = currentWalletAddress.address;
@@ -278,7 +324,11 @@ export default function TxOpnetConfirmScreen() {
 
             // Check if sending from a CSV address
             if (parameters.from && parameters.sourceType && parameters.sourceType !== SourceType.CURRENT) {
-                const currentAddress = Address.fromString(currentWalletAddress.pubkey);
+                // CSVs can be used even without quantum migration - use zero hash as fallback
+                const zeroHash = '0x0000000000000000000000000000000000000000000000000000000000000000';
+                const currentAddress = currentWalletAddress.quantumPublicKeyHash
+                    ? Address.fromString(currentWalletAddress.quantumPublicKeyHash, currentWalletAddress.pubkey)
+                    : Address.fromString(zeroHash, currentWalletAddress.pubkey);
 
                 if (parameters.sourceType === SourceType.CSV75) {
                     const csv75Address = currentAddress.toCSV(75, Web3API.network);
@@ -351,6 +401,7 @@ export default function TxOpnetConfirmScreen() {
                 amount: BitcoinUtils.expandToDecimals(parameters.inputAmount, 8),
                 utxos: utxos,
                 signer: userWallet.keypair,
+                mldsaSigner: userWallet.mldsaKeypair,
                 network: Web3API.network,
                 feeRate: parameters.feeRate,
                 priorityFee: 0n,
@@ -383,6 +434,19 @@ export default function TxOpnetConfirmScreen() {
             // Update UTXO manager for the correct address
             Web3API.provider.utxoManager.spentUTXO(fromAddress, utxos, sendTransact.nextUTXOs);
 
+            // Record transaction in history
+            const txRecord: RecordTransactionInput = {
+                txid: sendTransaction.result || '',
+                type: TransactionType.BTC_TRANSFER,
+                from: fromAddress,
+                to: parameters.to,
+                amount: BitcoinUtils.expandToDecimals(parameters.inputAmount, 8).toString(),
+                amountDisplay: `${parameters.inputAmount} BTC`,
+                fee: 0, // Fee calculated by network
+                feeRate: parameters.feeRate
+            };
+            void wallet.recordTransaction(txRecord);
+
             navigate(RouteTypes.TxSuccessScreen, { txid: sendTransaction.result });
         } catch (e) {
             tools.toastError(`Error: ${(e as Error).message}`);
@@ -394,7 +458,7 @@ export default function TxOpnetConfirmScreen() {
     const deployContract = async (parameters: DeployContractParameters) => {
         try {
             const currentWalletAddress = await wallet.getCurrentAccount();
-            const userWallet = await getWallet();
+            const userWallet = await getOPNetWallet();
 
             const utxos: UTXO[] = await Web3API.getAllUTXOsForAddresses([currentWalletAddress.address], 1_000_000n); // maximum fee a contract can pay
 
@@ -409,6 +473,7 @@ export default function TxOpnetConfirmScreen() {
                 challenge,
                 utxos: utxos,
                 signer: userWallet.keypair,
+                mldsaSigner: userWallet.mldsaKeypair,
                 network: Web3API.network,
                 feeRate: parameters.feeRate,
                 priorityFee: parameters.priorityFee ?? 0n,
@@ -418,7 +483,8 @@ export default function TxOpnetConfirmScreen() {
                 calldata: calldata,
                 optionalInputs: [],
                 optionalOutputs: [],
-                note: parameters.note
+                note: parameters.note,
+                linkMLDSAPublicKeyToAddress: true
             };
 
             const sendTransact: DeploymentResult =
@@ -456,6 +522,18 @@ export default function TxOpnetConfirmScreen() {
 
                 tools.toastSuccess(`You have successfully deployed ${sendTransact.contractAddress}`);
 
+                // Record transaction in history
+                const txRecord: RecordTransactionInput = {
+                    txid: secondTransaction.result || '',
+                    fundingTxid: firstTransaction.result,
+                    type: TransactionType.CONTRACT_DEPLOYMENT,
+                    from: currentWalletAddress.address,
+                    contractAddress: sendTransact.contractAddress,
+                    fee: Number(parameters.priorityFee || 0),
+                    feeRate: parameters.feeRate
+                };
+                void wallet.recordTransaction(txRecord);
+
                 navigate(RouteTypes.TxSuccessScreen, {
                     txid: secondTransaction.result,
                     contractAddress: sendTransact.contractAddress
@@ -478,7 +556,7 @@ export default function TxOpnetConfirmScreen() {
     const mint = async (parameters: MintParameters) => {
         try {
             const currentWalletAddress = await wallet.getCurrentAccount();
-            const userWallet = await getWallet();
+            const userWallet = await getOPNetWallet();
 
             const contract = getContract<IOP20Contract>(
                 parameters.contractAddress,
@@ -493,6 +571,7 @@ export default function TxOpnetConfirmScreen() {
 
             const interactionParameters: TransactionParameters = {
                 signer: userWallet.keypair, // The keypair that will sign the transaction
+                mldsaSigner: userWallet.mldsaKeypair, // The ML-DSA keypair for quantum-resistant signing
                 refundTo: currentWalletAddress.address, // Refund the rest of the funds to this address
                 maximumAllowedSatToSpend: parameters.priorityFee, // The maximum we want to allocate to this transaction in satoshis
                 feeRate: parameters.feeRate, // We need to provide a fee rate
@@ -508,6 +587,24 @@ export default function TxOpnetConfirmScreen() {
             }
 
             tools.toastSuccess(`You have successfully minted ${parameters.inputAmount} ${parameters.tokens[0].symbol}`);
+
+            // Record transaction in history
+            const txRecord: RecordTransactionInput = {
+                txid: sendTransaction.transactionId || '',
+                type: TransactionType.OPNET_INTERACTION,
+                from: currentWalletAddress.address,
+                to: parameters.to,
+                amount: value.toString(),
+                amountDisplay: `${parameters.inputAmount} ${parameters.tokens[0].symbol}`,
+                tokenSymbol: parameters.tokens[0].symbol,
+                tokenDecimals: parameters.tokens[0].divisibility,
+                contractAddress: parameters.contractAddress,
+                contractMethod: 'mint',
+                fee: Number(parameters.priorityFee || 0),
+                feeRate: parameters.feeRate
+            };
+            void wallet.recordTransaction(txRecord);
+
             navigate(RouteTypes.TxSuccessScreen, { txid: sendTransaction.transactionId });
         } catch (e) {
             setDisabled(false);
@@ -518,7 +615,7 @@ export default function TxOpnetConfirmScreen() {
     const sendNFT = async (parameters: SendNFTParameters) => {
         try {
             const currentWalletAddress = await wallet.getCurrentAccount();
-            const userWallet = await getWallet();
+            const userWallet = await getOPNetWallet();
 
             const addy =
                 AddressVerificator.detectAddressType(parameters.collectionAddress, Web3API.network) ===
@@ -545,6 +642,7 @@ export default function TxOpnetConfirmScreen() {
 
             const interactionParameters: TransactionParameters = {
                 signer: userWallet.keypair,
+                mldsaSigner: userWallet.mldsaKeypair,
                 refundTo: currentWalletAddress.address,
                 maximumAllowedSatToSpend: parameters.priorityFee,
                 feeRate: parameters.feeRate,
@@ -562,6 +660,23 @@ export default function TxOpnetConfirmScreen() {
             }
 
             tools.toastSuccess(`Successfully transferred NFT #${parameters.tokenId} from ${parameters.collectionName}`);
+
+            // Record transaction in history
+            const txRecord: RecordTransactionInput = {
+                txid: sendTransaction.transactionId || '',
+                type: TransactionType.TOKEN_TRANSFER,
+                from: currentWalletAddress.address,
+                to: parameters.to,
+                amount: '1',
+                amountDisplay: `NFT #${parameters.tokenId}`,
+                tokenSymbol: parameters.collectionName,
+                contractAddress: parameters.collectionAddress,
+                contractMethod: 'safeTransferFrom',
+                fee: Number(parameters.priorityFee || 0),
+                feeRate: parameters.feeRate,
+                note: `NFT #${parameters.tokenId} from ${parameters.collectionName}`
+            };
+            void wallet.recordTransaction(txRecord);
 
             navigate(RouteTypes.TxSuccessScreen, {
                 txid: sendTransaction.transactionId,

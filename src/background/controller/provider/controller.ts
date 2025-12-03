@@ -1,10 +1,11 @@
 import { permissionService, sessionService } from '@/background/service';
 import { CHAINS, CHAINS_MAP, ChainType, NETWORK_TYPES, VERSION } from '@/shared/constant';
+import { TransactionOrigin } from '@/shared/types/TransactionHistory';
 
 import { Session } from '@/background/service/session';
 import { SessionEvent } from '@/shared/interfaces/SessionEvent';
 import { providerErrors } from '@/shared/lib/bitcoin-rpc-errors/errors';
-import { NetworkType } from '@/shared/types';
+import { NetworkType, networkTypeToOPNet } from '@/shared/types';
 import { ApprovalType } from '@/shared/types/Approval';
 import { ProviderControllerRequest } from '@/shared/types/Request.js';
 import { getChainInfo } from '@/shared/utils';
@@ -13,7 +14,7 @@ import { DetailedInteractionParameters } from '@/shared/web3/interfaces/Detailed
 import { amountToSatoshis } from '@/ui/utils';
 import { Psbt } from '@btc-vision/bitcoin';
 import { ICancelTransactionParametersWithoutSigner, IDeploymentParametersWithoutSigner } from '@btc-vision/transaction';
-import { toPsbtNetwork, verifyMessageOfBIP322Simple } from '@btc-vision/wallet-sdk';
+import { toNetwork, verifyBip322MessageWithNetworkType } from '@btc-vision/wallet-sdk';
 import wallet from '../wallet';
 
 function formatPsbtHex(psbtHex: string) {
@@ -193,6 +194,45 @@ export class ProviderController {
     };
 
     @Reflect.metadata('SAFE', true)
+    getMLDSAPublicKey = async () => {
+        return wallet.getMLDSAPublicKey();
+    };
+
+    @Reflect.metadata('APPROVAL', [
+        ApprovalType.SignText,
+        (req: { data: { params: { message: string; type?: string } } }) => {
+            req.data.params.type = 'mldsa';
+        }
+    ])
+    signMLDSAMessage = async ({
+        data: {
+            params: { message }
+        }
+    }: {
+        data: { params: { message: string } };
+    }) => {
+        return wallet.signMLDSAMessage(message);
+    };
+
+    @Reflect.metadata('SAFE', true)
+    verifyMLDSASignature = ({
+        data: {
+            params: { message, signature, publicKey, securityLevel }
+        }
+    }: {
+        data: {
+            params: {
+                message: string;
+                signature: string;
+                publicKey: string;
+                securityLevel: number;
+            };
+        };
+    }) => {
+        return wallet.verifyMLDSASignature(message, signature, publicKey, securityLevel);
+    };
+
+    @Reflect.metadata('SAFE', true)
     getBalance = async () => {
         const account = await wallet.getCurrentAccount();
         if (!account) return null;
@@ -218,7 +258,7 @@ export class ProviderController {
     };
 
     @Reflect.metadata('SAFE', true)
-    verifyMessageOfBIP322Simple = (req: {
+    verifyBip322Message = (req: {
         data: {
             params: {
                 address: string;
@@ -231,7 +271,15 @@ export class ProviderController {
         const {
             data: { params }
         } = req;
-        return verifyMessageOfBIP322Simple(params.address, params.message, params.signature, params.network) ? 1 : 0;
+        const networkType = params.network ?? wallet.getNetworkType();
+        return verifyBip322MessageWithNetworkType(
+            params.address,
+            params.message,
+            params.signature,
+            networkTypeToOPNet(networkType)
+        )
+            ? 1
+            : 0;
     };
 
     @Reflect.metadata('APPROVAL', [
@@ -274,8 +322,15 @@ export class ProviderController {
     signAndBroadcastInteraction = async (request: {
         approvalRes: boolean;
         data: { params: DetailedInteractionParameters };
+        session?: Session;
     }) => {
-        return wallet.signAndBroadcastInteraction(request.data.params.interactionParameters);
+        const origin: TransactionOrigin = {
+            type: 'external',
+            siteUrl: request.session?.origin,
+            siteName: request.session?.name,
+            siteIcon: request.session?.icon
+        };
+        return wallet.signAndBroadcastInteraction(request.data.params.interactionParameters, origin);
     };
 
     @Reflect.metadata('APPROVAL', [
@@ -487,7 +542,7 @@ export class ProviderController {
         }
 
         const networkType = wallet.getNetworkType();
-        const psbtNetwork = toPsbtNetwork(networkType);
+        const psbtNetwork = toNetwork(networkTypeToOPNet(networkType));
         const psbt = Psbt.fromHex(psbtHex, { network: psbtNetwork });
         const autoFinalized = !(options && !options.autoFinalized);
         const toSignInputs = await wallet.formatOptionsToSignInputs(psbtHex, options);
@@ -513,7 +568,7 @@ export class ProviderController {
     //     const account = await wallet.getCurrentAccount();
     //     if (!account) throw new Error('No account');
     //     const networkType = wallet.getNetworkType();
-    //     const psbtNetwork = toPsbtNetwork(networkType);
+    //     const psbtNetwork = toNetwork(networkTypeToOPNet(networkType));
     //     const result: string[] = [];
     //     for (let i = 0; i < psbtHexs.length; i++) {
     //         const psbt = bitcoin.Psbt.fromHex(psbtHexs[i], { network: psbtNetwork });

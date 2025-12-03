@@ -1,6 +1,6 @@
-import { SessionEvent, SessionEventPayload } from "../interfaces/SessionEvent";
-import { SerializedWalletError } from "./Error";
-import { RequestParams } from "./Request";
+import { SessionEvent, SessionEventPayload } from '../interfaces/SessionEvent';
+import { SerializedWalletError } from './Error';
+import { RequestParams } from './Request';
 
 export interface MessageDetails {
     _type_: string;
@@ -21,6 +21,6 @@ export interface SendRequestPayload {
 
 export interface SendResponsePayload {
     ident: number;
-    res: any;
+    res: unknown;
     err?: SerializedWalletError;
 }

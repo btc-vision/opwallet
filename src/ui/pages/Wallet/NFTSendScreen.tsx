@@ -7,8 +7,14 @@ import { RouteTypes, useNavigate } from '@/ui/pages/MainRoute';
 import { useCurrentAccount } from '@/ui/state/accounts/hooks';
 import { isValidAddress, useWallet } from '@/ui/utils';
 import Web3API, { OwnedNFT } from '@/shared/web3/Web3API';
-import { InfoCircleOutlined, LoadingOutlined, QuestionCircleOutlined, SendOutlined, ThunderboltOutlined } from '@ant-design/icons';
-import { Address, AddressTypes, AddressVerificator } from '@btc-vision/transaction';
+import {
+    InfoCircleOutlined,
+    LoadingOutlined,
+    QuestionCircleOutlined,
+    SendOutlined,
+    ThunderboltOutlined
+} from '@ant-design/icons';
+import { AddressTypes, AddressVerificator } from '@btc-vision/transaction';
 import { Action, Features, NFTMetadata, SendNFTParameters } from '@/shared/interfaces/RawTxParameters';
 
 const colors = {
@@ -209,7 +215,9 @@ export default function NFTSendScreen() {
                                                 alignItems: 'center',
                                                 justifyContent: 'center'
                                             }}>
-                                            <QuestionCircleOutlined style={{ fontSize: '36px', color: colors.textFaded }} />
+                                            <QuestionCircleOutlined
+                                                style={{ fontSize: '36px', color: colors.textFaded }}
+                                            />
                                         </div>
                                     }
                                 />

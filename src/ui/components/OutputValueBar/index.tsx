@@ -44,7 +44,7 @@ export function OutputValueBar({
                 return;
             }
             val = parseInt(inputVal);
-        } else if ((options.length) > 0 && (options[optionIndex].value)) {
+        } else if (options.length > 0 && options[optionIndex].value) {
             val = options[optionIndex].value;
         }
         // if (val + '' != inputVal) {
@@ -66,7 +66,7 @@ export function OutputValueBar({
         <Column>
             <Row justifyCenter>
                 {options.map((v, index) => {
-                    const selected = index === optionIndex as number;
+                    const selected = index === (optionIndex as number);
                     return (
                         <div
                             key={v.title}

@@ -4,22 +4,22 @@ import {
     DecodedAddLiquidityNative,
     DecodedAirdrop,
     DecodedAirdropWithAmount,
-    DecodedIncreaseAllowance,
-    DecodedDecreaseAllowance,
-    DecodedIncreaseAllowanceBySignature,
-    DecodedDecreaseAllowanceBySignature,
     DecodedBurn,
     DecodedCancelListing,
     DecodedCreatePool,
     DecodedCreatePoolWithSignature,
+    DecodedDecreaseAllowance,
+    DecodedDecreaseAllowanceBySignature,
+    DecodedIncreaseAllowance,
+    DecodedIncreaseAllowanceBySignature,
     DecodedListLiquidity,
     DecodedMint,
     DecodedRemoveLiquidity,
     DecodedReserve,
-    DecodedSetFees,
-    DecodedSwap,
     DecodedSafeTransfer,
-    DecodedSafeTransferFrom
+    DecodedSafeTransferFrom,
+    DecodedSetFees,
+    DecodedSwap
 } from './DecodedTypes';
 import { InteractionType } from './InteractionType';
 
@@ -153,9 +153,9 @@ export function decodeCreatePool(selector: InteractionType, reader: BinaryReader
     const floorPrice = reader.readU256();
     const initialLiquidity = reader.readU128();
     const receiver = decodeString(reader);
-    const antiBotEnabledFor = Number(reader.readU16());
+    const antiBotEnabledFor = reader.readU16();
     const antiBotMaximumTokensPerReservation = reader.readU256();
-    const maxReservesIn5BlocksPercent = Number(reader.readU16());
+    const maxReservesIn5BlocksPercent = reader.readU16();
 
     return {
         selector,
@@ -179,9 +179,9 @@ export function decodeCreatePoolWithSignature(
     const floorPrice = reader.readU256();
     const initialLiquidity = reader.readU128();
     const receiver = decodeString(reader);
-    const antiBotEnabledFor = Number(reader.readU16());
+    const antiBotEnabledFor = reader.readU16();
     const antiBotMaximumTokensPerReservation = reader.readU256();
-    const maxReservesIn5BlocksPercent = Number(reader.readU16());
+    const maxReservesIn5BlocksPercent = reader.readU16();
 
     return {
         selector,

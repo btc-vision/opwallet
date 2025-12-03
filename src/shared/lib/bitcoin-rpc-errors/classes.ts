@@ -1,4 +1,3 @@
-
 export class BitcoinRpcError extends Error {
     public code: number;
     public data?: unknown;
@@ -24,5 +23,3 @@ export class BitcoinProviderError extends BitcoinRpcError {
         super(code, message, data);
     }
 }
-  
-  

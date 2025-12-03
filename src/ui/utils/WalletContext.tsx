@@ -5,6 +5,7 @@ import { AddressFlagType, ChainId, ChainType, CustomNetwork } from '@/shared/con
 import {
     Account,
     AddressSummary,
+    AddressTypes,
     AppSummary,
     BitcoinBalance,
     DecodedPsbt,
@@ -12,16 +13,16 @@ import {
     ParsedSignMsgUr,
     ParsedSignPsbtUr,
     SignPsbtOptions,
-    TickPriceItem,
     TxHistoryItem,
+    UnspentOutput,
     VersionDetail,
     WalletConfig,
     WalletKeyring
 } from '@/shared/types';
 import { ApprovalData, ApprovalResponse } from '@/shared/types/Approval';
+import { TransactionHistoryFilter, TransactionHistoryItem } from '@/shared/types/TransactionHistory';
 import { Psbt } from '@btc-vision/bitcoin';
 import { InteractionParametersWithoutSigner } from '@btc-vision/transaction';
-import { AddressType, UnspentOutput } from '@btc-vision/wallet-sdk';
 import { createContext, ReactNode, useContext } from 'react';
 
 export interface WalletController {
@@ -87,12 +88,21 @@ export interface WalletController {
 
     getInternalPrivateKey(account: { pubkey: string; type: string }): Promise<{ hex: string; wif: string }>;
 
+    getOPNetWallet(): Promise<[string, string, string]>;
+
+    getWalletAddress(): Promise<[string, string]>;
+
     getMnemonics(
         password: string,
         keyring: WalletKeyring
     ): Promise<{ mnemonic: string | undefined; hdPath: string | undefined; passphrase: string | undefined }>;
 
-    createKeyringWithPrivateKey(data: string, addressType: AddressType, alianName?: string): Promise<Account[]>;
+    createKeyringWithPrivateKey(
+        data: string,
+        addressType: AddressTypes,
+        quantumPrivateKey: string,
+        alianName?: string
+    ): Promise<Account[]>;
 
     getPreMnemonics(): Promise<SavedVault[] | null>;
 
@@ -104,25 +114,25 @@ export interface WalletController {
         mnemonic: string,
         hdPath: string,
         passphrase: string,
-        addressType: AddressType,
+        addressType: AddressTypes,
         accountCount: number
     ): Promise<{ address: string; type: string }[]>;
 
     createKeyringWithKeystone(
         urType: string,
         urCbor: string,
-        addressType: AddressType,
+        addressType: AddressTypes,
         hdPath: string,
         accountCount: number,
         filterPubkey?: string[]
     ): Promise<{ address: string; type: string }[]>;
 
-    createTmpKeyringWithPrivateKey(privateKey: string, addressType: AddressType): Promise<WalletKeyring>;
+    createTmpKeyringWithPrivateKey(privateKey: string, addressType: AddressTypes): Promise<WalletKeyring>;
 
     createTmpKeyringWithKeystone(
         urType: string,
         urCbor: string,
-        addressType: AddressType,
+        addressType: AddressTypes,
         hdPath: string,
         accountCount?: number
     ): Promise<WalletKeyring>;
@@ -131,7 +141,7 @@ export interface WalletController {
         mnemonic: string,
         hdPath: string,
         passphrase: string,
-        addressType: AddressType,
+        addressType: AddressTypes,
         accountCount?: number
     ): Promise<WalletKeyring>;
 
@@ -193,15 +203,11 @@ export interface WalletController {
 
     setKeyringAlianName(keyring: WalletKeyring, name: string): Promise<WalletKeyring>;
 
-    changeAddressType(addressType: AddressType): Promise<void>;
+    changeAddressType(addressType: AddressTypes): Promise<void>;
 
     setAccountAlianName(account: Account, name: string): Promise<Account>;
 
     getBtcPrice(): Promise<number>;
-
-    getBrc20sPrice(ticks: string[]): Promise<Record<string, TickPriceItem>>;
-
-    getRunesPrice(ticks: string[]): Promise<Record<string, TickPriceItem>>;
 
     setEditingKeyring(keyringIndex: number): Promise<void>;
 
@@ -272,6 +278,22 @@ export interface WalletController {
     getAutoLockTimeId(): Promise<number>;
 
     setLastActiveTime(): Promise<void>;
+
+    setQuantumKey(quantumPrivateKey: string): Promise<void>;
+
+    generateQuantumKey(): Promise<void>;
+
+    // Transaction history
+    getTransactionHistory(): Promise<TransactionHistoryItem[]>;
+
+    getFilteredTransactionHistory(filter?: TransactionHistoryFilter): Promise<TransactionHistoryItem[]>;
+
+    clearTransactionHistory(): Promise<void>;
+
+    recordTransaction(
+        params: import('@/shared/types/TransactionHistory').RecordTransactionInput,
+        origin?: import('@/shared/types/TransactionHistory').TransactionOrigin
+    ): Promise<void>;
 }
 
 const WalletContext = createContext<{

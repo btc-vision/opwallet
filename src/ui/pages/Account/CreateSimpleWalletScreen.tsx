@@ -1,17 +1,32 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { ADDRESS_TYPES } from '@/shared/constant';
-import { AddressAssets, AddressType } from '@/shared/types';
-import { getBitcoinLibJSNetwork } from '@/shared/web3/Web3API';
-import { Column, Content, Header, Layout, Row, Text } from '@/ui/components';
+import { AddressAssets, AddressTypes } from '@/shared/types';
+import Web3API, { getBitcoinLibJSNetwork } from '@/shared/web3/Web3API';
+import { Column, Content, Header, Layout, OPNetLoader, Text } from '@/ui/components';
 import { useTools } from '@/ui/components/ActionComponent';
 import { AddressTypeCard } from '@/ui/components/AddressTypeCard';
 import { satoshisToAmount, useWallet } from '@/ui/utils';
-import { CheckCircleFilled, ImportOutlined, InfoCircleOutlined, KeyOutlined, LoadingOutlined, WalletOutlined } from '@ant-design/icons';
-import { EcKeyPair, Wallet } from '@btc-vision/transaction';
+import {
+    CheckCircleFilled,
+    ImportOutlined,
+    InfoCircleOutlined,
+    KeyOutlined,
+    PlusCircleOutlined,
+    SafetyOutlined,
+    WalletOutlined
+} from '@ant-design/icons';
+import { EcKeyPair, MLDSASecurityLevel, Wallet } from '@btc-vision/transaction';
+import { getMLDSAConfig, QuantumBIP32Factory } from '@btc-vision/bip32';
+import { crypto as bitcoinCrypto, networks } from '@btc-vision/bitcoin';
 import { ethers } from 'ethers';
 
 import { RouteTypes, useNavigate } from '../MainRoute';
+
+// Get the expected MLDSA key size for LEVEL2
+const MLDSA_CONFIG = getMLDSAConfig(MLDSASecurityLevel.LEVEL2, networks.bitcoin);
+const EXPECTED_QUANTUM_KEY_BYTES = MLDSA_CONFIG.privateKeySize;
+const EXPECTED_QUANTUM_KEY_HEX_CHARS = EXPECTED_QUANTUM_KEY_BYTES * 2;
 
 const colors = {
     main: '#f37413',
@@ -67,10 +82,11 @@ function Step1({ updateContextData }: { updateContextData: (params: UpdateContex
 
         const raw = wif.trim();
         let keyKind: KeyKind | null = null;
+        let keypair: ReturnType<typeof EcKeyPair.fromWIF> | null = null;
 
         // try WIF first
         try {
-            Wallet.fromWif(raw, bitcoinNetwork);
+            keypair = EcKeyPair.fromWIF(raw, bitcoinNetwork);
             keyKind = 'wif';
         } catch (e) {
             console.error(e);
@@ -80,16 +96,46 @@ function Step1({ updateContextData }: { updateContextData: (params: UpdateContex
         if (!keyKind && isLikelyHexPriv(raw)) {
             try {
                 const buf = Buffer.from(raw.replace(/^0x/, ''), 'hex');
-                EcKeyPair.fromPrivateKey(buf, bitcoinNetwork);
+                keypair = EcKeyPair.fromPrivateKey(buf, bitcoinNetwork);
                 keyKind = 'rawHex';
             } catch (e) {
                 console.error(e);
             }
         }
 
-        if (!keyKind) {
+        if (!keyKind || !keypair) {
             tools.toastError(`Invalid private key format`);
             return;
+        }
+
+        // Check if this wallet is already imported by checking all address types
+        const existingAccounts = await wallet.getAccounts();
+        const pubkey = keypair.publicKey.toString('hex');
+
+        // Check all address types for this public key
+        for (const addrType of ADDRESS_TYPES) {
+            if (addrType.displayIndex < 0) continue;
+
+            let address = '';
+            try {
+                if (addrType.value === AddressTypes.P2TR) {
+                    address = EcKeyPair.getTaprootAddress(keypair, bitcoinNetwork);
+                } else if (addrType.value === AddressTypes.P2SH_OR_P2SH_P2WPKH) {
+                    address = EcKeyPair.getLegacySegwitAddress(keypair, bitcoinNetwork);
+                } else if (addrType.value === AddressTypes.P2WPKH) {
+                    address = EcKeyPair.getP2WPKHAddress(keypair, bitcoinNetwork);
+                } else {
+                    address = EcKeyPair.getLegacyAddress(keypair, bitcoinNetwork);
+                }
+            } catch {
+                continue;
+            }
+
+            const duplicate = existingAccounts.find((acc) => acc.address === address || acc.pubkey === pubkey);
+            if (duplicate) {
+                tools.toastError(`This wallet has already been imported`);
+                return;
+            }
         }
 
         updateContextData({
@@ -306,8 +352,6 @@ function Step2({
     updateContextData: (params: UpdateContextDataParams) => void;
 }) {
     const wallet = useWallet();
-    const tools = useTools();
-    const navigate = useNavigate();
 
     const hdPathOptions = useMemo(() => {
         return ADDRESS_TYPES.filter((v) => {
@@ -340,24 +384,20 @@ function Step2({
         const addresses: string[] = [];
         const balancesMap: Record<string, AddressAssets> = {};
 
-        const getAddrForType = (t: AddressType) => {
-            if (contextData.keyKind === 'wif') {
-                const w = Wallet.fromWif(contextData.wif, bitcoinNetwork);
-                if (t === AddressType.P2TR) return w.p2tr;
-                if (t === AddressType.P2SH_P2WPKH) return w.segwitLegacy;
-                if (t === AddressType.P2WPKH) return w.p2wpkh;
-                return EcKeyPair.getLegacyAddress(
-                    Wallet.fromWif(contextData.wif, bitcoinNetwork).keypair,
-                    bitcoinNetwork
-                );
-            } else {
-                const buf = Buffer.from(contextData.wif.replace(/^0x/, '').trim(), 'hex');
-                const kp = EcKeyPair.fromPrivateKey(buf, bitcoinNetwork);
-                if (t === AddressType.P2TR) return EcKeyPair.getTaprootAddress(kp, bitcoinNetwork);
-                if (t === AddressType.P2SH_P2WPKH) return EcKeyPair.getLegacySegwitAddress(kp, bitcoinNetwork);
-                if (t === AddressType.P2WPKH) return EcKeyPair.getP2WPKHAddress(kp, bitcoinNetwork);
-                return EcKeyPair.getLegacyAddress(kp, bitcoinNetwork);
-            }
+        const getAddrForType = (t: AddressTypes) => {
+            // For both WIF and raw hex, use EcKeyPair methods for address derivation
+            const kp =
+                contextData.keyKind === 'wif'
+                    ? EcKeyPair.fromWIF(contextData.wif, bitcoinNetwork)
+                    : EcKeyPair.fromPrivateKey(
+                          Buffer.from(contextData.wif.replace(/^0x/, '').trim(), 'hex'),
+                          bitcoinNetwork
+                      );
+
+            if (t === AddressTypes.P2TR) return EcKeyPair.getTaprootAddress(kp, bitcoinNetwork);
+            if (t === AddressTypes.P2SH_OR_P2SH_P2WPKH) return EcKeyPair.getLegacySegwitAddress(kp, bitcoinNetwork);
+            if (t === AddressTypes.P2WPKH) return EcKeyPair.getP2WPKHAddress(kp, bitcoinNetwork);
+            return EcKeyPair.getLegacyAddress(kp, bitcoinNetwork);
         };
 
         for (const opt of hdPathOptions) {
@@ -385,12 +425,12 @@ function Step2({
             }
         }
 
-        let recommended: AddressType = hdPathOptions[recommendedIndex].addressType;
+        let recommended: AddressTypes = hdPathOptions[recommendedIndex].addressType;
         if (maxSatoshis === 0) {
-            recommended = AddressType.P2TR;
+            recommended = AddressTypes.P2TR;
         }
 
-        updateContextData({ addressType: recommended });
+        updateContextData({ addressType: recommended, step2Completed: true });
         setAddressAssets(balancesMap);
         setPreviewAddresses(addresses);
         setLoading(false);
@@ -398,6 +438,7 @@ function Step2({
 
     useEffect(() => {
         void run();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [contextData.wif]);
 
     useEffect(() => {
@@ -419,23 +460,14 @@ function Step2({
         return hdPathOptions.findIndex((v) => v.addressType === contextData.addressType);
     }, [hdPathOptions, contextData.addressType]);
 
-    const onNext = async () => {
-        try {
-            const pk =
-                contextData.keyKind === 'rawHex' ? contextData.wif.replace(/^0x/, '').toLowerCase() : contextData.wif;
-
-            await wallet.createKeyringWithPrivateKey(pk, contextData.addressType);
-            navigate(RouteTypes.MainScreen);
-        } catch (e) {
-            tools.toastError((e as Error).message);
-        }
+    const onNext = () => {
+        updateContextData({ tabType: TabType.STEP3 });
     };
 
     if (loading) {
         return (
             <Column itemsCenter justifyCenter style={{ minHeight: 300 }}>
-                <LoadingOutlined style={{ fontSize: 24, color: colors.main }} />
-                <Text text="Loading addresses..." color="textDim" size="sm" style={{ marginTop: 12 }} />
+                <OPNetLoader size={60} text="Loading addresses" />
             </Column>
         );
     }
@@ -524,8 +556,6 @@ function Step2({
                         return null;
                     }
 
-                    const isRecommended = assets.satoshis > 0 && index === pathIndex;
-
                     return (
                         <div key={index} style={{ marginBottom: '8px' }}>
                             <AddressTypeCard
@@ -542,7 +572,7 @@ function Step2({
                 })}
             </div>
 
-            {/* Import Button */}
+            {/* Continue Button */}
             <button
                 style={{
                     width: '100%',
@@ -566,15 +596,632 @@ function Step2({
                     e.currentTarget.style.transform = 'translateY(0)';
                     e.currentTarget.style.boxShadow = 'none';
                 }}>
-                Import Wallet
+                Continue
             </button>
+        </Column>
+    );
+}
+
+function Step3({
+    contextData
+}: {
+    contextData: ContextData;
+    updateContextData: (params: UpdateContextDataParams) => void;
+}) {
+    const wallet = useWallet();
+    const tools = useTools();
+    const navigate = useNavigate();
+
+    const [quantumKeyInput, setQuantumKeyInput] = useState('');
+    const [quantumKeyError, setQuantumKeyError] = useState('');
+    const [importing, setImporting] = useState(false);
+    const [quantumMode, setQuantumMode] = useState<'generate' | 'import' | null>(null);
+
+    // On-chain key verification state
+    const [loading, setLoading] = useState(true);
+    const [onChainLinkedKey, setOnChainLinkedKey] = useState<string | null>(null);
+    const [previewAddress, setPreviewAddress] = useState<string>('');
+
+    // Check on-chain for existing linked key
+    useEffect(() => {
+        const checkOnChainKey = async () => {
+            setLoading(true);
+            try {
+                const network = await wallet.getNetworkType();
+                const bitcoinNetwork = getBitcoinLibJSNetwork(network);
+
+                // Get the address for the selected address type
+                const kp =
+                    contextData.keyKind === 'wif'
+                        ? EcKeyPair.fromWIF(contextData.wif, bitcoinNetwork)
+                        : EcKeyPair.fromPrivateKey(
+                              Buffer.from(contextData.wif.replace(/^0x/, '').trim(), 'hex'),
+                              bitcoinNetwork
+                          );
+
+                let address = '';
+                if (contextData.addressType === AddressTypes.P2TR) {
+                    address = EcKeyPair.getTaprootAddress(kp, bitcoinNetwork);
+                } else if (contextData.addressType === AddressTypes.P2SH_OR_P2SH_P2WPKH) {
+                    address = EcKeyPair.getLegacySegwitAddress(kp, bitcoinNetwork);
+                } else if (contextData.addressType === AddressTypes.P2WPKH) {
+                    address = EcKeyPair.getP2WPKHAddress(kp, bitcoinNetwork);
+                } else {
+                    address = EcKeyPair.getLegacyAddress(kp, bitcoinNetwork);
+                }
+
+                setPreviewAddress(address);
+
+                const key = kp.publicKey.toString('hex');
+
+                // Query on-chain for existing MLDSA key linkage
+                const pubKeyInfo = await Web3API.provider.getPublicKeysInfoRaw(key);
+                const info = pubKeyInfo[key];
+                if (info && !('error' in info) && info.mldsaHashedPublicKey) {
+                    setOnChainLinkedKey(info.mldsaHashedPublicKey);
+                } else {
+                    setOnChainLinkedKey(null);
+                }
+            } catch (e) {
+                console.log('Error checking on-chain key:', e);
+                setOnChainLinkedKey(null);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        void checkOnChainKey();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [contextData.wif, contextData.addressType]);
+
+    const validateQuantumKey = (key: string): boolean => {
+        if (!key) return true;
+        const cleanKey = key.replace('0x', '').trim();
+
+        // Check if it's valid hex
+        if (!/^[0-9a-fA-F]+$/.test(cleanKey)) {
+            setQuantumKeyError('Invalid hex format. Must contain only hexadecimal characters (0-9, a-f).');
+            return false;
+        }
+
+        // Check length - MLDSA LEVEL2 private key is 2560 bytes = 5120 hex chars
+        // But also allow for keys with chain code appended (2560 + 32 = 2592 bytes = 5184 hex chars)
+        const minLength = EXPECTED_QUANTUM_KEY_HEX_CHARS;
+        const maxLength = EXPECTED_QUANTUM_KEY_HEX_CHARS + 64; // +32 bytes for chain code
+
+        if (cleanKey.length < minLength) {
+            setQuantumKeyError(
+                `Quantum key too short. Expected at least ${minLength} hex characters (${EXPECTED_QUANTUM_KEY_BYTES} bytes for ML-DSA-44), got ${cleanKey.length}.`
+            );
+            return false;
+        }
+
+        if (cleanKey.length > maxLength) {
+            setQuantumKeyError(
+                `Quantum key too long. Expected at most ${maxLength} hex characters, got ${cleanKey.length}.`
+            );
+            return false;
+        }
+
+        setQuantumKeyError('');
+        return true;
+    };
+
+    // Compute SHA256 hash of MLDSA public key from private key
+    const computePublicKeyHash = async (quantumPrivateKeyHex: string): Promise<string | null> => {
+        try {
+            const network = await wallet.getNetworkType();
+            const bitcoinNetwork = getBitcoinLibJSNetwork(network);
+
+            // Extract just the private key part (without chain code)
+            const privateKeyOnly = quantumPrivateKeyHex.slice(0, EXPECTED_QUANTUM_KEY_HEX_CHARS);
+            const privateKeyBuffer = Buffer.from(privateKeyOnly, 'hex');
+
+            // Import the key and get public key
+            const qkp = QuantumBIP32Factory.fromPrivateKey(
+                privateKeyBuffer,
+                Buffer.alloc(32),
+                bitcoinNetwork,
+                MLDSASecurityLevel.LEVEL2
+            );
+            const publicKey = Buffer.from(qkp.publicKey);
+
+            // Compute SHA256 hash
+            const hash = bitcoinCrypto.sha256(publicKey);
+            return hash.toString('hex');
+        } catch (e) {
+            console.error('Error computing public key hash:', e);
+            return null;
+        }
+    };
+
+    const onImportWallet = async (generateNewQuantumKey: boolean) => {
+        setImporting(true);
+        setQuantumKeyError('');
+
+        const network = await wallet.getNetworkType();
+        const bitcoinNetwork = getBitcoinLibJSNetwork(network);
+
+        try {
+            const pk =
+                contextData.keyKind === 'rawHex' ? contextData.wif.replace(/^0x/, '').toLowerCase() : contextData.wif;
+
+            let quantumKey: string | undefined;
+
+            if (generateNewQuantumKey) {
+                // Check if there's an on-chain linked key - cannot generate new if one exists
+                if (onChainLinkedKey) {
+                    setQuantumKeyError(
+                        'Cannot generate a new key. This wallet already has an MLDSA key linked on-chain. You must import the original key.'
+                    );
+                    setImporting(false);
+                    return;
+                }
+
+                quantumKey = Wallet.generate(bitcoinNetwork, MLDSASecurityLevel.LEVEL2).quantumPrivateKeyHex;
+            } else if (quantumKeyInput) {
+                // Validate format
+                if (!validateQuantumKey(quantumKeyInput)) {
+                    setImporting(false);
+                    return;
+                }
+
+                const cleanKey = quantumKeyInput.replace('0x', '').trim();
+
+                // If there's an on-chain linked key, verify the imported key matches
+                if (onChainLinkedKey) {
+                    const importedKeyHash = await computePublicKeyHash(cleanKey);
+                    const onChainClean = onChainLinkedKey.replace('0x', '').toLowerCase();
+
+                    if (!importedKeyHash || importedKeyHash.toLowerCase() !== onChainClean) {
+                        setQuantumKeyError(
+                            `Key mismatch! The imported key does not match the on-chain linked key.\n\nExpected hash: 0x${onChainClean.slice(0, 16)}...\nImported key hash: ${importedKeyHash ? `0x${importedKeyHash.slice(0, 16)}...` : 'invalid'}\n\nPlease import the correct key that was previously linked to this wallet.`
+                        );
+                        setImporting(false);
+                        return;
+                    }
+                }
+
+                quantumKey = cleanKey;
+            }
+
+            if (!quantumKey) {
+                throw new Error('Quantum key is required for import.');
+            }
+
+            // Create the wallet
+            await wallet.createKeyringWithPrivateKey(pk, contextData.addressType, quantumKey, undefined);
+
+            // If user chose to generate new key and no key was provided
+            if (generateNewQuantumKey && !quantumKey) {
+                await wallet.generateQuantumKey();
+            }
+
+            navigate(RouteTypes.MainScreen);
+        } catch (e) {
+            tools.toastError((e as Error).message);
+        } finally {
+            setImporting(false);
+        }
+    };
+
+    if (loading) {
+        return (
+            <Column itemsCenter justifyCenter style={{ minHeight: 300 }}>
+                <OPNetLoader size={60} text="Checking key status" />
+            </Column>
+        );
+    }
+
+    return (
+        <Column gap="lg">
+            {/* Header */}
+            <div style={{ textAlign: 'center', marginBottom: '16px' }}>
+                <div
+                    style={{
+                        width: '60px',
+                        height: '60px',
+                        borderRadius: '50%',
+                        background: 'linear-gradient(135deg, rgba(139, 92, 246, 0.2) 0%, rgba(139, 92, 246, 0.1) 100%)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        margin: '0 auto 16px'
+                    }}>
+                    <SafetyOutlined style={{ fontSize: 28, color: '#8B5CF6' }} />
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'center' }}>
+                    <Text text="Quantum Key Setup" preset="bold" size="lg" />
+                </div>
+                <div
+                    style={{
+                        fontSize: '13px',
+                        color: colors.textFaded,
+                        marginTop: '8px'
+                    }}>
+                    Set up your post-quantum MLDSA key for OPNet
+                </div>
+            </div>
+
+            {/* On-chain linked key warning */}
+            {onChainLinkedKey && (
+                <div
+                    style={{
+                        background: 'rgba(139, 92, 246, 0.1)',
+                        border: '1px solid rgba(139, 92, 246, 0.3)',
+                        borderRadius: '10px',
+                        padding: '12px'
+                    }}>
+                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
+                        <KeyOutlined style={{ fontSize: 16, color: '#8B5CF6', marginTop: '2px' }} />
+                        <div>
+                            <div style={{ fontSize: '13px', fontWeight: 600, color: colors.text }}>
+                                On-Chain Linked Key Detected
+                            </div>
+                            <div style={{ fontSize: '11px', color: colors.textFaded, marginTop: '4px' }}>
+                                This wallet ({previewAddress.slice(0, 8)}...{previewAddress.slice(-6)}) already has an
+                                MLDSA key linked on the blockchain. You must import the original key that matches this
+                                hash:
+                            </div>
+                            <div
+                                style={{
+                                    marginTop: '8px',
+                                    padding: '8px',
+                                    background: 'rgba(0, 0, 0, 0.2)',
+                                    borderRadius: '6px',
+                                    fontFamily: 'monospace',
+                                    fontSize: '10px',
+                                    wordBreak: 'break-all',
+                                    color: colors.text
+                                }}>
+                                {onChainLinkedKey}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Info Card - only show if no on-chain key */}
+            {!onChainLinkedKey && (
+                <div
+                    style={{
+                        background: 'rgba(139, 92, 246, 0.1)',
+                        border: '1px solid rgba(139, 92, 246, 0.3)',
+                        borderRadius: '10px',
+                        padding: '12px'
+                    }}>
+                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
+                        <InfoCircleOutlined style={{ fontSize: 16, color: '#8B5CF6', marginTop: '2px' }} />
+                        <div style={{ fontSize: '12px', color: colors.text, lineHeight: '1.5' }}>
+                            OPNet requires a quantum-resistant MLDSA key for transactions. You can either import an
+                            existing key or generate a new one.
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Option Cards - show when no mode selected */}
+            {quantumMode === null && (
+                <>
+                    {/* Import Existing Key Option - always available */}
+                    <div
+                        style={{
+                            background: colors.containerBgFaded,
+                            border: `2px solid ${onChainLinkedKey ? colors.main : colors.containerBorder}`,
+                            borderRadius: '12px',
+                            padding: '16px',
+                            cursor: 'pointer',
+                            transition: 'all 0.2s'
+                        }}
+                        onClick={() => setQuantumMode('import')}
+                        onMouseEnter={(e) => {
+                            e.currentTarget.style.borderColor = colors.main;
+                            e.currentTarget.style.background = `${colors.main}08`;
+                        }}
+                        onMouseLeave={(e) => {
+                            e.currentTarget.style.borderColor = onChainLinkedKey ? colors.main : colors.containerBorder;
+                            e.currentTarget.style.background = colors.containerBgFaded;
+                        }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                            <div
+                                style={{
+                                    width: '40px',
+                                    height: '40px',
+                                    borderRadius: '10px',
+                                    background: `${colors.main}20`,
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center'
+                                }}>
+                                <ImportOutlined style={{ fontSize: 20, color: colors.main }} />
+                            </div>
+                            <div style={{ flex: 1 }}>
+                                <div style={{ fontSize: '14px', fontWeight: 600, color: colors.text }}>
+                                    Import Existing Key{onChainLinkedKey ? ' (Required)' : ''}
+                                </div>
+                                <div style={{ fontSize: '11px', color: colors.textFaded, marginTop: '4px' }}>
+                                    {onChainLinkedKey
+                                        ? 'Import the quantum key that matches the on-chain linked hash.'
+                                        : 'Use a quantum key you exported from another wallet.'}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Generate New Key Option - only if no on-chain key */}
+                    {!onChainLinkedKey && (
+                        <div
+                            style={{
+                                background: colors.containerBgFaded,
+                                border: `2px solid ${colors.containerBorder}`,
+                                borderRadius: '12px',
+                                padding: '16px',
+                                cursor: 'pointer',
+                                transition: 'all 0.2s'
+                            }}
+                            onClick={() => setQuantumMode('generate')}
+                            onMouseEnter={(e) => {
+                                e.currentTarget.style.borderColor = '#8B5CF6';
+                                e.currentTarget.style.background = 'rgba(139, 92, 246, 0.05)';
+                            }}
+                            onMouseLeave={(e) => {
+                                e.currentTarget.style.borderColor = colors.containerBorder;
+                                e.currentTarget.style.background = colors.containerBgFaded;
+                            }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                <div
+                                    style={{
+                                        width: '40px',
+                                        height: '40px',
+                                        borderRadius: '10px',
+                                        background: 'rgba(139, 92, 246, 0.2)',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center'
+                                    }}>
+                                    <PlusCircleOutlined style={{ fontSize: 20, color: '#8B5CF6' }} />
+                                </div>
+                                <div style={{ flex: 1 }}>
+                                    <div style={{ fontSize: '14px', fontWeight: 600, color: colors.text }}>
+                                        Generate New Key
+                                    </div>
+                                    <div style={{ fontSize: '11px', color: colors.textFaded, marginTop: '4px' }}>
+                                        Create a new quantum-resistant key. Recommended for new wallets.
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Info about why generate is disabled */}
+                    {onChainLinkedKey && (
+                        <div
+                            style={{
+                                background: 'rgba(0, 0, 0, 0.2)',
+                                borderRadius: '10px',
+                                padding: '12px'
+                            }}>
+                            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
+                                <InfoCircleOutlined
+                                    style={{ fontSize: 14, color: colors.textFaded, marginTop: '2px' }}
+                                />
+                                <div style={{ fontSize: '11px', color: colors.textFaded, lineHeight: '1.4' }}>
+                                    Generating a new key is disabled because this wallet already has a key linked
+                                    on-chain. You must import the original key to access your funds.
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </>
+            )}
+
+            {/* Generate New Key Confirmation */}
+            {quantumMode === 'generate' && (
+                <>
+                    <div
+                        style={{
+                            background: 'rgba(74, 222, 128, 0.1)',
+                            border: '1px solid rgba(74, 222, 128, 0.3)',
+                            borderRadius: '10px',
+                            padding: '12px'
+                        }}>
+                        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
+                            <CheckCircleFilled style={{ fontSize: 16, color: colors.success, marginTop: '2px' }} />
+                            <div>
+                                <div style={{ fontSize: '13px', fontWeight: 600, color: colors.text }}>
+                                    A new ML-DSA-44 key will be generated
+                                </div>
+                                <div style={{ fontSize: '11px', color: colors.textFaded, marginTop: '4px' }}>
+                                    Make sure to backup your quantum key after the wallet is created. You can export it
+                                    from the wallet settings.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {quantumKeyError && (
+                        <div style={{ fontSize: '11px', color: colors.error, padding: '8px', whiteSpace: 'pre-wrap' }}>
+                            {quantumKeyError}
+                        </div>
+                    )}
+
+                    <div style={{ display: 'flex', gap: '12px', marginTop: '8px' }}>
+                        <button
+                            style={{
+                                flex: 1,
+                                padding: '14px',
+                                background: colors.buttonBg,
+                                border: 'none',
+                                borderRadius: '12px',
+                                color: colors.text,
+                                fontSize: '14px',
+                                fontWeight: 600,
+                                cursor: 'pointer'
+                            }}
+                            onClick={() => {
+                                setQuantumMode(null);
+                                setQuantumKeyError('');
+                            }}>
+                            Back
+                        </button>
+                        <button
+                            style={{
+                                flex: 2,
+                                padding: '14px',
+                                background: '#8B5CF6',
+                                border: 'none',
+                                borderRadius: '12px',
+                                color: '#fff',
+                                fontSize: '14px',
+                                fontWeight: 600,
+                                cursor: importing ? 'not-allowed' : 'pointer',
+                                opacity: importing ? 0.7 : 1
+                            }}
+                            disabled={importing}
+                            onClick={() => onImportWallet(true)}>
+                            {importing ? 'Creating Wallet...' : 'Generate & Import'}
+                        </button>
+                    </div>
+                </>
+            )}
+
+            {/* Import Existing Key Form */}
+            {quantumMode === 'import' && (
+                <>
+                    <div>
+                        <label
+                            style={{
+                                fontSize: '12px',
+                                fontWeight: 600,
+                                color: colors.textFaded,
+                                textTransform: 'uppercase',
+                                letterSpacing: '0.5px',
+                                marginBottom: '8px',
+                                display: 'block'
+                            }}>
+                            ML-DSA Private Key
+                        </label>
+                        <textarea
+                            style={{
+                                width: '100%',
+                                minHeight: '100px',
+                                padding: '12px',
+                                background: colors.inputBg,
+                                border: quantumKeyError
+                                    ? `1px solid ${colors.error}`
+                                    : `1px solid ${colors.containerBorder}`,
+                                borderRadius: '10px',
+                                color: colors.text,
+                                fontSize: '11px',
+                                fontFamily: 'monospace',
+                                resize: 'vertical',
+                                outline: 'none'
+                            }}
+                            placeholder={`Paste your ML-DSA-44 private key (${EXPECTED_QUANTUM_KEY_HEX_CHARS} hex characters)`}
+                            value={quantumKeyInput}
+                            onChange={(e) => {
+                                setQuantumKeyInput(e.target.value);
+                                setQuantumKeyError('');
+                            }}
+                        />
+                        {quantumKeyError && (
+                            <div
+                                style={{
+                                    fontSize: '11px',
+                                    color: colors.error,
+                                    marginTop: '6px',
+                                    whiteSpace: 'pre-wrap'
+                                }}>
+                                {quantumKeyError}
+                            </div>
+                        )}
+                        <div style={{ fontSize: '10px', color: colors.textFaded, marginTop: '6px' }}>
+                            Expected key size: {EXPECTED_QUANTUM_KEY_BYTES.toLocaleString()} bytes (
+                            {EXPECTED_QUANTUM_KEY_HEX_CHARS.toLocaleString()} hex characters) for ML-DSA-44 (Level 2)
+                        </div>
+                    </div>
+
+                    {/* Don't have a key? Generate one button - only if no on-chain key */}
+                    {!onChainLinkedKey && (
+                        <div
+                            style={{
+                                background: 'rgba(139, 92, 246, 0.05)',
+                                border: '1px dashed rgba(139, 92, 246, 0.3)',
+                                borderRadius: '10px',
+                                padding: '12px',
+                                textAlign: 'center'
+                            }}>
+                            <div style={{ fontSize: '12px', color: colors.textFaded, marginBottom: '8px' }}>
+                                Don&#39;t have a quantum key to link with this wallet?
+                            </div>
+                            <button
+                                style={{
+                                    padding: '8px 16px',
+                                    background: 'rgba(139, 92, 246, 0.2)',
+                                    border: '1px solid rgba(139, 92, 246, 0.4)',
+                                    borderRadius: '8px',
+                                    color: '#8B5CF6',
+                                    fontSize: '12px',
+                                    fontWeight: 600,
+                                    cursor: 'pointer'
+                                }}
+                                onClick={() => {
+                                    setQuantumMode('generate');
+                                    setQuantumKeyInput('');
+                                    setQuantumKeyError('');
+                                }}>
+                                Generate a Random Key Instead
+                            </button>
+                        </div>
+                    )}
+
+                    <div style={{ display: 'flex', gap: '12px', marginTop: '8px' }}>
+                        <button
+                            style={{
+                                flex: 1,
+                                padding: '14px',
+                                background: colors.buttonBg,
+                                border: 'none',
+                                borderRadius: '12px',
+                                color: colors.text,
+                                fontSize: '14px',
+                                fontWeight: 600,
+                                cursor: 'pointer'
+                            }}
+                            onClick={() => {
+                                setQuantumMode(null);
+                                setQuantumKeyError('');
+                            }}>
+                            Back
+                        </button>
+                        <button
+                            style={{
+                                flex: 2,
+                                padding: '14px',
+                                background: colors.main,
+                                border: 'none',
+                                borderRadius: '12px',
+                                color: colors.background,
+                                fontSize: '14px',
+                                fontWeight: 600,
+                                cursor: importing || !quantumKeyInput.trim() ? 'not-allowed' : 'pointer',
+                                opacity: importing || !quantumKeyInput.trim() ? 0.7 : 1
+                            }}
+                            disabled={importing || !quantumKeyInput.trim()}
+                            onClick={() => onImportWallet(false)}>
+                            {importing ? 'Verifying & Importing...' : 'Import Wallet'}
+                        </button>
+                    </div>
+                </>
+            )}
         </Column>
     );
 }
 
 enum TabType {
     STEP1 = 'STEP1',
-    STEP2 = 'STEP2'
+    STEP2 = 'STEP2',
+    STEP3 = 'STEP3'
 }
 
 type KeyKind = 'wif' | 'rawHex';
@@ -582,16 +1229,18 @@ type KeyKind = 'wif' | 'rawHex';
 interface ContextData {
     wif: string;
     keyKind: KeyKind;
-    addressType: AddressType;
+    addressType: AddressTypes;
     step1Completed: boolean;
+    step2Completed: boolean;
     tabType: TabType;
 }
 
 interface UpdateContextDataParams {
     wif?: string;
     keyKind?: KeyKind;
-    addressType?: AddressType;
+    addressType?: AddressTypes;
     step1Completed?: boolean;
+    step2Completed?: boolean;
     tabType?: TabType;
 }
 
@@ -604,8 +1253,9 @@ export default function CreateSimpleWalletScreen() {
     const [contextData, setContextData] = useState<ContextData>({
         wif: '',
         keyKind: 'wif',
-        addressType: AddressType.P2WPKH,
+        addressType: AddressTypes.P2WPKH,
         step1Completed: false,
+        step2Completed: false,
         tabType: TabType.STEP1
     });
 
@@ -627,6 +1277,11 @@ export default function CreateSimpleWalletScreen() {
                 key: TabType.STEP2,
                 label: 'Address Type',
                 children: <Step2 contextData={contextData} updateContextData={updateContextData} />
+            },
+            {
+                key: TabType.STEP3,
+                label: 'Quantum Key',
+                children: <Step3 contextData={contextData} updateContextData={updateContextData} />
             }
         ];
     }, [contextData, updateContextData]);
@@ -700,7 +1355,11 @@ export default function CreateSimpleWalletScreen() {
                         {items.map((item, index) => {
                             const isActive = item.key === contextData.tabType;
                             const isCompleted = index < currentStepIndex;
-                            const isClickable = isCompleted || (index === currentStepIndex + 1 && contextData.step1Completed);
+                            // Allow navigation to completed steps, or next step if current step is completed
+                            const canGoToStep2 = contextData.step1Completed;
+                            const canGoToStep3 = contextData.step1Completed && contextData.step2Completed;
+                            const isClickable =
+                                isCompleted || (index === 1 && canGoToStep2) || (index === 2 && canGoToStep3);
 
                             return (
                                 <div
@@ -721,7 +1380,11 @@ export default function CreateSimpleWalletScreen() {
                                                   ? colors.success
                                                   : colors.buttonHoverBg,
                                             border: `1px solid ${
-                                                isActive ? colors.main : isCompleted ? colors.success : colors.containerBorder
+                                                isActive
+                                                    ? colors.main
+                                                    : isCompleted
+                                                      ? colors.success
+                                                      : colors.containerBorder
                                             }`,
                                             color: isActive || isCompleted ? colors.background : colors.textFaded,
                                             fontSize: '11px',
@@ -738,6 +1401,9 @@ export default function CreateSimpleWalletScreen() {
 
                                             const toTabType = item.key;
                                             if (toTabType === TabType.STEP2 && !contextData.step1Completed) {
+                                                return;
+                                            }
+                                            if (toTabType === TabType.STEP3 && !contextData.step2Completed) {
                                                 return;
                                             }
                                             updateContextData({ tabType: toTabType });

@@ -53,12 +53,13 @@ export const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
 
     if (showDetails) {
         return (
-            <div style={{ 
-                display: 'flex', 
-                justifyContent: alignLeft ? 'flex-start' : 'center',
-                marginTop: '8px',
-                width: '100%'
-            }}>
+            <div
+                style={{
+                    display: 'flex',
+                    justifyContent: alignLeft ? 'flex-start' : 'center',
+                    marginTop: '8px',
+                    width: '100%'
+                }}>
                 <BalanceTabs
                     accountBalance={accountBalance}
                     btcUnit={btcUnit}

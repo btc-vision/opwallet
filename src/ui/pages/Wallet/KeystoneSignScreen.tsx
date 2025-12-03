@@ -46,10 +46,10 @@ function Step1(props: Props) {
             setUr(ur);
         }).catch((err: unknown) => {
             console.error(err);
-            if (isWalletError(err)){
+            if (isWalletError(err)) {
                 tools.toastError(err.message);
             } else {
-                tools.toastError("An unexpected error occurred.");
+                tools.toastError('An unexpected error occurred.');
             }
         });
     }, [props]);
@@ -70,7 +70,7 @@ function Step1(props: Props) {
 function Step2(props: Props) {
     const wallet = useWallet();
 
-    const onSucceed = async ({ type, cbor }: {type: string; cbor: string}) => {
+    const onSucceed = async ({ type, cbor }: { type: string; cbor: string }) => {
         if (props.type === 'psbt') {
             const res = await wallet.parseSignPsbtUr(type, cbor, props.isFinalize === false ? false : true);
             if (props.onSuccess) {

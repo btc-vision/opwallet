@@ -1,5 +1,4 @@
 :root {
-
     --op-orange: #ee771b; /* Orange color */
 
     --op-button-bg: #434343; /* Default background color */
@@ -41,13 +40,14 @@ body {
     z-index: 4;
 }
 
-.ant-tabs > .ant-tabs-nav .ant-tabs-nav-wrap, .ant-tabs > div > .ant-tabs-nav .ant-tabs-nav-wrap {
+.ant-tabs > .ant-tabs-nav .ant-tabs-nav-wrap,
+.ant-tabs > div > .ant-tabs-nav .ant-tabs-nav-wrap {
     overflow: visible;
 }
 
 .ant-tabs-tab.ant-tabs-tab-active {
     padding: 8px 12px !important;
-    background: linear-gradient(180deg, rgba(34, 33, 33, 0) 70%, rgba(238, 119, 27, 0.4) 100%)
+    background: linear-gradient(180deg, rgba(34, 33, 33, 0) 70%, rgba(238, 119, 27, 0.4) 100%);
 }
 
 .ant-tabs-tab.ant-tabs-tab-active .ant-tabs-tab-btn {
@@ -75,7 +75,10 @@ body {
     align-items: center;
     justify-content: center;
     height: 60px;
-    transition: background 0.3s, transform 0.3s, border 0.3s, box-shadow 0.3s;
+    transition: background 0.3s,
+    transform 0.3s,
+    border 0.3s,
+    box-shadow 0.3s;
     cursor: pointer;
     -webkit-box-shadow: 0 4px 15px -6px rgba(0, 0, 0, 0.25);
     -moz-box-shadow: 0 4px 15px -6px rgba(0, 0, 0, 0.25);
@@ -88,7 +91,6 @@ body {
     -webkit-box-shadow: 0 1px 15px -6px rgba(0, 0, 0, 0.25);
     -moz-box-shadow: 0 1px 15px -6px rgba(0, 0, 0, 0.25);
     box-shadow: 0 1px 15px -6px rgba(0, 0, 0, 0.25);
-
 }
 
 .icon-wrapper {
@@ -117,7 +119,8 @@ body {
     background-color: var(--op-button-bg);
     color: var(--op-button-text);
     border-radius: 17px;
-    transition: background 0.3s, color 0.3s;
+    transition: background 0.3s,
+    color 0.3s;
 }
 
 .address_profile_container:hover {
@@ -150,7 +153,6 @@ body {
     align-items: center;
     justify-content: center;
 }
-
 
 .address_profile_p2tr {
     display: flex;
@@ -239,7 +241,9 @@ button.op_action_button {
     font-size: 12px;
     font-weight: 500;
     border: 2px solid var(--op-button-bg);
-    transition: background 0.3s, color 0.3s, border 0.3s;
+    transition: background 0.3s,
+    color 0.3s,
+    border 0.3s;
     cursor: pointer;
 }
 
@@ -263,7 +267,8 @@ button.op_action_button:hover {
     color: var(--op-button-text);
     border-radius: 17px;
     cursor: pointer;
-    transition: background 0.3s, color 0.3s;
+    transition: background 0.3s,
+    color 0.3s;
 }
 
 .op_token_container:hover {
@@ -296,7 +301,8 @@ button.op_action_button:hover {
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: background 0.3s, color 0.3s;
+    transition: background 0.3s,
+    color 0.3s;
 }
 
 .op_token_remove:hover {
@@ -330,7 +336,8 @@ button.op_action_button:hover {
     padding: 0 12px;
     border: 1px solid #444746;
     background: #313131;
-    transition: background-color 0.3s, border 0.3s;
+    transition: background-color 0.3s,
+    border 0.3s;
     border-radius: 8px;
 }
 

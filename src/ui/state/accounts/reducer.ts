@@ -15,7 +15,6 @@ export interface AccountsState {
             list: TxHistoryItem[];
         }
     >;
-    inscriptionsMap: Record<string, {}>;
     appSummary: AppSummary;
     addressSummary: AddressSummary;
 }
@@ -39,7 +38,6 @@ export const initialState: AccountsState = {
     loading: false,
     balanceMap: {},
     historyMap: {},
-    inscriptionsMap: {},
     appSummary: {
         apps: []
     },
@@ -153,14 +151,6 @@ const slice = createSlice({
                 list: []
             };
             state.historyMap[address].list = list;
-        },
-        setInscriptions(state, action: { payload: { address: string } }) {
-            const {
-                payload: { address }
-            } = action;
-            state.inscriptionsMap[address] = state.inscriptionsMap[address] || {
-                list: []
-            };
         },
         setCurrentAccountName(state, action: { payload: string }) {
             const { payload } = action;

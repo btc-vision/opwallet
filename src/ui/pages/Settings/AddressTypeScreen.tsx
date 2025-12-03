@@ -1,19 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
 
-import { AddressAssets, AddressType } from '@/shared/types';
-import { Column, Content, Header, Layout, Text } from '@/ui/components';
+import { AddressAssets, AddressTypes } from '@/shared/types';
+import { Column, Content, Header, Layout, OPNetLoader, Text } from '@/ui/components';
 import { useTools } from '@/ui/components/ActionComponent';
 import { useCurrentAccount, useReloadAccounts } from '@/ui/state/accounts/hooks';
 import { useCurrentKeyring } from '@/ui/state/keyrings/hooks';
 import { copyToClipboard, satoshisToAmount, useWallet } from '@/ui/utils';
-import {
-    CheckCircleFilled,
-    CheckOutlined,
-    CopyOutlined,
-    InfoCircleOutlined,
-    LoadingOutlined,
-    WalletOutlined
-} from '@ant-design/icons';
+import { CheckCircleFilled, CheckOutlined, CopyOutlined, InfoCircleOutlined, WalletOutlined } from '@ant-design/icons';
 
 import { getBitcoinLibJSNetwork } from '@/shared/web3/Web3API';
 import { useBTCUnit } from '@/ui/state/settings/hooks';
@@ -45,8 +38,8 @@ interface AddressTypeItemProps {
     onClick: () => void;
 }
 
-type AddressTypes = Array<{
-    value: AddressType;
+type AddressTypesList = Array<{
+    value: AddressTypes;
     name: string;
     address: string;
     assets: AddressAssets;
@@ -304,15 +297,23 @@ export default function AddressTypeScreen() {
     const [addressAssets, setAddressAssets] = useState<Record<string, AddressAssets>>({});
     const [loading, setLoading] = useState(true);
     const [switching, setSwitching] = useState(false);
+    const [needsMigration, setNeedsMigration] = useState(false);
 
     const loadAddresses = async () => {
         setLoading(true);
         try {
+            // Check if quantum migration is complete
+            if (!account.quantumPublicKeyHash) {
+                setNeedsMigration(true);
+                setLoading(false);
+                return;
+            }
+
             const networkType = await wallet.getNetworkType();
             const chainType = await wallet.getChainType();
             const network = getBitcoinLibJSNetwork(networkType, chainType);
 
-            const address = Address.fromString(account.pubkey);
+            const address = Address.fromString(account.quantumPublicKeyHash, account.pubkey);
             const p2tr = address.p2tr(network);
             const p2wpkh = address.p2wpkh(network);
             const p2shp2wpkh = address.p2shp2wpkh(network);
@@ -350,7 +351,7 @@ export default function AddressTypeScreen() {
     }, []);
 
     const addressTypes = useMemo(() => {
-        const types: AddressTypes = [];
+        const types: AddressTypesList = [];
 
         const addressEntries = Object.entries(addresses) as [keyof typeof addresses, string][];
 
@@ -360,25 +361,25 @@ export default function AddressTypeScreen() {
             const assets = addressAssets[address];
             if (!assets) continue;
 
-            // Map the key to proper AddressType enum values
-            let addressType: AddressType;
+            // Map the key to proper AddressTypes enum values
+            let addressType: AddressTypes;
             let name = '';
 
             switch (key) {
                 case 'p2tr':
-                    addressType = AddressType.P2TR;
+                    addressType = AddressTypes.P2TR;
                     name = 'Taproot';
                     break;
                 case 'p2wpkh':
-                    addressType = AddressType.P2WPKH;
+                    addressType = AddressTypes.P2WPKH;
                     name = 'Native SegWit';
                     break;
                 case 'p2shp2wpkh':
-                    addressType = AddressType.P2SH_P2WPKH;
+                    addressType = AddressTypes.P2SH_OR_P2SH_P2WPKH;
                     name = 'Nested SegWit';
                     break;
                 case 'p2pkh':
-                    addressType = AddressType.P2PKH;
+                    addressType = AddressTypes.P2PKH;
                     name = 'Legacy';
                     break;
                 default:
@@ -395,7 +396,7 @@ export default function AddressTypeScreen() {
         return types;
     }, [addresses, addressAssets]);
 
-    const handleAddressTypeChange = async (item: AddressTypes[number]) => {
+    const handleAddressTypeChange = async (item: AddressTypesList[number]) => {
         if (item.value === currentKeyring.addressType) {
             return;
         }
@@ -414,7 +415,7 @@ export default function AddressTypeScreen() {
         }
     };
 
-    const getDescription = (item: AddressTypes[number]) => {
+    const getDescription = (item: AddressTypesList[number]) => {
         if (item.name === 'P2TR') {
             return 'Taproot - Lower fees, enhanced privacy';
         } else if (item.name === 'P2WPKH') {
@@ -438,9 +439,47 @@ export default function AddressTypeScreen() {
                         justifyContent: 'center',
                         minHeight: '300px'
                     }}>
-                    <Column itemsCenter>
-                        <LoadingOutlined style={{ fontSize: 24, color: colors.main }} />
-                        <Text text="Loading addresses..." color="textDim" style={{ marginTop: 12 }} />
+                    <OPNetLoader size={70} text="Loading addresses" />
+                </Content>
+            </Layout>
+        );
+    }
+
+    if (needsMigration) {
+        return (
+            <Layout>
+                <Header onBack={() => window.history.go(-1)} title="Address Type" />
+                <Content
+                    style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        minHeight: '300px',
+                        padding: '20px'
+                    }}>
+                    <Column itemsCenter gap="md">
+                        <Text
+                            text="Feature unavailable"
+                            preset="bold"
+                            size="lg"
+                            color="warning"
+                        />
+                        <Text
+                            text="This feature is only available once your MLDSA keypair is linked. Please complete the post-quantum migration first."
+                            textCenter
+                            color="textDim"
+                        />
+                        <div
+                            style={{
+                                marginTop: '16px',
+                                padding: '12px 24px',
+                                backgroundColor: colors.main,
+                                borderRadius: '8px',
+                                cursor: 'pointer'
+                            }}
+                            onClick={() => navigate(RouteTypes.QuantumMigrationScreen)}>
+                            <Text text="Go to Migration" color="white" />
+                        </div>
                     </Column>
                 </Content>
             </Layout>
@@ -534,16 +573,13 @@ export default function AddressTypeScreen() {
                             left: 0,
                             right: 0,
                             bottom: 0,
-                            background: 'rgba(0, 0, 0, 0.8)',
+                            background: 'rgba(0, 0, 0, 0.85)',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
                             zIndex: 1000
                         }}>
-                        <Column itemsCenter>
-                            <LoadingOutlined style={{ fontSize: 24, color: colors.main }} />
-                            <Text text="Switching address type..." color="text" style={{ marginTop: 12 }} />
-                        </Column>
+                        <OPNetLoader size={70} text="Switching address" />
                     </div>
                 )}
             </Content>

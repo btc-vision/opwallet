@@ -3,7 +3,7 @@ import * as bip39 from 'bip39';
 import { useEffect, useMemo, useState } from 'react';
 
 import { OW_HD_PATH } from '@/shared/constant';
-import { AddressType, RestoreWalletType } from '@/shared/types';
+import { AddressTypes, RestoreWalletType } from '@/shared/types';
 import { isWalletError } from '@/shared/utils/errors';
 import { Button, Card, Column, Grid, Input, Row, Text } from '@/ui/components';
 import { useTools } from '@/ui/components/ActionComponent';
@@ -105,7 +105,7 @@ export function Step1_Import({
         try {
             const mnemonics = keys.join(' ');
             if (contextData.restoreWalletType === RestoreWalletType.OW) {
-                await createAccount(mnemonics, OW_HD_PATH, '', AddressType.P2TR, 1);
+                await createAccount(mnemonics, OW_HD_PATH, '', AddressTypes.P2TR, 1);
                 navigate(RouteTypes.MainScreen);
             } else {
                 updateContextData({ mnemonics, tabType: TabType.STEP3 });
@@ -114,8 +114,8 @@ export function Step1_Import({
             if (isWalletError(e)) {
                 tools.toastError(e.message);
             } else {
-                tools.toastError("An unexpected error occurred.");
-                console.error("Non-WalletError caught: ", e);
+                tools.toastError('An unexpected error occurred.');
+                console.error('Non-WalletError caught: ', e);
             }
         }
     };

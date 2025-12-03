@@ -17,8 +17,7 @@ import {
     RocketOutlined,
     ThunderboltOutlined
 } from '@ant-design/icons';
-import { Wallet } from '@btc-vision/transaction';
-
+import { Address } from '@btc-vision/transaction';
 import { RouteTypes, useNavigate } from '../MainRoute';
 
 const colors = {
@@ -49,27 +48,16 @@ export default function Mint() {
     const wallet = useWallet();
     const [maxSupply, setMaxSupply] = useState<bigint>(0n);
     const [note, setNote] = useState<string>('');
-    const [address, setAddress] = useState<string | null>(null);
+    const [address, setAddress] = useState<Address | null>(null);
     const [isLoadingSupply, setIsLoadingSupply] = useState(true);
 
-    const getWallet = useCallback(async () => {
-        const currentWalletAddress = await wallet.getCurrentAccount();
-        const pubkey = currentWalletAddress.pubkey;
-
-        const wifWallet = await wallet.getInternalPrivateKey({
-            pubkey: pubkey,
-            type: currentWalletAddress.type
-        });
-
-        return Wallet.fromWif(wifWallet.wif, Web3API.network);
-    }, [wallet]);
-
     const cb = useCallback(async () => {
-        const wallet = await getWallet();
-        setAddress(wallet.address.toString());
+        const [mldsaHashPubKey, legacyPubKey] = await wallet.getWalletAddress();
+        const userAddress = Address.fromString(mldsaHashPubKey, legacyPubKey);
+        setAddress(userAddress);
         setDisabled(false);
         setError('');
-    }, [getWallet]);
+    }, [wallet]);
 
     useEffect(() => {
         setDisabled(true);
@@ -111,7 +99,7 @@ export default function Mint() {
 
         const txInfo: MintParameters = {
             contractAddress: prop.address,
-            to: address,
+            to: address.toHex(),
             inputAmount: Number(inputAmount),
             header: 'Mint Token',
             features: {
@@ -290,7 +278,7 @@ export default function Mint() {
                                     setInputAmount(formattedMaxSupply);
                                 }
                             }}
-                            runesDecimal={prop.divisibility}
+                            decimalPlaces={prop.divisibility}
                             style={{
                                 background: colors.inputBg,
                                 border: `1px solid ${colors.containerBorder}`,
