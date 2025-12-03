@@ -102,9 +102,9 @@ export default function WalletTabScreen() {
         }
     }, [untweakedPublicKey.pubkey, untweakedPublicKey.mldsa]);
 
-    const tweakedPublicKey = address ? address.toHex() : '';
-    const publicKey = address ? '0x' + address.originalPublicKeyBuffer().toString('hex') : '';
-    const explorerUrl = address ? `https://opscan.org/accounts/${tweakedPublicKey}` : '';
+    const mldsaHashedPublicKey = address ? address.toHex() : '';
+    //const publicKey = address ? '0x' + address.originalPublicKeyBuffer().toString('hex') : '';
+    //const explorerUrl = address ? `https://opscan.org/accounts/${mldsaHashedPublicKey}` : '';
 
     const accountBalance = useAccountBalance();
     const fetchBalance = useFetchBalanceCallback();
@@ -618,16 +618,20 @@ export default function WalletTabScreen() {
                                                         }}
                                                         onClick={async (e) => {
                                                             e.stopPropagation();
-                                                            await copyToClipboard(tweakedPublicKey);
+                                                            await copyToClipboard(mldsaHashedPublicKey);
                                                             tools.toastSuccess('MLDSA key copied');
                                                         }}
                                                         onMouseEnter={(e) => {
-                                                            e.currentTarget.style.background = 'rgba(139, 92, 246, 0.2)';
-                                                            e.currentTarget.style.borderColor = 'rgba(139, 92, 246, 0.5)';
+                                                            e.currentTarget.style.background =
+                                                                'rgba(139, 92, 246, 0.2)';
+                                                            e.currentTarget.style.borderColor =
+                                                                'rgba(139, 92, 246, 0.5)';
                                                         }}
                                                         onMouseLeave={(e) => {
-                                                            e.currentTarget.style.background = 'rgba(139, 92, 246, 0.1)';
-                                                            e.currentTarget.style.borderColor = 'rgba(139, 92, 246, 0.3)';
+                                                            e.currentTarget.style.background =
+                                                                'rgba(139, 92, 246, 0.1)';
+                                                            e.currentTarget.style.borderColor =
+                                                                'rgba(139, 92, 246, 0.3)';
                                                         }}>
                                                         <span
                                                             style={{
@@ -646,7 +650,8 @@ export default function WalletTabScreen() {
                                                                 textOverflow: 'ellipsis',
                                                                 whiteSpace: 'nowrap'
                                                             }}>
-                                                            {tweakedPublicKey.slice(0, 6)}...{tweakedPublicKey.slice(-4)}
+                                                            {mldsaHashedPublicKey.slice(0, 6)}...
+                                                            {mldsaHashedPublicKey.slice(-4)}
                                                         </span>
                                                         <svg
                                                             width="10"
