@@ -165,6 +165,7 @@ class TransactionHistoryService {
             contractMethod: params.contractMethod,
             contractName: params.contractName,
             note: params.note,
+            calldata: params.calldata,
             lastStatusCheck: now,
             statusCheckAttempts: 0
         };

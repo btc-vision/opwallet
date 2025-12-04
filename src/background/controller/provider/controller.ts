@@ -344,11 +344,22 @@ export class ProviderController {
             interactionParams.network = wallet.getChainType();
         }
     ])
-    signInteraction = async (request: { approvalRes: boolean; data: { params: DetailedInteractionParameters } }) => {
+    signInteraction = async (request: {
+        approvalRes: boolean;
+        data: { params: DetailedInteractionParameters };
+        session?: Session;
+    }) => {
         const approvalInteractionParametersToUse = wallet.getApprovalInteractionParametersToUse();
         const interactionParameters = approvalInteractionParametersToUse ?? request.data.params.interactionParameters;
 
-        const result = wallet.signInteraction(interactionParameters);
+        const origin: TransactionOrigin = {
+            type: 'external',
+            siteUrl: request.session?.origin,
+            siteName: request.session?.name,
+            siteIcon: request.session?.icon
+        };
+
+        const result = wallet.signInteraction(interactionParameters, origin);
 
         if (approvalInteractionParametersToUse) wallet.clearApprovalInteractionParametersToUse(); // clear to avoid using them again
 
