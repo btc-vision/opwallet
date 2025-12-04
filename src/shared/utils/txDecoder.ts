@@ -121,21 +121,6 @@ export function decodeInteractionTransaction(
 }
 
 /**
- * Decode a funding transaction
- * @param txHex - Raw funding transaction hex
- * @param utxos - UTXOs used as inputs
- * @param network - Bitcoin network
- * @returns ParsedTransaction
- */
-export function decodeFundingTransaction(
-    txHex: string,
-    utxos: UTXO[],
-    network: Network
-): ParsedTransaction {
-    return decodeTransaction(txHex, utxos, network);
-}
-
-/**
  * Parse a SignedInteractionTransactionReceipt into PreSignedTransactionData format
  */
 export interface DecodedPreSignedData {
@@ -148,42 +133,24 @@ export interface DecodedPreSignedData {
 export function decodeSignedInteractionReceipt(
     fundingTxHex: string | null,
     interactionTxHex: string,
-    fundingUtxos: UTXO[],
-    nextUtxos: UTXO[],
+    fundingInputUtxos: UTXO[],  // UTXOs consumed as inputs by the funding tx (from response.fundingInputUtxos)
+    fundingOutputUtxos: UTXO[], // UTXOs created by funding tx, used as inputs for interaction (from response.fundingUTXOs)
     network: Network
 ): DecodedPreSignedData {
     const transactions: ParsedTransaction[] = [];
     let totalMiningFee = 0n;
 
     // Decode funding transaction if present
+    // Use fundingInputUtxos - these contain the actual UTXO values consumed by the funding tx
     if (fundingTxHex) {
-        const fundingTx = decodeTransaction(fundingTxHex, fundingUtxos, network);
+        const fundingTx = decodeTransaction(fundingTxHex, fundingInputUtxos, network);
         transactions.push(fundingTx);
         totalMiningFee += fundingTx.minerFee;
     }
 
-    // For interaction transaction, we need to figure out which UTXOs it uses
-    // If there's a funding tx, the interaction uses outputs from funding tx
-    // Otherwise it uses the original fundingUtxos
-    let interactionInputUtxos: UTXO[];
-
-    if (fundingTxHex) {
-        // Parse the funding tx to get its outputs as UTXOs for the interaction
-        const fundingTx = Transaction.fromHex(fundingTxHex);
-        const fundingTxid = fundingTx.getId();
-
-        interactionInputUtxos = fundingTx.outs.map((out, index) => ({
-            transactionId: fundingTxid,
-            outputIndex: index,
-            value: BigInt(out.value),
-            scriptPubKey: {
-                hex: out.script.toString('hex'),
-                address: ''
-            }
-        }));
-    } else {
-        interactionInputUtxos = fundingUtxos;
-    }
+    // For interaction transaction, use fundingOutputUtxos (outputs from funding tx)
+    // These are the UTXOs created by the funding tx that are consumed by the interaction tx
+    const interactionInputUtxos = fundingOutputUtxos;
 
     // Decode interaction transaction
     const { transaction: interactionTx, epochMinerOutput } = decodeInteractionTransaction(

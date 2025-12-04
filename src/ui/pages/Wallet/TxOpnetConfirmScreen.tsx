@@ -175,7 +175,7 @@ export default function TxOpnetConfirmScreen() {
     const [cachedSignedTx, setCachedSignedTx] = useState<CachedSignedTransaction | null>(null);
     const [cachedBtcTx, setCachedBtcTx] = useState<CachedBitcoinTransfer | null>(null);
     const preSigningRef = useRef<boolean>(false);
-    const [isTxFlowExpanded, setIsTxFlowExpanded] = useState<boolean>(false);
+    const [isTxFlowExpanded, setIsTxFlowExpanded] = useState<boolean>(true);
 
     useEffect(() => {
         const setWallet = async () => {
@@ -311,11 +311,13 @@ export default function TxOpnetConfirmScreen() {
                 let preSignedTxData: PreSignedTransactionData | null = null;
 
                 try {
+                    // Use fundingInputUtxos for the funding tx inputs (actual UTXO values consumed)
+                    // Use fundingUTXOs for the interaction tx inputs (outputs from funding tx)
                     decodedData = decodeSignedInteractionReceipt(
                         signedTx.fundingTransactionRaw,
                         signedTx.interactionTransactionRaw,
-                        signedTx.fundingUTXOs,
-                        signedTx.nextUTXOs,
+                        signedTx.fundingInputUtxos,  // Input UTXOs consumed by funding tx
+                        signedTx.fundingUTXOs,       // Output UTXOs from funding tx (inputs for interaction)
                         Web3API.network
                     );
 
@@ -476,11 +478,13 @@ export default function TxOpnetConfirmScreen() {
                 const signedTx = await Web3API.transactionFactory.createBTCTransfer(fundingParams);
 
                 // Decode the transaction to get actual fee data
+                // Use signedTx.inputUtxos - these contain the actual UTXO values consumed
+                // DO NOT use the original utxos array - txid/vout lookup is broken
                 let decodedData: DecodedPreSignedData | null = null;
                 let preSignedTxData: PreSignedTransactionData | null = null;
 
                 try {
-                    decodedData = decodeBitcoinTransfer(signedTx.tx, utxos, Web3API.network);
+                    decodedData = decodeBitcoinTransfer(signedTx.tx, signedTx.inputUtxos, Web3API.network);
 
                     preSignedTxData = {
                         type: 'bitcoin_transfer',

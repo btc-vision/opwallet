@@ -131,7 +131,7 @@ function parseTransactionForPreview(
 ): ParsedTransaction {
     const tx = Transaction.fromHex(txHex);
     const txid = tx.getId();
-    const size = txHex.length / 2; // hex to bytes
+    const size = tx.byteLength();
     const vsize = tx.virtualSize();
 
     // Create a map for faster UTXO lookup (normalized lowercase for case-insensitive matching)
@@ -1633,14 +1633,15 @@ export class WalletController {
         // Parse transactions for accurate UI display
         const network = getBitcoinLibJSNetwork(this.getNetworkType(), this.getChainType());
 
-        // Prepare input UTXOs for parsing (need txid, vout, value)
-        const inputUtxosForParsing = signedData.utxos.map((u) => ({
+        // Use fundingInputUtxos directly from response - these contain actual UTXO values
+        // DO NOT try to reverse-lookup values from raw tx hex - that approach is broken
+        const fundingInputUtxos = signedData.response.fundingInputUtxos.map((u) => ({
             txid: u.transactionId,
             vout: u.outputIndex,
             value: u.value
         }));
 
-        // Parse the interaction transaction
+        // Parse the interaction transaction using fundingUTXOs (outputs from funding tx)
         const interactionTx = parseTransactionForPreview(
             signedData.response.interactionTransaction,
             signedData.response.fundingUTXOs.map((u) => ({
@@ -1651,12 +1652,12 @@ export class WalletController {
             network
         );
 
-        // Parse funding transaction if present
+        // Parse funding transaction if present - use fundingInputUtxos for actual input values
         let fundingTx: ParsedTransaction | null = null;
         if (signedData.response.fundingTransaction) {
             fundingTx = parseTransactionForPreview(
                 signedData.response.fundingTransaction,
-                inputUtxosForParsing,
+                fundingInputUtxos,
                 network
             );
         }
