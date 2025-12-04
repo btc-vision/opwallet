@@ -1,7 +1,7 @@
 import { EventEmitter } from 'events';
 
 import { IS_WINDOWS } from '@/shared/constant';
-import { preferenceService } from '@/background/service';
+import preferenceService from '@/background/service/preference';
 
 import {
     browserWindowsCreate,
