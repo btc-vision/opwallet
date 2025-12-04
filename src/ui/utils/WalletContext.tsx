@@ -280,6 +280,10 @@ export interface WalletController {
 
     setLastActiveTime(): Promise<void>;
 
+    getNotificationWindowMode(): Promise<'auto' | 'popup' | 'fullscreen'>;
+
+    setNotificationWindowMode(mode: 'auto' | 'popup' | 'fullscreen'): Promise<void>;
+
     setQuantumKey(quantumPrivateKey: string): Promise<void>;
 
     generateQuantumKey(): Promise<void>;
