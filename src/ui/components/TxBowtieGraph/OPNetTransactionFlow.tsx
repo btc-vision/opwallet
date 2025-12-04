@@ -61,6 +61,14 @@ function getMethodName(calldata: string): string {
     return 'Unknown';
 }
 
+// Safely convert bigint to number, handling edge cases
+function safeNumber(value: bigint | number | undefined): number {
+    if (value === undefined || value === null) return 0;
+    const num = typeof value === 'bigint' ? Number(value) : value;
+    if (!Number.isFinite(num) || num < 0) return 0;
+    return num;
+}
+
 // Convert ParsedTransaction to TxBowtieGraph format
 function parsedTxToBowtieFormat(
     tx: ParsedTransaction,
@@ -70,7 +78,7 @@ function parsedTxToBowtieFormat(
         txid: input.txid,
         vout: input.vout,
         address: `${input.txid.substring(0, 8)}:${input.vout}`,
-        value: Number(input.value)
+        value: safeNumber(input.value)
     }));
 
     const outputs: TxOutput[] = tx.outputs.map((output, index) => {
@@ -83,17 +91,21 @@ function parsedTxToBowtieFormat(
                 : output.address
                   ? shortAddress(output.address, 6)
                   : 'Script',
-            value: Number(output.value),
+            value: safeNumber(output.value),
             isChange: !isEpochMiner && output.address !== null && !output.isOpReturn,
             // Mark epoch miner for special handling - we use isFee styling for red color
             isFee: isEpochMiner
         };
     });
 
+    // Mining fee must be non-negative (inputs - outputs)
+    // If negative, it means inputs weren't properly matched - show 0 instead
+    const fee = safeNumber(tx.minerFee);
+
     return {
         inputs,
         outputs,
-        fee: Number(tx.minerFee)
+        fee
     };
 }
 

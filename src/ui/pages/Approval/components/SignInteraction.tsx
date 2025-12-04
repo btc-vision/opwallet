@@ -11,7 +11,6 @@ import { useWallet } from '@/ui/utils/WalletContext';
 import {
     CodeOutlined,
     EditOutlined,
-    ExclamationCircleOutlined,
     ThunderboltOutlined
 } from '@ant-design/icons';
 import { useEffect, useState } from 'react';
@@ -28,8 +27,7 @@ const colors = {
     buttonBg: '#434343',
     containerBgFaded: '#292929',
     containerBorder: '#303030',
-    inputBg: '#292828',
-    warning: '#fbbf24'
+    inputBg: '#292828'
 };
 
 export interface Props {
@@ -52,11 +50,15 @@ export default function SignInteraction(props: Props) {
     const [preSignedData, setPreSignedData] = useState<PreSignedInteractionData | null>(null);
     const [isLoading, setIsLoading] = useState(true);
 
-    // Fetch pre-signed transaction data for preview
+    // Trigger pre-signing and fetch pre-signed transaction data for preview
     useEffect(() => {
         let isMounted = true;
         let pollCount = 0;
         const maxPolls = 30;
+
+        // Trigger pre-signing when component mounts
+        // This runs in the background and stores the result in notification service
+        wallet.triggerPreSignInteraction();
 
         const fetchPreSignedData = async () => {
             try {
@@ -97,10 +99,38 @@ export default function SignInteraction(props: Props) {
     const feeRate = interactionParameters.feeRate;
     const priorityFee = interactionParameters.priorityFee;
 
-    const totalCost =
-        Number(gasSatFee) +
-        Number(priorityFee) +
-        (optionalOutputs ?? []).reduce((sum, output) => sum + output.value, 0);
+    // Calculate total cost from pre-signed data when available
+    // Total Cost = Total Input UTXOs - Refunded Amount (change back to user)
+    // This represents the actual cost for the entire transaction package
+    const totalCost = (() => {
+        if (preSignedData) {
+            // Get total input value from funding tx (or interaction tx if no funding)
+            const fundingTx = preSignedData.fundingTx;
+            const interactionTx = preSignedData.interactionTx;
+
+            // Total inputs = funding tx inputs (what user is spending)
+            const totalInputs = fundingTx
+                ? fundingTx.totalInputValue
+                : interactionTx.totalInputValue;
+
+            // Find the change output (refund to user) - typically the last non-OP_RETURN output
+            // of the interaction tx that isn't the epoch miner (first output)
+            const changeOutput = interactionTx.outputs
+                .slice(1) // Skip first output (epoch miner)
+                .filter(o => !o.isOpReturn)
+                .reduce((largest, o) => (o.value > largest.value ? o : largest), { value: 0n });
+
+            // Total cost = inputs - change (what user actually spends)
+            return Number(totalInputs - changeOutput.value);
+        }
+
+        // Fallback to estimate when no pre-signed data
+        return (
+            Number(gasSatFee) +
+            Number(priorityFee) +
+            (optionalOutputs ?? []).reduce((sum, output) => sum + output.value, 0)
+        );
+    })();
 
     const handleCancel = async () => {
         await rejectApproval('User rejected the request.');
@@ -310,32 +340,19 @@ export default function SignInteraction(props: Props) {
                         marginBottom: '12px',
                         textAlign: 'center'
                     }}>
-                    <div style={{ fontSize: '11px', color: colors.textFaded, marginBottom: '4px' }}>
+                    <div style={{ fontSize: '11px', color: colors.textFaded, marginBottom: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
                         Total Transaction Cost
+                        {preSignedData ? (
+                            <span style={{ fontSize: '9px', color: '#4ade80', fontWeight: 600 }}>ACTUAL</span>
+                        ) : (
+                            <span style={{ fontSize: '9px', color: '#fbbf24', fontWeight: 600 }}>~EST</span>
+                        )}
                     </div>
                     <div style={{ fontSize: '20px', fontWeight: 700, color: colors.main }}>
                         {(totalCost / 1e8).toFixed(8).replace(/\.?0+$/, '')} {unitBtc}
                     </div>
                 </div>
 
-                {/* Warning */}
-                <div
-                    style={{
-                        display: 'flex',
-                        gap: '8px',
-                        padding: '10px',
-                        background: `${colors.warning}10`,
-                        border: `1px solid ${colors.warning}30`,
-                        borderRadius: '8px',
-                        marginBottom: '12px'
-                    }}>
-                    <ExclamationCircleOutlined
-                        style={{ fontSize: 14, color: colors.warning, flexShrink: 0, marginTop: '1px' }}
-                    />
-                    <div style={{ fontSize: '11px', color: colors.text, lineHeight: '1.4' }}>
-                        Only sign this transaction if you fully understand the content and trust the requesting site.
-                    </div>
-                </div>
             </Content>
 
             <Footer style={{ padding: '12px' }}>

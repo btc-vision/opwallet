@@ -1392,45 +1392,6 @@ export default function TxOpnetConfirmScreen() {
                         </div>
                     </div>
 
-                    {/* Security Notice */}
-                    <div
-                        style={{
-                            display: 'flex',
-                            gap: '8px',
-                            padding: '10px',
-                            background: `${colors.warning}10`,
-                            border: `1px solid ${colors.warning}25`,
-                            borderRadius: '10px',
-                            marginBottom: '80px'
-                        }}>
-                        <WarningOutlined
-                            style={{
-                                fontSize: 14,
-                                color: colors.warning,
-                                flexShrink: 0,
-                                marginTop: '2px'
-                            }}
-                        />
-                        <div>
-                            <div
-                                style={{
-                                    fontSize: '12px',
-                                    color: colors.warning,
-                                    fontWeight: 600,
-                                    marginBottom: '4px'
-                                }}>
-                                Security Check
-                            </div>
-                            <div
-                                style={{
-                                    fontSize: '11px',
-                                    color: colors.textFaded,
-                                    lineHeight: '1.4'
-                                }}>
-                                Verify all transaction details before signing. This action cannot be undone.
-                            </div>
-                        </div>
-                    </div>
                 </Column>
             </Content>
 

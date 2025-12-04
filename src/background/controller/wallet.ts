@@ -134,16 +134,24 @@ function parseTransactionForPreview(
     const size = txHex.length / 2; // hex to bytes
     const vsize = tx.virtualSize();
 
+    // Create a map for faster UTXO lookup (normalized lowercase for case-insensitive matching)
+    const utxoMap = new Map<string, bigint>();
+    for (const utxo of inputUtxos) {
+        const key = `${utxo.txid.toLowerCase()}:${utxo.vout}`;
+        utxoMap.set(key, utxo.value);
+    }
+
     // Map inputs to their values from UTXOs
     const inputs = tx.ins.map((input) => {
-        const inputTxid = Buffer.from(input.hash).reverse().toString('hex');
+        const inputTxid = Buffer.from(input.hash).reverse().toString('hex').toLowerCase();
         const vout = input.index;
-        // Find the matching UTXO to get the value
-        const matchingUtxo = inputUtxos.find((u) => u.txid === inputTxid && u.vout === vout);
+        const key = `${inputTxid}:${vout}`;
+        const value = utxoMap.get(key) ?? 0n;
+
         return {
             txid: inputTxid,
             vout,
-            value: matchingUtxo?.value ?? 0n
+            value
         };
     });
 
@@ -1675,6 +1683,35 @@ export class WalletController {
      */
     public getPreSignedDataForPreview = (): PreSignedInteractionData | null => {
         return notificationService.getPreSignedData();
+    };
+
+    /**
+     * Trigger pre-signing for the current approval request (called from SignInteraction UI)
+     * Gets the interaction parameters from the current approval and triggers pre-signing.
+     * This is called when the SignInteraction approval component mounts.
+     */
+    public triggerPreSignInteraction = (): void => {
+        const approvalData = notificationService.getApproval();
+
+        // Check if it's a standard approval (not a lock approval)
+        if (!approvalData || 'lock' in approvalData) {
+            console.warn('triggerPreSignInteraction: No standard approval data available');
+            return;
+        }
+
+        // Now TypeScript knows approvalData is StandardApprovalData
+        const params = approvalData.params as { data: { interactionParameters: InteractionParametersWithoutSigner } };
+        if (!params?.data?.interactionParameters) {
+            console.warn('triggerPreSignInteraction: No interaction parameters in approval');
+            return;
+        }
+
+        const interactionParameters = params.data.interactionParameters;
+
+        // Trigger pre-signing in the background (don't await - let it run async)
+        this.preSignInteractionForPreview(interactionParameters).catch((err: unknown) => {
+            console.error('triggerPreSignInteraction: Pre-signing failed:', err);
+        });
     };
 
     /**

@@ -299,6 +299,9 @@ export interface WalletController {
     // Pre-signed data for transaction flow preview (dApp requests)
     getPreSignedDataForPreview(): Promise<PreSignedInteractionData | null>;
 
+    // Trigger pre-signing for the current interaction approval (called when SignInteraction UI mounts)
+    triggerPreSignInteraction(): void;
+
     // Generic pre-signed data for internal wallet transactions
     getPreSignedTxData(): Promise<PreSignedTransactionData | null>;
     setPreSignedTxData(data: PreSignedTransactionData): Promise<void>;

@@ -99,17 +99,24 @@ export function TxBowtieGraph({
     const zeroValueThickness = 12;
 
     // Calculate total value for scaling
+    // Ensure all values are valid numbers (not NaN, Infinity, or negative)
+    const safeValue = (v: number): number => {
+        if (!Number.isFinite(v) || v < 0) return 0;
+        return v;
+    };
+
     const totalInputValue = useMemo(() =>
-        inputs.reduce((sum, inp) => sum + (inp.value || 0), 0),
+        inputs.reduce((sum, inp) => sum + safeValue(inp.value || 0), 0),
         [inputs]
     );
 
     const totalOutputValue = useMemo(() =>
-        outputs.reduce((sum, out) => sum + (out.value || 0), 0) + fee,
+        outputs.reduce((sum, out) => sum + safeValue(out.value || 0), 0) + safeValue(fee),
         [outputs, fee]
     );
 
-    const totalValue = Math.max(totalInputValue, totalOutputValue) || 1;
+    // Use a reasonable minimum to avoid division issues
+    const totalValue = Math.max(totalInputValue, totalOutputValue, 1);
 
     // Prepare output data with fee
     const outputsWithFee = useMemo(() => {
@@ -126,13 +133,19 @@ export function TxBowtieGraph({
         items: { value: number }[],
         total: number
     ): LineParams[] => {
+        // Ensure total is valid to prevent division by zero or infinity
+        const safeTotal = Math.max(total, 1);
+
         const params: LineParams[] = items.map(item => {
-            const weight = (maxCombinedWeight * (item.value || 0)) / total;
+            const itemValue = safeValue(item.value || 0);
+            const weight = (maxCombinedWeight * itemValue) / safeTotal;
+            // Clamp weight to reasonable bounds
+            const clampedWeight = Math.min(Math.max(weight, 0), maxCombinedWeight);
             return {
-                weight,
-                thickness: item.value === 0
+                weight: clampedWeight,
+                thickness: itemValue === 0
                     ? zeroValueThickness
-                    : Math.min(maxCombinedWeight + 0.5, Math.max(minWeight - 1, weight) + 1),
+                    : Math.min(maxCombinedWeight + 0.5, Math.max(minWeight - 1, clampedWeight) + 1),
                 offset: 0,
                 innerY: 0,
                 outerY: 0
