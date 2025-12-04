@@ -164,9 +164,10 @@ export default function SignInteraction(props: Props) {
         const interactionTx = preSignedData.interactionTx;
 
         // Total inputs = funding tx inputs (what user is spending)
-        const totalInputs = fundingTx
+        // Note: BigInt values may be serialized as strings through Chrome message passing
+        const totalInputs = BigInt(fundingTx
             ? fundingTx.totalInputValue
-            : interactionTx.totalInputValue;
+            : interactionTx.totalInputValue);
 
         // Analyze all outputs (skip first which is epoch miner)
         const outputs = interactionTx.outputs.slice(1).filter(o => !o.isOpReturn);
@@ -181,12 +182,15 @@ export default function SignInteraction(props: Props) {
                 ? userAddresses.has(output.address.toLowerCase())
                 : false;
 
+            // Convert value to BigInt (may be serialized as string through Chrome message passing)
+            const outputValue = BigInt(output.value);
+
             if (isUserAddress) {
                 changeOutputs.push(output);
-                totalChange += output.value;
+                totalChange += outputValue;
             } else {
                 externalOutputs.push(output);
-                totalExternal += output.value;
+                totalExternal += outputValue;
             }
         }
 
