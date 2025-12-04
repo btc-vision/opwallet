@@ -68,6 +68,10 @@ const colors = {
         start: '#ee771b', // orange - transitions to purple
         end: '#a855f7'    // purple - OPNet epoch miner
     },
+    consolidated: {
+        start: '#ec4899', // pink
+        end: '#ee771b'    // orange (flows into middle)
+    },
     highlight: '#4ade80', // green for user's addresses
     hover: '#ffffff',
     middle: '#ee771b'
@@ -429,6 +433,12 @@ export function TxBowtieGraph({
                         <stop offset="100%" stopColor={colors.input.end} />
                     </linearGradient>
 
+                    {/* Consolidated input gradient - pink */}
+                    <linearGradient id="consolidated-input-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                        <stop offset="0%" stopColor={colors.consolidated.start} />
+                        <stop offset="100%" stopColor={colors.consolidated.end} />
+                    </linearGradient>
+
                     {/* Output gradient */}
                     <linearGradient id="output-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
                         <stop offset="0%" stopColor={colors.output.start} />
@@ -452,6 +462,12 @@ export function TxBowtieGraph({
                         <stop offset="0%" stopColor={colors.input.start} />
                         <stop offset="30%" stopColor={colors.hover} />
                         <stop offset="100%" stopColor={colors.input.end} />
+                    </linearGradient>
+
+                    <linearGradient id="consolidated-input-hover-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                        <stop offset="0%" stopColor={colors.consolidated.start} />
+                        <stop offset="30%" stopColor={colors.hover} />
+                        <stop offset="100%" stopColor={colors.consolidated.end} />
                     </linearGradient>
 
                     <linearGradient id="output-hover-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
@@ -498,26 +514,36 @@ export function TxBowtieGraph({
                 )}
 
                 {/* Input lines */}
-                {inputLines.map((line, i) => (
-                    <path
-                        key={`input-${i}`}
-                        d={line.path}
-                        fill="none"
-                        stroke={
-                            hoverLine?.type === 'input' && hoverLine?.index === i
-                                ? 'url(#input-hover-gradient)'
-                                : line.className.includes('highlight')
-                                    ? 'url(#input-highlight-gradient)'
-                                    : 'url(#input-gradient)'
-                        }
-                        strokeWidth={line.strokeWidth}
-                        strokeLinecap={line.zeroValue ? 'round' : 'butt'}
-                        strokeDasharray={line.zeroValue ? '4 4' : undefined}
-                        style={{ cursor: 'pointer' }}
-                        onPointerEnter={() => handleHover('input', i)}
-                        onPointerLeave={handleBlur}
-                    />
-                ))}
+                {inputLines.map((line, i) => {
+                    // Determine stroke color based on line type
+                    let strokeUrl = 'url(#input-gradient)';
+                    const isHovering = hoverLine?.type === 'input' && hoverLine?.index === i;
+
+                    if (isHovering && line.className.includes('consolidated')) {
+                        strokeUrl = 'url(#consolidated-input-hover-gradient)';
+                    } else if (isHovering) {
+                        strokeUrl = 'url(#input-hover-gradient)';
+                    } else if (line.className.includes('consolidated')) {
+                        strokeUrl = 'url(#consolidated-input-gradient)'; // Pink for combined inputs
+                    } else if (line.className.includes('highlight')) {
+                        strokeUrl = 'url(#input-highlight-gradient)';
+                    }
+
+                    return (
+                        <path
+                            key={`input-${i}`}
+                            d={line.path}
+                            fill="none"
+                            stroke={strokeUrl}
+                            strokeWidth={line.strokeWidth}
+                            strokeLinecap={line.zeroValue ? 'round' : 'butt'}
+                            strokeDasharray={line.zeroValue ? '4 4' : undefined}
+                            style={{ cursor: 'pointer' }}
+                            onPointerEnter={() => handleHover('input', i)}
+                            onPointerLeave={handleBlur}
+                        />
+                    );
+                })}
 
                 {/* Output lines */}
                 {outputLines.map((line, i) => {

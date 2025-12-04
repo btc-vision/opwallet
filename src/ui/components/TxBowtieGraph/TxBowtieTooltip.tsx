@@ -134,13 +134,17 @@ export function TxBowtieTooltip({
     const consolidatedCount = 'consolidatedCount' in data ? (data as { consolidatedCount?: number }).consolidatedCount || 0 : 0;
 
     // Handle consolidated items differently
+    // Pink for consolidated inputs, orange for consolidated outputs
+    const consolidatedColor = isInput ? '#ec4899' : '#ee771b';
+
     if (isConsolidated) {
         return (
             <div
                 style={{
                     ...tooltipStyles,
                     left: tooltipX,
-                    top: tooltipY
+                    top: tooltipY,
+                    border: isInput ? '1px solid rgba(236, 72, 153, 0.3)' : '1px solid rgba(243, 116, 19, 0.3)'
                 }}
             >
                 <div style={{
@@ -155,12 +159,12 @@ export function TxBowtieTooltip({
                         width: '8px',
                         height: '8px',
                         borderRadius: '50%',
-                        background: isInput ? '#f37413' : '#ee771b'
+                        background: consolidatedColor
                     }} />
                     <span style={{
                         fontSize: '11px',
                         fontWeight: 600,
-                        color: isInput ? '#f37413' : '#ee771b'
+                        color: consolidatedColor
                     }}>
                         {consolidatedCount} {isInput ? 'INPUTS' : 'OUTPUTS'} COMBINED
                     </span>

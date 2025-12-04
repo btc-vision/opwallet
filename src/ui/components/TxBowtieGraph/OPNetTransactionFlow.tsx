@@ -94,18 +94,20 @@ function parsedTxToBowtieFormat(
 
     const outputs: TxOutput[] = tx.outputs.map((output, index) => {
         // First output of interaction TX is OPNet Epoch Miner (gas)
-        const isEpochMiner = isInteraction && index === 0;
+        const isEpochMinerOutput = isInteraction && index === 0;
 
         return {
             address: output.isOpReturn
                 ? 'OP_RETURN'
-                : output.address
-                  ? shortAddress(output.address, 6)
-                  : 'Script',
+                : isEpochMinerOutput
+                  ? '⚡ Epoch Miner'
+                  : output.address
+                    ? shortAddress(output.address, 6)
+                    : 'Script',
             value: safeNumber(output.value),
-            isChange: !isEpochMiner && output.address !== null && !output.isOpReturn,
-            // Mark epoch miner for special handling - we use isFee styling for red color
-            isFee: isEpochMiner
+            isChange: !isEpochMinerOutput && output.address !== null && !output.isOpReturn,
+            // Mark epoch miner for purple styling (not isFee which is blue for mining fee)
+            isEpochMiner: isEpochMinerOutput
         };
     });
 

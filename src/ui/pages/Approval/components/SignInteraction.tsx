@@ -9,7 +9,7 @@ import { DecodedCalldata } from '@/ui/pages/OpNet/decoded/DecodedCalldata';
 import { useBTCUnit } from '@/ui/state/settings/hooks';
 import { useApproval } from '@/ui/utils/hooks';
 import { useWallet } from '@/ui/utils/WalletContext';
-import { CodeOutlined, EditOutlined, ThunderboltOutlined, WarningOutlined } from '@ant-design/icons';
+import { CodeOutlined, DownOutlined, EditOutlined, RightOutlined, ThunderboltOutlined, WarningOutlined } from '@ant-design/icons';
 import { Address } from '@btc-vision/transaction';
 import { useEffect, useMemo, useState } from 'react';
 import { Decoded } from '../../OpNet/decoded/DecodedTypes';
@@ -55,6 +55,7 @@ export default function SignInteraction(props: Props) {
     const [preSignedData, setPreSignedData] = useState<DeserializedPreSignedData | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [userAddresses, setUserAddresses] = useState<Set<string>>(new Set());
+    const [isTxFlowExpanded, setIsTxFlowExpanded] = useState(true);
 
     // Fetch all user addresses (main, csv75, csv2, csv1, p2wda) for change detection
     useEffect(() => {
@@ -299,16 +300,59 @@ export default function SignInteraction(props: Props) {
                     )}
                 </div>
 
-                {/* Transaction Flow Visualization - Multi-TX Bowtie */}
-                <div style={{ marginBottom: '12px' }}>
-                    <OPNetTransactionFlow
-                        preSignedData={preSignedData}
-                        contractAddress={to}
-                        contractInfo={contractInfo}
-                        calldata={interactionParameters.calldata as unknown as string}
-                        isLoading={isLoading}
-                        width={340}
-                    />
+                {/* Transaction Flow Visualization - Collapsible */}
+                <div
+                    style={{
+                        background: colors.containerBgFaded,
+                        borderRadius: '12px',
+                        marginBottom: '12px',
+                        overflow: 'hidden'
+                    }}>
+                    {/* Collapsible Header */}
+                    <div
+                        onClick={() => setIsTxFlowExpanded(!isTxFlowExpanded)}
+                        style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            padding: '10px 12px',
+                            cursor: 'pointer',
+                            userSelect: 'none'
+                        }}>
+                        <div
+                            style={{
+                                fontSize: '11px',
+                                fontWeight: 600,
+                                color: colors.textFaded,
+                                textTransform: 'uppercase',
+                                letterSpacing: '0.5px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '6px'
+                            }}>
+                            <CodeOutlined style={{ fontSize: 10 }} />
+                            Transaction Flow
+                        </div>
+                        {isTxFlowExpanded ? (
+                            <DownOutlined style={{ fontSize: 10, color: colors.textFaded }} />
+                        ) : (
+                            <RightOutlined style={{ fontSize: 10, color: colors.textFaded }} />
+                        )}
+                    </div>
+
+                    {/* Collapsible Content */}
+                    {isTxFlowExpanded && (
+                        <div style={{ padding: '0 12px 12px 12px' }}>
+                            <OPNetTransactionFlow
+                                preSignedData={preSignedData}
+                                contractAddress={to}
+                                contractInfo={contractInfo}
+                                calldata={interactionParameters.calldata as unknown as string}
+                                isLoading={isLoading}
+                                width={316}
+                            />
+                        </div>
+                    )}
                 </div>
 
                 {/* Fee Settings */}
