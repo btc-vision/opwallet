@@ -145,12 +145,13 @@ export default function SignInteraction(props: Props) {
     // because inputs can come from any source and change can go to any user address
     const outputAnalysis = useMemo(() => {
         if (!preSignedData || userAddresses.size === 0) {
+            // Fallback estimate when pre-signed data not available
+            const optionalOutputsTotal = (optionalOutputs ?? []).reduce(
+                (sum, output) => sum + BigInt(output.value),
+                0n
+            );
             return {
-                totalCost: (
-                    Number(gasSatFee) +
-                    Number(priorityFee) +
-                    (optionalOutputs ?? []).reduce((sum, output) => sum + output.value, 0)
-                ),
+                totalCost: Number(BigInt(gasSatFee) + BigInt(priorityFee) + optionalOutputsTotal),
                 changeOutputs: [] as ParsedTxOutput[],
                 externalOutputs: [] as ParsedTxOutput[],
                 totalChange: 0n,
