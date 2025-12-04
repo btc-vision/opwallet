@@ -42,19 +42,19 @@ function parsedTxToBowtieFormat(
     }));
 
     const outputs: TxOutput[] = tx.outputs.map((output, index) => {
-        const isEpochMiner = isInteraction && index === 0 && epochMinerOutput !== null;
+        const isEpochMinerOutput = isInteraction && index === 0 && epochMinerOutput !== null;
 
         return {
             address: output.isOpReturn
                 ? 'OP_RETURN'
-                : isEpochMiner
+                : isEpochMinerOutput
                   ? '⚡ Epoch Miner'
                   : output.address
                     ? shortAddress(output.address, 6)
                     : 'Script',
             value: Number(output.value),
-            isChange: !isEpochMiner && output.address !== null && !output.isOpReturn,
-            isFee: isEpochMiner
+            isChange: !isEpochMinerOutput && output.address !== null && !output.isOpReturn,
+            isEpochMiner: isEpochMinerOutput // Purple flow for OPNet gas fee
         };
     });
 

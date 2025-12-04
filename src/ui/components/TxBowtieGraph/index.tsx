@@ -21,6 +21,7 @@ export interface TxOutput {
     value: number; // in satoshis
     isChange?: boolean;
     isFee?: boolean;
+    isEpochMiner?: boolean; // OPNet epoch miner output (gas fee)
 }
 
 export interface TxBowtieGraphProps {
@@ -60,8 +61,12 @@ const colors = {
         end: '#f37413'
     },
     fee: {
-        start: '#ee771b',
-        end: 'transparent'
+        start: '#ee771b', // orange - transitions to blue
+        end: '#3b82f6'    // blue - mining fee paid to miners
+    },
+    epochMiner: {
+        start: '#ee771b', // orange - transitions to purple
+        end: '#a855f7'    // purple - OPNet epoch miner
     },
     highlight: '#4ade80', // green for user's addresses
     hover: '#ffffff',
@@ -82,7 +87,7 @@ export function TxBowtieGraph({
     const btcUnit = useBTCUnit();
 
     const [hoverLine, setHoverLine] = useState<{
-        type: 'input' | 'output' | 'fee';
+        type: 'input' | 'output' | 'fee' | 'epochminer';
         data: TxInput | TxOutput | { value: number };
         index: number;
     } | null>(null);
@@ -331,6 +336,7 @@ export function TxBowtieGraph({
             const output = outputsWithFee[i];
             const isUserAddress = output.address === currentAddress;
             const isFee = output.isFee;
+            const isEpochMiner = 'isEpochMiner' in output && output.isEpochMiner;
             const isConsolidated = 'isConsolidated' in output && output.isConsolidated;
 
             if (output.value === 0) {
@@ -344,7 +350,7 @@ export function TxBowtieGraph({
             return {
                 path: makePath('out', line.outerY, line.innerY, line.thickness, line.offset, 0),
                 strokeWidth: line.thickness,
-                className: `output ${isFee ? 'fee' : ''} ${isUserAddress ? 'highlight' : ''} ${isConsolidated ? 'consolidated' : ''}`
+                className: `output ${isFee ? 'fee' : ''} ${isEpochMiner ? 'epochminer' : ''} ${isUserAddress ? 'highlight' : ''} ${isConsolidated ? 'consolidated' : ''}`
             };
         });
     }, [outputsWithFee, totalValue, currentAddress, calculateLineParams, makePath, makeZeroValuePath, zeroValueThickness]);
@@ -380,6 +386,8 @@ export function TxBowtieGraph({
             const output = outputsWithFee[index];
             if (output.isFee) {
                 setHoverLine({ type: 'fee', data: { value: fee }, index });
+            } else if ('isEpochMiner' in output && output.isEpochMiner) {
+                setHoverLine({ type: 'epochminer', data: output, index });
             } else {
                 setHoverLine({ type: 'output', data: output, index });
             }
@@ -427,11 +435,16 @@ export function TxBowtieGraph({
                         <stop offset="100%" stopColor={colors.output.end} />
                     </linearGradient>
 
-                    {/* Fee gradient */}
+                    {/* Fee gradient - orange to blue for mining fee */}
                     <linearGradient id="fee-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
                         <stop offset="0%" stopColor={colors.fee.start} />
-                        <stop offset="50%" stopColor={colors.fee.start} />
                         <stop offset="100%" stopColor={colors.fee.end} />
+                    </linearGradient>
+
+                    {/* Epoch miner gradient - purple for OPNet gas fee */}
+                    <linearGradient id="epochminer-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                        <stop offset="0%" stopColor={colors.epochMiner.start} />
+                        <stop offset="100%" stopColor={colors.epochMiner.end} />
                     </linearGradient>
 
                     {/* Hover gradients */}
@@ -445,6 +458,18 @@ export function TxBowtieGraph({
                         <stop offset="0%" stopColor={colors.output.start} />
                         <stop offset="70%" stopColor={colors.hover} />
                         <stop offset="100%" stopColor={colors.output.end} />
+                    </linearGradient>
+
+                    <linearGradient id="epochminer-hover-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                        <stop offset="0%" stopColor={colors.epochMiner.start} />
+                        <stop offset="70%" stopColor={colors.hover} />
+                        <stop offset="100%" stopColor={colors.epochMiner.end} />
+                    </linearGradient>
+
+                    <linearGradient id="fee-hover-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                        <stop offset="0%" stopColor={colors.fee.start} />
+                        <stop offset="70%" stopColor={colors.hover} />
+                        <stop offset="100%" stopColor={colors.fee.end} />
                     </linearGradient>
 
                     {/* Highlight gradients for user's addresses */}
@@ -495,30 +520,40 @@ export function TxBowtieGraph({
                 ))}
 
                 {/* Output lines */}
-                {outputLines.map((line, i) => (
-                    <path
-                        key={`output-${i}`}
-                        d={line.path}
-                        fill="none"
-                        stroke={
-                            hoverLine?.type === 'output' && hoverLine?.index === i
-                                ? 'url(#output-hover-gradient)'
-                                : hoverLine?.type === 'fee' && hoverLine?.index === i
-                                    ? 'url(#output-hover-gradient)'
-                                    : line.className.includes('fee')
-                                        ? 'url(#fee-gradient)'
-                                        : line.className.includes('highlight')
-                                            ? 'url(#output-highlight-gradient)'
-                                            : 'url(#output-gradient)'
-                        }
-                        strokeWidth={line.strokeWidth}
-                        strokeLinecap={line.zeroValue ? 'round' : 'butt'}
-                        strokeDasharray={line.zeroValue ? '4 4' : undefined}
-                        style={{ cursor: 'pointer' }}
-                        onPointerEnter={() => handleHover('output', i)}
-                        onPointerLeave={handleBlur}
-                    />
-                ))}
+                {outputLines.map((line, i) => {
+                    // Determine stroke color based on line type
+                    let strokeUrl = 'url(#output-gradient)';
+                    const isHovering = hoverLine?.index === i;
+
+                    if (isHovering && hoverLine?.type === 'epochminer') {
+                        strokeUrl = 'url(#epochminer-hover-gradient)'; // Purple hover for epoch miner
+                    } else if (isHovering && hoverLine?.type === 'fee') {
+                        strokeUrl = 'url(#fee-hover-gradient)'; // Blue hover for mining fee
+                    } else if (isHovering && hoverLine?.type === 'output') {
+                        strokeUrl = 'url(#output-hover-gradient)';
+                    } else if (line.className.includes('fee')) {
+                        strokeUrl = 'url(#fee-gradient)'; // Orange to blue for mining fee
+                    } else if (line.className.includes('epochminer')) {
+                        strokeUrl = 'url(#epochminer-gradient)'; // Orange to purple for OPNet epoch miner
+                    } else if (line.className.includes('highlight')) {
+                        strokeUrl = 'url(#output-highlight-gradient)';
+                    }
+
+                    return (
+                        <path
+                            key={`output-${i}`}
+                            d={line.path}
+                            fill="none"
+                            stroke={strokeUrl}
+                            strokeWidth={line.strokeWidth}
+                            strokeLinecap={line.zeroValue ? 'round' : 'butt'}
+                            strokeDasharray={line.zeroValue ? '4 4' : undefined}
+                            style={{ cursor: 'pointer' }}
+                            onPointerEnter={() => handleHover('output', i)}
+                            onPointerLeave={handleBlur}
+                        />
+                    );
+                })}
             </svg>
 
             {/* Tooltip */}

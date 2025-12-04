@@ -10,7 +10,7 @@ export interface TooltipPosition {
 }
 
 interface TxBowtieTooltipProps {
-    type: 'input' | 'output' | 'fee';
+    type: 'input' | 'output' | 'fee' | 'epochminer';
     data: TxInput | TxOutput | { value: number };
     position: TooltipPosition;
     btcUnit: string;
@@ -74,12 +74,13 @@ export function TxBowtieTooltip({
                 style={{
                     ...tooltipStyles,
                     left: tooltipX,
-                    top: tooltipY
+                    top: tooltipY,
+                    border: '1px solid rgba(59, 130, 246, 0.3)' // Blue border for mining fee
                 }}
             >
                 <div style={{ marginBottom: '8px' }}>
-                    <div style={labelStyles}>Network Fee</div>
-                    <div style={valueStyles}>
+                    <div style={labelStyles}>Mining Fee</div>
+                    <div style={{ ...valueStyles, color: '#3b82f6' }}>
                         {satoshisToAmount(data.value)} {btcUnit}
                     </div>
                 </div>
@@ -90,7 +91,36 @@ export function TxBowtieTooltip({
                     paddingTop: '6px',
                     marginTop: '6px'
                 }}>
-                    Paid to miners
+                    Paid to Bitcoin miners
+                </div>
+            </div>
+        );
+    }
+
+    if (type === 'epochminer') {
+        return (
+            <div
+                style={{
+                    ...tooltipStyles,
+                    left: tooltipX,
+                    top: tooltipY,
+                    border: '1px solid rgba(168, 85, 247, 0.3)' // Purple border for epoch miner
+                }}
+            >
+                <div style={{ marginBottom: '8px' }}>
+                    <div style={labelStyles}>OPNet Gas Fee</div>
+                    <div style={{ ...valueStyles, color: '#a855f7' }}>
+                        {satoshisToAmount(data.value)} {btcUnit}
+                    </div>
+                </div>
+                <div style={{
+                    fontSize: '10px',
+                    color: 'rgba(255, 255, 255, 0.4)',
+                    borderTop: '1px solid rgba(255, 255, 255, 0.1)',
+                    paddingTop: '6px',
+                    marginTop: '6px'
+                }}>
+                    Paid to OPNet Epoch Miner
                 </div>
             </div>
         );
