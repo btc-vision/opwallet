@@ -57,26 +57,38 @@ export default function SignInteraction(props: Props) {
     const [userAddresses, setUserAddresses] = useState<Set<string>>(new Set());
     const [isTxFlowExpanded, setIsTxFlowExpanded] = useState(true);
 
-    // Fetch all user addresses (main, csv75, csv2, csv1, p2wda) for change detection
+    // Fetch all user addresses (main, csv75, csv2, csv1, p2wda, p2tr) for change detection
     useEffect(() => {
         const fetchUserAddresses = async () => {
             try {
                 const account = await wallet.getCurrentAccount();
                 const addresses = new Set<string>();
 
-                // Add main address
+                // Add main address (could be any type)
                 addresses.add(account.address.toLowerCase());
 
-                // Derive CSV and p2wda addresses from pubkey
+                // Derive all address types from pubkey
                 if (account.pubkey) {
                     const zeroHash = '0x0000000000000000000000000000000000000000000000000000000000000000';
                     const addressInst = Address.fromString(zeroHash, account.pubkey);
 
-                    // Add all derived addresses
-                    addresses.add(addressInst.toCSV(75, Web3API.network).address.toLowerCase());
-                    addresses.add(addressInst.toCSV(2, Web3API.network).address.toLowerCase());
-                    addresses.add(addressInst.toCSV(1, Web3API.network).address.toLowerCase());
-                    addresses.add(addressInst.p2wda(Web3API.network).address.toLowerCase());
+                    // Add all derived addresses - CSV, p2wda, and p2tr
+                    try {
+                        addresses.add(addressInst.toCSV(75, Web3API.network).address.toLowerCase());
+                    } catch { /* ignore if derivation fails */ }
+                    try {
+                        addresses.add(addressInst.toCSV(2, Web3API.network).address.toLowerCase());
+                    } catch { /* ignore if derivation fails */ }
+                    try {
+                        addresses.add(addressInst.toCSV(1, Web3API.network).address.toLowerCase());
+                    } catch { /* ignore if derivation fails */ }
+                    try {
+                        addresses.add(addressInst.p2wda(Web3API.network).address.toLowerCase());
+                    } catch { /* ignore if derivation fails */ }
+                    try {
+                        // Also add p2tr (taproot) address
+                        addresses.add(addressInst.p2tr(Web3API.network).toLowerCase());
+                    } catch { /* ignore if derivation fails */ }
                 }
 
                 setUserAddresses(addresses);
@@ -179,7 +191,8 @@ export default function SignInteraction(props: Props) {
         let totalExternal = 0n;
 
         for (const output of outputs) {
-            const isUserAddress = output.address ? userAddresses.has(output.address.toLowerCase()) : false;
+            const outputAddr = output.address?.toLowerCase();
+            const isUserAddress = outputAddr ? userAddresses.has(outputAddr) : false;
 
             if (isUserAddress) {
                 changeOutputs.push(output);
@@ -301,13 +314,7 @@ export default function SignInteraction(props: Props) {
                 </div>
 
                 {/* Transaction Flow Visualization - Collapsible */}
-                <div
-                    style={{
-                        background: colors.containerBgFaded,
-                        borderRadius: '12px',
-                        marginBottom: '12px',
-                        overflow: 'hidden'
-                    }}>
+                <div style={{ marginBottom: '12px' }}>
                     {/* Collapsible Header */}
                     <div
                         onClick={() => setIsTxFlowExpanded(!isTxFlowExpanded)}
@@ -315,7 +322,7 @@ export default function SignInteraction(props: Props) {
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'space-between',
-                            padding: '10px 12px',
+                            padding: '8px 4px',
                             cursor: 'pointer',
                             userSelect: 'none'
                         }}>
@@ -342,16 +349,14 @@ export default function SignInteraction(props: Props) {
 
                     {/* Collapsible Content */}
                     {isTxFlowExpanded && (
-                        <div style={{ padding: '0 12px 12px 12px' }}>
-                            <OPNetTransactionFlow
-                                preSignedData={preSignedData}
-                                contractAddress={to}
-                                contractInfo={contractInfo}
-                                calldata={interactionParameters.calldata as unknown as string}
-                                isLoading={isLoading}
-                                width={316}
-                            />
-                        </div>
+                        <OPNetTransactionFlow
+                            preSignedData={preSignedData}
+                            contractAddress={to}
+                            contractInfo={contractInfo}
+                            calldata={interactionParameters.calldata as unknown as string}
+                            isLoading={isLoading}
+                            width={340}
+                        />
                     )}
                 </div>
 
