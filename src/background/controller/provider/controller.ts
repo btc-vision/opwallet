@@ -1,4 +1,6 @@
-import { permissionService, sessionService } from '@/background/service';
+import notificationService from '@/background/service/notification';
+import permissionService from '@/background/service/permission';
+import sessionService from '@/background/service/session';
 import { CHAINS, CHAINS_MAP, ChainType, NETWORK_TYPES, VERSION } from '@/shared/constant';
 import { TransactionOrigin } from '@/shared/types/TransactionHistory';
 
@@ -311,12 +313,21 @@ export class ProviderController {
     @Reflect.metadata('APPROVAL', [
         ApprovalType.SignInteraction,
         (_req: ProviderControllerRequest) => {
+            // SAFETY: Reject if another approval or pre-signing is already in progress
+            if (notificationService.hasActiveApproval()) {
+                throw new Error('Another approval request is already active. Please complete or reject it first.');
+            }
+            if (notificationService.isPreSigningInProgress()) {
+                throw new Error('A transaction is currently being built. Please wait for it to complete.');
+            }
+
             const interactionParams = _req.data.params as DetailedInteractionParameters;
             if (!Web3API.isValidAddress(interactionParams.interactionParameters.to)) {
                 throw new Error('Invalid contract address. Are you on the right network / are you using segwit?');
             }
 
             interactionParams.network = wallet.getChainType();
+            // Pre-signing is handled in the SignInteraction approval UI component
         }
     ])
     signAndBroadcastInteraction = async (request: {
@@ -336,12 +347,21 @@ export class ProviderController {
     @Reflect.metadata('APPROVAL', [
         ApprovalType.SignInteraction,
         (_req: ProviderControllerRequest) => {
+            // SAFETY: Reject if another approval or pre-signing is already in progress
+            if (notificationService.hasActiveApproval()) {
+                throw new Error('Another approval request is already active. Please complete or reject it first.');
+            }
+            if (notificationService.isPreSigningInProgress()) {
+                throw new Error('A transaction is currently being built. Please wait for it to complete.');
+            }
+
             const interactionParams = _req.data.params as DetailedInteractionParameters;
             if (!Web3API.isValidAddress(interactionParams.interactionParameters.to)) {
                 throw new Error('Invalid contract address. Are you on the right network / are you using segwit?');
             }
 
             interactionParams.network = wallet.getChainType();
+            // Pre-signing is handled in the SignInteraction approval UI component
         }
     ])
     signInteraction = async (request: {

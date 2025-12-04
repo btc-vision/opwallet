@@ -5,7 +5,7 @@ import { KEYRING_TYPE } from '@/shared/constant';
 import { DecodedPsbt, ParsedSignPsbtUr, RawTxInfo, ToSignInput, TxType } from '@/shared/types';
 import { SignPsbtApprovalParams } from '@/shared/types/Approval';
 import { isWalletError } from '@/shared/utils/errors';
-import { Button, Card, Column, Content, Footer, Header, Icon, Image, Layout, Row, Text } from '@/ui/components';
+import { Button, Card, Column, Content, Footer, Header, Icon, Image, Layout, Row, Text, TxFlowPreview } from '@/ui/components';
 import { useTools } from '@/ui/components/ActionComponent';
 import { AddressText } from '@/ui/components/AddressText';
 import { BtcUsd } from '@/ui/components/BtcUsd';
@@ -465,6 +465,23 @@ export default function SignPsbt({
 
                     {isValidData && (
                         <Column gap="xl">
+                            {/* Transaction Flow Visualization */}
+                            <Column>
+                                <Text text="Transaction Flow" preset="bold" />
+                                <Card style={{ padding: '12px', backgroundColor: 'rgba(0, 0, 0, 0.2)' }}>
+                                    <TxFlowPreview
+                                        decodedPsbt={txInfo.decodedPsbt}
+                                        width={300}
+                                        height={150}
+                                        showTooltip={true}
+                                        showLabels={true}
+                                        compact={true}
+                                        toSignInputs={txInfo.toSignInputs}
+                                        currentAddress={address}
+                                    />
+                                </Card>
+                            </Column>
+
                             <Column>
                                 <Text text={`Inputs: (${txInfo.decodedPsbt.inputs.length})`} preset="bold" />
                                 <Card>

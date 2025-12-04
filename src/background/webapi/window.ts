@@ -1,6 +1,7 @@
 import { EventEmitter } from 'events';
 
 import { IS_WINDOWS } from '@/shared/constant';
+import preferenceService from '@/background/service/preference';
 
 import {
     browserWindowsCreate,
@@ -32,16 +33,28 @@ const create = async ({ url, ...rest }: WindowProps): Promise<number | undefined
     const {
         top: cTop,
         left: cLeft,
-        width
-    } = (await browserWindowsGetCurrent()) as { top: number; left: number; width: number };
+        width,
+        state: currentState
+    } = (await browserWindowsGetCurrent()) as { top: number; left: number; width: number; state: string };
 
     const top = cTop + BROWSER_HEADER;
     const left = cLeft + width - WINDOW_SIZE.width;
 
-    const currentWindow = await browserWindowsGetCurrent();
+    // Get user preference for notification window mode
+    const windowMode = preferenceService.getNotificationWindowMode();
+
+    // Determine if we should use fullscreen
+    let useFullscreen = false;
+    if (windowMode === 'fullscreen') {
+        useFullscreen = true;
+    } else if (windowMode === 'auto') {
+        // In auto mode, only use fullscreen if browser is actually in fullscreen (not just maximized)
+        useFullscreen = currentState === 'fullscreen';
+    }
+    // 'popup' mode: useFullscreen stays false
+
     let win;
-    if (currentWindow.state === 'fullscreen') {
-        // browser.windows.create not pass state to chrome
+    if (useFullscreen) {
         win = await browserWindowsCreate({
             focused: true,
             url,
@@ -69,8 +82,8 @@ const create = async ({ url, ...rest }: WindowProps): Promise<number | undefined
         throw new Error('Failed to create window or retrieve window id');
     }
 
-    // shim firefox
-    if (win.left !== left) {
+    // shim firefox (only for non-fullscreen)
+    if (!useFullscreen && win.left !== left) {
         await browserWindowsUpdate(win.id, { left, top });
     }
 

@@ -12,7 +12,15 @@ import { useAppDispatch } from '@/ui/state/hooks';
 import { useAutoLockTimeId } from '@/ui/state/settings/hooks';
 import { settingsActions } from '@/ui/state/settings/reducer';
 import { useWallet } from '@/ui/utils';
-import { CheckCircleFilled, ClockCircleOutlined, InfoCircleOutlined, LoadingOutlined, RightOutlined } from '@ant-design/icons';
+import { AppstoreOutlined, CheckCircleFilled, ClockCircleOutlined, InfoCircleOutlined, LoadingOutlined, RightOutlined } from '@ant-design/icons';
+
+type NotificationWindowMode = 'auto' | 'popup' | 'fullscreen';
+
+const NOTIFICATION_WINDOW_MODES: { id: NotificationWindowMode; label: string; description: string }[] = [
+    { id: 'popup', label: 'Popup Window', description: 'Always open as a small popup (recommended)' },
+    { id: 'fullscreen', label: 'Fullscreen', description: 'Always open in fullscreen mode' },
+    { id: 'auto', label: 'Auto', description: 'Match browser window state (fullscreen if browser is fullscreen)' }
+];
 
 const colors = {
     main: '#f37413',
@@ -34,20 +42,31 @@ export default function AdvancedScreen() {
     const [enableUnconfirmed, setEnableUnconfirmed] = useState(false);
     const [unconfirmedPopoverVisible, setUnconfirmedPopoverVisible] = useState(false);
     const [lockTimePopoverVisible, setLockTimePopoverVisible] = useState(false);
+    const [windowModePopoverVisible, setWindowModePopoverVisible] = useState(false);
+    const [notificationWindowMode, setNotificationWindowMode] = useState<NotificationWindowMode>('popup');
     const autoLockTimeId = useAutoLockTimeId();
     const lockTimeConfig = AUTO_LOCKTIMES[autoLockTimeId] || AUTO_LOCKTIMES[DEFAULT_LOCKTIME_ID];
+    const windowModeConfig = NOTIFICATION_WINDOW_MODES.find((m) => m.id === notificationWindowMode) || NOTIFICATION_WINDOW_MODES[0];
     const currentAccount = useCurrentAccount();
     const dispatch = useAppDispatch();
     const [init, setInit] = useState(false);
 
     useEffect(() => {
-        setInit(true);
-        const only_confirmed = checkAddressFlag(currentAccount.flag, AddressFlagType.CONFIRMED_UTXO_MODE);
-        if (only_confirmed) {
-            setEnableUnconfirmed(false);
-        } else {
-            setEnableUnconfirmed(true);
-        }
+        const initSettings = async () => {
+            const only_confirmed = checkAddressFlag(currentAccount.flag, AddressFlagType.CONFIRMED_UTXO_MODE);
+            if (only_confirmed) {
+                setEnableUnconfirmed(false);
+            } else {
+                setEnableUnconfirmed(true);
+            }
+
+            // Load notification window mode
+            const mode = await wallet.getNotificationWindowMode();
+            setNotificationWindowMode(mode);
+
+            setInit(true);
+        };
+        initSettings();
     }, []);
 
     if (!init) {
@@ -188,6 +207,76 @@ export default function AdvancedScreen() {
                             }}
                         />
                     </div>
+
+                    {/* Notification Window Mode Setting */}
+                    <div
+                        style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            padding: '14px 12px',
+                            cursor: 'pointer',
+                            transition: 'all 0.15s'
+                        }}
+                        onClick={() => setWindowModePopoverVisible(true)}
+                        onMouseEnter={(e) => {
+                            e.currentTarget.style.background = colors.buttonHoverBg;
+                        }}
+                        onMouseLeave={(e) => {
+                            e.currentTarget.style.background = 'transparent';
+                        }}>
+                        {/* Icon */}
+                        <div
+                            style={{
+                                width: '36px',
+                                height: '36px',
+                                borderRadius: '10px',
+                                background: colors.buttonHoverBg,
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                marginRight: '12px'
+                            }}>
+                            <AppstoreOutlined style={{ fontSize: 18, color: colors.main }} />
+                        </div>
+
+                        {/* Content */}
+                        <div style={{ flex: 1 }}>
+                            <div
+                                style={{
+                                    fontSize: '14px',
+                                    fontWeight: 500,
+                                    color: colors.text,
+                                    marginBottom: '2px',
+                                    fontFamily: 'Inter-Regular, serif'
+                                }}>
+                                Notification Window
+                            </div>
+                            <div
+                                style={{
+                                    fontSize: '12px',
+                                    color: colors.main,
+                                    fontWeight: 500
+                                }}>
+                                {windowModeConfig.label}
+                            </div>
+                            <div
+                                style={{
+                                    fontSize: '11px',
+                                    color: colors.textFaded,
+                                    marginTop: '2px'
+                                }}>
+                                How transaction approval windows open
+                            </div>
+                        </div>
+
+                        {/* Arrow */}
+                        <RightOutlined
+                            style={{
+                                fontSize: 12,
+                                color: colors.textFaded
+                            }}
+                        />
+                    </div>
                 </div>
             </Content>
 
@@ -215,6 +304,17 @@ export default function AdvancedScreen() {
                 <LockTimePopover
                     onNext={() => setLockTimePopoverVisible(false)}
                     onCancel={() => setLockTimePopoverVisible(false)}
+                />
+            ) : null}
+
+            {windowModePopoverVisible ? (
+                <WindowModePopover
+                    currentMode={notificationWindowMode}
+                    onNext={(mode) => {
+                        setNotificationWindowMode(mode);
+                        setWindowModePopoverVisible(false);
+                    }}
+                    onCancel={() => setWindowModePopoverVisible(false)}
                 />
             ) : null}
         </Layout>
@@ -468,6 +568,208 @@ export const LockTimePopover = ({ onNext, onCancel }: { onNext: () => void; onCa
                 </div>
 
                 {/* Fixed Cancel Button */}
+                <button
+                    style={{
+                        width: '100%',
+                        padding: '10px',
+                        background: colors.buttonHoverBg,
+                        border: `1px solid ${colors.containerBorder}`,
+                        borderRadius: '10px',
+                        color: colors.text,
+                        fontSize: '13px',
+                        fontWeight: 500,
+                        cursor: 'pointer',
+                        transition: 'all 0.15s',
+                        fontFamily: 'Inter-Regular, serif',
+                        flexShrink: 0
+                    }}
+                    onClick={onCancel}
+                    onMouseEnter={(e) => {
+                        e.currentTarget.style.background = colors.buttonBg;
+                    }}
+                    onMouseLeave={(e) => {
+                        e.currentTarget.style.background = colors.buttonHoverBg;
+                    }}>
+                    Cancel
+                </button>
+            </Column>
+        </Popover>
+    );
+};
+
+export const WindowModePopover = ({
+    currentMode,
+    onNext,
+    onCancel
+}: {
+    currentMode: NotificationWindowMode;
+    onNext: (mode: NotificationWindowMode) => void;
+    onCancel: () => void;
+}) => {
+    const [selectedId, setSelectedId] = useState<NotificationWindowMode | null>(null);
+    const [isProcessing, setIsProcessing] = useState(false);
+    const wallet = useWallet();
+    const tools = useTools();
+
+    return (
+        <Popover onClose={onCancel}>
+            <Column
+                style={{
+                    width: '100%',
+                    display: 'flex',
+                    flexDirection: 'column'
+                }}>
+                {/* Header */}
+                <div
+                    style={{
+                        textAlign: 'center',
+                        paddingBottom: '12px',
+                        borderBottom: `1px solid ${colors.containerBorder}`,
+                        flexShrink: 0
+                    }}>
+                    <div
+                        style={{
+                            fontSize: '16px',
+                            fontWeight: 600,
+                            color: colors.text,
+                            marginBottom: '4px',
+                            fontFamily: 'Inter-Regular, serif'
+                        }}>
+                        Notification Window
+                    </div>
+                    <div
+                        style={{
+                            fontSize: '12px',
+                            color: colors.textFaded
+                        }}>
+                        Choose how transaction approval windows open
+                    </div>
+                </div>
+
+                {/* Options */}
+                <div style={{ margin: '12px 0' }}>
+                    {NOTIFICATION_WINDOW_MODES.map((option) => {
+                        const isSelected = option.id === currentMode;
+                        const isHovered = option.id === selectedId;
+
+                        return (
+                            <div
+                                key={option.id}
+                                style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    padding: '10px',
+                                    marginBottom: '6px',
+                                    background: isSelected
+                                        ? `linear-gradient(135deg, ${colors.main}15 0%, ${colors.main}08 100%)`
+                                        : isHovered
+                                          ? colors.buttonBg
+                                          : colors.buttonHoverBg,
+                                    border: `1px solid ${isSelected ? colors.main : 'transparent'}`,
+                                    borderRadius: '10px',
+                                    cursor: isProcessing ? 'not-allowed' : 'pointer',
+                                    transition: 'all 0.15s',
+                                    position: 'relative',
+                                    opacity: isProcessing ? 0.7 : 1
+                                }}
+                                onClick={async () => {
+                                    if (option.id === currentMode || isProcessing) return;
+
+                                    setIsProcessing(true);
+                                    try {
+                                        await wallet.setNotificationWindowMode(option.id);
+                                        tools.toastSuccess(`Window mode changed to ${option.label}`);
+                                        onNext(option.id);
+                                    } catch (error) {
+                                        tools.toastError('Failed to update window mode');
+                                    } finally {
+                                        setIsProcessing(false);
+                                    }
+                                }}
+                                onMouseEnter={() => !isProcessing && setSelectedId(option.id)}
+                                onMouseLeave={() => setSelectedId(null)}>
+                                {/* Selected indicator */}
+                                {isSelected && (
+                                    <div
+                                        style={{
+                                            position: 'absolute',
+                                            left: 0,
+                                            top: 0,
+                                            bottom: 0,
+                                            width: '3px',
+                                            background: colors.main,
+                                            borderRadius: '10px 0 0 10px'
+                                        }}
+                                    />
+                                )}
+
+                                {/* Icon */}
+                                <div
+                                    style={{
+                                        width: '30px',
+                                        height: '30px',
+                                        minWidth: '30px',
+                                        borderRadius: '8px',
+                                        background: isSelected ? `${colors.main}20` : colors.containerBgFaded,
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        marginRight: '10px'
+                                    }}>
+                                    {isProcessing && option.id === selectedId ? (
+                                        <LoadingOutlined
+                                            style={{
+                                                fontSize: 14,
+                                                color: colors.main
+                                            }}
+                                        />
+                                    ) : (
+                                        <AppstoreOutlined
+                                            style={{
+                                                fontSize: 14,
+                                                color: isSelected ? colors.main : colors.textFaded
+                                            }}
+                                        />
+                                    )}
+                                </div>
+
+                                {/* Label */}
+                                <div style={{ flex: 1, minWidth: 0 }}>
+                                    <div
+                                        style={{
+                                            fontSize: '12px',
+                                            fontWeight: isSelected ? 600 : 500,
+                                            color: colors.text,
+                                            fontFamily: 'Inter-Regular, serif'
+                                        }}>
+                                        {option.label}
+                                    </div>
+                                    <div
+                                        style={{
+                                            fontSize: '10px',
+                                            color: colors.textFaded,
+                                            marginTop: '1px'
+                                        }}>
+                                        {option.description}
+                                    </div>
+                                </div>
+
+                                {/* Check Icon */}
+                                {isSelected && (
+                                    <CheckCircleFilled
+                                        style={{
+                                            fontSize: 14,
+                                            color: colors.main,
+                                            marginLeft: '8px'
+                                        }}
+                                    />
+                                )}
+                            </div>
+                        );
+                    })}
+                </div>
+
+                {/* Cancel Button */}
                 <button
                     style={{
                         width: '100%',

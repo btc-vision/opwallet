@@ -1,4 +1,5 @@
-import { keyringService, sessionService } from '@/background/service';
+import keyringService from '@/background/service/keyring';
+import sessionService from '@/background/service/session';
 import { tab } from '@/background/webapi';
 
 import { isInternalMethod } from '@/background/utils/controller';

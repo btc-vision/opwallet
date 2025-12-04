@@ -41,6 +41,7 @@ export interface PreferenceStore {
     addressFlags: Record<string, number>;
     autoLockTimeId: number;
     customNetworks: Record<string, CustomNetwork>;
+    notificationWindowMode: 'auto' | 'popup' | 'fullscreen';
 }
 
 const SUPPORT_LOCALES = ['en'];
@@ -76,7 +77,8 @@ const DEFAULTS = {
         showSafeNotice: true,
         addressFlags: {},
         autoLockTimeId: DEFAULT_LOCKTIME_ID,
-        customNetworks: {}
+        customNetworks: {},
+        notificationWindowMode: 'popup'
     } as PreferenceStore
 };
 
@@ -216,6 +218,15 @@ class PreferenceService {
 
     getPopupOpen = () => {
         return this.popupOpen;
+    };
+
+    getNotificationWindowMode = (): 'auto' | 'popup' | 'fullscreen' => {
+        return this.store.notificationWindowMode || 'popup';
+    };
+
+    setNotificationWindowMode = async (mode: 'auto' | 'popup' | 'fullscreen') => {
+        this.store.notificationWindowMode = mode;
+        await this.persist();
     };
 
     updateAddressHistory = async (address: string, data: TxHistoryItem[]) => {

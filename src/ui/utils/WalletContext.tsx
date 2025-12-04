@@ -1,5 +1,6 @@
 import { ContactBookItem, ContactBookStore } from '@/background/service/contactBook';
 import { SavedVault, ToSignInput } from '@/background/service/keyring';
+import { PreSignedTransactionData, SerializedPreSignedInteractionData } from '@/background/service/notification';
 import { ConnectedSite } from '@/background/service/permission';
 import { AddressFlagType, ChainId, ChainType, CustomNetwork } from '@/shared/constant';
 import {
@@ -279,6 +280,10 @@ export interface WalletController {
 
     setLastActiveTime(): Promise<void>;
 
+    getNotificationWindowMode(): Promise<'auto' | 'popup' | 'fullscreen'>;
+
+    setNotificationWindowMode(mode: 'auto' | 'popup' | 'fullscreen'): Promise<void>;
+
     setQuantumKey(quantumPrivateKey: string): Promise<void>;
 
     generateQuantumKey(): Promise<void>;
@@ -294,6 +299,18 @@ export interface WalletController {
         params: import('@/shared/types/TransactionHistory').RecordTransactionInput,
         origin?: import('@/shared/types/TransactionHistory').TransactionOrigin
     ): Promise<void>;
+
+    // Pre-signed data for transaction flow preview (dApp requests)
+    // Returns serialized data (BigInt as strings) - caller must deserialize
+    getPreSignedDataForPreview(): Promise<SerializedPreSignedInteractionData | null>;
+
+    // Trigger pre-signing for the current interaction approval (called when SignInteraction UI mounts)
+    triggerPreSignInteraction(): void;
+
+    // Generic pre-signed data for internal wallet transactions
+    getPreSignedTxData(): Promise<PreSignedTransactionData | null>;
+    setPreSignedTxData(data: PreSignedTransactionData): Promise<void>;
+    clearPreSignedTxData(): Promise<void>;
 }
 
 const WalletContext = createContext<{

@@ -1,6 +1,8 @@
 import 'reflect-metadata';
 
-import { keyringService, notificationService, permissionService } from '@/background/service';
+import keyringService from '@/background/service/keyring';
+import notificationService from '@/background/service/notification';
+import permissionService from '@/background/service/permission';
 import { PromiseFlow, underline2Camelcase } from '@/background/utils';
 import { CHAINS_ENUM, EVENTS } from '@/shared/constant';
 import eventBus from '@/shared/eventBus';
