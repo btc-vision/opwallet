@@ -1,8 +1,8 @@
-import { PreSignedInteractionData } from '@/background/service/notification';
+import { ParsedTxOutput, PreSignedInteractionData } from '@/background/service/notification';
 import { SignInteractionApprovalParams } from '@/shared/types/Approval';
 import { selectorToString } from '@/shared/web3/decoder/CalldataDecoder';
+import Web3API from '@/shared/web3/Web3API';
 import { Button, Content, Footer, Layout, OPNetTransactionFlow, Row } from '@/ui/components';
-import WebsiteBar from '@/ui/components/WebsiteBar';
 import { decodeCallData } from '@/ui/pages/OpNet/decoded/decodeCallData';
 import { DecodedCalldata } from '@/ui/pages/OpNet/decoded/DecodedCalldata';
 import { useBTCUnit } from '@/ui/state/settings/hooks';
@@ -11,9 +11,11 @@ import { useWallet } from '@/ui/utils/WalletContext';
 import {
     CodeOutlined,
     EditOutlined,
-    ThunderboltOutlined
+    ThunderboltOutlined,
+    WarningOutlined
 } from '@ant-design/icons';
-import { useEffect, useState } from 'react';
+import { Address } from '@btc-vision/transaction';
+import { useEffect, useMemo, useState } from 'react';
 import { Decoded } from '../../OpNet/decoded/DecodedTypes';
 import { InteractionHeader } from './Headers/InteractionHeader';
 import { ChangeFeeRate } from './SignInteraction/ChangeFeeRate';
@@ -27,8 +29,15 @@ const colors = {
     buttonBg: '#434343',
     containerBgFaded: '#292929',
     containerBorder: '#303030',
-    inputBg: '#292828'
+    inputBg: '#292828',
+    success: '#4ade80'
 };
+
+// Helper to shorten address for display
+function shortAddress(address: string, chars = 6): string {
+    if (address.length <= chars * 2 + 3) return address;
+    return `${address.slice(0, chars)}...${address.slice(-chars)}`;
+}
 
 export interface Props {
     params: SignInteractionApprovalParams;
@@ -36,7 +45,7 @@ export interface Props {
 
 export default function SignInteraction(props: Props) {
     const {
-        params: { data, session }
+        params: { data }
     } = props;
 
     const { resolveApproval, rejectApproval } = useApproval();
@@ -49,6 +58,38 @@ export default function SignInteraction(props: Props) {
     const [isPriorityFeeModalOpen, setIsPriorityFeeModalOpen] = useState(false);
     const [preSignedData, setPreSignedData] = useState<PreSignedInteractionData | null>(null);
     const [isLoading, setIsLoading] = useState(true);
+    const [userAddresses, setUserAddresses] = useState<Set<string>>(new Set());
+
+    // Fetch all user addresses (main, csv75, csv2, csv1, p2wda) for change detection
+    useEffect(() => {
+        const fetchUserAddresses = async () => {
+            try {
+                const account = await wallet.getCurrentAccount();
+                const addresses = new Set<string>();
+
+                // Add main address
+                addresses.add(account.address.toLowerCase());
+
+                // Derive CSV and p2wda addresses from pubkey
+                if (account.pubkey) {
+                    const zeroHash = '0x0000000000000000000000000000000000000000000000000000000000000000';
+                    const addressInst = Address.fromString(zeroHash, account.pubkey);
+
+                    // Add all derived addresses
+                    addresses.add(addressInst.toCSV(75, Web3API.network).address.toLowerCase());
+                    addresses.add(addressInst.toCSV(2, Web3API.network).address.toLowerCase());
+                    addresses.add(addressInst.toCSV(1, Web3API.network).address.toLowerCase());
+                    addresses.add(addressInst.p2wda(Web3API.network).address.toLowerCase());
+                }
+
+                setUserAddresses(addresses);
+            } catch (e) {
+                console.error('Failed to fetch user addresses:', e);
+            }
+        };
+
+        void fetchUserAddresses();
+    }, [wallet]);
 
     // Trigger pre-signing and fetch pre-signed transaction data for preview
     useEffect(() => {
@@ -99,38 +140,67 @@ export default function SignInteraction(props: Props) {
     const feeRate = interactionParameters.feeRate;
     const priorityFee = interactionParameters.priorityFee;
 
-    // Calculate total cost from pre-signed data when available
-    // Total Cost = Total Input UTXOs - Refunded Amount (change back to user)
-    // This represents the actual cost for the entire transaction package
-    const totalCost = (() => {
-        if (preSignedData) {
-            // Get total input value from funding tx (or interaction tx if no funding)
-            const fundingTx = preSignedData.fundingTx;
-            const interactionTx = preSignedData.interactionTx;
-
-            // Total inputs = funding tx inputs (what user is spending)
-            const totalInputs = fundingTx
-                ? fundingTx.totalInputValue
-                : interactionTx.totalInputValue;
-
-            // Find the change output (refund to user) - typically the last non-OP_RETURN output
-            // of the interaction tx that isn't the epoch miner (first output)
-            const changeOutput = interactionTx.outputs
-                .slice(1) // Skip first output (epoch miner)
-                .filter(o => !o.isOpReturn)
-                .reduce((largest, o) => (o.value > largest.value ? o : largest), { value: 0n });
-
-            // Total cost = inputs - change (what user actually spends)
-            return Number(totalInputs - changeOutput.value);
+    // Analyze outputs: identify which go to user (change) vs external (payments/fees)
+    // SECURITY: We must check against ALL user addresses (main, csv75, csv2, csv1, p2wda)
+    // because inputs can come from any source and change can go to any user address
+    const outputAnalysis = useMemo(() => {
+        if (!preSignedData || userAddresses.size === 0) {
+            return {
+                totalCost: (
+                    Number(gasSatFee) +
+                    Number(priorityFee) +
+                    (optionalOutputs ?? []).reduce((sum, output) => sum + output.value, 0)
+                ),
+                changeOutputs: [] as ParsedTxOutput[],
+                externalOutputs: [] as ParsedTxOutput[],
+                totalChange: 0n,
+                totalExternal: 0n,
+                isActual: false
+            };
         }
 
-        // Fallback to estimate when no pre-signed data
-        return (
-            Number(gasSatFee) +
-            Number(priorityFee) +
-            (optionalOutputs ?? []).reduce((sum, output) => sum + output.value, 0)
-        );
-    })();
+        const fundingTx = preSignedData.fundingTx;
+        const interactionTx = preSignedData.interactionTx;
+
+        // Total inputs = funding tx inputs (what user is spending)
+        const totalInputs = fundingTx
+            ? fundingTx.totalInputValue
+            : interactionTx.totalInputValue;
+
+        // Analyze all outputs (skip first which is epoch miner)
+        const outputs = interactionTx.outputs.slice(1).filter(o => !o.isOpReturn);
+
+        const changeOutputs: ParsedTxOutput[] = [];
+        const externalOutputs: ParsedTxOutput[] = [];
+        let totalChange = 0n;
+        let totalExternal = 0n;
+
+        for (const output of outputs) {
+            const isUserAddress = output.address
+                ? userAddresses.has(output.address.toLowerCase())
+                : false;
+
+            if (isUserAddress) {
+                changeOutputs.push(output);
+                totalChange += output.value;
+            } else {
+                externalOutputs.push(output);
+                totalExternal += output.value;
+            }
+        }
+
+        // Total cost = inputs - change going back to user
+        const totalCost = Number(totalInputs - totalChange);
+
+        return {
+            totalCost,
+            changeOutputs,
+            externalOutputs,
+            totalChange,
+            totalExternal,
+            isActual: true
+        };
+    }, [preSignedData, userAddresses, gasSatFee, priorityFee, optionalOutputs]);
 
     const handleCancel = async () => {
         await rejectApproval('User rejected the request.');
@@ -179,9 +249,6 @@ export default function SignInteraction(props: Props) {
             )}
 
             <Content style={{ padding: '12px' }}>
-                {/* Website Bar */}
-                <WebsiteBar session={session} />
-
                 {/* Contract Header */}
                 <InteractionHeader contract={to} contractInfo={contractInfo} />
 
@@ -337,20 +404,101 @@ export default function SignInteraction(props: Props) {
                         border: `1px solid ${colors.main}30`,
                         borderRadius: '12px',
                         padding: '12px',
-                        marginBottom: '12px',
-                        textAlign: 'center'
+                        marginBottom: '12px'
                     }}>
-                    <div style={{ fontSize: '11px', color: colors.textFaded, marginBottom: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
-                        Total Transaction Cost
-                        {preSignedData ? (
-                            <span style={{ fontSize: '9px', color: '#4ade80', fontWeight: 600 }}>ACTUAL</span>
-                        ) : (
-                            <span style={{ fontSize: '9px', color: '#fbbf24', fontWeight: 600 }}>~EST</span>
-                        )}
+                    <div style={{ textAlign: 'center', marginBottom: outputAnalysis.changeOutputs.length > 0 || outputAnalysis.externalOutputs.length > 0 ? '10px' : '0' }}>
+                        <div style={{ fontSize: '11px', color: colors.textFaded, marginBottom: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+                            Total Transaction Cost
+                            {outputAnalysis.isActual ? (
+                                <span style={{ fontSize: '9px', color: colors.success, fontWeight: 600 }}>ACTUAL</span>
+                            ) : (
+                                <span style={{ fontSize: '9px', color: '#fbbf24', fontWeight: 600 }}>~EST</span>
+                            )}
+                        </div>
+                        <div style={{ fontSize: '20px', fontWeight: 700, color: colors.main }}>
+                            {(outputAnalysis.totalCost / 1e8).toFixed(8).replace(/\.?0+$/, '')} {unitBtc}
+                        </div>
                     </div>
-                    <div style={{ fontSize: '20px', fontWeight: 700, color: colors.main }}>
-                        {(totalCost / 1e8).toFixed(8).replace(/\.?0+$/, '')} {unitBtc}
-                    </div>
+
+                    {/* Refund Info - Show where user's change goes (outputs to user addresses) */}
+                    {outputAnalysis.changeOutputs.length > 0 && (
+                        <div
+                            style={{
+                                padding: '8px 10px',
+                                background: `${colors.success}10`,
+                                border: `1px solid ${colors.success}25`,
+                                borderRadius: '8px',
+                                marginBottom: outputAnalysis.externalOutputs.length > 0 ? '8px' : '0'
+                            }}>
+                            <div style={{ fontSize: '10px', color: colors.textFaded, marginBottom: '4px' }}>
+                                Refund to your address{outputAnalysis.changeOutputs.length > 1 ? 'es' : ''}
+                            </div>
+                            {outputAnalysis.changeOutputs.map((output, idx) => (
+                                <div
+                                    key={idx}
+                                    style={{
+                                        display: 'flex',
+                                        justifyContent: 'space-between',
+                                        alignItems: 'center',
+                                        marginTop: idx > 0 ? '4px' : '0'
+                                    }}>
+                                    <span
+                                        style={{
+                                            fontSize: '11px',
+                                            color: colors.success,
+                                            fontFamily: 'monospace',
+                                            fontWeight: 500
+                                        }}
+                                        title={output.address || ''}>
+                                        {shortAddress(output.address || 'Unknown', 8)}
+                                    </span>
+                                    <span style={{ fontSize: '11px', color: colors.success, fontWeight: 600 }}>
+                                        +{(Number(output.value) / 1e8).toFixed(8).replace(/\.?0+$/, '')} {unitBtc}
+                                    </span>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+
+                    {/* Warning: External outputs (not going to user addresses) */}
+                    {outputAnalysis.externalOutputs.length > 0 && (
+                        <div
+                            style={{
+                                padding: '8px 10px',
+                                background: '#fbbf2415',
+                                border: '1px solid #fbbf2430',
+                                borderRadius: '8px'
+                            }}>
+                            <div style={{ fontSize: '10px', color: '#fbbf24', marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                <WarningOutlined style={{ fontSize: 10 }} />
+                                External output{outputAnalysis.externalOutputs.length > 1 ? 's' : ''} (not your address)
+                            </div>
+                            {outputAnalysis.externalOutputs.map((output, idx) => (
+                                <div
+                                    key={idx}
+                                    style={{
+                                        display: 'flex',
+                                        justifyContent: 'space-between',
+                                        alignItems: 'center',
+                                        marginTop: idx > 0 ? '4px' : '0'
+                                    }}>
+                                    <span
+                                        style={{
+                                            fontSize: '11px',
+                                            color: '#fbbf24',
+                                            fontFamily: 'monospace',
+                                            fontWeight: 500
+                                        }}
+                                        title={output.address || ''}>
+                                        {shortAddress(output.address || 'Script', 8)}
+                                    </span>
+                                    <span style={{ fontSize: '11px', color: '#fbbf24', fontWeight: 600 }}>
+                                        -{(Number(output.value) / 1e8).toFixed(8).replace(/\.?0+$/, '')} {unitBtc}
+                                    </span>
+                                </div>
+                            ))}
+                        </div>
+                    )}
                 </div>
 
             </Content>

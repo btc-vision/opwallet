@@ -1689,8 +1689,17 @@ export class WalletController {
      * Trigger pre-signing for the current approval request (called from SignInteraction UI)
      * Gets the interaction parameters from the current approval and triggers pre-signing.
      * This is called when the SignInteraction approval component mounts.
+     *
+     * SAFETY: Prevents concurrent pre-signing requests to avoid race conditions and
+     * potential security issues with multiple transactions being built simultaneously.
      */
     public triggerPreSignInteraction = (): void => {
+        // SAFETY CHECK: Prevent concurrent pre-signing
+        if (notificationService.isPreSigningInProgress()) {
+            console.warn('triggerPreSignInteraction: Pre-signing already in progress, ignoring duplicate request');
+            return;
+        }
+
         const approvalData = notificationService.getApproval();
 
         // Check if it's a standard approval (not a lock approval)
@@ -1708,10 +1717,18 @@ export class WalletController {
 
         const interactionParameters = params.data.interactionParameters;
 
+        // Set flag to prevent concurrent requests
+        notificationService.setPreSigningInProgress(true);
+
         // Trigger pre-signing in the background (don't await - let it run async)
-        this.preSignInteractionForPreview(interactionParameters).catch((err: unknown) => {
-            console.error('triggerPreSignInteraction: Pre-signing failed:', err);
-        });
+        this.preSignInteractionForPreview(interactionParameters)
+            .catch((err: unknown) => {
+                console.error('triggerPreSignInteraction: Pre-signing failed:', err);
+            })
+            .finally(() => {
+                // Always clear the flag when done (success or failure)
+                notificationService.setPreSigningInProgress(false);
+            });
     };
 
     /**

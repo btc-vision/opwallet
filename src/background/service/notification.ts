@@ -89,6 +89,8 @@ class NotificationService extends Events {
     private preSignedData: PreSignedInteractionData | null = null;
     // Generic pre-signed data for internal wallet transactions
     private preSignedTxData: PreSignedTransactionData | null = null;
+    // Flag to track if pre-signing is in progress (prevents concurrent requests)
+    private isPreSigning = false;
 
     constructor() {
         super();
@@ -130,6 +132,20 @@ class NotificationService extends Events {
 
     clearPreSignedData = () => {
         this.preSignedData = null;
+    };
+
+    // Pre-signing state management (prevents concurrent requests)
+    isPreSigningInProgress = (): boolean => {
+        return this.isPreSigning;
+    };
+
+    setPreSigningInProgress = (inProgress: boolean) => {
+        this.isPreSigning = inProgress;
+    };
+
+    // Check if there's an active approval request
+    hasActiveApproval = (): boolean => {
+        return this.approval !== null;
     };
 
     // Generic pre-signed transaction data methods (for internal wallet transactions)
