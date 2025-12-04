@@ -1113,38 +1113,44 @@ export default function TxOpnetConfirmScreen() {
                         </div>
                     )}
 
-                    {/* Transaction Type Card */}
+                    {/* Transaction Type Card - Compact */}
                     <div
                         style={{
                             background: `linear-gradient(135deg, ${colors.main}15 0%, ${colors.main}08 100%)`,
                             border: `1px solid ${colors.main}30`,
-                            borderRadius: '12px',
-                            padding: '16px',
+                            borderRadius: '10px',
+                            padding: '10px 12px',
                             marginBottom: '12px',
-                            textAlign: 'center'
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '10px'
                         }}>
                         <div
                             style={{
-                                fontSize: '40px',
-                                marginBottom: '8px'
+                                fontSize: '20px',
+                                color: colors.main,
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center'
                             }}>
                             {getActionIcon()}
                         </div>
-                        <div
-                            style={{
-                                fontSize: '16px',
-                                fontWeight: 600,
-                                color: colors.text,
-                                marginBottom: '4px'
-                            }}>
-                            {getActionLabel()}
-                        </div>
-                        <div
-                            style={{
-                                fontSize: '12px',
-                                color: colors.textFaded
-                            }}>
-                            {isSigning ? 'Preparing transaction...' : signingError ? 'Transaction signing failed' : 'Review transaction details below'}
+                        <div style={{ flex: 1 }}>
+                            <div
+                                style={{
+                                    fontSize: '14px',
+                                    fontWeight: 600,
+                                    color: colors.text
+                                }}>
+                                {getActionLabel()}
+                            </div>
+                            <div
+                                style={{
+                                    fontSize: '11px',
+                                    color: colors.textFaded
+                                }}>
+                                {isSigning ? 'Preparing...' : signingError ? 'Signing failed' : 'Review details below'}
+                            </div>
                         </div>
                     </div>
 
@@ -1392,6 +1398,8 @@ export default function TxOpnetConfirmScreen() {
                         </div>
                     </div>
 
+                    {/* Spacer for fixed footer */}
+                    <div style={{ height: '70px' }} />
                 </Column>
             </Content>
 
