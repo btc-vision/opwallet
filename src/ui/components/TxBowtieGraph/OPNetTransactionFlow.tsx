@@ -1,12 +1,23 @@
 import React, { useMemo } from 'react';
 import { LoadingOutlined, SafetyCertificateOutlined } from '@ant-design/icons';
 
-import { ParsedTransaction, PreSignedInteractionData } from '@/background/service/notification';
+import { ParsedTransaction, ParsedTxOutput } from '@/background/service/notification';
 import { ContractInformation } from '@/shared/web3/interfaces/ContractInformation';
 import { selectorToString } from '@/shared/web3/decoder/CalldataDecoder';
 import { shortAddress } from '@/ui/utils';
 import { TxInput, TxOutput } from './index';
 import { MultiTxBowtieGraph, TransactionData } from './MultiTxBowtieGraph';
+
+// Interface for deserialized pre-signed data (BigInt restored)
+// This is what SignInteraction passes after deserializing from Chrome message passing
+export interface DeserializedPreSignedData {
+    fundingTxHex: string | null;
+    interactionTxHex: string;
+    estimatedFees: bigint;
+    fundingTx: ParsedTransaction | null;
+    interactionTx: ParsedTransaction;
+    opnetEpochMinerOutput: ParsedTxOutput | null;
+}
 
 const colors = {
     main: '#f37413',
@@ -110,7 +121,7 @@ function parsedTxToBowtieFormat(
 }
 
 export interface OPNetTransactionFlowProps {
-    preSignedData: PreSignedInteractionData | null;
+    preSignedData: DeserializedPreSignedData | null;
     contractAddress: string;
     contractInfo?: ContractInformation;
     calldata: string;

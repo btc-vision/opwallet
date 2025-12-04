@@ -15,6 +15,14 @@ export interface ParsedTxOutput {
     isOpReturn: boolean;
 }
 
+// Serializable version (BigInt as string) for Chrome message passing
+export interface SerializedParsedTxOutput {
+    address: string | null;
+    value: string;  // BigInt serialized as string
+    script: string;
+    isOpReturn: boolean;
+}
+
 // Parsed transaction for UI display
 export interface ParsedTransaction {
     txid: string;
@@ -32,6 +40,23 @@ export interface ParsedTransaction {
     minerFee: bigint;       // inputs - outputs = real mining fee
 }
 
+// Serializable version for Chrome message passing
+export interface SerializedParsedTransaction {
+    txid: string;
+    hex: string;
+    size: number;
+    vsize: number;
+    inputs: {
+        txid: string;
+        vout: number;
+        value: string;  // BigInt as string
+    }[];
+    outputs: SerializedParsedTxOutput[];
+    totalInputValue: string;
+    totalOutputValue: string;
+    minerFee: string;
+}
+
 // Transaction type for pre-signed data
 export type PreSignedTxType = 'interaction' | 'deployment' | 'bitcoin_transfer' | 'token_transfer' | 'mint' | 'airdrop' | 'nft_transfer';
 
@@ -47,6 +72,16 @@ export interface PreSignedInteractionData {
     interactionTx: ParsedTransaction;
     // First output of interaction is always the OPNet Epoch Miner (gas fee)
     opnetEpochMinerOutput: ParsedTxOutput | null;
+}
+
+// Serializable version for Chrome message passing
+export interface SerializedPreSignedInteractionData {
+    fundingTxHex: string | null;
+    interactionTxHex: string;
+    estimatedFees: string;
+    fundingTx: SerializedParsedTransaction | null;
+    interactionTx: SerializedParsedTransaction;
+    opnetEpochMinerOutput: SerializedParsedTxOutput | null;
 }
 
 // Pre-signed data expiration time in milliseconds (2 minutes)
@@ -74,6 +109,97 @@ export interface PreSignedTransactionData {
         bitcoinTxHex: string | null;
         // Next UTXOs after broadcast
         nextUTXOs: UTXO[];
+    };
+}
+
+// ============================================================================
+// Serialization helpers for Chrome message passing (BigInt <-> string)
+// ============================================================================
+
+function serializeParsedTxOutput(output: ParsedTxOutput): SerializedParsedTxOutput {
+    return {
+        address: output.address,
+        value: output.value.toString(),
+        script: output.script,
+        isOpReturn: output.isOpReturn
+    };
+}
+
+function deserializeParsedTxOutput(output: SerializedParsedTxOutput): ParsedTxOutput {
+    return {
+        address: output.address,
+        value: BigInt(output.value),
+        script: output.script,
+        isOpReturn: output.isOpReturn
+    };
+}
+
+function serializeParsedTransaction(tx: ParsedTransaction): SerializedParsedTransaction {
+    return {
+        txid: tx.txid,
+        hex: tx.hex,
+        size: tx.size,
+        vsize: tx.vsize,
+        inputs: tx.inputs.map(inp => ({
+            txid: inp.txid,
+            vout: inp.vout,
+            value: inp.value.toString()
+        })),
+        outputs: tx.outputs.map(serializeParsedTxOutput),
+        totalInputValue: tx.totalInputValue.toString(),
+        totalOutputValue: tx.totalOutputValue.toString(),
+        minerFee: tx.minerFee.toString()
+    };
+}
+
+function deserializeParsedTransaction(tx: SerializedParsedTransaction): ParsedTransaction {
+    return {
+        txid: tx.txid,
+        hex: tx.hex,
+        size: tx.size,
+        vsize: tx.vsize,
+        inputs: tx.inputs.map(inp => ({
+            txid: inp.txid,
+            vout: inp.vout,
+            value: BigInt(inp.value)
+        })),
+        outputs: tx.outputs.map(deserializeParsedTxOutput),
+        totalInputValue: BigInt(tx.totalInputValue),
+        totalOutputValue: BigInt(tx.totalOutputValue),
+        minerFee: BigInt(tx.minerFee)
+    };
+}
+
+export function serializePreSignedInteractionData(data: PreSignedInteractionData): SerializedPreSignedInteractionData {
+    return {
+        fundingTxHex: data.fundingTxHex,
+        interactionTxHex: data.interactionTxHex,
+        estimatedFees: data.estimatedFees.toString(),
+        fundingTx: data.fundingTx ? serializeParsedTransaction(data.fundingTx) : null,
+        interactionTx: serializeParsedTransaction(data.interactionTx),
+        opnetEpochMinerOutput: data.opnetEpochMinerOutput
+            ? serializeParsedTxOutput(data.opnetEpochMinerOutput)
+            : null
+    };
+}
+
+export function deserializePreSignedInteractionData(data: SerializedPreSignedInteractionData): {
+    fundingTxHex: string | null;
+    interactionTxHex: string;
+    estimatedFees: bigint;
+    fundingTx: ParsedTransaction | null;
+    interactionTx: ParsedTransaction;
+    opnetEpochMinerOutput: ParsedTxOutput | null;
+} {
+    return {
+        fundingTxHex: data.fundingTxHex,
+        interactionTxHex: data.interactionTxHex,
+        estimatedFees: BigInt(data.estimatedFees),
+        fundingTx: data.fundingTx ? deserializeParsedTransaction(data.fundingTx) : null,
+        interactionTx: deserializeParsedTransaction(data.interactionTx),
+        opnetEpochMinerOutput: data.opnetEpochMinerOutput
+            ? deserializeParsedTxOutput(data.opnetEpochMinerOutput)
+            : null
     };
 }
 

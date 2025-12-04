@@ -1,14 +1,20 @@
-import { ParsedTxOutput, PreSignedInteractionData } from '@/background/service/notification';
+import { ParsedTxOutput, deserializePreSignedInteractionData } from '@/background/service/notification';
 import { SignInteractionApprovalParams } from '@/shared/types/Approval';
 import { selectorToString } from '@/shared/web3/decoder/CalldataDecoder';
 import Web3API from '@/shared/web3/Web3API';
 import { Button, Content, Footer, Layout, OPNetTransactionFlow, Row } from '@/ui/components';
+import { DeserializedPreSignedData } from '@/ui/components/TxBowtieGraph/OPNetTransactionFlow';
 import { decodeCallData } from '@/ui/pages/OpNet/decoded/decodeCallData';
 import { DecodedCalldata } from '@/ui/pages/OpNet/decoded/DecodedCalldata';
 import { useBTCUnit } from '@/ui/state/settings/hooks';
 import { useApproval } from '@/ui/utils/hooks';
 import { useWallet } from '@/ui/utils/WalletContext';
-import { CodeOutlined, EditOutlined, ThunderboltOutlined, WarningOutlined } from '@ant-design/icons';
+import {
+    CodeOutlined,
+    EditOutlined,
+    ThunderboltOutlined,
+    WarningOutlined
+} from '@ant-design/icons';
 import { Address } from '@btc-vision/transaction';
 import { useEffect, useMemo, useState } from 'react';
 import { Decoded } from '../../OpNet/decoded/DecodedTypes';
@@ -51,7 +57,7 @@ export default function SignInteraction(props: Props) {
     const [isInteractionParametersChanged, setIsInteractionParametersChanged] = useState(false);
     const [isFeeRateModalOpen, setIsFeeRateModalOpen] = useState(false);
     const [isPriorityFeeModalOpen, setIsPriorityFeeModalOpen] = useState(false);
-    const [preSignedData, setPreSignedData] = useState<PreSignedInteractionData | null>(null);
+    const [preSignedData, setPreSignedData] = useState<DeserializedPreSignedData | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [userAddresses, setUserAddresses] = useState<Set<string>>(new Set());
 
@@ -98,10 +104,12 @@ export default function SignInteraction(props: Props) {
 
         const fetchPreSignedData = async () => {
             try {
-                const data = await wallet.getPreSignedDataForPreview();
+                const serializedData = await wallet.getPreSignedDataForPreview();
                 if (isMounted) {
-                    if (data) {
-                        setPreSignedData(data);
+                    if (serializedData) {
+                        // Deserialize BigInt values from strings
+                        const deserializedData = deserializePreSignedInteractionData(serializedData);
+                        setPreSignedData(deserializedData);
                         setIsLoading(false);
                     } else if (pollCount < maxPolls) {
                         pollCount++;
@@ -146,11 +154,7 @@ export default function SignInteraction(props: Props) {
                 0n
             );
             return {
-                totalCost: Number(
-                    BigInt(gasSatFee as unknown as string) +
-                        BigInt(priorityFee as unknown as string) +
-                        optionalOutputsTotal
-                ),
+                totalCost: Number(BigInt(gasSatFee) + BigInt(priorityFee) + optionalOutputsTotal),
                 changeOutputs: [] as ParsedTxOutput[],
                 externalOutputs: [] as ParsedTxOutput[],
                 totalChange: 0n,
@@ -163,13 +167,13 @@ export default function SignInteraction(props: Props) {
         const interactionTx = preSignedData.interactionTx;
 
         // Total inputs = funding tx inputs (what user is spending)
-        // Note: BigInt values may be serialized as strings through Chrome message passing
-        const totalInputs = BigInt(
-            (fundingTx ? fundingTx.totalInputValue : interactionTx.totalInputValue) as unknown as string
-        );
+        // Values are now properly deserialized as BigInt
+        const totalInputs = fundingTx
+            ? fundingTx.totalInputValue
+            : interactionTx.totalInputValue;
 
         // Analyze all outputs (skip first which is epoch miner)
-        const outputs = interactionTx.outputs.slice(1).filter((o) => !o.isOpReturn);
+        const outputs = interactionTx.outputs.slice(1).filter(o => !o.isOpReturn);
 
         const changeOutputs: ParsedTxOutput[] = [];
         const externalOutputs: ParsedTxOutput[] = [];
@@ -177,17 +181,16 @@ export default function SignInteraction(props: Props) {
         let totalExternal = 0n;
 
         for (const output of outputs) {
-            const isUserAddress = output.address ? userAddresses.has(output.address.toLowerCase()) : false;
-
-            // Convert value to BigInt (maybe serialized as string through Chrome message passing)
-            const outputValue = BigInt(output.value as unknown as string);
+            const isUserAddress = output.address
+                ? userAddresses.has(output.address.toLowerCase())
+                : false;
 
             if (isUserAddress) {
                 changeOutputs.push(output);
-                totalChange += outputValue;
+                totalChange += output.value;
             } else {
                 externalOutputs.push(output);
-                totalExternal += outputValue;
+                totalExternal += output.value;
             }
         }
 
@@ -408,24 +411,8 @@ export default function SignInteraction(props: Props) {
                         padding: '12px',
                         marginBottom: '12px'
                     }}>
-                    <div
-                        style={{
-                            textAlign: 'center',
-                            marginBottom:
-                                outputAnalysis.changeOutputs.length > 0 || outputAnalysis.externalOutputs.length > 0
-                                    ? '10px'
-                                    : '0'
-                        }}>
-                        <div
-                            style={{
-                                fontSize: '11px',
-                                color: colors.textFaded,
-                                marginBottom: '4px',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                gap: '6px'
-                            }}>
+                    <div style={{ textAlign: 'center', marginBottom: outputAnalysis.changeOutputs.length > 0 || outputAnalysis.externalOutputs.length > 0 ? '10px' : '0' }}>
+                        <div style={{ fontSize: '11px', color: colors.textFaded, marginBottom: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
                             Total Transaction Cost
                             {outputAnalysis.isActual ? (
                                 <span style={{ fontSize: '9px', color: colors.success, fontWeight: 600 }}>ACTUAL</span>
@@ -487,15 +474,7 @@ export default function SignInteraction(props: Props) {
                                 border: '1px solid #fbbf2430',
                                 borderRadius: '8px'
                             }}>
-                            <div
-                                style={{
-                                    fontSize: '10px',
-                                    color: '#fbbf24',
-                                    marginBottom: '4px',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '4px'
-                                }}>
+                            <div style={{ fontSize: '10px', color: '#fbbf24', marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '4px' }}>
                                 <WarningOutlined style={{ fontSize: 10 }} />
                                 External output{outputAnalysis.externalOutputs.length > 1 ? 's' : ''} (not your address)
                             </div>
@@ -526,6 +505,7 @@ export default function SignInteraction(props: Props) {
                         </div>
                     )}
                 </div>
+
             </Content>
 
             <Footer style={{ padding: '12px' }}>

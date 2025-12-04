@@ -1,6 +1,6 @@
 import { ContactBookItem, ContactBookStore } from '@/background/service/contactBook';
 import { SavedVault, ToSignInput } from '@/background/service/keyring';
-import { PreSignedInteractionData, PreSignedTransactionData } from '@/background/service/notification';
+import { PreSignedTransactionData, SerializedPreSignedInteractionData } from '@/background/service/notification';
 import { ConnectedSite } from '@/background/service/permission';
 import { AddressFlagType, ChainId, ChainType, CustomNetwork } from '@/shared/constant';
 import {
@@ -297,7 +297,8 @@ export interface WalletController {
     ): Promise<void>;
 
     // Pre-signed data for transaction flow preview (dApp requests)
-    getPreSignedDataForPreview(): Promise<PreSignedInteractionData | null>;
+    // Returns serialized data (BigInt as strings) - caller must deserialize
+    getPreSignedDataForPreview(): Promise<SerializedPreSignedInteractionData | null>;
 
     // Trigger pre-signing for the current interaction approval (called when SignInteraction UI mounts)
     triggerPreSignInteraction(): void;

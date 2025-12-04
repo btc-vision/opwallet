@@ -11,7 +11,7 @@ import {
     transactionHistoryService,
     transactionStatusPoller
 } from '@/background/service';
-import { ParsedTransaction, ParsedTxOutput, PreSignedInteractionData, PreSignedTransactionData } from '@/background/service/notification';
+import { ParsedTransaction, ParsedTxOutput, PreSignedInteractionData, PreSignedTransactionData, SerializedPreSignedInteractionData, serializePreSignedInteractionData } from '@/background/service/notification';
 import { DisplayedKeyring, EmptyKeyring, Keyring, SavedVault } from '@/background/service/keyring';
 import { WalletSaveList } from '@/background/service/preference';
 import { BroadcastTransactionOptions } from '@/content-script/pageProvider/Web3Provider.js';
@@ -1681,9 +1681,12 @@ export class WalletController {
 
     /**
      * Get pre-signed data for preview (called from UI)
+     * Returns serialized data (BigInt as strings) for Chrome message passing
      */
-    public getPreSignedDataForPreview = (): PreSignedInteractionData | null => {
-        return notificationService.getPreSignedData();
+    public getPreSignedDataForPreview = (): SerializedPreSignedInteractionData | null => {
+        const data = notificationService.getPreSignedData();
+        if (!data) return null;
+        return serializePreSignedInteractionData(data);
     };
 
     /**
