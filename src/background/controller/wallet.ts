@@ -1187,6 +1187,14 @@ export class WalletController {
             Web3API.provider.utxoManager.spentUTXO(account.address, utxos, response.nextUTXOs);
 
             // Record transaction in history
+            const calldata = interactionParameters.calldata
+                ? Buffer.isBuffer(interactionParameters.calldata)
+                    ? interactionParameters.calldata.toString('hex')
+                    : typeof interactionParameters.calldata === 'string'
+                      ? interactionParameters.calldata
+                      : Buffer.from(interactionParameters.calldata as Uint8Array).toString('hex')
+                : undefined;
+
             void this.recordTransaction(
                 {
                     txid: interTx.result || '',
@@ -1196,7 +1204,8 @@ export class WalletController {
                     to: interactionParameters.to,
                     contractAddress: interactionParameters.to,
                     fee: Number(response.estimatedFees),
-                    feeRate: interactionParameters.feeRate
+                    feeRate: interactionParameters.feeRate,
+                    calldata
                 },
                 origin
             );
@@ -1404,7 +1413,8 @@ export class WalletController {
      * @throws WalletControllerError
      */
     public signInteraction = async (
-        interactionParameters: InteractionParametersWithoutSigner
+        interactionParameters: InteractionParametersWithoutSigner,
+        origin: TransactionOrigin = { type: 'internal' }
     ): Promise<InteractionResponse> => {
         const account = await this.getCurrentAccount();
         if (!account) throw new WalletControllerError('No current account');
@@ -1454,6 +1464,37 @@ export class WalletController {
                 requiredMinimum = Number(missing + (missing * 20n) / 100n);
             }
         } while (!interactionResponse);
+
+        // Record transaction in history
+        const calldata = interactionParameters.calldata
+            ? Buffer.isBuffer(interactionParameters.calldata)
+                ? interactionParameters.calldata.toString('hex')
+                : typeof interactionParameters.calldata === 'string'
+                  ? interactionParameters.calldata
+                  : Buffer.from(interactionParameters.calldata as Uint8Array).toString('hex')
+            : undefined;
+
+        // Extract txids from raw transactions
+        const interactionTx = Transaction.fromHex(interactionResponse.interactionTransaction);
+        const interactionTxid = interactionTx.getId();
+        const fundingTxid = interactionResponse.fundingTransaction
+            ? Transaction.fromHex(interactionResponse.fundingTransaction).getId()
+            : undefined;
+
+        void this.recordTransaction(
+            {
+                txid: interactionTxid,
+                fundingTxid,
+                type: TransactionType.OPNET_INTERACTION,
+                from: account.address,
+                to: interactionParameters.to,
+                contractAddress: interactionParameters.to,
+                fee: Number(interactionResponse.estimatedFees),
+                feeRate: interactionParameters.feeRate,
+                calldata
+            },
+            origin
+        );
 
         return interactionResponse;
     };

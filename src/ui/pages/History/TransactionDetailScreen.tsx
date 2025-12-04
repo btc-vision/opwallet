@@ -10,6 +10,11 @@ import {
     TransactionStatus,
     TransactionType
 } from '@/shared/types/TransactionHistory';
+import { selectorToString } from '@/shared/web3/decoder/CalldataDecoder';
+import { decodeCallData } from '@/ui/pages/OpNet/decoded/decodeCallData';
+import { DecodedCalldata } from '@/ui/pages/OpNet/decoded/DecodedCalldata';
+import { Decoded } from '@/ui/pages/OpNet/decoded/DecodedTypes';
+import { useChainType } from '@/ui/state/settings/hooks';
 import {
     CheckCircleOutlined,
     CheckOutlined,
@@ -148,6 +153,57 @@ function DetailRow({ label, value, copyable, onCopy, copied, external }: DetailR
                     </a>
                 )}
             </div>
+        </div>
+    );
+}
+
+function CalldataSection({ tx }: { tx: TransactionHistoryItem }) {
+    const chainType = useChainType();
+
+    if (!tx.calldata || tx.type !== TransactionType.OPNET_INTERACTION) {
+        return null;
+    }
+
+    const interactionType = selectorToString(tx.calldata);
+    const decoded: Decoded | null = decodeCallData(tx.calldata);
+
+    return (
+        <div
+            style={{
+                background: colors.cardBg,
+                borderRadius: 12,
+                padding: '12px 14px'
+            }}>
+            <div style={{ fontSize: 12, color: colors.textFaded, marginBottom: 8 }}>
+                Calldata {interactionType && `(${interactionType})`}
+            </div>
+            {decoded ? (
+                <DecodedCalldata
+                    decoded={decoded}
+                    contractInfo={false}
+                    interactionType={interactionType}
+                    chain={chainType}
+                />
+            ) : (
+                <div
+                    style={{
+                        background: 'rgba(255,255,255,0.03)',
+                        borderRadius: 8,
+                        padding: 10,
+                        maxHeight: 120,
+                        overflow: 'auto'
+                    }}>
+                    <code
+                        style={{
+                            fontSize: 10,
+                            color: colors.textSecondary,
+                            wordBreak: 'break-all',
+                            fontFamily: 'monospace'
+                        }}>
+                        0x{tx.calldata}
+                    </code>
+                </div>
+            )}
         </div>
     );
 }
@@ -346,11 +402,37 @@ export default function TransactionDetailScreen() {
                                 borderRadius: 12,
                                 padding: '4px 14px'
                             }}>
-                            <DetailRow label="Origin" value="External DApp" />
-                            {tx.origin.siteName && <DetailRow label="Site" value={tx.origin.siteName} />}
+                            <div
+                                style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: 10,
+                                    padding: '10px 0',
+                                    borderBottom: `1px solid ${colors.border}`
+                                }}>
+                                <span style={{ fontSize: 12, color: colors.textFaded }}>Origin</span>
+                                <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 8 }}>
+                                    {tx.origin.siteIcon && (
+                                        <img
+                                            src={tx.origin.siteIcon}
+                                            alt=""
+                                            style={{ width: 16, height: 16, borderRadius: 3 }}
+                                            onError={(e) => {
+                                                (e.target as HTMLImageElement).style.display = 'none';
+                                            }}
+                                        />
+                                    )}
+                                    <span style={{ fontSize: 12, color: colors.textSecondary }}>
+                                        {tx.origin.siteName || 'External DApp'}
+                                    </span>
+                                </div>
+                            </div>
                             {tx.origin.siteUrl && <DetailRow label="URL" value={tx.origin.siteUrl} />}
                         </div>
                     )}
+
+                    {/* Calldata for contract interactions */}
+                    <CalldataSection tx={tx} />
 
                     {/* View on Explorer Button */}
                     <a

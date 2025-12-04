@@ -108,6 +108,9 @@ export interface TransactionHistoryItem {
     /** Transaction note/memo */
     note?: string;
 
+    /** Calldata for contract interactions (hex encoded) */
+    calldata?: string;
+
     /** Last time status was checked (Unix timestamp) */
     lastStatusCheck: number;
 
@@ -158,6 +161,7 @@ export interface RecordTransactionInput {
     contractMethod?: string;
     contractName?: string;
     note?: string;
+    calldata?: string;
 }
 
 /**

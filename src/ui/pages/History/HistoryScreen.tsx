@@ -173,7 +173,7 @@ function TransactionItem({ tx, onClick }: TransactionItemProps) {
             onMouseEnter={(e) => (e.currentTarget.style.background = '#333')}
             onMouseLeave={(e) => (e.currentTarget.style.background = colors.cardBg)}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                {/* Type Icon */}
+                {/* Type Icon or Site Favicon for external */}
                 <div
                     style={{
                         width: 36,
@@ -183,9 +183,27 @@ function TransactionItem({ tx, onClick }: TransactionItemProps) {
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        fontSize: 16
+                        fontSize: 16,
+                        position: 'relative'
                     }}>
-                    {getTypeIcon(tx.type)}
+                    {tx.origin.type === 'external' && tx.origin.siteIcon ? (
+                        <img
+                            src={tx.origin.siteIcon}
+                            alt=""
+                            style={{ width: 20, height: 20, borderRadius: 4 }}
+                            onError={(e) => {
+                                (e.target as HTMLImageElement).style.display = 'none';
+                                const parent = (e.target as HTMLImageElement).parentElement;
+                                if (parent) {
+                                    const fallback = document.createElement('span');
+                                    fallback.innerHTML = '<svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" style="color: #f37413"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/></svg>';
+                                    parent.appendChild(fallback.firstChild!);
+                                }
+                            }}
+                        />
+                    ) : (
+                        getTypeIcon(tx.type)
+                    )}
                 </div>
 
                 {/* Main Info */}
@@ -202,8 +220,9 @@ function TransactionItem({ tx, onClick }: TransactionItemProps) {
                                     background: 'rgba(255,255,255,0.08)',
                                     padding: '1px 4px',
                                     borderRadius: 3
-                                }}>
-                                DApp
+                                }}
+                                title={tx.origin.siteName || tx.origin.siteUrl}>
+                                {tx.origin.siteName || 'DApp'}
                             </span>
                         )}
                     </div>
