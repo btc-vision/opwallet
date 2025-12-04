@@ -94,7 +94,7 @@ export function TxBowtieGraph({
     const txWidth = width - 20;
     const maxCombinedWeight = Math.min(60, Math.floor((txWidth - (2 * midWidth)) / 6));
     const minWeight = 2;
-    const maxStrands = compact ? 8 : 16;
+    const maxStrands = compact ? 4 : 6; // Max visible strands before consolidation
     const zeroValueWidth = 40;
     const zeroValueThickness = 12;
 
@@ -104,6 +104,50 @@ export function TxBowtieGraph({
         if (!Number.isFinite(v) || v < 0) return 0;
         return v;
     };
+
+    // Consolidate inputs if too many - like mempool.space
+    const consolidatedInputs = useMemo((): (TxInput & { isConsolidated?: boolean; consolidatedCount?: number })[] => {
+        if (inputs.length <= maxStrands) {
+            return inputs;
+        }
+
+        // Show first (maxStrands - 1) inputs, consolidate the rest
+        const visible = inputs.slice(0, maxStrands - 1);
+        const consolidated = inputs.slice(maxStrands - 1);
+        const consolidatedValue = consolidated.reduce((sum, inp) => sum + safeValue(inp.value || 0), 0);
+
+        return [
+            ...visible,
+            {
+                address: `+${consolidated.length} more`,
+                value: consolidatedValue,
+                isConsolidated: true,
+                consolidatedCount: consolidated.length
+            }
+        ];
+    }, [inputs, maxStrands]);
+
+    // Consolidate outputs if too many
+    const consolidatedOutputs = useMemo((): (TxOutput & { isConsolidated?: boolean; consolidatedCount?: number })[] => {
+        if (outputs.length <= maxStrands) {
+            return outputs;
+        }
+
+        // Show first (maxStrands - 1) outputs, consolidate the rest
+        const visible = outputs.slice(0, maxStrands - 1);
+        const consolidated = outputs.slice(maxStrands - 1);
+        const consolidatedValue = consolidated.reduce((sum, out) => sum + safeValue(out.value || 0), 0);
+
+        return [
+            ...visible,
+            {
+                address: `+${consolidated.length} more`,
+                value: consolidatedValue,
+                isConsolidated: true,
+                consolidatedCount: consolidated.length
+            }
+        ];
+    }, [outputs, maxStrands]);
 
     const totalInputValue = useMemo(() =>
         inputs.reduce((sum, inp) => sum + safeValue(inp.value || 0), 0),
@@ -120,13 +164,13 @@ export function TxBowtieGraph({
 
     // Prepare output data with fee
     const outputsWithFee = useMemo(() => {
-        const result: (TxOutput & { isFee?: boolean })[] = [];
+        const result: (TxOutput & { isFee?: boolean; isConsolidated?: boolean; consolidatedCount?: number })[] = [];
         if (fee > 0) {
             result.push({ address: 'Fee', value: fee, isFee: true });
         }
-        result.push(...outputs);
+        result.push(...consolidatedOutputs);
         return result;
-    }, [outputs, fee]);
+    }, [consolidatedOutputs, fee]);
 
     // Calculate line parameters
     const calculateLineParams = useCallback((
@@ -260,10 +304,12 @@ export function TxBowtieGraph({
 
     // Generate lines for inputs and outputs
     const inputLines = useMemo((): SvgLine[] => {
-        const params = calculateLineParams(inputs, totalValue);
+        const params = calculateLineParams(consolidatedInputs, totalValue);
         return params.map((line, i) => {
-            const isUserAddress = inputs[i].address === currentAddress;
-            if (inputs[i].value === 0) {
+            const input = consolidatedInputs[i];
+            const isUserAddress = input.address === currentAddress;
+            const isConsolidated = 'isConsolidated' in input && input.isConsolidated;
+            if (input.value === 0) {
                 return {
                     path: makeZeroValuePath('in', line.outerY),
                     strokeWidth: zeroValueThickness,
@@ -274,10 +320,10 @@ export function TxBowtieGraph({
             return {
                 path: makePath('in', line.outerY, line.innerY, line.thickness, line.offset, 0),
                 strokeWidth: line.thickness,
-                className: `input ${isUserAddress ? 'highlight' : ''} ${inputs[i].isToSign ? 'to-sign' : ''}`
+                className: `input ${isUserAddress ? 'highlight' : ''} ${input.isToSign ? 'to-sign' : ''} ${isConsolidated ? 'consolidated' : ''}`
             };
         });
-    }, [inputs, totalValue, currentAddress, calculateLineParams, makePath, makeZeroValuePath, zeroValueThickness]);
+    }, [consolidatedInputs, totalValue, currentAddress, calculateLineParams, makePath, makeZeroValuePath, zeroValueThickness]);
 
     const outputLines = useMemo((): SvgLine[] => {
         const params = calculateLineParams(outputsWithFee, totalValue);
@@ -285,6 +331,7 @@ export function TxBowtieGraph({
             const output = outputsWithFee[i];
             const isUserAddress = output.address === currentAddress;
             const isFee = output.isFee;
+            const isConsolidated = 'isConsolidated' in output && output.isConsolidated;
 
             if (output.value === 0) {
                 return {
@@ -297,7 +344,7 @@ export function TxBowtieGraph({
             return {
                 path: makePath('out', line.outerY, line.innerY, line.thickness, line.offset, 0),
                 strokeWidth: line.thickness,
-                className: `output ${isFee ? 'fee' : ''} ${isUserAddress ? 'highlight' : ''}`
+                className: `output ${isFee ? 'fee' : ''} ${isUserAddress ? 'highlight' : ''} ${isConsolidated ? 'consolidated' : ''}`
             };
         });
     }, [outputsWithFee, totalValue, currentAddress, calculateLineParams, makePath, makeZeroValuePath, zeroValueThickness]);
@@ -328,7 +375,7 @@ export function TxBowtieGraph({
         index: number
     ) => {
         if (type === 'input') {
-            setHoverLine({ type: 'input', data: inputs[index], index });
+            setHoverLine({ type: 'input', data: consolidatedInputs[index], index });
         } else {
             const output = outputsWithFee[index];
             if (output.isFee) {
@@ -337,7 +384,7 @@ export function TxBowtieGraph({
                 setHoverLine({ type: 'output', data: output, index });
             }
         }
-    }, [inputs, outputsWithFee, fee]);
+    }, [consolidatedInputs, outputsWithFee, fee]);
 
     const handleBlur = useCallback(() => {
         setHoverLine(null);

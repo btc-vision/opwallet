@@ -22,11 +22,13 @@ import {
     ArrowRightOutlined,
     CheckCircleOutlined,
     CopyOutlined,
+    DownOutlined,
     DollarOutlined,
     FileTextOutlined,
     GiftOutlined,
     LoadingOutlined,
     PictureOutlined,
+    RightOutlined,
     RocketOutlined,
     SafetyCertificateOutlined,
     SafetyOutlined,
@@ -173,6 +175,7 @@ export default function TxOpnetConfirmScreen() {
     const [cachedSignedTx, setCachedSignedTx] = useState<CachedSignedTransaction | null>(null);
     const [cachedBtcTx, setCachedBtcTx] = useState<CachedBitcoinTransfer | null>(null);
     const preSigningRef = useRef<boolean>(false);
+    const [isTxFlowExpanded, setIsTxFlowExpanded] = useState<boolean>(false);
 
     useEffect(() => {
         const setWallet = async () => {
@@ -1154,17 +1157,52 @@ export default function TxOpnetConfirmScreen() {
                         </div>
                     </div>
 
-                    {/* Transaction Flow Visualization - Only show when we have pre-signed data */}
+                    {/* Transaction Flow Visualization - Collapsible */}
                     {(cachedSignedTx?.preSignedTxData || cachedBtcTx?.preSignedTxData) && !isSigning && (
-                        <div style={{ marginBottom: '12px' }}>
-                            <OPNetTxFlowPreview
-                                preSignedData={cachedSignedTx?.preSignedTxData || cachedBtcTx?.preSignedTxData || null}
-                                isLoading={false}
-                                width={340}
-                                showTooltip={true}
-                                compact={true}
-                                title="Transaction Flow"
-                            />
+                        <div
+                            style={{
+                                background: colors.containerBgFaded,
+                                borderRadius: '10px',
+                                marginBottom: '12px',
+                                overflow: 'hidden'
+                            }}>
+                            {/* Collapsible Header */}
+                            <div
+                                onClick={() => setIsTxFlowExpanded(!isTxFlowExpanded)}
+                                style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'space-between',
+                                    padding: '10px 12px',
+                                    cursor: 'pointer',
+                                    userSelect: 'none'
+                                }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    {isTxFlowExpanded ? (
+                                        <DownOutlined style={{ fontSize: 10, color: colors.textFaded }} />
+                                    ) : (
+                                        <RightOutlined style={{ fontSize: 10, color: colors.textFaded }} />
+                                    )}
+                                    <span style={{ fontSize: '12px', fontWeight: 600, color: colors.text }}>
+                                        Transaction Flow
+                                    </span>
+                                </div>
+                                <span style={{ fontSize: '10px', color: colors.textFaded }}>
+                                    {isTxFlowExpanded ? 'Collapse' : 'Expand'}
+                                </span>
+                            </div>
+                            {/* Collapsible Content */}
+                            {isTxFlowExpanded && (
+                                <div style={{ padding: '0 12px 12px 12px' }}>
+                                    <OPNetTxFlowPreview
+                                        preSignedData={cachedSignedTx?.preSignedTxData || cachedBtcTx?.preSignedTxData || null}
+                                        isLoading={false}
+                                        width={316}
+                                        showTooltip={true}
+                                        compact={true}
+                                    />
+                                </div>
+                            )}
                         </div>
                     )}
 

@@ -98,8 +98,68 @@ export function TxBowtieTooltip({
 
     const hasAddress = 'address' in data && data.address;
     const isInput = type === 'input';
-    const inputData = data as TxInput;
-    const outputData = data as TxOutput;
+    const inputData = data as TxInput & { isConsolidated?: boolean; consolidatedCount?: number };
+    const outputData = data as TxOutput & { isConsolidated?: boolean; consolidatedCount?: number };
+    const isConsolidated = 'isConsolidated' in data && (data as { isConsolidated?: boolean }).isConsolidated;
+    const consolidatedCount = 'consolidatedCount' in data ? (data as { consolidatedCount?: number }).consolidatedCount || 0 : 0;
+
+    // Handle consolidated items differently
+    if (isConsolidated) {
+        return (
+            <div
+                style={{
+                    ...tooltipStyles,
+                    left: tooltipX,
+                    top: tooltipY
+                }}
+            >
+                <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    marginBottom: '8px',
+                    paddingBottom: '8px',
+                    borderBottom: '1px solid rgba(255, 255, 255, 0.1)'
+                }}>
+                    <div style={{
+                        width: '8px',
+                        height: '8px',
+                        borderRadius: '50%',
+                        background: isInput ? '#f37413' : '#ee771b'
+                    }} />
+                    <span style={{
+                        fontSize: '11px',
+                        fontWeight: 600,
+                        color: isInput ? '#f37413' : '#ee771b'
+                    }}>
+                        {consolidatedCount} {isInput ? 'INPUTS' : 'OUTPUTS'} COMBINED
+                    </span>
+                </div>
+
+                <div style={{ marginBottom: '8px' }}>
+                    <div style={labelStyles}>Total Value</div>
+                    <div style={valueStyles}>
+                        {satoshisToAmount(data.value)} {btcUnit}
+                    </div>
+                    <div style={{
+                        fontSize: '10px',
+                        color: 'rgba(255, 255, 255, 0.4)'
+                    }}>
+                        {data.value.toLocaleString()} sats
+                    </div>
+                </div>
+
+                <div style={{
+                    fontSize: '10px',
+                    color: 'rgba(255, 255, 255, 0.4)',
+                    borderTop: '1px solid rgba(255, 255, 255, 0.1)',
+                    paddingTop: '6px'
+                }}>
+                    Combined for display
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div
