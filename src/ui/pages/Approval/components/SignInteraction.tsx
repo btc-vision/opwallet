@@ -1,20 +1,20 @@
+import { PreSignedInteractionData } from '@/background/service/notification';
 import { SignInteractionApprovalParams } from '@/shared/types/Approval';
 import { selectorToString } from '@/shared/web3/decoder/CalldataDecoder';
-import { Button, Content, Footer, Layout, Row } from '@/ui/components';
+import { Button, Content, Footer, Layout, OPNetTransactionFlow, Row } from '@/ui/components';
 import WebsiteBar from '@/ui/components/WebsiteBar';
 import { decodeCallData } from '@/ui/pages/OpNet/decoded/decodeCallData';
 import { DecodedCalldata } from '@/ui/pages/OpNet/decoded/DecodedCalldata';
 import { useBTCUnit } from '@/ui/state/settings/hooks';
 import { useApproval } from '@/ui/utils/hooks';
+import { useWallet } from '@/ui/utils/WalletContext';
 import {
     CodeOutlined,
     EditOutlined,
     ExclamationCircleOutlined,
-    SendOutlined,
-    ThunderboltOutlined,
-    WalletOutlined
+    ThunderboltOutlined
 } from '@ant-design/icons';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Decoded } from '../../OpNet/decoded/DecodedTypes';
 import { InteractionHeader } from './Headers/InteractionHeader';
 import { ChangeFeeRate } from './SignInteraction/ChangeFeeRate';
@@ -26,15 +26,10 @@ const colors = {
     text: '#dbdbdb',
     textFaded: 'rgba(219, 219, 219, 0.7)',
     buttonBg: '#434343',
-    buttonHoverBg: 'rgba(85, 85, 85, 0.3)',
-    containerBg: '#434343',
     containerBgFaded: '#292929',
     containerBorder: '#303030',
     inputBg: '#292828',
-    success: '#4ade80',
-    error: '#ef4444',
-    warning: '#fbbf24',
-    info: '#3b82f6'
+    warning: '#fbbf24'
 };
 
 export interface Props {
@@ -47,19 +42,56 @@ export default function SignInteraction(props: Props) {
     } = props;
 
     const { resolveApproval, rejectApproval } = useApproval();
+    const wallet = useWallet();
     const unitBtc = useBTCUnit();
 
     const [interactionParameters, setInteractionParameters] = useState(data.interactionParameters);
     const [isInteractionParametersChanged, setIsInteractionParametersChanged] = useState(false);
     const [isFeeRateModalOpen, setIsFeeRateModalOpen] = useState(false);
     const [isPriorityFeeModalOpen, setIsPriorityFeeModalOpen] = useState(false);
+    const [preSignedData, setPreSignedData] = useState<PreSignedInteractionData | null>(null);
+    const [isLoading, setIsLoading] = useState(true);
+
+    // Fetch pre-signed transaction data for preview
+    useEffect(() => {
+        let isMounted = true;
+        let pollCount = 0;
+        const maxPolls = 30;
+
+        const fetchPreSignedData = async () => {
+            try {
+                const data = await wallet.getPreSignedDataForPreview();
+                if (isMounted) {
+                    if (data) {
+                        setPreSignedData(data);
+                        setIsLoading(false);
+                    } else if (pollCount < maxPolls) {
+                        pollCount++;
+                        setTimeout(fetchPreSignedData, 1000);
+                    } else {
+                        setIsLoading(false);
+                    }
+                }
+            } catch (e) {
+                console.error('Failed to fetch pre-signed data:', e);
+                if (isMounted) {
+                    setIsLoading(false);
+                }
+            }
+        };
+
+        fetchPreSignedData();
+
+        return () => {
+            isMounted = false;
+        };
+    }, [wallet]);
 
     const contractInfo = data.contractInfo;
     const to: string = interactionParameters.to;
     const interactionType = selectorToString(interactionParameters.calldata as unknown as string);
     const decoded: Decoded | null = decodeCallData(interactionParameters.calldata as unknown as string);
     const chain = data.network;
-    const inputs = interactionParameters.utxos;
     const gasSatFee = interactionParameters.gasSatFee;
     const optionalOutputs = interactionParameters.optionalOutputs;
     const feeRate = interactionParameters.feeRate;
@@ -170,42 +202,17 @@ export default function SignInteraction(props: Props) {
                     )}
                 </div>
 
-                {/* Calldata (if not decoded) */}
-                {!decoded && (
-                    <div
-                        style={{
-                            background: colors.containerBgFaded,
-                            borderRadius: '12px',
-                            padding: '12px',
-                            marginBottom: '12px'
-                        }}>
-                        <div
-                            style={{
-                                fontSize: '11px',
-                                fontWeight: 600,
-                                color: colors.textFaded,
-                                textTransform: 'uppercase',
-                                letterSpacing: '0.5px',
-                                marginBottom: '8px'
-                            }}>
-                            Raw Calldata
-                        </div>
-                        <div
-                            style={{
-                                padding: '8px',
-                                background: colors.inputBg,
-                                borderRadius: '8px',
-                                fontSize: '11px',
-                                color: colors.textFaded,
-                                fontFamily: 'monospace',
-                                wordBreak: 'break-all',
-                                maxHeight: '100px',
-                                overflowY: 'auto'
-                            }}>
-                            0x{interactionParameters.calldata}
-                        </div>
-                    </div>
-                )}
+                {/* Transaction Flow Visualization - Multi-TX Bowtie */}
+                <div style={{ marginBottom: '12px' }}>
+                    <OPNetTransactionFlow
+                        preSignedData={preSignedData}
+                        contractAddress={to}
+                        contractInfo={contractInfo}
+                        calldata={interactionParameters.calldata as unknown as string}
+                        isLoading={isLoading}
+                        width={340}
+                    />
+                </div>
 
                 {/* Fee Settings */}
                 <div
@@ -228,7 +235,7 @@ export default function SignInteraction(props: Props) {
                             gap: '6px'
                         }}>
                         <ThunderboltOutlined style={{ fontSize: 10 }} />
-                        Network Fees
+                        Fee Settings
                     </div>
 
                     {/* Priority Fee */}
@@ -242,12 +249,7 @@ export default function SignInteraction(props: Props) {
                             borderRadius: '8px',
                             marginBottom: '8px'
                         }}>
-                        <div
-                            style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '6px'
-                            }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                             <span style={{ fontSize: '12px', color: colors.text }}>Priority Fee</span>
                             <button
                                 style={{
@@ -255,25 +257,15 @@ export default function SignInteraction(props: Props) {
                                     border: 'none',
                                     cursor: 'pointer',
                                     padding: '2px',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center'
+                                    display: 'flex'
                                 }}
                                 onClick={() => setIsPriorityFeeModalOpen(true)}>
                                 <EditOutlined style={{ fontSize: 12, color: colors.main }} />
                             </button>
                         </div>
-                        <div
-                            style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '4px',
-                                fontSize: '12px',
-                                fontWeight: 600,
-                                color: colors.main
-                            }}>
+                        <div style={{ fontSize: '12px', fontWeight: 600, color: colors.main }}>
                             {Number(priorityFee).toLocaleString()}
-                            <span style={{ fontSize: '10px', color: colors.textFaded }}>sat</span>
+                            <span style={{ fontSize: '10px', color: colors.textFaded, marginLeft: '4px' }}>sat</span>
                         </div>
                     </div>
 
@@ -287,12 +279,7 @@ export default function SignInteraction(props: Props) {
                             background: colors.inputBg,
                             borderRadius: '8px'
                         }}>
-                        <div
-                            style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '6px'
-                            }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                             <span style={{ fontSize: '12px', color: colors.text }}>Fee Rate</span>
                             <button
                                 style={{
@@ -300,154 +287,17 @@ export default function SignInteraction(props: Props) {
                                     border: 'none',
                                     cursor: 'pointer',
                                     padding: '2px',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center'
+                                    display: 'flex'
                                 }}
                                 onClick={() => setIsFeeRateModalOpen(true)}>
                                 <EditOutlined style={{ fontSize: 12, color: colors.main }} />
                             </button>
                         </div>
-                        <div
-                            style={{
-                                fontSize: '12px',
-                                fontWeight: 600,
-                                color: colors.main
-                            }}>
-                            {feeRate} <span style={{ fontSize: '10px', color: colors.textFaded }}>sat/vB</span>
+                        <div style={{ fontSize: '12px', fontWeight: 600, color: colors.main }}>
+                            {feeRate}
+                            <span style={{ fontSize: '10px', color: colors.textFaded, marginLeft: '4px' }}>sat/vB</span>
                         </div>
                     </div>
-                </div>
-
-                {/* Inputs (if any) */}
-                {inputs && inputs.length > 0 && (
-                    <div
-                        style={{
-                            background: colors.containerBgFaded,
-                            borderRadius: '12px',
-                            padding: '12px',
-                            marginBottom: '12px'
-                        }}>
-                        <div
-                            style={{
-                                fontSize: '11px',
-                                fontWeight: 600,
-                                color: colors.textFaded,
-                                textTransform: 'uppercase',
-                                letterSpacing: '0.5px',
-                                marginBottom: '8px',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '6px'
-                            }}>
-                            <WalletOutlined style={{ fontSize: 10 }} />
-                            Inputs ({inputs.length})
-                        </div>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                            {inputs.slice(0, 3).map((input, index) => (
-                                <div
-                                    key={index}
-                                    style={{
-                                        display: 'flex',
-                                        justifyContent: 'space-between',
-                                        alignItems: 'center',
-                                        padding: '6px 8px',
-                                        background: colors.inputBg,
-                                        borderRadius: '6px',
-                                        fontSize: '11px'
-                                    }}>
-                                    <span style={{ color: colors.textFaded, fontFamily: 'monospace' }}>
-                                        {input.transactionId.slice(0, 6)}...{input.transactionId.slice(-4)}
-                                    </span>
-                                    <span style={{ color: colors.text, fontWeight: 500 }}>
-                                        {(Number(input.value) / 1e8).toFixed(8).replace(/\.?0+$/, '')} BTC
-                                    </span>
-                                </div>
-                            ))}
-                            {inputs.length > 3 && (
-                                <div
-                                    style={{
-                                        fontSize: '11px',
-                                        color: colors.textFaded,
-                                        textAlign: 'center',
-                                        padding: '4px'
-                                    }}>
-                                    +{inputs.length - 3} more inputs
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                )}
-
-                {/* Outputs */}
-                <div
-                    style={{
-                        background: colors.containerBgFaded,
-                        borderRadius: '12px',
-                        padding: '12px',
-                        marginBottom: '12px'
-                    }}>
-                    <div
-                        style={{
-                            fontSize: '11px',
-                            fontWeight: 600,
-                            color: colors.textFaded,
-                            textTransform: 'uppercase',
-                            letterSpacing: '0.5px',
-                            marginBottom: '8px',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '6px'
-                        }}>
-                        <SendOutlined style={{ fontSize: 10 }} />
-                        Outputs
-                    </div>
-
-                    {/* Gas Fee */}
-                    <div
-                        style={{
-                            display: 'flex',
-                            justifyContent: 'space-between',
-                            alignItems: 'center',
-                            padding: '8px',
-                            background: colors.inputBg,
-                            borderRadius: '8px',
-                            marginBottom: '6px'
-                        }}>
-                        <span style={{ fontSize: '12px', color: colors.text }}>Execution Gas Fee</span>
-                        <span style={{ fontSize: '12px', fontWeight: 600, color: colors.warning }}>
-                            {(Number(gasSatFee) / 1e8).toFixed(8).replace(/\.?0+$/, '')} BTC
-                        </span>
-                    </div>
-
-                    {/* Optional Outputs */}
-                    {optionalOutputs?.map((output, index) => {
-                        const address =
-                            'address' in output
-                                ? `${output.address.slice(0, 8)}...${output.address.slice(-6)}`
-                                : 'Script Output';
-
-                        return (
-                            <div
-                                key={index}
-                                style={{
-                                    display: 'flex',
-                                    justifyContent: 'space-between',
-                                    alignItems: 'center',
-                                    padding: '8px',
-                                    background: colors.inputBg,
-                                    borderRadius: '8px',
-                                    marginBottom: index < optionalOutputs.length - 1 ? '6px' : 0
-                                }}>
-                                <span style={{ fontSize: '12px', color: colors.textFaded, fontFamily: 'monospace' }}>
-                                    {address}
-                                </span>
-                                <span style={{ fontSize: '12px', fontWeight: 600, color: colors.text }}>
-                                    {(output.value / 1e8).toFixed(8).replace(/\.?0+$/, '')} BTC
-                                </span>
-                            </div>
-                        );
-                    })}
                 </div>
 
                 {/* Total Cost Summary */}
@@ -460,20 +310,10 @@ export default function SignInteraction(props: Props) {
                         marginBottom: '12px',
                         textAlign: 'center'
                     }}>
-                    <div
-                        style={{
-                            fontSize: '11px',
-                            color: colors.textFaded,
-                            marginBottom: '4px'
-                        }}>
+                    <div style={{ fontSize: '11px', color: colors.textFaded, marginBottom: '4px' }}>
                         Total Transaction Cost
                     </div>
-                    <div
-                        style={{
-                            fontSize: '20px',
-                            fontWeight: 700,
-                            color: colors.main
-                        }}>
+                    <div style={{ fontSize: '20px', fontWeight: 700, color: colors.main }}>
                         {(totalCost / 1e8).toFixed(8).replace(/\.?0+$/, '')} {unitBtc}
                     </div>
                 </div>
@@ -490,19 +330,9 @@ export default function SignInteraction(props: Props) {
                         marginBottom: '12px'
                     }}>
                     <ExclamationCircleOutlined
-                        style={{
-                            fontSize: 14,
-                            color: colors.warning,
-                            flexShrink: 0,
-                            marginTop: '1px'
-                        }}
+                        style={{ fontSize: 14, color: colors.warning, flexShrink: 0, marginTop: '1px' }}
                     />
-                    <div
-                        style={{
-                            fontSize: '11px',
-                            color: colors.text,
-                            lineHeight: '1.4'
-                        }}>
+                    <div style={{ fontSize: '11px', color: colors.text, lineHeight: '1.4' }}>
                         Only sign this transaction if you fully understand the content and trust the requesting site.
                     </div>
                 </div>

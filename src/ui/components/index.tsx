@@ -16,6 +16,11 @@ import { Row } from './Row';
 import { Select } from './Select';
 import { Text } from './Text';
 import { TextArea } from './TextArea';
+import { TxBowtieGraph } from './TxBowtieGraph';
+import { TxFlowPreview } from './TxBowtieGraph/TxFlowPreview';
+import { OPNetTxFlowPreview } from './TxBowtieGraph/OPNetTxFlowPreview';
+import { MultiTxBowtieGraph } from './TxBowtieGraph/MultiTxBowtieGraph';
+import { OPNetTransactionFlow } from './TxBowtieGraph/OPNetTransactionFlow';
 
 export {
     AddressBar,
@@ -31,9 +36,14 @@ export {
     Input,
     Layout,
     Logo,
+    MultiTxBowtieGraph,
     OPNetLoader,
+    OPNetTransactionFlow,
+    OPNetTxFlowPreview,
     Row,
     Select,
     Text,
-    TextArea
+    TextArea,
+    TxBowtieGraph,
+    TxFlowPreview
 };

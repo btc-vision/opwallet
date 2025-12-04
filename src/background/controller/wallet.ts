@@ -11,6 +11,7 @@ import {
     transactionHistoryService,
     transactionStatusPoller
 } from '@/background/service';
+import { ParsedTransaction, ParsedTxOutput, PreSignedInteractionData, PreSignedTransactionData } from '@/background/service/notification';
 import { DisplayedKeyring, EmptyKeyring, Keyring, SavedVault } from '@/background/service/keyring';
 import { WalletSaveList } from '@/background/service/preference';
 import { BroadcastTransactionOptions } from '@/content-script/pageProvider/Web3Provider.js';
@@ -118,6 +119,73 @@ export class WalletControllerError extends Error {
 }
 
 const stashKeyrings: Record<string, Keyring> = {};
+
+/**
+ * Parse a raw transaction hex into structured data for UI display.
+ * Calculates real mining fee from inputs - outputs.
+ */
+function parseTransactionForPreview(
+    txHex: string,
+    inputUtxos: { txid: string; vout: number; value: bigint }[],
+    network: ReturnType<typeof getBitcoinLibJSNetwork>
+): ParsedTransaction {
+    const tx = Transaction.fromHex(txHex);
+    const txid = tx.getId();
+    const size = txHex.length / 2; // hex to bytes
+    const vsize = tx.virtualSize();
+
+    // Map inputs to their values from UTXOs
+    const inputs = tx.ins.map((input) => {
+        const inputTxid = Buffer.from(input.hash).reverse().toString('hex');
+        const vout = input.index;
+        // Find the matching UTXO to get the value
+        const matchingUtxo = inputUtxos.find((u) => u.txid === inputTxid && u.vout === vout);
+        return {
+            txid: inputTxid,
+            vout,
+            value: matchingUtxo?.value ?? 0n
+        };
+    });
+
+    // Parse outputs
+    const outputs: ParsedTxOutput[] = tx.outs.map((output) => {
+        const script = output.script.toString('hex');
+        const isOpReturn = output.script[0] === 0x6a; // OP_RETURN
+
+        let address: string | null = null;
+        if (!isOpReturn) {
+            try {
+                address = bitcoinAddress.fromOutputScript(output.script, network);
+            } catch {
+                // Script-only output (e.g., taproot)
+                address = null;
+            }
+        }
+
+        return {
+            address,
+            value: BigInt(output.value),
+            script,
+            isOpReturn
+        };
+    });
+
+    const totalInputValue = inputs.reduce((sum, i) => sum + i.value, 0n);
+    const totalOutputValue = outputs.reduce((sum, o) => sum + o.value, 0n);
+    const minerFee = totalInputValue - totalOutputValue;
+
+    return {
+        txid,
+        hex: txHex,
+        size,
+        vsize,
+        inputs,
+        outputs,
+        totalInputValue,
+        totalOutputValue,
+        minerFee
+    };
+}
 
 export class WalletController {
     public openapi: OpenApiService = openapiService;
@@ -1497,6 +1565,131 @@ export class WalletController {
         );
 
         return interactionResponse;
+    };
+
+    /**
+     * Pre-sign an interaction for preview purposes.
+     * This method signs the transaction but does NOT broadcast or record it.
+     * The result is stored in notification service for the approval UI to display.
+     * Security: The signed data is NEVER returned to dApps - only used for UI preview.
+     */
+    public preSignInteractionForPreview = async (
+        interactionParameters: InteractionParametersWithoutSigner
+    ): Promise<void> => {
+        const account = await this.getCurrentAccount();
+        if (!account) throw new WalletControllerError('No current account');
+
+        const wallet = await this.getWalletSigner();
+
+        let signedData: { response: InteractionResponse; utxos: UTXOs } | undefined;
+        let requiredMinimum = 0;
+        let tries = 0;
+
+        do {
+            if (tries === 2) {
+                // If we can't pre-sign, just return - the approval will work without preview
+                console.warn('PreSign: Could not pre-sign interaction for preview');
+                return;
+            }
+            tries++;
+
+            try {
+                signedData = await this.signInteractionInternal(
+                    account,
+                    wallet,
+                    interactionParameters,
+                    requiredMinimum
+                );
+            } catch (err: unknown) {
+                const msg = err as Error;
+
+                if (!msg.message.includes('setFeeOutput: Insufficient funds')) {
+                    // Non-retryable error - just return, approval will work without preview
+                    console.warn('PreSign: Error during pre-sign:', msg.message);
+                    return;
+                }
+
+                const matches = /Fee:\s*(\d+)[^\d]+(?:Value|Total input):\s*(\d+)/i.exec(msg.message);
+                if (!matches) {
+                    return;
+                }
+
+                const fee = BigInt(matches[1]);
+                const available = BigInt(matches[2]);
+                const missing = fee > available ? fee - available : 0n;
+
+                requiredMinimum = Number(missing + (missing * 20n) / 100n);
+            }
+        } while (!signedData);
+
+        // Parse transactions for accurate UI display
+        const network = getBitcoinLibJSNetwork(this.getNetworkType(), this.getChainType());
+
+        // Prepare input UTXOs for parsing (need txid, vout, value)
+        const inputUtxosForParsing = signedData.utxos.map((u) => ({
+            txid: u.transactionId,
+            vout: u.outputIndex,
+            value: u.value
+        }));
+
+        // Parse the interaction transaction
+        const interactionTx = parseTransactionForPreview(
+            signedData.response.interactionTransaction,
+            signedData.response.fundingUTXOs.map((u) => ({
+                txid: u.transactionId,
+                vout: u.outputIndex,
+                value: u.value
+            })),
+            network
+        );
+
+        // Parse funding transaction if present
+        let fundingTx: ParsedTransaction | null = null;
+        if (signedData.response.fundingTransaction) {
+            fundingTx = parseTransactionForPreview(
+                signedData.response.fundingTransaction,
+                inputUtxosForParsing,
+                network
+            );
+        }
+
+        // First output of interaction TX is ALWAYS the OPNet Epoch Miner (gas fee)
+        const opnetEpochMinerOutput = interactionTx.outputs.length > 0 ? interactionTx.outputs[0] : null;
+
+        // Store the pre-signed data in notification service for preview
+        // Security: This data is ONLY used for UI display, never exposed to dApps
+        notificationService.setPreSignedData({
+            response: signedData.response,
+            utxos: signedData.utxos,
+            fundingTxHex: signedData.response.fundingTransaction,
+            interactionTxHex: signedData.response.interactionTransaction,
+            estimatedFees: signedData.response.estimatedFees,
+            fundingTx,
+            interactionTx,
+            opnetEpochMinerOutput
+        });
+    };
+
+    /**
+     * Get pre-signed data for preview (called from UI)
+     */
+    public getPreSignedDataForPreview = (): PreSignedInteractionData | null => {
+        return notificationService.getPreSignedData();
+    };
+
+    /**
+     * Generic pre-signed transaction data methods (for internal wallet transactions)
+     */
+    public getPreSignedTxData = (): PreSignedTransactionData | null => {
+        return notificationService.getPreSignedTxData();
+    };
+
+    public setPreSignedTxData = (data: PreSignedTransactionData): void => {
+        notificationService.setPreSignedTxData(data);
+    };
+
+    public clearPreSignedTxData = (): void => {
+        notificationService.clearPreSignedTxData();
     };
 
     /**

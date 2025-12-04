@@ -1,5 +1,6 @@
 import { ContactBookItem, ContactBookStore } from '@/background/service/contactBook';
 import { SavedVault, ToSignInput } from '@/background/service/keyring';
+import { PreSignedInteractionData, PreSignedTransactionData } from '@/background/service/notification';
 import { ConnectedSite } from '@/background/service/permission';
 import { AddressFlagType, ChainId, ChainType, CustomNetwork } from '@/shared/constant';
 import {
@@ -294,6 +295,14 @@ export interface WalletController {
         params: import('@/shared/types/TransactionHistory').RecordTransactionInput,
         origin?: import('@/shared/types/TransactionHistory').TransactionOrigin
     ): Promise<void>;
+
+    // Pre-signed data for transaction flow preview (dApp requests)
+    getPreSignedDataForPreview(): Promise<PreSignedInteractionData | null>;
+
+    // Generic pre-signed data for internal wallet transactions
+    getPreSignedTxData(): Promise<PreSignedTransactionData | null>;
+    setPreSignedTxData(data: PreSignedTransactionData): Promise<void>;
+    clearPreSignedTxData(): Promise<void>;
 }
 
 const WalletContext = createContext<{

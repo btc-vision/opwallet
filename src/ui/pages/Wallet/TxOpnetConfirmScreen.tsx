@@ -1,3 +1,4 @@
+import { ParsedTransaction, ParsedTxOutput, PRESIGNED_DATA_EXPIRATION_MS, PreSignedTransactionData } from '@/background/service/notification';
 import {
     Action,
     AirdropParameters,
@@ -10,8 +11,9 @@ import {
     TransferParameters
 } from '@/shared/interfaces/RawTxParameters';
 import { RecordTransactionInput, TransactionType } from '@/shared/types/TransactionHistory';
+import { decodeBitcoinTransfer, decodeSignedInteractionReceipt, DecodedPreSignedData } from '@/shared/utils/txDecoder';
 import Web3API from '@/shared/web3/Web3API';
-import { Column, Content, Footer, Header, Layout, Text } from '@/ui/components';
+import { Column, Content, Footer, Header, Layout, OPNetTxFlowPreview, Text } from '@/ui/components';
 import { ContextType, useTools } from '@/ui/components/ActionComponent';
 import { BottomModal } from '@/ui/components/BottomModal';
 import { useBTCUnit } from '@/ui/state/settings/hooks';
@@ -26,6 +28,7 @@ import {
     LoadingOutlined,
     PictureOutlined,
     RocketOutlined,
+    SafetyCertificateOutlined,
     SafetyOutlined,
     ThunderboltOutlined,
     WarningOutlined
@@ -49,14 +52,16 @@ import {
     BitcoinAbiTypes,
     BitcoinInterfaceAbi,
     BitcoinUtils,
+    CallResult,
     EXTENDED_OP721_ABI,
     getContract,
     IExtendedOP721,
     IOP20Contract,
     OP_20_ABI,
+    SignedInteractionTransactionReceipt,
     TransactionParameters
 } from 'opnet';
-import { Dispatch, SetStateAction, useCallback, useEffect, useState } from 'react';
+import { Dispatch, SetStateAction, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { RouteTypes, useNavigate } from '../MainRoute';
 
 BigNumber.config({ EXPONENTIAL_AT: 256 });
@@ -79,6 +84,29 @@ const colors = {
 
 interface LocationState {
     rawTxInfo: RawTxInfo;
+}
+
+// Cached pre-signed transaction data for OPNet interactions
+interface CachedSignedTransaction {
+    simulation: CallResult;
+    signedTx: SignedInteractionTransactionReceipt;
+    createdAt: number;
+    symbol?: string;
+    // Decoded transaction data for display
+    decodedData: DecodedPreSignedData | null;
+    // Pre-signed data in the format expected by OPNetTxFlowPreview
+    preSignedTxData: PreSignedTransactionData | null;
+}
+
+// Cached pre-signed Bitcoin transfer
+interface CachedBitcoinTransfer {
+    txHex: string;
+    utxos: UTXO[];
+    nextUtxos: UTXO[];
+    createdAt: number;
+    // Decoded transaction data
+    decodedData: DecodedPreSignedData | null;
+    preSignedTxData: PreSignedTransactionData | null;
 }
 
 export const AIRDROP_ABI: BitcoinInterfaceAbi = [
@@ -139,6 +167,13 @@ export default function TxOpnetConfirmScreen() {
     const wallet = useWallet();
     const tools = useTools();
 
+    // Pre-signed transaction state
+    const [isSigning, setIsSigning] = useState<boolean>(false);
+    const [signingError, setSigningError] = useState<string | null>(null);
+    const [cachedSignedTx, setCachedSignedTx] = useState<CachedSignedTransaction | null>(null);
+    const [cachedBtcTx, setCachedBtcTx] = useState<CachedBitcoinTransfer | null>(null);
+    const preSigningRef = useRef<boolean>(false);
+
     useEffect(() => {
         const setWallet = async () => {
             await Web3API.setNetwork(await wallet.getChainType());
@@ -158,9 +193,347 @@ export default function TxOpnetConfirmScreen() {
         );
     }, [wallet]);
 
+    // Check if pre-signed transaction is expired
+    const isPreSignedExpired = useCallback(() => {
+        if (!cachedSignedTx) return true;
+        return Date.now() - cachedSignedTx.createdAt > PRESIGNED_DATA_EXPIRATION_MS;
+    }, [cachedSignedTx]);
+
+    // Pre-sign OPNet interaction transactions on mount
+    useEffect(() => {
+        // Only pre-sign for OPNet interactions (Transfer, Mint, Airdrop, SendNFT)
+        const supportedActions = [Action.Transfer, Action.Mint, Action.Airdrop, Action.SendNFT];
+        if (!supportedActions.includes(rawTxInfo.action)) return;
+        if (preSigningRef.current) return;
+        preSigningRef.current = true;
+
+        const preSignTransaction = async () => {
+            setIsSigning(true);
+            setSigningError(null);
+
+            try {
+                await Web3API.setNetwork(await wallet.getChainType());
+                const userWallet = await getOPNetWallet();
+                const currentWalletAddress = await wallet.getCurrentAccount();
+
+                const interactionParameters: TransactionParameters = {
+                    signer: userWallet.keypair,
+                    mldsaSigner: userWallet.mldsaKeypair,
+                    refundTo: currentWalletAddress.address,
+                    maximumAllowedSatToSpend: rawTxInfo.priorityFee,
+                    feeRate: rawTxInfo.feeRate,
+                    network: Web3API.network,
+                    priorityFee: rawTxInfo.priorityFee,
+                    note: rawTxInfo.note
+                };
+
+                let simulation: CallResult;
+                let symbol: string | undefined;
+
+                switch (rawTxInfo.action) {
+                    case Action.Transfer: {
+                        const contract: IOP20Contract = getContract<IOP20Contract>(
+                            rawTxInfo.contractAddress,
+                            OP_20_ABI,
+                            Web3API.provider,
+                            Web3API.network,
+                            userWallet.address
+                        );
+                        const address = await getPubKey(rawTxInfo.to);
+                        simulation = await contract.safeTransfer(address, rawTxInfo.inputAmount, new Uint8Array());
+                        const symbolResult = await contract.symbol();
+                        symbol = symbolResult.properties.symbol;
+                        break;
+                    }
+                    case Action.Mint: {
+                        const contract = getContract<IOP20Contract>(
+                            rawTxInfo.contractAddress,
+                            OP_20_ABI,
+                            Web3API.provider,
+                            Web3API.network,
+                            userWallet.address
+                        );
+                        const value = BitcoinUtils.expandToDecimals(rawTxInfo.inputAmount, rawTxInfo.tokens[0].divisibility);
+                        simulation = await contract.mint(Address.fromString(rawTxInfo.to), value);
+                        symbol = rawTxInfo.tokens[0].symbol;
+                        break;
+                    }
+                    case Action.Airdrop: {
+                        const contract: AirdropInterface = getContract<AirdropInterface>(
+                            rawTxInfo.contractAddress,
+                            AIRDROP_ABI,
+                            Web3API.provider,
+                            Web3API.network,
+                            userWallet.address
+                        );
+                        const addressMap = new AddressMap<bigint>();
+                        for (const [pubKey, amount] of Object.entries(rawTxInfo.amounts)) {
+                            addressMap.set(Address.fromString(pubKey), BigInt(amount));
+                        }
+                        simulation = await contract.airdrop(addressMap);
+                        break;
+                    }
+                    case Action.SendNFT: {
+                        const addy =
+                            AddressVerificator.detectAddressType(rawTxInfo.collectionAddress, Web3API.network) ===
+                            AddressTypes.P2OP
+                                ? rawTxInfo.collectionAddress
+                                : Address.fromString(rawTxInfo.collectionAddress);
+                        const contract: IExtendedOP721 = getContract<IExtendedOP721>(
+                            addy,
+                            EXTENDED_OP721_ABI,
+                            Web3API.provider,
+                            Web3API.network,
+                            userWallet.address
+                        );
+                        const recipientAddress = await getPubKey(rawTxInfo.to);
+                        simulation = await contract.safeTransferFrom(
+                            userWallet.address,
+                            recipientAddress,
+                            rawTxInfo.tokenId,
+                            new Uint8Array()
+                        );
+                        symbol = rawTxInfo.collectionName;
+                        break;
+                    }
+                    default:
+                        return;
+                }
+
+                // Sign the transaction (without broadcasting)
+                const signedTx = await simulation.signTransaction(interactionParameters);
+
+                // Decode the signed transaction to get accurate fee data
+                let decodedData: DecodedPreSignedData | null = null;
+                let preSignedTxData: PreSignedTransactionData | null = null;
+
+                try {
+                    decodedData = decodeSignedInteractionReceipt(
+                        signedTx.fundingTransactionRaw,
+                        signedTx.interactionTransactionRaw,
+                        signedTx.fundingUTXOs,
+                        signedTx.nextUTXOs,
+                        Web3API.network
+                    );
+
+                    // Build PreSignedTransactionData for OPNetTxFlowPreview
+                    const txType = rawTxInfo.action === Action.Transfer ? 'token_transfer'
+                        : rawTxInfo.action === Action.Mint ? 'mint'
+                        : rawTxInfo.action === Action.Airdrop ? 'airdrop'
+                        : rawTxInfo.action === Action.SendNFT ? 'nft_transfer'
+                        : 'interaction';
+
+                    preSignedTxData = {
+                        type: txType,
+                        createdAt: Date.now(),
+                        transactions: decodedData.transactions,
+                        totalMiningFee: decodedData.totalMiningFee,
+                        opnetGasFee: decodedData.opnetGasFee,
+                        opnetEpochMinerOutput: decodedData.epochMinerOutput,
+                        rawData: {
+                            fundingTxHex: signedTx.fundingTransactionRaw,
+                            interactionTxHex: signedTx.interactionTransactionRaw,
+                            deploymentTxs: null,
+                            bitcoinTxHex: null,
+                            nextUTXOs: signedTx.nextUTXOs
+                        }
+                    };
+                } catch (decodeError) {
+                    console.warn('Failed to decode signed transaction:', decodeError);
+                    // Continue without decoded data - UI will show estimates as fallback
+                }
+
+                // Cache the signed transaction with timestamp
+                setCachedSignedTx({
+                    simulation,
+                    signedTx,
+                    createdAt: Date.now(),
+                    symbol,
+                    decodedData,
+                    preSignedTxData
+                });
+            } catch (e) {
+                const error = e as Error;
+                console.error('Pre-signing failed:', error);
+                setSigningError(error.message);
+            } finally {
+                setIsSigning(false);
+            }
+        };
+
+        void preSignTransaction();
+    }, [rawTxInfo, wallet, getOPNetWallet]);
+
+    // Pre-sign Bitcoin transfer transactions on mount
+    useEffect(() => {
+        if (rawTxInfo.action !== Action.SendBitcoin) return;
+        if (preSigningRef.current) return;
+        preSigningRef.current = true;
+
+        const preSignBitcoinTransfer = async () => {
+            setIsSigning(true);
+            setSigningError(null);
+
+            try {
+                await Web3API.setNetwork(await wallet.getChainType());
+                const userWallet = await getOPNetWallet();
+                const currentWalletAddress = await wallet.getCurrentAccount();
+                // rawTxInfo is already narrowed to SendBitcoinParameters by the action check above
+                const parameters = rawTxInfo;
+
+                // Determine source address and get UTXOs
+                let fromAddress = currentWalletAddress.address;
+                let utxos: UTXO[] = [];
+                let witnessScript: Buffer | undefined;
+                const feeMin = 10_000n;
+
+                // Handle CSV address sources
+                if (parameters.from && parameters.sourceType && parameters.sourceType !== SourceType.CURRENT) {
+                    const zeroHash = '0x0000000000000000000000000000000000000000000000000000000000000000';
+                    const currentAddress = currentWalletAddress.quantumPublicKeyHash
+                        ? Address.fromString(currentWalletAddress.quantumPublicKeyHash, currentWalletAddress.pubkey)
+                        : Address.fromString(zeroHash, currentWalletAddress.pubkey);
+
+                    if (parameters.sourceType === SourceType.CSV75) {
+                        const csv75Address = currentAddress.toCSV(75, Web3API.network);
+                        fromAddress = csv75Address.address;
+                        witnessScript = csv75Address.witnessScript;
+                        utxos = await Web3API.getAllUTXOsForAddresses(
+                            [fromAddress],
+                            BitcoinUtils.expandToDecimals(parameters.inputAmount, 8) + feeMin,
+                            75n,
+                            parameters.optimize
+                        );
+                    } else if (parameters.sourceType === SourceType.CSV1) {
+                        const csv1Address = currentAddress.toCSV(1, Web3API.network);
+                        fromAddress = csv1Address.address;
+                        witnessScript = csv1Address.witnessScript;
+                        utxos = await Web3API.getAllUTXOsForAddresses(
+                            [fromAddress],
+                            BitcoinUtils.expandToDecimals(parameters.inputAmount, 8) + feeMin,
+                            1n,
+                            parameters.optimize
+                        );
+                    } else if (parameters.sourceType === SourceType.CSV2) {
+                        const csv2Address = currentAddress.toCSV(2, Web3API.network);
+                        fromAddress = csv2Address.address;
+                        witnessScript = csv2Address.witnessScript;
+                        utxos = await Web3API.getAllUTXOsForAddresses(
+                            [fromAddress],
+                            BitcoinUtils.expandToDecimals(parameters.inputAmount, 8) + feeMin,
+                            2n,
+                            parameters.optimize
+                        );
+                    } else if (parameters.sourceType === SourceType.P2WDA) {
+                        const p2wdaAddress = currentAddress.p2wda(Web3API.network);
+                        fromAddress = p2wdaAddress.address;
+                        witnessScript = p2wdaAddress.witnessScript;
+                        utxos = await Web3API.getAllUTXOsForAddresses(
+                            [fromAddress],
+                            BitcoinUtils.expandToDecimals(parameters.inputAmount, 8) + feeMin,
+                            undefined,
+                            parameters.optimize
+                        );
+                    }
+
+                    if (witnessScript && utxos.length > 0) {
+                        utxos = utxos.map((utxo) => ({
+                            ...utxo,
+                            witnessScript: witnessScript
+                        }));
+                    }
+                } else {
+                    utxos = await Web3API.getAllUTXOsForAddresses(
+                        [fromAddress],
+                        BitcoinUtils.expandToDecimals(parameters.inputAmount, 8) + feeMin,
+                        undefined,
+                        parameters.optimize
+                    );
+                }
+
+                if (!utxos || utxos.length === 0) {
+                    throw new Error('No UTXOs available for funding transaction');
+                }
+
+                const fundingParams: IFundingTransactionParameters = {
+                    amount: BitcoinUtils.expandToDecimals(parameters.inputAmount, 8),
+                    utxos: utxos,
+                    signer: userWallet.keypair,
+                    mldsaSigner: userWallet.mldsaKeypair,
+                    network: Web3API.network,
+                    feeRate: parameters.feeRate,
+                    priorityFee: 0n,
+                    gasSatFee: 0n,
+                    to: parameters.to,
+                    from: fromAddress,
+                    note: parameters.note
+                };
+
+                // Create and sign the transaction (without broadcasting)
+                const signedTx = await Web3API.transactionFactory.createBTCTransfer(fundingParams);
+
+                // Decode the transaction to get actual fee data
+                let decodedData: DecodedPreSignedData | null = null;
+                let preSignedTxData: PreSignedTransactionData | null = null;
+
+                try {
+                    decodedData = decodeBitcoinTransfer(signedTx.tx, utxos, Web3API.network);
+
+                    preSignedTxData = {
+                        type: 'bitcoin_transfer',
+                        createdAt: Date.now(),
+                        transactions: decodedData.transactions,
+                        totalMiningFee: decodedData.totalMiningFee,
+                        opnetGasFee: 0n,
+                        opnetEpochMinerOutput: null,
+                        rawData: {
+                            fundingTxHex: null,
+                            interactionTxHex: null,
+                            deploymentTxs: null,
+                            bitcoinTxHex: signedTx.tx,
+                            nextUTXOs: signedTx.nextUTXOs
+                        }
+                    };
+                } catch (decodeError) {
+                    console.warn('Failed to decode Bitcoin transfer:', decodeError);
+                }
+
+                // Cache the signed transaction
+                setCachedBtcTx({
+                    txHex: signedTx.tx,
+                    utxos: utxos,
+                    nextUtxos: signedTx.nextUTXOs,
+                    createdAt: Date.now(),
+                    decodedData,
+                    preSignedTxData
+                });
+            } catch (e) {
+                const error = e as Error;
+                console.error('Pre-signing Bitcoin transfer failed:', error);
+                setSigningError(error.message);
+            } finally {
+                setIsSigning(false);
+            }
+        };
+
+        void preSignBitcoinTransfer();
+    }, [rawTxInfo, wallet, getOPNetWallet]);
+
     const handleCancel = () => {
+        // Clear cached pre-signed transaction on cancel
+        setCachedSignedTx(null);
+        setCachedBtcTx(null);
         window.history.go(-1);
     };
+
+    // Clean up cached transaction on unmount (e.g., closing wallet, navigating away)
+    useEffect(() => {
+        return () => {
+            // Clear cache on component unmount
+            setCachedSignedTx(null);
+            setCachedBtcTx(null);
+        };
+    }, []);
 
     const getPubKey = async (to: string) => {
         let pubKey: Address;
@@ -188,38 +561,28 @@ export default function TxOpnetConfirmScreen() {
     };
 
     const transferToken = async (parameters: TransferParameters) => {
-        const userWallet = await getOPNetWallet();
         const currentWalletAddress = await wallet.getCurrentAccount();
-        const contract: IOP20Contract = getContract<IOP20Contract>(
-            parameters.contractAddress,
-            OP_20_ABI,
-            Web3API.provider,
-            Web3API.network,
-            userWallet.address
-        );
 
         try {
-            const address = await getPubKey(parameters.to);
-            const transferSimulation = await contract.safeTransfer(address, parameters.inputAmount, new Uint8Array());
+            // Check if we have a cached pre-signed transaction
+            if (!cachedSignedTx) {
+                throw new Error('No pre-signed transaction available. Please try again.');
+            }
 
-            const interactionParameters: TransactionParameters = {
-                signer: userWallet.keypair, // The keypair that will sign the transaction
-                mldsaSigner: userWallet.mldsaKeypair, // The ML-DSA keypair for quantum-resistant signing
-                refundTo: currentWalletAddress.address, // Refund the rest of the funds to this address
-                maximumAllowedSatToSpend: parameters.priorityFee, // The maximum we want to allocate to this transaction in satoshis
-                feeRate: parameters.feeRate, // We need to provide a fee rate
-                network: Web3API.network, // The network we are operating on
-                priorityFee: parameters.priorityFee,
-                note: parameters.note
-            };
+            // Check expiration
+            if (isPreSignedExpired()) {
+                throw new Error('Pre-signed transaction expired. Please go back and try again.');
+            }
 
-            const symbol = await contract.symbol();
-            const sendTransaction = await transferSimulation.sendTransaction(interactionParameters);
+            // Broadcast using the cached pre-signed transaction
+            const sendTransaction = await cachedSignedTx.simulation.sendPresignedTransaction(cachedSignedTx.signedTx);
+            const symbol = cachedSignedTx.symbol || '';
+
             tools.toastSuccess(
                 `You have successfully transferred ${BitcoinUtils.formatUnits(
                     parameters.inputAmount,
                     parameters.tokens[0].divisibility
-                )} ${symbol.properties.symbol}`
+                )} ${symbol}`
             );
 
             // Record transaction in history
@@ -229,8 +592,8 @@ export default function TxOpnetConfirmScreen() {
                 from: currentWalletAddress.address,
                 to: parameters.to,
                 amount: parameters.inputAmount.toString(),
-                amountDisplay: `${BitcoinUtils.formatUnits(parameters.inputAmount, parameters.tokens[0].divisibility)} ${symbol.properties.symbol}`,
-                tokenSymbol: symbol.properties.symbol,
+                amountDisplay: `${BitcoinUtils.formatUnits(parameters.inputAmount, parameters.tokens[0].divisibility)} ${symbol}`,
+                tokenSymbol: symbol,
                 tokenDecimals: parameters.tokens[0].divisibility,
                 tokenAddress: parameters.contractAddress,
                 contractAddress: parameters.contractAddress,
@@ -239,11 +602,15 @@ export default function TxOpnetConfirmScreen() {
             };
             void wallet.recordTransaction(txRecord);
 
-            // Store the next UTXO in localStorage
+            // Clear cached transaction
+            setCachedSignedTx(null);
+
             navigate(RouteTypes.TxSuccessScreen, { txid: sendTransaction.transactionId });
         } catch (e) {
             const error = e as Error;
             console.error(e);
+            // Clear cached transaction on error
+            setCachedSignedTx(null);
             if (error.message.toLowerCase().includes('public key not found')) {
                 setDisabled(false);
                 navigate(RouteTypes.TxFailScreen, { error: Web3API.INVALID_PUBKEY_ERROR });
@@ -257,164 +624,75 @@ export default function TxOpnetConfirmScreen() {
     const airdrop = async (parameters: AirdropParameters) => {
         const contractAddress = parameters.contractAddress;
         const currentWalletAddress = await wallet.getCurrentAccount();
-        const userWallet = await getOPNetWallet();
 
-        const contract: AirdropInterface = getContract<AirdropInterface>(
-            contractAddress,
-            AIRDROP_ABI,
-            Web3API.provider,
-            Web3API.network,
-            userWallet.address
-        );
+        try {
+            // Check if we have a cached pre-signed transaction
+            if (!cachedSignedTx) {
+                throw new Error('No pre-signed transaction available. Please try again.');
+            }
 
-        const addressMap = new AddressMap<bigint>();
-        for (const [pubKey, amount] of Object.entries(parameters.amounts)) {
-            addressMap.set(Address.fromString(pubKey), BigInt(amount));
-        }
+            // Check expiration
+            if (isPreSignedExpired()) {
+                throw new Error('Pre-signed transaction expired. Please go back and try again.');
+            }
 
-        const airdropData = await contract.airdrop(addressMap);
-        const interactionParameters: TransactionParameters = {
-            signer: userWallet.keypair, // The keypair that will sign the transaction
-            mldsaSigner: userWallet.mldsaKeypair, // The ML-DSA keypair for quantum-resistant signing
-            refundTo: currentWalletAddress.address, // Refund the rest of the funds to this address
-            maximumAllowedSatToSpend: parameters.priorityFee, // The maximum we want to allocate to this transaction in satoshis
-            feeRate: parameters.feeRate, // We need to provide a fee rate
-            network: Web3API.network, // The network we are operating on
-            priorityFee: parameters.priorityFee,
-            note: parameters.note
-        };
+            // Broadcast using the cached pre-signed transaction
+            const sendTransaction = await cachedSignedTx.simulation.sendPresignedTransaction(cachedSignedTx.signedTx);
+            if (!sendTransaction?.transactionId) {
+                setOpenLoading(false);
+                setDisabled(false);
+                setCachedSignedTx(null);
+                tools.toastError(`Could not send transaction`);
+                return;
+            }
 
-        const sendTransaction = await airdropData.sendTransaction(interactionParameters);
-        if (!sendTransaction?.transactionId) {
-            setOpenLoading(false);
+            const addressCount = Object.keys(parameters.amounts).length;
+            tools.toastSuccess(`You have successfully airdropped tokens to ${addressCount} addresses`);
+
+            // Record transaction in history
+            const txRecord: RecordTransactionInput = {
+                txid: sendTransaction.transactionId || '',
+                type: TransactionType.OPNET_INTERACTION,
+                from: currentWalletAddress.address,
+                contractAddress: contractAddress,
+                contractMethod: 'airdrop',
+                fee: Number(parameters.priorityFee || 0),
+                feeRate: parameters.feeRate,
+                note: `Airdrop to ${addressCount} addresses`
+            };
+            void wallet.recordTransaction(txRecord);
+
+            // Clear cached transaction
+            setCachedSignedTx(null);
+
+            navigate(RouteTypes.TxSuccessScreen, { txid: sendTransaction.transactionId, contractAddress: contractAddress });
+        } catch (e) {
+            const error = e as Error;
+            console.error(e);
+            setCachedSignedTx(null);
             setDisabled(false);
-
-            tools.toastError(`Could not send transaction`);
-            return;
+            navigate(RouteTypes.TxFailScreen, { error: error.message });
         }
-
-        tools.toastSuccess(`You have successfully airdropped tokens to ${addressMap.size} addresses`);
-
-        // Record transaction in history
-        const txRecord: RecordTransactionInput = {
-            txid: sendTransaction.transactionId || '',
-            type: TransactionType.OPNET_INTERACTION,
-            from: currentWalletAddress.address,
-            contractAddress: contractAddress,
-            contractMethod: 'airdrop',
-            fee: Number(parameters.priorityFee || 0),
-            feeRate: parameters.feeRate,
-            note: `Airdrop to ${addressMap.size} addresses`
-        };
-        void wallet.recordTransaction(txRecord);
-
-        navigate(RouteTypes.TxSuccessScreen, { txid: sendTransaction.transactionId, contractAddress: contractAddress });
     };
 
     const sendBTC = async (parameters: SendBitcoinParameters) => {
         try {
             const currentWalletAddress = await wallet.getCurrentAccount();
-            const userWallet = await getOPNetWallet();
 
-            // Determine which address to send from and get UTXOs
-            let fromAddress = currentWalletAddress.address;
-            let utxos: UTXO[] = [];
-            let witnessScript: Buffer | undefined;
-            const feeMin = 10_000n;
-
-            // Check if sending from a CSV address
-            if (parameters.from && parameters.sourceType && parameters.sourceType !== SourceType.CURRENT) {
-                // CSVs can be used even without quantum migration - use zero hash as fallback
-                const zeroHash = '0x0000000000000000000000000000000000000000000000000000000000000000';
-                const currentAddress = currentWalletAddress.quantumPublicKeyHash
-                    ? Address.fromString(currentWalletAddress.quantumPublicKeyHash, currentWalletAddress.pubkey)
-                    : Address.fromString(zeroHash, currentWalletAddress.pubkey);
-
-                if (parameters.sourceType === SourceType.CSV75) {
-                    const csv75Address = currentAddress.toCSV(75, Web3API.network);
-                    fromAddress = csv75Address.address;
-                    witnessScript = csv75Address.witnessScript;
-
-                    utxos = await Web3API.getAllUTXOsForAddresses(
-                        [fromAddress],
-                        BitcoinUtils.expandToDecimals(parameters.inputAmount, 8) + feeMin,
-                        75n,
-                        parameters.optimize
-                    );
-                } else if (parameters.sourceType === SourceType.CSV1) {
-                    const csv1Address = currentAddress.toCSV(1, Web3API.network);
-                    fromAddress = csv1Address.address;
-                    witnessScript = csv1Address.witnessScript;
-
-                    utxos = await Web3API.getAllUTXOsForAddresses(
-                        [fromAddress],
-                        BitcoinUtils.expandToDecimals(parameters.inputAmount, 8) + feeMin,
-                        1n,
-                        parameters.optimize
-                    );
-                } else if (parameters.sourceType === SourceType.CSV2) {
-                    const csv2Address = currentAddress.toCSV(2, Web3API.network);
-                    fromAddress = csv2Address.address;
-                    witnessScript = csv2Address.witnessScript;
-
-                    utxos = await Web3API.getAllUTXOsForAddresses(
-                        [fromAddress],
-                        BitcoinUtils.expandToDecimals(parameters.inputAmount, 8) + feeMin,
-                        2n,
-                        parameters.optimize
-                    );
-                } else if (parameters.sourceType === SourceType.P2WDA) {
-                    const p2wdaAddress = currentAddress.p2wda(Web3API.network);
-                    fromAddress = p2wdaAddress.address;
-                    witnessScript = p2wdaAddress.witnessScript;
-
-                    utxos = await Web3API.getAllUTXOsForAddresses(
-                        [fromAddress],
-                        BitcoinUtils.expandToDecimals(parameters.inputAmount, 8) + feeMin,
-                        undefined,
-                        parameters.optimize
-                    );
-                }
-
-                if (witnessScript && utxos.length > 0) {
-                    utxos = utxos.map((utxo) => ({
-                        ...utxo,
-                        witnessScript: witnessScript
-                    }));
-                }
-            } else {
-                utxos = await Web3API.getAllUTXOsForAddresses(
-                    [fromAddress],
-                    BitcoinUtils.expandToDecimals(parameters.inputAmount, 8) + feeMin,
-                    undefined,
-                    parameters.optimize
-                );
+            // Check if we have a cached pre-signed transaction
+            if (!cachedBtcTx) {
+                throw new Error('No pre-signed transaction available. Please try again.');
             }
 
-            if (!utxos || utxos.length === 0) {
-                tools.toastError(`No UTXOs available for funding transaction`);
-                setDisabled(false);
-                return;
+            // Check expiration (2 minutes)
+            if (Date.now() - cachedBtcTx.createdAt > PRESIGNED_DATA_EXPIRATION_MS) {
+                throw new Error('Pre-signed transaction expired. Please go back and try again.');
             }
 
-            const IFundingTransactionParameters: IFundingTransactionParameters = {
-                amount: BitcoinUtils.expandToDecimals(parameters.inputAmount, 8),
-                utxos: utxos,
-                signer: userWallet.keypair,
-                mldsaSigner: userWallet.mldsaKeypair,
-                network: Web3API.network,
-                feeRate: parameters.feeRate,
-                priorityFee: 0n,
-                gasSatFee: 0n,
-                to: parameters.to,
-                from: fromAddress,
-                note: parameters.note
-            };
-
-            const sendTransact = await Web3API.transactionFactory.createBTCTransfer(IFundingTransactionParameters);
-
-            const sendTransaction = await Web3API.provider.sendRawTransaction(sendTransact.tx, false);
+            // Broadcast the pre-signed transaction
+            const sendTransaction = await Web3API.provider.sendRawTransaction(cachedBtcTx.txHex, false);
             if (!sendTransaction.success) {
+                setCachedBtcTx(null);
                 setDisabled(false);
                 tools.toastError(sendTransaction.error ?? 'Could not broadcast transaction');
                 return;
@@ -431,10 +709,17 @@ export default function TxOpnetConfirmScreen() {
                         : '';
             tools.toastSuccess(`You have successfully transferred ${amountA} ${btcUnit}${sourceLabel}`);
 
-            // Update UTXO manager for the correct address
-            Web3API.provider.utxoManager.spentUTXO(fromAddress, utxos, sendTransact.nextUTXOs);
+            // Determine the from address for UTXO management
+            let fromAddress = currentWalletAddress.address;
+            if (parameters.from && parameters.sourceType && parameters.sourceType !== SourceType.CURRENT) {
+                fromAddress = parameters.from;
+            }
 
-            // Record transaction in history
+            // Update UTXO manager for the correct address
+            Web3API.provider.utxoManager.spentUTXO(fromAddress, cachedBtcTx.utxos, cachedBtcTx.nextUtxos);
+
+            // Record transaction in history with actual fee from decoded data
+            const actualFee = cachedBtcTx.decodedData?.totalMiningFee ?? 0n;
             const txRecord: RecordTransactionInput = {
                 txid: sendTransaction.result || '',
                 type: TransactionType.BTC_TRANSFER,
@@ -442,16 +727,21 @@ export default function TxOpnetConfirmScreen() {
                 to: parameters.to,
                 amount: BitcoinUtils.expandToDecimals(parameters.inputAmount, 8).toString(),
                 amountDisplay: `${parameters.inputAmount} BTC`,
-                fee: 0, // Fee calculated by network
+                fee: Number(actualFee),
                 feeRate: parameters.feeRate
             };
             void wallet.recordTransaction(txRecord);
 
+            // Clear cached transaction
+            setCachedBtcTx(null);
+
             navigate(RouteTypes.TxSuccessScreen, { txid: sendTransaction.result });
         } catch (e) {
-            tools.toastError(`Error: ${(e as Error).message}`);
+            const error = e as Error;
+            console.error(e);
+            setCachedBtcTx(null);
             setDisabled(false);
-            throw e;
+            navigate(RouteTypes.TxFailScreen, { error: error.message });
         }
     };
 
@@ -556,37 +846,29 @@ export default function TxOpnetConfirmScreen() {
     const mint = async (parameters: MintParameters) => {
         try {
             const currentWalletAddress = await wallet.getCurrentAccount();
-            const userWallet = await getOPNetWallet();
 
-            const contract = getContract<IOP20Contract>(
-                parameters.contractAddress,
-                OP_20_ABI,
-                Web3API.provider,
-                Web3API.network,
-                userWallet.address
-            );
+            // Check if we have a cached pre-signed transaction
+            if (!cachedSignedTx) {
+                throw new Error('No pre-signed transaction available. Please try again.');
+            }
 
-            const value = BitcoinUtils.expandToDecimals(parameters.inputAmount, parameters.tokens[0].divisibility);
-            const mintData = await contract.mint(Address.fromString(parameters.to), value);
+            // Check expiration
+            if (isPreSignedExpired()) {
+                throw new Error('Pre-signed transaction expired. Please go back and try again.');
+            }
 
-            const interactionParameters: TransactionParameters = {
-                signer: userWallet.keypair, // The keypair that will sign the transaction
-                mldsaSigner: userWallet.mldsaKeypair, // The ML-DSA keypair for quantum-resistant signing
-                refundTo: currentWalletAddress.address, // Refund the rest of the funds to this address
-                maximumAllowedSatToSpend: parameters.priorityFee, // The maximum we want to allocate to this transaction in satoshis
-                feeRate: parameters.feeRate, // We need to provide a fee rate
-                network: Web3API.network, // The network we are operating on
-                priorityFee: parameters.priorityFee,
-                note: parameters.note
-            };
-
-            const sendTransaction = await mintData.sendTransaction(interactionParameters);
+            // Broadcast using the cached pre-signed transaction
+            const sendTransaction = await cachedSignedTx.simulation.sendPresignedTransaction(cachedSignedTx.signedTx);
             if (!sendTransaction.transactionId) {
+                setCachedSignedTx(null);
                 tools.toastError(`Could not send transaction`);
                 return;
             }
 
-            tools.toastSuccess(`You have successfully minted ${parameters.inputAmount} ${parameters.tokens[0].symbol}`);
+            const symbol = cachedSignedTx.symbol || parameters.tokens[0].symbol;
+            tools.toastSuccess(`You have successfully minted ${parameters.inputAmount} ${symbol}`);
+
+            const value = BitcoinUtils.expandToDecimals(parameters.inputAmount, parameters.tokens[0].divisibility);
 
             // Record transaction in history
             const txRecord: RecordTransactionInput = {
@@ -595,8 +877,8 @@ export default function TxOpnetConfirmScreen() {
                 from: currentWalletAddress.address,
                 to: parameters.to,
                 amount: value.toString(),
-                amountDisplay: `${parameters.inputAmount} ${parameters.tokens[0].symbol}`,
-                tokenSymbol: parameters.tokens[0].symbol,
+                amountDisplay: `${parameters.inputAmount} ${symbol}`,
+                tokenSymbol: symbol,
                 tokenDecimals: parameters.tokens[0].divisibility,
                 contractAddress: parameters.contractAddress,
                 contractMethod: 'mint',
@@ -605,56 +887,39 @@ export default function TxOpnetConfirmScreen() {
             };
             void wallet.recordTransaction(txRecord);
 
+            // Clear cached transaction
+            setCachedSignedTx(null);
+
             navigate(RouteTypes.TxSuccessScreen, { txid: sendTransaction.transactionId });
         } catch (e) {
+            const error = e as Error;
+            console.error(e);
+            setCachedSignedTx(null);
             setDisabled(false);
-            console.log(e);
+            navigate(RouteTypes.TxFailScreen, { error: error.message });
         }
     };
 
     const sendNFT = async (parameters: SendNFTParameters) => {
         try {
             const currentWalletAddress = await wallet.getCurrentAccount();
-            const userWallet = await getOPNetWallet();
 
-            const addy =
-                AddressVerificator.detectAddressType(parameters.collectionAddress, Web3API.network) ===
-                AddressTypes.P2OP
-                    ? parameters.collectionAddress
-                    : Address.fromString(parameters.collectionAddress);
+            // Check if we have a cached pre-signed transaction
+            if (!cachedSignedTx) {
+                throw new Error('No pre-signed transaction available. Please try again.');
+            }
 
-            const contract: IExtendedOP721 = getContract<IExtendedOP721>(
-                addy,
-                EXTENDED_OP721_ABI,
-                Web3API.provider,
-                Web3API.network,
-                userWallet.address
-            );
+            // Check expiration
+            if (isPreSignedExpired()) {
+                throw new Error('Pre-signed transaction expired. Please go back and try again.');
+            }
 
-            const recipientAddress = await getPubKey(parameters.to);
-
-            const transferData = await contract.safeTransferFrom(
-                userWallet.address,
-                recipientAddress,
-                parameters.tokenId,
-                new Uint8Array()
-            );
-
-            const interactionParameters: TransactionParameters = {
-                signer: userWallet.keypair,
-                mldsaSigner: userWallet.mldsaKeypair,
-                refundTo: currentWalletAddress.address,
-                maximumAllowedSatToSpend: parameters.priorityFee,
-                feeRate: parameters.feeRate,
-                network: Web3API.network,
-                priorityFee: parameters.priorityFee,
-                note: parameters.note
-            };
-
-            const sendTransaction = await transferData.sendTransaction(interactionParameters);
+            // Broadcast using the cached pre-signed transaction
+            const sendTransaction = await cachedSignedTx.simulation.sendPresignedTransaction(cachedSignedTx.signedTx);
             if (!sendTransaction?.transactionId) {
                 setOpenLoading(false);
                 setDisabled(false);
+                setCachedSignedTx(null);
                 tools.toastError('Could not send NFT transaction');
                 return;
             }
@@ -678,6 +943,9 @@ export default function TxOpnetConfirmScreen() {
             };
             void wallet.recordTransaction(txRecord);
 
+            // Clear cached transaction
+            setCachedSignedTx(null);
+
             navigate(RouteTypes.TxSuccessScreen, {
                 txid: sendTransaction.transactionId,
                 nftTransfer: true,
@@ -688,6 +956,7 @@ export default function TxOpnetConfirmScreen() {
             const error = e as Error;
             setOpenLoading(false);
             console.error(e);
+            setCachedSignedTx(null);
             if (error.message.toLowerCase().includes('public key not found')) {
                 setDisabled(false);
                 navigate(RouteTypes.TxFailScreen, { error: Web3API.INVALID_PUBKEY_ERROR });
@@ -744,6 +1013,106 @@ export default function TxOpnetConfirmScreen() {
 
             <Content style={{ padding: '12px' }}>
                 <Column>
+                    {/* Signing in Progress Indicator */}
+                    {isSigning && (
+                        <div
+                            style={{
+                                display: 'flex',
+                                flexDirection: 'column',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                padding: '24px',
+                                background: `linear-gradient(135deg, ${colors.main}15 0%, ${colors.main}08 100%)`,
+                                border: `1px solid ${colors.main}30`,
+                                borderRadius: '12px',
+                                marginBottom: '12px'
+                            }}>
+                            <LoadingOutlined
+                                spin
+                                style={{
+                                    fontSize: 32,
+                                    color: colors.main,
+                                    marginBottom: '12px'
+                                }}
+                            />
+                            <Text text="Building transaction..." size="md" style={{ color: colors.text }} />
+                            <Text
+                                text="Please wait while we prepare your transaction for preview"
+                                size="sm"
+                                style={{ color: colors.textFaded, marginTop: '4px', textAlign: 'center' }}
+                            />
+                            {/* Safety Message */}
+                            <div
+                                style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '6px',
+                                    marginTop: '12px',
+                                    padding: '8px 12px',
+                                    background: `${colors.success}15`,
+                                    border: `1px solid ${colors.success}30`,
+                                    borderRadius: '8px'
+                                }}>
+                                <SafetyCertificateOutlined
+                                    style={{
+                                        fontSize: 14,
+                                        color: colors.success
+                                    }}
+                                />
+                                <span
+                                    style={{
+                                        fontSize: '11px',
+                                        color: colors.success,
+                                        fontWeight: 500
+                                    }}>
+                                    Safe - will not broadcast until you confirm
+                                </span>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Signing Error */}
+                    {signingError && (
+                        <div
+                            style={{
+                                display: 'flex',
+                                gap: '10px',
+                                padding: '14px',
+                                background: `${colors.error}15`,
+                                border: `1px solid ${colors.error}40`,
+                                borderRadius: '12px',
+                                marginBottom: '12px'
+                            }}>
+                            <WarningOutlined
+                                style={{
+                                    fontSize: 18,
+                                    color: colors.error,
+                                    flexShrink: 0,
+                                    marginTop: '2px'
+                                }}
+                            />
+                            <div>
+                                <div
+                                    style={{
+                                        fontSize: '14px',
+                                        color: colors.error,
+                                        fontWeight: 600,
+                                        marginBottom: '4px'
+                                    }}>
+                                    Signing Failed
+                                </div>
+                                <div
+                                    style={{
+                                        fontSize: '12px',
+                                        color: colors.textFaded,
+                                        lineHeight: '1.4'
+                                    }}>
+                                    {signingError}
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
                     {/* Transaction Type Card */}
                     <div
                         style={{
@@ -775,11 +1144,25 @@ export default function TxOpnetConfirmScreen() {
                                 fontSize: '12px',
                                 color: colors.textFaded
                             }}>
-                            Review transaction details below
+                            {isSigning ? 'Preparing transaction...' : signingError ? 'Transaction signing failed' : 'Review transaction details below'}
                         </div>
                     </div>
 
-                    {/* Fee Details */}
+                    {/* Transaction Flow Visualization - Only show when we have pre-signed data */}
+                    {(cachedSignedTx?.preSignedTxData || cachedBtcTx?.preSignedTxData) && !isSigning && (
+                        <div style={{ marginBottom: '12px' }}>
+                            <OPNetTxFlowPreview
+                                preSignedData={cachedSignedTx?.preSignedTxData || cachedBtcTx?.preSignedTxData || null}
+                                isLoading={false}
+                                width={340}
+                                showTooltip={true}
+                                compact={true}
+                                title="Transaction Flow"
+                            />
+                        </div>
+                    )}
+
+                    {/* Fee Details - Show actual values if pre-signed, otherwise estimates */}
                     <div
                         style={{
                             background: colors.containerBgFaded,
@@ -797,13 +1180,24 @@ export default function TxOpnetConfirmScreen() {
                                 marginBottom: '12px',
                                 display: 'flex',
                                 alignItems: 'center',
-                                gap: '6px'
+                                justifyContent: 'space-between'
                             }}>
-                            <DollarOutlined style={{ fontSize: 14, color: colors.main }} />
-                            Fee Details
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                <DollarOutlined style={{ fontSize: 14, color: colors.main }} />
+                                Fee Breakdown
+                            </div>
+                            {(cachedSignedTx?.decodedData || cachedBtcTx?.decodedData) ? (
+                                <span style={{ fontSize: '9px', color: colors.success, fontWeight: 500 }}>
+                                    ACTUAL
+                                </span>
+                            ) : (
+                                <span style={{ fontSize: '9px', color: colors.warning, fontWeight: 500 }}>
+                                    {isSigning ? 'CALCULATING...' : 'ESTIMATE'}
+                                </span>
+                            )}
                         </div>
 
-                        {/* Network Fee */}
+                        {/* Mining Fee (inputs - outputs) - Actual value when available */}
                         <div
                             style={{
                                 display: 'flex',
@@ -816,7 +1210,93 @@ export default function TxOpnetConfirmScreen() {
                             }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                                 <ThunderboltOutlined style={{ fontSize: 14, color: colors.warning }} />
-                                <span style={{ fontSize: '13px', color: colors.text }}>Network Fee Rate</span>
+                                <div>
+                                    <span style={{ fontSize: '13px', color: colors.text }}>Mining Fee</span>
+                                    <div style={{ fontSize: '9px', color: colors.textFaded }}>
+                                        Paid to Bitcoin miners
+                                    </div>
+                                </div>
+                            </div>
+                            <div style={{ textAlign: 'right' }}>
+                                <span
+                                    style={{
+                                        fontSize: '14px',
+                                        fontWeight: 600,
+                                        color: (cachedSignedTx?.decodedData || cachedBtcTx?.decodedData) ? colors.success : colors.text
+                                    }}>
+                                    {cachedSignedTx?.decodedData
+                                        ? cachedSignedTx.decodedData.totalMiningFee.toString()
+                                        : cachedBtcTx?.decodedData
+                                          ? cachedBtcTx.decodedData.totalMiningFee.toString()
+                                          : rawTxInfo.priorityFee.toString()}
+                                </span>
+                                <span
+                                    style={{
+                                        fontSize: '11px',
+                                        color: colors.textFaded,
+                                        marginLeft: '4px'
+                                    }}>
+                                    sat
+                                </span>
+                            </div>
+                        </div>
+
+                        {/* OPNet Gas Fee (First output of interaction TX) - Actual value when available */}
+                        {(cachedSignedTx?.decodedData?.opnetGasFee || rawTxInfo.gasSatFee) && (
+                            <div
+                                style={{
+                                    display: 'flex',
+                                    justifyContent: 'space-between',
+                                    alignItems: 'center',
+                                    padding: '10px',
+                                    background: colors.inputBg,
+                                    borderRadius: '8px',
+                                    marginBottom: '8px'
+                                }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    <RocketOutlined style={{ fontSize: 14, color: '#ff6b6b' }} />
+                                    <div>
+                                        <span style={{ fontSize: '13px', color: colors.text }}>OPNet Gas Fee</span>
+                                        <div style={{ fontSize: '9px', color: colors.textFaded }}>
+                                            Paid to Epoch Miner
+                                        </div>
+                                    </div>
+                                </div>
+                                <div style={{ textAlign: 'right' }}>
+                                    <span
+                                        style={{
+                                            fontSize: '14px',
+                                            fontWeight: 600,
+                                            color: cachedSignedTx?.decodedData ? colors.success : colors.text
+                                        }}>
+                                        {cachedSignedTx?.decodedData
+                                            ? cachedSignedTx.decodedData.opnetGasFee.toString()
+                                            : rawTxInfo.gasSatFee?.toString() ?? '0'}
+                                    </span>
+                                    <span
+                                        style={{
+                                            fontSize: '11px',
+                                            color: colors.textFaded,
+                                            marginLeft: '4px'
+                                        }}>
+                                        sat
+                                    </span>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Fee Rate */}
+                        <div
+                            style={{
+                                display: 'flex',
+                                justifyContent: 'space-between',
+                                alignItems: 'center',
+                                padding: '10px',
+                                background: colors.inputBg,
+                                borderRadius: '8px'
+                            }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <span style={{ fontSize: '13px', color: colors.textFaded }}>Fee Rate</span>
                             </div>
                             <div style={{ textAlign: 'right' }}>
                                 <span
@@ -834,77 +1314,6 @@ export default function TxOpnetConfirmScreen() {
                                         marginLeft: '4px'
                                     }}>
                                     sat/vB
-                                </span>
-                            </div>
-                        </div>
-
-                        {/* OP_NET Gas Fee */}
-                        {rawTxInfo.gasSatFee && (
-                            <div
-                                style={{
-                                    display: 'flex',
-                                    justifyContent: 'space-between',
-                                    alignItems: 'center',
-                                    padding: '10px',
-                                    background: colors.inputBg,
-                                    borderRadius: '8px',
-                                    marginBottom: '8px'
-                                }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                    <RocketOutlined style={{ fontSize: 14, color: colors.main }} />
-                                    <span style={{ fontSize: '13px', color: colors.text }}>OP_NET Gas Fee</span>
-                                </div>
-                                <div style={{ textAlign: 'right' }}>
-                                    <span
-                                        style={{
-                                            fontSize: '14px',
-                                            fontWeight: 600,
-                                            color: colors.text
-                                        }}>
-                                        {rawTxInfo.gasSatFee.toString()}
-                                    </span>
-                                    <span
-                                        style={{
-                                            fontSize: '11px',
-                                            color: colors.textFaded,
-                                            marginLeft: '4px'
-                                        }}>
-                                        sat
-                                    </span>
-                                </div>
-                            </div>
-                        )}
-
-                        {/* Priority Fee */}
-                        <div
-                            style={{
-                                display: 'flex',
-                                justifyContent: 'space-between',
-                                alignItems: 'center',
-                                padding: '10px',
-                                background: colors.inputBg,
-                                borderRadius: '8px'
-                            }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                <RocketOutlined style={{ fontSize: 14, color: colors.success }} />
-                                <span style={{ fontSize: '13px', color: colors.text }}>Priority Fee</span>
-                            </div>
-                            <div style={{ textAlign: 'right' }}>
-                                <span
-                                    style={{
-                                        fontSize: '14px',
-                                        fontWeight: 600,
-                                        color: colors.text
-                                    }}>
-                                    {rawTxInfo.priorityFee.toString()}
-                                </span>
-                                <span
-                                    style={{
-                                        fontSize: '11px',
-                                        color: colors.textFaded,
-                                        marginLeft: '4px'
-                                    }}>
-                                    sat
                                 </span>
                             </div>
                         </div>
@@ -1063,17 +1472,17 @@ export default function TxOpnetConfirmScreen() {
                         style={{
                             flex: 1,
                             padding: '12px',
-                            background: disabled ? colors.buttonBg : colors.main,
+                            background: disabled || isSigning || signingError ? colors.buttonBg : colors.main,
                             border: 'none',
                             borderRadius: '10px',
-                            color: disabled ? colors.textFaded : colors.background,
+                            color: disabled || isSigning || signingError ? colors.textFaded : colors.background,
                             fontSize: '14px',
                             fontWeight: 600,
-                            cursor: disabled ? 'not-allowed' : 'pointer',
-                            opacity: disabled ? 0.5 : 1,
+                            cursor: disabled || isSigning || signingError ? 'not-allowed' : 'pointer',
+                            opacity: disabled || isSigning || signingError ? 0.5 : 1,
                             transition: 'all 0.15s'
                         }}
-                        disabled={disabled}
+                        disabled={disabled || isSigning || !!signingError || (rawTxInfo.action === Action.SendBitcoin && !cachedBtcTx)}
                         onClick={async () => {
                             setDisabled(true);
                             switch (rawTxInfo.action) {
@@ -1113,7 +1522,7 @@ export default function TxOpnetConfirmScreen() {
                             }
                         }}
                         onMouseEnter={(e) => {
-                            if (!disabled) {
+                            if (!disabled && !isSigning && !signingError) {
                                 e.currentTarget.style.transform = 'translateY(-1px)';
                                 e.currentTarget.style.boxShadow = `0 4px 12px ${colors.main}40`;
                             }
@@ -1122,7 +1531,7 @@ export default function TxOpnetConfirmScreen() {
                             e.currentTarget.style.transform = 'translateY(0)';
                             e.currentTarget.style.boxShadow = 'none';
                         }}>
-                        Sign & Send
+                        {isSigning ? 'Signing...' : 'Confirm & Send'}
                     </button>
                 </div>
             </Footer>
