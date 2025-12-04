@@ -1,4 +1,6 @@
-import { notificationService, permissionService, sessionService } from '@/background/service';
+import notificationService from '@/background/service/notification';
+import permissionService from '@/background/service/permission';
+import sessionService from '@/background/service/session';
 import { CHAINS, CHAINS_MAP, ChainType, NETWORK_TYPES, VERSION } from '@/shared/constant';
 import { TransactionOrigin } from '@/shared/types/TransactionHistory';
 

@@ -1,4 +1,4 @@
-import { permissionService } from '@/background/service';
+import permissionService from '@/background/service/permission';
 import { SessionEvent, SessionEventPayload } from '@/shared/interfaces/SessionEvent';
 
 export interface SessionInfo {

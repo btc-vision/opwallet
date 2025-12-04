@@ -1,4 +1,4 @@
-import { keyringService } from '@/background/service';
+import keyringService from '@/background/service/keyring';
 
 import { SessionInfo } from '@/background/service/session';
 import { ProviderState } from '@/shared/types/Provider';

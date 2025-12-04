@@ -12,7 +12,7 @@ import Web3API from '@/shared/web3/Web3API';
 import randomstring from 'randomstring';
 import browser from '../webapi/browser';
 
-import { preferenceService } from '.';
+import preferenceService from './preference';
 
 interface ApiResponse<T> {
     code: number;

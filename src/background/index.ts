@@ -11,15 +11,12 @@ import { initEccLib } from '@btc-vision/bitcoin';
 import * as ecc from 'tiny-secp256k1';
 import { Runtime } from 'webextension-polyfill';
 import { providerController, walletController } from './controller';
-import {
-    contactBookService,
-    keyringService,
-    openapiService,
-    permissionService,
-    preferenceService,
-    sessionService
-} from './service';
-import { StoredData } from './service/keyring';
+import contactBookService from './service/contactBook';
+import keyringService, { StoredData } from './service/keyring';
+import openapiService from './service/openapi';
+import permissionService from './service/permission';
+import preferenceService from './service/preference';
+import sessionService from './service/session';
 import { isOpenapiServiceMethod, isWalletControllerMethod } from './utils/controller';
 import { storage } from './webapi';
 import browser, { browserRuntimeOnConnect, browserRuntimeOnInstalled } from './webapi/browser';

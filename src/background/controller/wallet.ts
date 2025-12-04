@@ -1,17 +1,14 @@
 import { BitcoinUtils, BroadcastedTransaction, UTXOs } from 'opnet';
 
-import {
-    contactBookService,
-    keyringService,
-    notificationService,
-    openapiService,
-    permissionService,
-    preferenceService,
-    sessionService,
-    transactionHistoryService,
-    transactionStatusPoller
-} from '@/background/service';
-import { ParsedTransaction, ParsedTxOutput, PreSignedInteractionData, PreSignedTransactionData, SerializedPreSignedInteractionData, serializePreSignedInteractionData } from '@/background/service/notification';
+import contactBookService from '@/background/service/contactBook';
+import keyringService from '@/background/service/keyring';
+import notificationService, { ParsedTransaction, ParsedTxOutput, PreSignedInteractionData, PreSignedTransactionData, SerializedPreSignedInteractionData, serializePreSignedInteractionData } from '@/background/service/notification';
+import openapiService from '@/background/service/openapi';
+import permissionService from '@/background/service/permission';
+import preferenceService from '@/background/service/preference';
+import sessionService from '@/background/service/session';
+import transactionHistoryService from '@/background/service/transactionHistory';
+import transactionStatusPoller from '@/background/service/transactionStatusPoller';
 import { DisplayedKeyring, EmptyKeyring, Keyring, SavedVault } from '@/background/service/keyring';
 import { WalletSaveList } from '@/background/service/preference';
 import { BroadcastTransactionOptions } from '@/content-script/pageProvider/Web3Provider.js';
