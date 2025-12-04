@@ -349,14 +349,16 @@ export default function SignInteraction(props: Props) {
 
                     {/* Collapsible Content */}
                     {isTxFlowExpanded && (
-                        <OPNetTransactionFlow
-                            preSignedData={preSignedData}
-                            contractAddress={to}
-                            contractInfo={contractInfo}
-                            calldata={interactionParameters.calldata as unknown as string}
-                            isLoading={isLoading}
-                            width={340}
-                        />
+                        <div style={{ display: 'flex', justifyContent: 'center' }}>
+                            <OPNetTransactionFlow
+                                preSignedData={preSignedData}
+                                contractAddress={to}
+                                contractInfo={contractInfo}
+                                calldata={interactionParameters.calldata as unknown as string}
+                                isLoading={isLoading}
+                                width={340}
+                            />
+                        </div>
                     )}
                 </div>
 
