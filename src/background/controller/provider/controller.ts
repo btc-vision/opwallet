@@ -317,6 +317,13 @@ export class ProviderController {
             }
 
             interactionParams.network = wallet.getChainType();
+
+            // Pre-sign for transaction flow preview (fire and forget, non-blocking)
+            // Security: This stores signed data internally, never exposes to dApp until approved
+            // Note: Must NOT be async - the APPROVAL decorator expects a sync function
+            void wallet.preSignInteractionForPreview(interactionParams.interactionParameters).catch((err: unknown) => {
+                console.warn('PreSign failed (non-critical):', err);
+            });
         }
     ])
     signAndBroadcastInteraction = async (request: {
@@ -342,6 +349,13 @@ export class ProviderController {
             }
 
             interactionParams.network = wallet.getChainType();
+
+            // Pre-sign for transaction flow preview (fire and forget, non-blocking)
+            // Security: This stores signed data internally, never exposes to dApp until approved
+            // Note: Must NOT be async - the APPROVAL decorator expects a sync function
+            void wallet.preSignInteractionForPreview(interactionParams.interactionParameters).catch((err: unknown) => {
+                console.warn('PreSign failed (non-critical):', err);
+            });
         }
     ])
     signInteraction = async (request: {
