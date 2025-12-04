@@ -262,7 +262,7 @@ export default function SignInteraction(props: Props) {
                 />
             )}
 
-            <Content style={{ padding: '12px' }}>
+            <Content style={{ padding: '12px', overflowY: 'auto' }}>
                 {/* Contract Header */}
                 <InteractionHeader contract={to} contractInfo={contractInfo} />
 
@@ -573,6 +573,9 @@ export default function SignInteraction(props: Props) {
                         </div>
                     )}
                 </div>
+
+                {/* Spacer for fixed footer */}
+                <div style={{ height: '70px' }} />
             </Content>
 
             <Footer style={{ padding: '12px' }}>
