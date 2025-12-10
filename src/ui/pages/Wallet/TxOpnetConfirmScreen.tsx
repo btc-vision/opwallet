@@ -175,7 +175,7 @@ export default function TxOpnetConfirmScreen() {
     const [cachedSignedTx, setCachedSignedTx] = useState<CachedSignedTransaction | null>(null);
     const [cachedBtcTx, setCachedBtcTx] = useState<CachedBitcoinTransfer | null>(null);
     const preSigningRef = useRef<boolean>(false);
-    const [isTxFlowExpanded, setIsTxFlowExpanded] = useState<boolean>(true);
+    const [isTxFlowExpanded, setIsTxFlowExpanded] = useState<boolean>(false);
 
     useEffect(() => {
         const setWallet = async () => {

@@ -55,7 +55,7 @@ export default function SignInteraction(props: Props) {
     const [preSignedData, setPreSignedData] = useState<DeserializedPreSignedData | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [userAddresses, setUserAddresses] = useState<Set<string>>(new Set());
-    const [isTxFlowExpanded, setIsTxFlowExpanded] = useState(true);
+    const [isTxFlowExpanded, setIsTxFlowExpanded] = useState(false);
 
     // Fetch all user addresses (main, csv75, csv2, csv1, p2wda, p2tr) for change detection
     useEffect(() => {
