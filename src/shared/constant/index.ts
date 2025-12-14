@@ -268,7 +268,7 @@ export const DEFAULT_CHAINS_MAP: { [key in ChainType]?: TypeChain<key> } = {
         unit: 'rBTC',
         icon: './images/artifacts/bitcoin-testnet.svg',
         networkType: NetworkType.REGTEST,
-        opnetUrl: 'https://regtest2.opnet.org',
+        opnetUrl: 'https://regtest.opnet.org',
         endpoints: ['https://wallet.opnet.org'],
         mempoolSpaceUrl: 'https://mempool.opnet.org',
         faucetUrl: 'https://faucet.opnet.org/',
@@ -276,8 +276,8 @@ export const DEFAULT_CHAINS_MAP: { [key in ChainType]?: TypeChain<key> } = {
         showPrice: false,
         defaultExplorer: 'mempool-space',
         contractAddresses: {
-            moto: '0xb7e01bd7c583ef6d2e4fd0e3bb9835f275c54b5dc5af44a442b526ebaeeebfb9',
-            pill: '0x186f943f8b0f803be7a44fce28739ff65953cf2bd83687a392186adaf293a336'
+            moto: '0x39b864cdde3c4387cd1aa700ce96718bd3a99565aedb7cc296b58759b931f901',
+            pill: '0x721812da8af59d89d67dc3aaffa7ab2606c8b35f40888f6475d8e4033b6f467b'
         }
     },
     [ChainType.BITCOIN_SIGNET]: {

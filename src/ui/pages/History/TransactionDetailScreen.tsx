@@ -1,20 +1,16 @@
 import { useCallback, useEffect, useState } from 'react';
 
+import { TransactionHistoryItem, TransactionStatus, TransactionType } from '@/shared/types/TransactionHistory';
+import { selectorToString } from '@/shared/web3/decoder/CalldataDecoder';
 import { Column, Content, Header, Layout, OPNetLoader } from '@/ui/components';
 import { useTools } from '@/ui/components/ActionComponent';
 import { RouteTypes, useNavigate } from '@/ui/pages/MainRoute';
-import { useCurrentAccount } from '@/ui/state/accounts/hooks';
-import { copyToClipboard, useLocationState, useWallet } from '@/ui/utils';
-import {
-    TransactionHistoryItem,
-    TransactionStatus,
-    TransactionType
-} from '@/shared/types/TransactionHistory';
-import { selectorToString } from '@/shared/web3/decoder/CalldataDecoder';
 import { decodeCallData } from '@/ui/pages/OpNet/decoded/decodeCallData';
 import { DecodedCalldata } from '@/ui/pages/OpNet/decoded/DecodedCalldata';
 import { Decoded } from '@/ui/pages/OpNet/decoded/DecodedTypes';
+import { useCurrentAccount } from '@/ui/state/accounts/hooks';
 import { useChainType } from '@/ui/state/settings/hooks';
+import { copyToClipboard, useLocationState, useWallet } from '@/ui/utils';
 import {
     CheckCircleOutlined,
     CheckOutlined,
@@ -144,11 +140,7 @@ function DetailRow({ label, value, copyable, onCopy, copied, external }: DetailR
                     </div>
                 )}
                 {external && (
-                    <a
-                        href={external}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        style={{ flexShrink: 0 }}>
+                    <a href={external} target="_blank" rel="noopener noreferrer" style={{ flexShrink: 0 }}>
                         <ExportOutlined style={{ fontSize: 12, color: colors.main }} />
                     </a>
                 )}
@@ -368,7 +360,7 @@ export default function TransactionDetailScreen() {
                                 copyable
                                 onCopy={() => handleCopy('contract', tx.contractAddress ?? '')}
                                 copied={copiedField === 'contract'}
-                                external={`https://opscan.org/address/${tx.contractAddress}`}
+                                external={`https://opscan.org/accounts/${tx.contractAddress}`}
                             />
                         )}
                     </div>
@@ -411,7 +403,14 @@ export default function TransactionDetailScreen() {
                                     borderBottom: `1px solid ${colors.border}`
                                 }}>
                                 <span style={{ fontSize: 12, color: colors.textFaded }}>Origin</span>
-                                <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 8 }}>
+                                <div
+                                    style={{
+                                        flex: 1,
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'flex-end',
+                                        gap: 8
+                                    }}>
                                     {tx.origin.siteIcon && (
                                         <img
                                             src={tx.origin.siteIcon}
