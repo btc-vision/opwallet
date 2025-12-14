@@ -188,6 +188,19 @@ class KeyringService extends EventEmitter {
     ) => {
         privateKey = privateKey.replace('0x', '');
 
+        // Create temporary keyring to check for duplicates before adding
+        const tmpKeyring = this.createTmpKeyring(
+            KEYRING_TYPE.SimpleKeyring, {
+                privateKey,
+                quantumPrivateKey,
+                network,
+                securityLevel: MLDSASecurityLevel.LEVEL2
+            } as SimpleKeyringSerializedOptions
+        );
+
+        const newAccounts = tmpKeyring.getAccounts();
+        this.checkForDuplicate(KEYRING_TYPE.SimpleKeyring, newAccounts);
+
         await this.persistAllKeyrings();
 
         const keyring = await this.addNewKeyring(
@@ -257,11 +270,26 @@ class KeyringService extends EventEmitter {
             return Promise.reject(new Error(i18n.t('mnemonic phrase is invalid')));
         }
 
-        await this.persistAllKeyrings();
         const activeIndexes: number[] = [];
         for (let i = 0; i < accountCount; i++) {
             activeIndexes.push(i);
         }
+
+        // Create temporary keyring to check for duplicates before adding
+        const tmpKeyring = this.createTmpKeyring(
+            KEYRING_TYPE.HdKeyring, {
+                mnemonic: seed,
+                activeIndexes,
+                passphrase,
+                network,
+                securityLevel: MLDSASecurityLevel.LEVEL2,
+                addressType
+            } as HdKeyringSerializedOptions);
+
+        const newAccounts = tmpKeyring.getAccounts();
+        this.checkForDuplicate(KEYRING_TYPE.HdKeyring, newAccounts);
+
+        await this.persistAllKeyrings();
 
         const keyring = await this.addNewKeyring(
             KEYRING_TYPE.HdKeyring,
