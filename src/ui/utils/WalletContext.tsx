@@ -284,6 +284,10 @@ export interface WalletController {
 
     setNotificationWindowMode(mode: 'auto' | 'popup' | 'fullscreen'): Promise<void>;
 
+    getUseSidePanel(): Promise<boolean>;
+
+    setUseSidePanel(useSidePanel: boolean): Promise<void>;
+
     setQuantumKey(quantumPrivateKey: string): Promise<void>;
 
     generateQuantumKey(): Promise<void>;

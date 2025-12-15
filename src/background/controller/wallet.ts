@@ -1,16 +1,20 @@
 import { BitcoinUtils, BroadcastedTransaction, UTXOs } from 'opnet';
 
 import contactBookService from '@/background/service/contactBook';
-import keyringService from '@/background/service/keyring';
-import notificationService, { ParsedTransaction, ParsedTxOutput, PreSignedInteractionData, PreSignedTransactionData, SerializedPreSignedInteractionData, serializePreSignedInteractionData } from '@/background/service/notification';
+import keyringService, { DisplayedKeyring, EmptyKeyring, Keyring, SavedVault } from '@/background/service/keyring';
+import notificationService, {
+    ParsedTransaction,
+    ParsedTxOutput,
+    PreSignedTransactionData,
+    SerializedPreSignedInteractionData,
+    serializePreSignedInteractionData
+} from '@/background/service/notification';
 import openapiService from '@/background/service/openapi';
 import permissionService from '@/background/service/permission';
-import preferenceService from '@/background/service/preference';
+import preferenceService, { WalletSaveList } from '@/background/service/preference';
 import sessionService from '@/background/service/session';
 import transactionHistoryService from '@/background/service/transactionHistory';
 import transactionStatusPoller from '@/background/service/transactionStatusPoller';
-import { DisplayedKeyring, EmptyKeyring, Keyring, SavedVault } from '@/background/service/keyring';
-import { WalletSaveList } from '@/background/service/preference';
 import { BroadcastTransactionOptions } from '@/content-script/pageProvider/Web3Provider.js';
 import { UTXO_CONFIG } from '@/shared/config';
 import {
@@ -1652,11 +1656,7 @@ export class WalletController {
         // Parse funding transaction if present - use fundingInputUtxos for actual input values
         let fundingTx: ParsedTransaction | null = null;
         if (signedData.response.fundingTransaction) {
-            fundingTx = parseTransactionForPreview(
-                signedData.response.fundingTransaction,
-                fundingInputUtxos,
-                network
-            );
+            fundingTx = parseTransactionForPreview(signedData.response.fundingTransaction, fundingInputUtxos, network);
         }
 
         // First output of interaction TX is ALWAYS the OPNet Epoch Miner (gas fee)
@@ -2708,6 +2708,19 @@ export class WalletController {
 
     public setNotificationWindowMode = async (mode: 'auto' | 'popup' | 'fullscreen'): Promise<void> => {
         await preferenceService.setNotificationWindowMode(mode);
+    };
+
+    public getUseSidePanel = (): boolean => {
+        return preferenceService.getUseSidePanel();
+    };
+
+    public setUseSidePanel = async (useSidePanel: boolean): Promise<void> => {
+        await preferenceService.setUseSidePanel(useSidePanel);
+
+        // Update Chrome side panel behavior
+        if (chrome.sidePanel) {
+            chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: useSidePanel }).catch(console.error);
+        }
     };
 
     public setLastActiveTime = (): void => {

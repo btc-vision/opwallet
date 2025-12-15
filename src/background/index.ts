@@ -50,6 +50,13 @@ async function restoreAppState() {
         }
     });
 
+    // Apply side panel preference (default is false = popup mode)
+    if (chrome.sidePanel) {
+        const useSidePanel = preferenceService.getUseSidePanel();
+
+        chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: useSidePanel }).catch(console.error);
+    }
+
     appStoreLoaded = true;
 }
 
