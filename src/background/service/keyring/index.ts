@@ -636,14 +636,28 @@ class KeyringService extends EventEmitter {
             ? ((await oldEncryptor.decrypt(password, encryptedVault)) as SavedVault[])
             : ((await this.encryptor.decrypt(password, encryptedVault)) as SavedVault[]);
 
-        for (const key of vault) {
+        const failedKeyrings: { index: number; error: unknown; data: SavedVault }[] = [];
+
+        for (let i = 0; i < vault.length; i++) {
+            const key = vault[i];
             try {
                 const { keyring, addressType } = this._restoreKeyring(key);
                 this.keyrings.push(keyring);
                 this.addressTypes.push(addressType);
             } catch (e) {
-                console.error('Failed to restore keyring:', e);
+                console.error(`Failed to restore keyring at index ${i}:`, e, 'Data:', JSON.stringify(key));
+                failedKeyrings.push({ index: i, error: e, data: key });
             }
+        }
+
+        // Log warning if any keyrings failed to restore
+        if (failedKeyrings.length > 0) {
+            console.error(
+                `WARNING: ${failedKeyrings.length} keyring(s) failed to restore. ` +
+                    `This may indicate data corruption or format incompatibility. ` +
+                    `Failed keyrings:`,
+                failedKeyrings
+            );
         }
 
         this._updateMemStoreKeyrings();
@@ -701,8 +715,8 @@ class KeyringService extends EventEmitter {
                 network?: Network;
             };
 
-            // Use network override if provided, otherwise use stored network
-            const network = networkOverride || hdData.network || legacyData.network;
+            // Use network override if provided, otherwise use stored network, fallback to regtest
+            const network = networkOverride || hdData.network || legacyData.network || networks.regtest;
 
             const keyring = new HdKeyring({
                 mnemonic: hdData.mnemonic || legacyData.mnemonic,
@@ -735,8 +749,8 @@ class KeyringService extends EventEmitter {
                 throw new Error('No private key found in serialized data');
             }
 
-            // Use network override if provided, otherwise use stored network
-            const network = networkOverride || simpleData.network || legacyData.network;
+            // Use network override if provided, otherwise use stored network, fallback to regtest
+            const network = networkOverride || simpleData.network || legacyData.network || networks.regtest;
 
             const keyring = new SimpleKeyring({
                 privateKey,
@@ -1043,19 +1057,39 @@ class KeyringService extends EventEmitter {
             } as SavedVault;
         });
 
-        // Clear current keyrings
-        this.clearKeyrings();
+        // SAFETY: First try to restore ALL keyrings to a temporary array
+        // Only replace the original keyrings if ALL restorations succeed
+        const newKeyrings: (Keyring | EmptyKeyring)[] = [];
+        const newAddressTypes: AddressTypes[] = [];
+        const failedRestorations: { index: number; error: unknown }[] = [];
 
-        // Restore keyrings with the new network
-        for (const serialized of serializedKeyrings) {
+        for (let i = 0; i < serializedKeyrings.length; i++) {
+            const serialized = serializedKeyrings[i];
             try {
                 const { keyring, addressType } = this._restoreKeyring(serialized, network);
-                this.keyrings.push(keyring);
-                this.addressTypes.push(addressType);
+                newKeyrings.push(keyring);
+                newAddressTypes.push(addressType);
             } catch (e) {
-                console.error('Failed to restore keyring with new network:', e);
+                console.error(`Failed to restore keyring ${i} with new network:`, e);
+                failedRestorations.push({ index: i, error: e });
             }
         }
+
+        // If any restorations failed, keep the original keyrings and log error
+        if (failedRestorations.length > 0) {
+            console.error(
+                `CRITICAL: ${failedRestorations.length} keyring(s) failed to restore during network switch. ` +
+                    `Keeping original keyrings to prevent data loss. Failed indices:`,
+                failedRestorations.map((f) => f.index)
+            );
+            // Don't clear or replace - keep original keyrings safe
+            return;
+        }
+
+        // All restorations succeeded - safe to replace
+        this.clearKeyrings();
+        this.keyrings = newKeyrings;
+        this.addressTypes = newAddressTypes;
 
         // Persist updated keyrings with new network
         await this.persistAllKeyrings();

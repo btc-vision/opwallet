@@ -42,6 +42,7 @@ export interface PreferenceStore {
     autoLockTimeId: number;
     customNetworks: Record<string, CustomNetwork>;
     notificationWindowMode: 'auto' | 'popup' | 'fullscreen';
+    useSidePanel: boolean;
 }
 
 const SUPPORT_LOCALES = ['en'];
@@ -78,7 +79,8 @@ const DEFAULTS = {
         addressFlags: {},
         autoLockTimeId: DEFAULT_LOCKTIME_ID,
         customNetworks: {},
-        notificationWindowMode: 'popup'
+        notificationWindowMode: 'popup',
+        useSidePanel: false
     } as PreferenceStore
 };
 
@@ -502,6 +504,15 @@ class PreferenceService {
     setAutoLockTimeId = async (id: number) => {
         this.store.autoLockTimeId = id;
 
+        await this.persist();
+    };
+
+    getUseSidePanel = (): boolean => {
+        return this.store.useSidePanel || false;
+    };
+
+    setUseSidePanel = async (useSidePanel: boolean) => {
+        this.store.useSidePanel = useSidePanel;
         await this.persist();
     };
 

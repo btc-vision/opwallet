@@ -12,7 +12,15 @@ import { useAppDispatch } from '@/ui/state/hooks';
 import { useAutoLockTimeId } from '@/ui/state/settings/hooks';
 import { settingsActions } from '@/ui/state/settings/reducer';
 import { useWallet } from '@/ui/utils';
-import { AppstoreOutlined, CheckCircleFilled, ClockCircleOutlined, InfoCircleOutlined, LoadingOutlined, RightOutlined } from '@ant-design/icons';
+import {
+    AppstoreOutlined,
+    CheckCircleFilled,
+    ClockCircleOutlined,
+    InfoCircleOutlined,
+    LayoutOutlined,
+    LoadingOutlined,
+    RightOutlined
+} from '@ant-design/icons';
 
 type NotificationWindowMode = 'auto' | 'popup' | 'fullscreen';
 
@@ -39,14 +47,19 @@ const colors = {
 
 export default function AdvancedScreen() {
     const wallet = useWallet();
+    const tools = useTools();
+
     const [enableUnconfirmed, setEnableUnconfirmed] = useState(false);
     const [unconfirmedPopoverVisible, setUnconfirmedPopoverVisible] = useState(false);
     const [lockTimePopoverVisible, setLockTimePopoverVisible] = useState(false);
     const [windowModePopoverVisible, setWindowModePopoverVisible] = useState(false);
     const [notificationWindowMode, setNotificationWindowMode] = useState<NotificationWindowMode>('popup');
+    const [useSidePanel, setUseSidePanel] = useState(false);
+    const [sidePanelLoading, setSidePanelLoading] = useState(false);
     const autoLockTimeId = useAutoLockTimeId();
     const lockTimeConfig = AUTO_LOCKTIMES[autoLockTimeId] || AUTO_LOCKTIMES[DEFAULT_LOCKTIME_ID];
-    const windowModeConfig = NOTIFICATION_WINDOW_MODES.find((m) => m.id === notificationWindowMode) || NOTIFICATION_WINDOW_MODES[0];
+    const windowModeConfig =
+        NOTIFICATION_WINDOW_MODES.find((m) => m.id === notificationWindowMode) || NOTIFICATION_WINDOW_MODES[0];
     const currentAccount = useCurrentAccount();
     const dispatch = useAppDispatch();
     const [init, setInit] = useState(false);
@@ -63,6 +76,10 @@ export default function AdvancedScreen() {
             // Load notification window mode
             const mode = await wallet.getNotificationWindowMode();
             setNotificationWindowMode(mode);
+
+            // Load side panel preference
+            const sidePanel = await wallet.getUseSidePanel();
+            setUseSidePanel(sidePanel);
 
             setInit(true);
         };
@@ -214,6 +231,7 @@ export default function AdvancedScreen() {
                             display: 'flex',
                             alignItems: 'center',
                             padding: '14px 12px',
+                            borderBottom: `1px solid ${colors.containerBorder}`,
                             cursor: 'pointer',
                             transition: 'all 0.15s'
                         }}
@@ -276,6 +294,115 @@ export default function AdvancedScreen() {
                                 color: colors.textFaded
                             }}
                         />
+                    </div>
+
+                    {/* Side Panel Mode Setting (Chrome only) */}
+                    <div
+                        style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            padding: '14px 12px',
+                            cursor: sidePanelLoading ? 'not-allowed' : 'pointer',
+                            transition: 'all 0.15s',
+                            opacity: sidePanelLoading ? 0.7 : 1
+                        }}
+                        onClick={async () => {
+                            if (sidePanelLoading) return;
+                            setSidePanelLoading(true);
+                            try {
+                                const newValue = !useSidePanel;
+                                await wallet.setUseSidePanel(newValue);
+                                setUseSidePanel(newValue);
+                                tools.toastSuccess(
+                                    newValue
+                                        ? 'Side panel enabled. Restart extension to apply.'
+                                        : 'Side panel disabled. Restart extension to apply.'
+                                );
+                            } catch (error) {
+                                tools.toastError('Failed to update side panel setting');
+                            } finally {
+                                setSidePanelLoading(false);
+                            }
+                        }}
+                        onMouseEnter={(e) => {
+                            if (!sidePanelLoading) e.currentTarget.style.background = colors.buttonHoverBg;
+                        }}
+                        onMouseLeave={(e) => {
+                            e.currentTarget.style.background = 'transparent';
+                        }}>
+                        {/* Icon */}
+                        <div
+                            style={{
+                                width: '36px',
+                                height: '36px',
+                                borderRadius: '10px',
+                                background: colors.buttonHoverBg,
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                marginRight: '12px'
+                            }}>
+                            <LayoutOutlined style={{ fontSize: 18, color: colors.main }} />
+                        </div>
+
+                        {/* Content */}
+                        <div style={{ flex: 1 }}>
+                            <div
+                                style={{
+                                    fontSize: '14px',
+                                    fontWeight: 500,
+                                    color: colors.text,
+                                    marginBottom: '2px',
+                                    fontFamily: 'Inter-Regular, serif'
+                                }}>
+                                Side Panel Mode
+                            </div>
+                            <div
+                                style={{
+                                    fontSize: '12px',
+                                    color: useSidePanel ? colors.success : colors.textFaded,
+                                    fontWeight: 500
+                                }}>
+                                {useSidePanel ? 'Enabled' : 'Disabled'}
+                            </div>
+                            <div
+                                style={{
+                                    fontSize: '11px',
+                                    color: colors.textFaded,
+                                    marginTop: '2px'
+                                }}>
+                                Open as side panel instead of popup (Chrome only)
+                            </div>
+                        </div>
+
+                        {/* Toggle Switch */}
+                        <div
+                            style={{
+                                width: '44px',
+                                height: '24px',
+                                borderRadius: '12px',
+                                background: useSidePanel ? colors.main : colors.buttonBg,
+                                position: 'relative',
+                                transition: 'background 0.2s',
+                                cursor: sidePanelLoading ? 'not-allowed' : 'pointer'
+                            }}>
+                            <div
+                                style={{
+                                    width: '20px',
+                                    height: '20px',
+                                    borderRadius: '10px',
+                                    background: colors.text,
+                                    position: 'absolute',
+                                    top: '2px',
+                                    left: useSidePanel ? '22px' : '2px',
+                                    transition: 'left 0.2s',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center'
+                                }}>
+                                {sidePanelLoading && <LoadingOutlined style={{ fontSize: 12, color: colors.main }} />}
+                            </div>
+                        </div>
                     </div>
                 </div>
             </Content>

@@ -26,7 +26,10 @@
         "type": "module"
     },
     "homepage_url": "https://opnet.org",
-    "permissions": ["storage", "unlimitedStorage", "activeTab"],
+    "permissions": ["storage", "unlimitedStorage", "activeTab", "sidePanel"],
+    "side_panel": {
+        "default_path": "index.html"
+    },
     "short_name": "__MSG_appName__",
     "content_scripts": [
         {
@@ -130,7 +133,7 @@
     ],
     "web_accessible_resources": [
         {
-            "resources": ["pageProvider.js",  "js/*.js", "crypto-polyfill.js"],
+            "resources": ["pageProvider.js", "js/*.js", "crypto-polyfill.js"],
             "matches": ["<all_urls>"],
             "type": "module"
         }
