@@ -262,7 +262,7 @@ export default function TransactionDetailScreen() {
         );
     }
 
-    const explorerUrl = `https://opscan.org/tx/${tx.txid}`;
+    const explorerUrl = `https://opscan.org/transactions/${tx.txid}`;
 
     return (
         <Layout>
@@ -315,7 +315,7 @@ export default function TransactionDetailScreen() {
                                 copyable
                                 onCopy={() => handleCopy('fundingTxid', tx.fundingTxid ?? '')}
                                 copied={copiedField === 'fundingTxid'}
-                                external={`https://opscan.org/tx/${tx.fundingTxid}`}
+                                external={`https://opscan.org/transactions/${tx.fundingTxid}`}
                             />
                         )}
 
