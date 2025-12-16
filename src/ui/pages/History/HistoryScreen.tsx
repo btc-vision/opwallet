@@ -1,22 +1,21 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
 import { BitcoinUtils } from 'opnet';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
+import {
+    TransactionHistoryFilter,
+    TransactionHistoryItem,
+    TransactionStatus,
+    TransactionType
+} from '@/shared/types/TransactionHistory';
 import { Column, Content, Header, Layout, OPNetLoader } from '@/ui/components';
-import { useNavigate, RouteTypes } from '@/ui/pages/MainRoute';
+import { RouteTypes, useNavigate } from '@/ui/pages/MainRoute';
 import { useCurrentAccount } from '@/ui/state/accounts/hooks';
 import { useChainType } from '@/ui/state/settings/hooks';
-import { useWallet, copyToClipboard } from '@/ui/utils';
-import {
-    TransactionHistoryItem,
-    TransactionType,
-    TransactionStatus,
-    TransactionHistoryFilter
-} from '@/shared/types/TransactionHistory';
+import { useWallet } from '@/ui/utils';
 import {
     CheckCircleOutlined,
     ClockCircleOutlined,
     CloseCircleOutlined,
-    CopyOutlined,
     DeploymentUnitOutlined,
     ExportOutlined,
     FilterOutlined,
@@ -94,7 +93,7 @@ function getTypeLabel(tx: TransactionHistoryItem): string {
         case TransactionType.BTC_RECEIVE:
             return `Received${formatBtcAmount(tx.amount)}`;
         case TransactionType.OPNET_INTERACTION:
-            return tx.contractMethod ? `${tx.contractMethod}` : 'Contract Interaction';
+            return tx.contractMethod ? tx.contractMethod : 'Contract Interaction';
         case TransactionType.CONTRACT_DEPLOYMENT:
             return 'Contract Deployment';
         case TransactionType.TOKEN_TRANSFER:
@@ -196,7 +195,8 @@ function TransactionItem({ tx, onClick }: TransactionItemProps) {
                                 const parent = (e.target as HTMLImageElement).parentElement;
                                 if (parent) {
                                     const fallback = document.createElement('span');
-                                    fallback.innerHTML = '<svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" style="color: #f37413"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/></svg>';
+                                    fallback.innerHTML =
+                                        '<svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" style="color: #f37413"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/></svg>';
                                     parent.appendChild(fallback.firstChild!);
                                 }
                             }}
@@ -209,9 +209,7 @@ function TransactionItem({ tx, onClick }: TransactionItemProps) {
                 {/* Main Info */}
                 <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
-                        <span style={{ fontSize: 13, fontWeight: 500, color: colors.text }}>
-                            {getTypeLabel(tx)}
-                        </span>
+                        <span style={{ fontSize: 13, fontWeight: 500, color: colors.text }}>{getTypeLabel(tx)}</span>
                         {tx.origin.type === 'external' && (
                             <span
                                 style={{
@@ -267,28 +265,66 @@ export default function HistoryScreen() {
     const [filterStatus, setFilterStatus] = useState<FilterStatus>('all');
     const [currentPage, setCurrentPage] = useState(1);
     const [showFilters, setShowFilters] = useState(false);
+    const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-    const loadHistory = useCallback(async () => {
-        setLoading(true);
-        try {
-            const filter: TransactionHistoryFilter | undefined =
-                filterStatus !== 'all'
-                    ? { statuses: [filterStatus.toUpperCase() as TransactionStatus] }
-                    : undefined;
+    const loadHistory = useCallback(
+        async (showLoader = true) => {
+            if (showLoader) {
+                setLoading(true);
+            }
+            try {
+                const filter: TransactionHistoryFilter | undefined =
+                    filterStatus !== 'all'
+                        ? { statuses: [filterStatus.toUpperCase() as TransactionStatus] }
+                        : undefined;
 
-            const history = await wallet.getFilteredTransactionHistory(filter);
-            setTransactions(history);
-        } catch (error) {
-            console.error('Failed to load transaction history:', error);
-            setTransactions([]);
-        } finally {
-            setLoading(false);
-        }
-    }, [wallet, filterStatus]);
+                const history = await wallet.getFilteredTransactionHistory(filter);
+                setTransactions(history);
+            } catch (error) {
+                console.error('Failed to load transaction history:', error);
+                setTransactions([]);
+            } finally {
+                if (showLoader) {
+                    setLoading(false);
+                }
+            }
+        },
+        [wallet, filterStatus]
+    );
 
+    // Initial load
     useEffect(() => {
-        void loadHistory();
+        void loadHistory(true);
     }, [loadHistory, currentAccount.pubkey, chainType]);
+
+    // Check if there are any pending transactions
+    const hasPendingTransactions = useMemo(() => {
+        return transactions.some((tx) => tx.status === TransactionStatus.PENDING);
+    }, [transactions]);
+
+    // Poll for updates when there are pending transactions
+    useEffect(() => {
+        // Clear any existing interval
+        if (pollIntervalRef.current) {
+            clearInterval(pollIntervalRef.current);
+            pollIntervalRef.current = null;
+        }
+
+        // Only poll if there are pending transactions
+        if (hasPendingTransactions) {
+            pollIntervalRef.current = setInterval(() => {
+                void loadHistory(false);
+            }, 15000); // Poll every 15 seconds
+        }
+
+        // Cleanup on unmount
+        return () => {
+            if (pollIntervalRef.current) {
+                clearInterval(pollIntervalRef.current);
+                pollIntervalRef.current = null;
+            }
+        };
+    }, [hasPendingTransactions, loadHistory]);
 
     const paginatedTransactions = useMemo(() => {
         const start = (currentPage - 1) * ITEMS_PER_PAGE;
@@ -314,9 +350,7 @@ export default function HistoryScreen() {
                 title="Transaction History"
                 onBack={() => navigate(RouteTypes.MainScreen)}
                 RightComponent={
-                    <div
-                        style={{ cursor: 'pointer', padding: 8 }}
-                        onClick={() => setShowFilters(!showFilters)}>
+                    <div style={{ cursor: 'pointer', padding: 8 }} onClick={() => setShowFilters(!showFilters)}>
                         <FilterOutlined style={{ fontSize: 16, color: showFilters ? colors.main : colors.textFaded }} />
                     </div>
                 }
