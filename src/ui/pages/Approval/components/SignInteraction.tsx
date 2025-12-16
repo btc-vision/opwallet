@@ -57,7 +57,8 @@ export default function SignInteraction(props: Props) {
     const [userAddresses, setUserAddresses] = useState<Set<string>>(new Set());
     const [isTxFlowExpanded, setIsTxFlowExpanded] = useState(false);
 
-    // Fetch all user addresses (main, csv75, csv2, csv1, p2wda, p2tr) for change detection
+    // Fetch all user addresses for change detection
+    // Includes: main address, all CSV variants, p2wda, p2tr, p2wpkh (segwit), p2pkh (legacy), p2shp2wpkh (nested segwit)
     useEffect(() => {
         const fetchUserAddresses = async () => {
             try {
@@ -72,7 +73,7 @@ export default function SignInteraction(props: Props) {
                     const zeroHash = '0x0000000000000000000000000000000000000000000000000000000000000000';
                     const addressInst = Address.fromString(zeroHash, account.pubkey);
 
-                    // Add all derived addresses - CSV, p2wda, and p2tr
+                    // Add CSV addresses (return objects with .address property)
                     try {
                         addresses.add(addressInst.toCSV(75, Web3API.network).address.toLowerCase());
                     } catch { /* ignore if derivation fails */ }
@@ -82,12 +83,30 @@ export default function SignInteraction(props: Props) {
                     try {
                         addresses.add(addressInst.toCSV(1, Web3API.network).address.toLowerCase());
                     } catch { /* ignore if derivation fails */ }
+
+                    // Add p2wda address (returns object with .address property)
                     try {
                         addresses.add(addressInst.p2wda(Web3API.network).address.toLowerCase());
                     } catch { /* ignore if derivation fails */ }
+
+                    // Add p2tr (taproot) address - returns string directly
                     try {
-                        // Also add p2tr (taproot) address
                         addresses.add(addressInst.p2tr(Web3API.network).toLowerCase());
+                    } catch { /* ignore if derivation fails */ }
+
+                    // Add p2wpkh (native segwit) address - returns string directly
+                    try {
+                        addresses.add(addressInst.p2wpkh(Web3API.network).toLowerCase());
+                    } catch { /* ignore if derivation fails */ }
+
+                    // Add p2pkh (legacy) address - returns string directly
+                    try {
+                        addresses.add(addressInst.p2pkh(Web3API.network).toLowerCase());
+                    } catch { /* ignore if derivation fails */ }
+
+                    // Add p2shp2wpkh (nested segwit) address - returns string directly
+                    try {
+                        addresses.add(addressInst.p2shp2wpkh(Web3API.network).toLowerCase());
                     } catch { /* ignore if derivation fails */ }
                 }
 
@@ -152,11 +171,10 @@ export default function SignInteraction(props: Props) {
     const priorityFee = interactionParameters.priorityFee;
 
     // Analyze outputs: identify which go to user (change) vs external (payments/fees)
-    // SECURITY: We must check against ALL user addresses (main, csv75, csv2, csv1, p2wda)
+    // We must check against ALL user addresses (main, all CSV variants, p2wda, p2tr, p2wpkh, p2pkh, p2shp2wpkh)
     // because inputs can come from any source and change can go to any user address
     const outputAnalysis = useMemo(() => {
         if (!preSignedData || userAddresses.size === 0) {
-            // Fallback estimate when pre-signed data not available
             const optionalOutputsTotal = (optionalOutputs ?? []).reduce(
                 (sum, output) => sum + BigInt(output.value),
                 0n
@@ -178,19 +196,34 @@ export default function SignInteraction(props: Props) {
         const fundingTx = preSignedData.fundingTx;
         const interactionTx = preSignedData.interactionTx;
 
-        // Total inputs = funding tx inputs (what user is spending)
-        // Values are now properly deserialized as BigInt
+        // Total inputs from funding tx (what user is actually spending from their wallet)
         const totalInputs = fundingTx ? fundingTx.totalInputValue : interactionTx.totalInputValue;
-
-        // Analyze all outputs (skip first which is epoch miner)
-        const outputs = interactionTx.outputs.slice(1).filter((o) => !o.isOpReturn);
 
         const changeOutputs: ParsedTxOutput[] = [];
         const externalOutputs: ParsedTxOutput[] = [];
         let totalChange = 0n;
         let totalExternal = 0n;
 
-        for (const output of outputs) {
+        // Analyze FUNDING TX outputs first
+        if (fundingTx) {
+            for (const output of fundingTx.outputs) {
+                if (output.isOpReturn) continue;
+                const outputAddr = output.address?.toLowerCase();
+                const isUserAddress = outputAddr ? userAddresses.has(outputAddr) : false;
+
+                if (isUserAddress) {
+                    changeOutputs.push(output);
+                    totalChange += output.value;
+                }
+                // Don't add funding tx non-user outputs to externalOutputs -
+                // those go to the interaction tx, not external parties
+            }
+        }
+
+        // Analyze interaction tx outputs (skip first which is epoch miner, skip OP_RETURN)
+        const interactionOutputs = interactionTx.outputs.slice(1).filter((o) => !o.isOpReturn);
+
+        for (const output of interactionOutputs) {
             const outputAddr = output.address?.toLowerCase();
             const isUserAddress = outputAddr ? userAddresses.has(outputAddr) : false;
 
@@ -203,7 +236,7 @@ export default function SignInteraction(props: Props) {
             }
         }
 
-        // Total cost = inputs - change going back to user
+        // Total cost = inputs - all change going back to user (from both txs)
         const totalCost = Number(totalInputs - totalChange);
 
         return {
