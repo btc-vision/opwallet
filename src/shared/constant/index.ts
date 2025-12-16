@@ -276,8 +276,8 @@ export const DEFAULT_CHAINS_MAP: { [key in ChainType]?: TypeChain<key> } = {
         showPrice: false,
         defaultExplorer: 'mempool-space',
         contractAddresses: {
-            moto: '0x39b864cdde3c4387cd1aa700ce96718bd3a99565aedb7cc296b58759b931f901',
-            pill: '0x721812da8af59d89d67dc3aaffa7ab2606c8b35f40888f6475d8e4033b6f467b'
+            moto: '0x0a6732489a31e6de07917a28ff7df311fc5f98f6e1664943ac1c3fe7893bdab5',
+            pill: '0xfb7df2f08d8042d4df0506c0d4cee3cfa5f2d7b02ef01ec76dd699551393a438'
         }
     },
     [ChainType.BITCOIN_SIGNET]: {
