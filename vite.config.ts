@@ -1,15 +1,15 @@
-import { defineConfig, type PluginOption } from 'vite';
-import react from '@vitejs/plugin-react-swc';
-import path, { resolve } from 'path';
-import tsconfigPaths from 'vite-tsconfig-paths';
-import eslint from 'vite-plugin-eslint2';
-import checker from 'vite-plugin-checker';
-import wasm from 'vite-plugin-wasm';
-import topLevelAwait from 'vite-plugin-top-level-await';
-import { nodePolyfills } from 'vite-plugin-node-polyfills';
-import fs from 'fs';
-import archiver from 'archiver';
 import tailwindcss from '@tailwindcss/vite';
+import react from '@vitejs/plugin-react-swc';
+import archiver from 'archiver';
+import fs from 'fs';
+import path, { resolve } from 'path';
+import { defineConfig, type PluginOption } from 'vite';
+import checker from 'vite-plugin-checker';
+import eslint from 'vite-plugin-eslint2';
+import { nodePolyfills } from 'vite-plugin-node-polyfills';
+import topLevelAwait from 'vite-plugin-top-level-await';
+import wasm from 'vite-plugin-wasm';
+import tsconfigPaths from 'vite-tsconfig-paths';
 
 // Get package version
 const packageJson = JSON.parse(fs.readFileSync('./package.json', 'utf-8'));
@@ -238,10 +238,16 @@ export default defineConfig(({ mode }) => {
                       compress: {
                           drop_console: false,
                           drop_debugger: true,
-                          passes: 2
+                          passes: 2,
+                          // Avoid generating eval-based code for CSP compliance
+                          evaluate: false
                       },
                       format: {
                           comments: false
+                      },
+                      // Don't use eval or Function constructor in output
+                      mangle: {
+                          eval: false
                       }
                   }
                 : undefined,

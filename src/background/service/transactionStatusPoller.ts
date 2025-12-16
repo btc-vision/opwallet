@@ -1,9 +1,9 @@
 import { ChainType } from '@/shared/constant';
-import { TransactionHistoryItem, TransactionStatus, TransactionType } from '@/shared/types/TransactionHistory';
+import { TransactionHistoryItem, TransactionStatus } from '@/shared/types/TransactionHistory';
 import Web3API from '@/shared/web3/Web3API';
 
-import transactionHistoryService from './transactionHistory';
 import preferenceService from './preference';
+import transactionHistoryService from './transactionHistory';
 
 const POLL_INTERVAL_MS = 30000; // 30 seconds
 const MAX_STATUS_CHECK_ATTEMPTS = 50; // ~25 minutes then stop checking individual tx
@@ -85,7 +85,9 @@ class TransactionStatusPoller {
         for (const { chainType, pubkey, transaction } of pendingTxs) {
             // Skip if we've exceeded max attempts
             if (transaction.statusCheckAttempts >= MAX_STATUS_CHECK_ATTEMPTS) {
-                console.log(`[TransactionStatusPoller] Max attempts reached for tx ${transaction.txid}, marking as failed`);
+                console.log(
+                    `[TransactionStatusPoller] Max attempts reached for tx ${transaction.txid}, marking as failed`
+                );
                 await transactionHistoryService.updateTransactionStatus(
                     chainType,
                     pubkey,
@@ -119,7 +121,12 @@ class TransactionStatusPoller {
         transaction: TransactionHistoryItem
     ): Promise<void> {
         // Ensure Web3API is set to the correct network
-        await Web3API.setNetwork(chainType);
+        try {
+            await Web3API.setNetwork(chainType);
+        } catch (networkError) {
+            console.error(`[TransactionStatusPoller] Failed to set network for ${chainType}:`, networkError);
+            throw networkError;
+        }
 
         try {
             const txResult = await Web3API.provider.getTransaction(transaction.txid);
@@ -150,9 +157,29 @@ class TransactionStatusPoller {
                 }
             }
             // If txResult is null/undefined, transaction is still pending - just update attempt count
-        } catch {
-            // Transaction not found yet, still pending
-            // Will be updated via the catch block in pollPendingTransactions
+        } catch (error) {
+            // Log the actual error for debugging
+            const errorMessage = error instanceof Error ? error.message : String(error);
+
+            // Check for CSP or eval-related errors
+            if (
+                errorMessage.includes('eval') ||
+                errorMessage.includes('CSP') ||
+                errorMessage.includes('Content Security Policy')
+            ) {
+                console.error(
+                    `[TransactionStatusPoller] CSP/eval error checking tx ${transaction.txid}:`,
+                    errorMessage
+                );
+            } else {
+                console.log(
+                    `[TransactionStatusPoller] Transaction ${transaction.txid} not found yet (pending):`,
+                    errorMessage
+                );
+            }
+
+            // Re-throw to let the caller handle it
+            throw error;
         }
     }
 
