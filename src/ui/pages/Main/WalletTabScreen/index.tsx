@@ -1,4 +1,4 @@
-import React, { CSSProperties, useEffect, useState } from 'react';
+import React, { CSSProperties, useCallback, useEffect, useMemo, useState } from 'react';
 
 import { AddressFlagType, KEYRING_TYPE } from '@/shared/constant';
 import { UTXO_CONFIG } from '@/shared/config';
@@ -35,14 +35,18 @@ import { copyToClipboard, useWallet } from '@/ui/utils';
 import { useTools } from '@/ui/components/ActionComponent';
 import ParticleField from '@/ui/components/ParticleField/ParticleField';
 import {
+    CheckCircleOutlined,
+    CloseOutlined,
     DownOutlined,
     ExclamationCircleOutlined,
     ExperimentOutlined,
     HistoryOutlined,
     QrcodeOutlined,
     SendOutlined,
+    SettingOutlined,
     SwapOutlined,
-    WalletOutlined
+    WalletOutlined,
+    WarningOutlined
 } from '@ant-design/icons';
 import { Address } from '@btc-vision/transaction';
 import { Tooltip } from 'antd';
@@ -50,7 +54,7 @@ import ActionButton from '../../../components/ActionButton/index';
 import { RouteTypes, useNavigate } from '../../MainRoute';
 import { SwitchChainModal } from '../../Settings/network/SwitchChainModal';
 import { OPNetList } from './OPNetList';
-import { useConsolidation } from './hooks';
+import { useConsolidation, OptimizationStatus } from './hooks';
 
 const colors = {
     main: '#f37413',
@@ -128,9 +132,19 @@ export default function WalletTabScreen() {
     const versionInfo = useVersionInfo();
 
     const resetUiTxCreateScreen = useResetUiTxCreateScreen();
-    const { checkUTXOLimit, checkUTXOWarning, navigateToConsolidation } = useConsolidation();
+    const {
+        checkUTXOLimit,
+        checkUTXOWarning,
+        checkOptimizationStatus,
+        navigateToConsolidation,
+        navigateToSplit,
+        validateSplit,
+        calculateMaxSplits
+    } = useConsolidation();
 
     const [showDisableUnconfirmedUtxoNotice, setShowDisableUnconfirmedUtxoNotice] = useState(false);
+    const [showOptimizeModal, setShowOptimizeModal] = useState(false);
+    const [splitCount, setSplitCount] = useState(25);
     const [needsQuantumMigration, setNeedsQuantumMigration] = useState(false);
 
     // Check if quantum migration is needed (SimpleKeyring without quantum key)
@@ -185,6 +199,41 @@ export default function WalletTabScreen() {
         const csv1Total = parseFloat(accountBalance.csv1_total_amount || '0');
         return csv75Total > 0 || csv2Total > 0 || csv1Total > 0;
     };
+
+    // Get optimization status for the wallet
+    const optimizationStatus = useMemo(() => {
+        return checkOptimizationStatus(accountBalance);
+    }, [accountBalance, checkOptimizationStatus]);
+
+    // Calculate if current split count is valid
+    const isSplitValid = useMemo(() => {
+        return validateSplit(optimizationStatus.availableBalance, splitCount);
+    }, [optimizationStatus.availableBalance, splitCount, validateSplit]);
+
+    // Calculate max possible splits
+    const maxSplits = useMemo(() => {
+        return calculateMaxSplits(optimizationStatus.availableBalance);
+    }, [optimizationStatus.availableBalance, calculateMaxSplits]);
+
+    // Calculate output amount per split
+    const outputPerSplit = useMemo(() => {
+        if (splitCount <= 0) return 0n;
+        return optimizationStatus.availableBalance / BigInt(splitCount);
+    }, [optimizationStatus.availableBalance, splitCount]);
+
+    // Handle split action
+    const handleSplit = useCallback(async () => {
+        if (isSplitValid) {
+            setShowOptimizeModal(false);
+            await navigateToSplit(splitCount);
+        }
+    }, [isSplitValid, splitCount, navigateToSplit]);
+
+    // Handle consolidate action
+    const handleConsolidate = useCallback(async () => {
+        setShowOptimizeModal(false);
+        await navigateToConsolidation();
+    }, [navigateToConsolidation]);
 
     const tools = useTools();
 
@@ -502,7 +551,7 @@ export default function WalletTabScreen() {
                                     ) : null;
                                 })()}
 
-                                {/* Total Balance Label + Details Button */}
+                                {/* Total Balance Label + Details Button + Optimize Button */}
                                 <div
                                     style={{
                                         display: 'flex',
@@ -554,6 +603,35 @@ export default function WalletTabScreen() {
                                             }}
                                         />
                                     </button>
+                                    <Tooltip title="Optimize wallet UTXOs for better performance">
+                                        <button
+                                            onClick={() => setShowOptimizeModal(true)}
+                                            style={{
+                                                padding: '2px 8px',
+                                                background: colors.buttonHoverBg,
+                                                border: `1px solid ${colors.containerBorder}`,
+                                                borderRadius: '4px',
+                                                cursor: 'pointer',
+                                                fontSize: '9px',
+                                                fontWeight: 600,
+                                                color: colors.textFaded,
+                                                transition: 'all 0.2s',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: '4px'
+                                            }}
+                                            onMouseEnter={(e) => {
+                                                e.currentTarget.style.color = colors.main;
+                                                e.currentTarget.style.borderColor = colors.main;
+                                            }}
+                                            onMouseLeave={(e) => {
+                                                e.currentTarget.style.color = colors.textFaded;
+                                                e.currentTarget.style.borderColor = colors.containerBorder;
+                                            }}>
+                                            <SettingOutlined style={{ fontSize: 9 }} />
+                                            Optimize
+                                        </button>
+                                    </Tooltip>
                                 </div>
 
                                 {/* Balance Details Tabs or Balance Display */}
@@ -815,6 +893,297 @@ export default function WalletTabScreen() {
                             setSwitchChainModalVisible(false);
                         }}
                     />
+                )}
+
+                {/* Optimization Modal */}
+                {showOptimizeModal && (
+                    <div
+                        style={{
+                            position: 'fixed',
+                            top: 0,
+                            left: 0,
+                            right: 0,
+                            bottom: 0,
+                            background: 'rgba(0, 0, 0, 0.7)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            zIndex: 1000
+                        }}
+                        onClick={() => setShowOptimizeModal(false)}>
+                        <div
+                            style={{
+                                background: colors.containerBgFaded,
+                                borderRadius: '12px',
+                                padding: '20px',
+                                maxWidth: '340px',
+                                width: '90%',
+                                border: `1px solid ${colors.containerBorder}`
+                            }}
+                            onClick={(e) => e.stopPropagation()}>
+                            {/* Modal Header */}
+                            <div
+                                style={{
+                                    display: 'flex',
+                                    justifyContent: 'space-between',
+                                    alignItems: 'center',
+                                    marginBottom: '16px'
+                                }}>
+                                <div style={{ fontSize: '14px', fontWeight: 600, color: colors.text }}>
+                                    Optimize Wallet
+                                </div>
+                                <button
+                                    onClick={() => setShowOptimizeModal(false)}
+                                    style={{
+                                        background: 'transparent',
+                                        border: 'none',
+                                        cursor: 'pointer',
+                                        padding: '4px',
+                                        display: 'flex'
+                                    }}>
+                                    <CloseOutlined style={{ fontSize: 14, color: colors.textFaded }} />
+                                </button>
+                            </div>
+
+                            {/* Current Status */}
+                            <div
+                                style={{
+                                    background: colors.background,
+                                    borderRadius: '8px',
+                                    padding: '12px',
+                                    marginBottom: '16px'
+                                }}>
+                                <div
+                                    style={{
+                                        fontSize: '10px',
+                                        color: colors.textFaded,
+                                        marginBottom: '8px',
+                                        textTransform: 'uppercase',
+                                        letterSpacing: '0.5px'
+                                    }}>
+                                    Current UTXO Status
+                                </div>
+                                <div
+                                    style={{
+                                        display: 'flex',
+                                        justifyContent: 'space-between',
+                                        alignItems: 'center'
+                                    }}>
+                                    <span style={{ fontSize: '12px', color: colors.text }}>
+                                        Available UTXOs (Main + CSV1)
+                                    </span>
+                                    <span
+                                        style={{
+                                            fontSize: '14px',
+                                            fontWeight: 600,
+                                            color:
+                                                optimizationStatus.status === 'optimized'
+                                                    ? colors.success
+                                                    : optimizationStatus.status === 'needs_split'
+                                                      ? colors.warning
+                                                      : colors.error
+                                        }}>
+                                        {optimizationStatus.utxoCount}
+                                    </span>
+                                </div>
+                                <div
+                                    style={{
+                                        fontSize: '10px',
+                                        color: colors.textFaded,
+                                        marginTop: '4px'
+                                    }}>
+                                    Optimal range: {optimizationStatus.splitThreshold} -{' '}
+                                    {optimizationStatus.consolidateThreshold} UTXOs
+                                </div>
+                            </div>
+
+                            {/* Status-specific content */}
+                            {optimizationStatus.status === 'optimized' && (
+                                <div
+                                    style={{
+                                        background: `${colors.success}15`,
+                                        border: `1px solid ${colors.success}30`,
+                                        borderRadius: '8px',
+                                        padding: '16px',
+                                        textAlign: 'center'
+                                    }}>
+                                    <CheckCircleOutlined
+                                        style={{ fontSize: 32, color: colors.success, marginBottom: '8px' }}
+                                    />
+                                    <div
+                                        style={{
+                                            fontSize: '14px',
+                                            fontWeight: 600,
+                                            color: colors.success,
+                                            marginBottom: '4px'
+                                        }}>
+                                        Wallet Optimized
+                                    </div>
+                                    <div style={{ fontSize: '11px', color: colors.textFaded }}>
+                                        Your wallet has an optimal number of UTXOs for contract interactions.
+                                    </div>
+                                </div>
+                            )}
+
+                            {optimizationStatus.status === 'needs_split' && (
+                                <div>
+                                    <div
+                                        style={{
+                                            background: `${colors.warning}15`,
+                                            border: `1px solid ${colors.warning}30`,
+                                            borderRadius: '8px',
+                                            padding: '12px',
+                                            marginBottom: '16px'
+                                        }}>
+                                        <div
+                                            style={{
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: '8px',
+                                                marginBottom: '8px'
+                                            }}>
+                                            <WarningOutlined style={{ color: colors.warning }} />
+                                            <span
+                                                style={{
+                                                    fontSize: '12px',
+                                                    fontWeight: 600,
+                                                    color: colors.warning
+                                                }}>
+                                                Low UTXO Count
+                                            </span>
+                                        </div>
+                                        <div style={{ fontSize: '11px', color: colors.textFaded, lineHeight: 1.4 }}>
+                                            Having more UTXOs allows you to perform multiple contract interactions per
+                                            block. Split your UTXOs to enable parallel transactions.
+                                        </div>
+                                    </div>
+
+                                    {/* Split Configuration */}
+                                    <div style={{ marginBottom: '12px' }}>
+                                        <div
+                                            style={{
+                                                fontSize: '11px',
+                                                color: colors.textFaded,
+                                                marginBottom: '6px'
+                                            }}>
+                                            Split into how many UTXOs?
+                                        </div>
+                                        <input
+                                            type="number"
+                                            value={splitCount}
+                                            onChange={(e) => {
+                                                const val = parseInt(e.target.value) || 1;
+                                                setSplitCount(Math.max(1, Math.min(val, maxSplits || 1)));
+                                            }}
+                                            min={1}
+                                            max={maxSplits || 1}
+                                            style={{
+                                                width: '100%',
+                                                padding: '10px 12px',
+                                                background: colors.background,
+                                                border: `1px solid ${isSplitValid ? colors.containerBorder : colors.error}`,
+                                                borderRadius: '8px',
+                                                color: colors.text,
+                                                fontSize: '14px',
+                                                outline: 'none'
+                                            }}
+                                        />
+                                        <div
+                                            style={{
+                                                display: 'flex',
+                                                justifyContent: 'space-between',
+                                                marginTop: '6px',
+                                                fontSize: '10px',
+                                                color: colors.textFaded
+                                            }}>
+                                            <span>Max: {maxSplits || 0}</span>
+                                            <span>
+                                                Each output:{' '}
+                                                {(Number(outputPerSplit) / 1e8).toFixed(8).replace(/\.?0+$/, '')}{' '}
+                                                {btcUnit}
+                                            </span>
+                                        </div>
+                                        {!isSplitValid && (
+                                            <div
+                                                style={{
+                                                    fontSize: '10px',
+                                                    color: colors.error,
+                                                    marginTop: '4px'
+                                                }}>
+                                                Each output must be at least {UTXO_CONFIG.MIN_SPLIT_OUTPUT.toLocaleString()}{' '}
+                                                sats
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    <button
+                                        onClick={handleSplit}
+                                        disabled={!isSplitValid}
+                                        style={{
+                                            width: '100%',
+                                            padding: '12px',
+                                            background: isSplitValid ? colors.main : colors.buttonBg,
+                                            border: 'none',
+                                            borderRadius: '8px',
+                                            cursor: isSplitValid ? 'pointer' : 'not-allowed',
+                                            fontSize: '13px',
+                                            fontWeight: 600,
+                                            color: isSplitValid ? '#000' : colors.textFaded,
+                                            transition: 'all 0.2s'
+                                        }}>
+                                        Split UTXOs
+                                    </button>
+                                </div>
+                            )}
+
+                            {optimizationStatus.status === 'needs_consolidate' && (
+                                <div>
+                                    <div
+                                        style={{
+                                            background: `${colors.error}15`,
+                                            border: `1px solid ${colors.error}30`,
+                                            borderRadius: '8px',
+                                            padding: '12px',
+                                            marginBottom: '16px'
+                                        }}>
+                                        <div
+                                            style={{
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: '8px',
+                                                marginBottom: '8px'
+                                            }}>
+                                            <WarningOutlined style={{ color: colors.error }} />
+                                            <span style={{ fontSize: '12px', fontWeight: 600, color: colors.error }}>
+                                                High UTXO Count
+                                            </span>
+                                        </div>
+                                        <div style={{ fontSize: '11px', color: colors.textFaded, lineHeight: 1.4 }}>
+                                            Too many UTXOs can slow down wallet operations and increase transaction
+                                            fees. Consolidate your UTXOs to improve performance.
+                                        </div>
+                                    </div>
+
+                                    <button
+                                        onClick={handleConsolidate}
+                                        style={{
+                                            width: '100%',
+                                            padding: '12px',
+                                            background: colors.main,
+                                            border: 'none',
+                                            borderRadius: '8px',
+                                            cursor: 'pointer',
+                                            fontSize: '13px',
+                                            fontWeight: 600,
+                                            color: '#000',
+                                            transition: 'all 0.2s'
+                                        }}>
+                                        Consolidate UTXOs
+                                    </button>
+                                </div>
+                            )}
+                        </div>
+                    </div>
                 )}
             </Content>
 

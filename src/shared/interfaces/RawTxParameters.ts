@@ -109,6 +109,7 @@ export interface SendBitcoinParameters extends BaseRawTxInfo<Action.SendBitcoin>
     readonly from?: string;
     readonly sourceType?: SourceType;
     readonly optimize: boolean;
+    readonly splitInputsInto?: number; // Number of UTXOs to split into (opposite of consolidation)
 }
 
 export interface DeployContractParameters extends BaseRawTxInfo<Action.DeployContract> {
