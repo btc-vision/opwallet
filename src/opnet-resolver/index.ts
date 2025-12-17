@@ -304,9 +304,10 @@ function setupButtonListeners(): void {
 
     // URL input navigation
     if (urlInput) {
-        urlInput.addEventListener('keydown', (e) => {
+        const input = urlInput; // Capture for closure
+        input.addEventListener('keydown', (e) => {
             if (e.key === 'Enter') {
-                navigateToUrl(urlInput.value);
+                navigateToUrl(input.value);
             }
         });
     }

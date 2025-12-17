@@ -217,6 +217,43 @@ if (MANIFEST_VERSION === 'mv3') {
     }, 5000);
 }
 
+// Intercept .btc domain navigation and redirect to resolver
+const setupBtcDomainInterception = () => {
+    // Listen for navigation to .btc domains
+    chrome.webNavigation.onBeforeNavigate.addListener(
+        (details) => {
+            // Only intercept main frame navigations
+            if (details.frameId !== 0) return;
+
+            try {
+                const url = new URL(details.url);
+
+                // Check if it's a .btc domain
+                if (url.hostname.endsWith('.btc')) {
+                    // Build opnet URL
+                    const opnetUrl = `opnet://${url.hostname}${url.pathname}${url.search}${url.hash}`;
+                    const resolverUrl = chrome.runtime.getURL(
+                        `opnet-resolver.html?url=${encodeURIComponent(opnetUrl)}`
+                    );
+
+                    // Redirect to resolver
+                    chrome.tabs.update(details.tabId, { url: resolverUrl });
+                }
+            } catch {
+                // Invalid URL, ignore
+            }
+        },
+        {
+            url: [
+                { hostSuffix: '.btc' }
+            ]
+        }
+    );
+};
+
+// Initialize .btc domain interception
+setupBtcDomainInterception();
+
 // OPNet Protocol message handler for resolver page
 const opnetMessageHandler = (
     message: unknown,

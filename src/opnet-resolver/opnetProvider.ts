@@ -138,13 +138,7 @@ class OpnetResolverProvider extends EventEmitter {
 // Create and expose the provider
 const provider = new OpnetResolverProvider();
 
-// Expose on window
-declare global {
-    interface Window {
-        opnet: OpnetResolverProvider;
-    }
-}
-
+// Expose on window (type assertion to avoid conflict with @btc-vision/transaction types)
 Object.defineProperty(window, 'opnet', {
     value: provider,
     writable: false,

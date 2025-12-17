@@ -158,7 +158,7 @@ export default function OpnetBrowserScreen() {
     const handleRegisterProtocol = () => {
         try {
             const extensionUrl = chrome.runtime.getURL('opnet-resolver.html?url=%s');
-            navigator.registerProtocolHandler('web+opnet', extensionUrl, 'OPNet Domain Browser');
+            navigator.registerProtocolHandler('web+opnet', extensionUrl);
             setProtocolRegistered(true);
             tools.toastSuccess('Protocol handler registered');
         } catch (error) {
