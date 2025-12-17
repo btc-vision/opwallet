@@ -74,8 +74,11 @@ class OpnetProtocolService {
         // Set up omnibox if available
         if (chrome.omnibox) {
             chrome.omnibox.onInputEntered.addListener(this.handleOmniboxInput.bind(this));
-            chrome.omnibox.setDefaultSuggestion({
-                description: 'Navigate to OPNet domain: %s.btc'
+            chrome.omnibox.onInputChanged.addListener(this.handleOmniboxSuggestions.bind(this));
+            chrome.omnibox.onInputStarted.addListener(() => {
+                chrome.omnibox.setDefaultSuggestion({
+                    description: 'Navigate to OPNet domain: <match>%s</match>.btc'
+                });
             });
         }
     }
@@ -86,6 +89,7 @@ class OpnetProtocolService {
         }
         if (chrome.omnibox) {
             chrome.omnibox.onInputEntered.removeListener(this.handleOmniboxInput);
+            chrome.omnibox.onInputChanged.removeListener(this.handleOmniboxSuggestions);
         }
     }
 
@@ -108,18 +112,85 @@ class OpnetProtocolService {
         }
     }
 
+    private handleOmniboxSuggestions(
+        text: string,
+        suggest: (suggestions: chrome.omnibox.SuggestResult[]) => void
+    ): void {
+        const input = text.trim().toLowerCase();
+        if (!input) {
+            suggest([]);
+            return;
+        }
+
+        // Generate suggestions
+        const suggestions: chrome.omnibox.SuggestResult[] = [];
+
+        // If input already has .btc, suggest as-is
+        if (input.endsWith('.btc')) {
+            suggestions.push({
+                content: input,
+                description: `Navigate to <match>${input}</match>`
+            });
+        } else {
+            // Suggest with .btc suffix
+            suggestions.push({
+                content: `${input}.btc`,
+                description: `Navigate to <match>${input}</match>.btc`
+            });
+
+            // If input has path-like content, handle it
+            if (input.includes('/')) {
+                const [domain, ...pathParts] = input.split('/');
+                const path = '/' + pathParts.join('/');
+                suggestions.push({
+                    content: `${domain}.btc${path}`,
+                    description: `Navigate to <match>${domain}</match>.btc<dim>${path}</dim>`
+                });
+            }
+        }
+
+        // Update default suggestion
+        const displayDomain = input.endsWith('.btc') ? input : `${input}.btc`;
+        chrome.omnibox.setDefaultSuggestion({
+            description: `Navigate to OPNet domain: <match>${displayDomain}</match>`
+        });
+
+        suggest(suggestions);
+    }
+
     private handleOmniboxInput(
         text: string,
         disposition: 'currentTab' | 'newForegroundTab' | 'newBackgroundTab'
     ): void {
         // Normalize input - user might type "mysite.btc" or just "mysite"
-        let domain = text.trim().toLowerCase();
+        let input = text.trim().toLowerCase();
+
+        // Handle opnet:// or web+opnet:// prefixes
+        if (input.startsWith('opnet://')) {
+            input = input.replace('opnet://', '');
+        } else if (input.startsWith('web+opnet://')) {
+            input = input.replace('web+opnet://', '');
+        }
+
+        // Extract domain and path
+        let domain: string;
+        let path = '';
+
+        if (input.includes('/')) {
+            const slashIndex = input.indexOf('/');
+            domain = input.substring(0, slashIndex);
+            path = input.substring(slashIndex);
+        } else {
+            domain = input;
+        }
+
+        // Add .btc if not present
         if (!domain.endsWith('.btc')) {
             domain += '.btc';
         }
 
         const resolverUrl = chrome.runtime.getURL(
-            `opnet-resolver.html?url=${encodeURIComponent(`opnet://${domain}`)}`
+            `opnet-resolver.html?url=${encodeURIComponent(`opnet://${domain}${path}`)}`
         );
 
         switch (disposition) {
@@ -132,6 +203,25 @@ class OpnetProtocolService {
             case 'newBackgroundTab':
                 chrome.tabs.create({ url: resolverUrl, active: false });
                 break;
+        }
+    }
+
+    /**
+     * Handle web+opnet:// protocol URLs
+     * This can be called from content scripts or other parts of the extension
+     */
+    handleWebOpnetProtocol(url: string, tabId?: number): void {
+        if (!url.startsWith('web+opnet://')) return;
+
+        const normalizedUrl = url.replace('web+opnet://', 'opnet://');
+        const resolverUrl = chrome.runtime.getURL(
+            `opnet-resolver.html?url=${encodeURIComponent(normalizedUrl)}`
+        );
+
+        if (tabId) {
+            chrome.tabs.update(tabId, { url: resolverUrl });
+        } else {
+            chrome.tabs.create({ url: resolverUrl });
         }
     }
 

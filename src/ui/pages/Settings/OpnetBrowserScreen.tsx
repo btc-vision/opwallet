@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 
-import { Column, Content, Header, Layout, OPNetLoader } from '@/ui/components';
+import { Header, Layout } from '@/ui/components';
 import { useTools } from '@/ui/components/ActionComponent';
 import { Popover } from '@/ui/components/Popover';
 import { useWallet } from '@/ui/utils';
@@ -12,6 +12,7 @@ import {
     DeleteOutlined,
     GlobalOutlined,
     InfoCircleOutlined,
+    LinkOutlined,
     LoadingOutlined,
     PlusOutlined,
     ReloadOutlined,
@@ -26,21 +27,6 @@ import {
     OpnetCacheSettings,
     OpnetCacheStats
 } from '@/shared/types/OpnetProtocol';
-
-const colors = {
-    main: '#f37413',
-    background: '#212121',
-    text: '#dbdbdb',
-    textFaded: 'rgba(219, 219, 219, 0.7)',
-    buttonBg: '#434343',
-    buttonHoverBg: 'rgba(85, 85, 85, 0.3)',
-    containerBg: '#434343',
-    containerBgFaded: '#292929',
-    containerBorder: '#303030',
-    success: '#4ade80',
-    error: '#ef4444',
-    warning: '#fbbf24'
-};
 
 const CACHE_TTL_OPTIONS = [
     { id: 60000, label: '1 minute' },
@@ -64,6 +50,7 @@ export default function OpnetBrowserScreen() {
     const [addGatewayPopoverVisible, setAddGatewayPopoverVisible] = useState(false);
     const [clearingCache, setClearingCache] = useState(false);
     const [refreshingGateways, setRefreshingGateways] = useState(false);
+    const [protocolRegistered, setProtocolRegistered] = useState(false);
 
     useEffect(() => {
         const initSettings = async () => {
@@ -168,303 +155,143 @@ export default function OpnetBrowserScreen() {
         }
     };
 
+    const handleRegisterProtocol = () => {
+        try {
+            const extensionUrl = chrome.runtime.getURL('opnet-resolver.html?url=%s');
+            navigator.registerProtocolHandler('web+opnet', extensionUrl, 'OPNet Domain Browser');
+            setProtocolRegistered(true);
+            tools.toastSuccess('Protocol handler registered');
+        } catch (error) {
+            console.error('Failed to register protocol:', error);
+            tools.toastError('Failed to register protocol');
+        }
+    };
+
     if (!init) {
         return (
             <Layout>
                 <Header onBack={() => window.history.go(-1)} title="OPNet Browser" />
-                <Content
-                    style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        minHeight: '300px'
-                    }}>
-                    <OPNetLoader size={70} text="Loading" />
-                </Content>
+                <div className="opnet-browser-loading">
+                    <LoadingOutlined style={{ fontSize: 24, color: '#f37413' }} />
+                    <span>Loading...</span>
+                </div>
             </Layout>
         );
     }
 
-    const cacheTtlConfig = CACHE_TTL_OPTIONS.find((o) => o.id === cacheSettings.contenthashTtlMs) || CACHE_TTL_OPTIONS[1];
+    const cacheTtlLabel =
+        CACHE_TTL_OPTIONS.find((o) => o.id === cacheSettings.contenthashTtlMs)?.label || '5 minutes';
 
     return (
         <Layout>
             <Header onBack={() => window.history.go(-1)} title="OPNet Browser" />
-            <Content
-                style={{
-                    padding: '12px',
-                    alignItems: 'stretch',
-                    justifyItems: 'stretch'
-                }}>
+            <div className="opnet-browser-scroll">
                 {/* Info Card */}
-                <div
-                    style={{
-                        background: colors.containerBgFaded,
-                        borderRadius: '10px',
-                        padding: '10px',
-                        marginBottom: '16px',
-                        display: 'flex',
-                        alignItems: 'flex-start',
-                        gap: '8px'
-                    }}>
-                    <InfoCircleOutlined
-                        style={{
-                            fontSize: 13,
-                            color: colors.textFaded,
-                            marginTop: '1px',
-                            flexShrink: 0
-                        }}
-                    />
+                <div className="opnet-browser-info">
+                    <InfoCircleOutlined className="opnet-browser-info-icon" />
                     <div>
-                        <div
-                            style={{
-                                fontSize: '11px',
-                                color: colors.text,
-                                fontWeight: 500,
-                                marginBottom: '3px'
-                            }}>
-                            OPNet Domain Browser
-                        </div>
-                        <div
-                            style={{
-                                fontSize: '10px',
-                                color: colors.textFaded,
-                                lineHeight: '1.3'
-                            }}>
-                            Browse .btc domains through the OPNet protocol. Content is served from IPFS gateways.
+                        <div className="opnet-browser-info-title">OPNet Domain Browser</div>
+                        <div className="opnet-browser-info-desc">
+                            Browse .btc domains through the OPNet protocol. Content is served from IPFS
+                            gateways.
                         </div>
                     </div>
                 </div>
 
-                {/* Enable Toggle */}
-                <div
-                    style={{
-                        background: colors.containerBgFaded,
-                        borderRadius: '14px',
-                        overflow: 'hidden',
-                        marginBottom: '16px'
-                    }}>
+                {/* Main Settings Card */}
+                <div className="opnet-browser-card">
+                    {/* Register Protocol */}
                     <div
-                        style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            padding: '14px 12px',
-                            cursor: enableLoading ? 'not-allowed' : 'pointer',
-                            transition: 'all 0.15s',
-                            opacity: enableLoading ? 0.7 : 1
-                        }}
-                        onClick={handleToggleEnabled}
-                        onMouseEnter={(e) => {
-                            if (!enableLoading) e.currentTarget.style.background = colors.buttonHoverBg;
-                        }}
-                        onMouseLeave={(e) => {
-                            e.currentTarget.style.background = 'transparent';
-                        }}>
-                        <div
-                            style={{
-                                width: '36px',
-                                height: '36px',
-                                borderRadius: '10px',
-                                background: colors.buttonHoverBg,
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                marginRight: '12px'
-                            }}>
-                            <GlobalOutlined style={{ fontSize: 18, color: colors.main }} />
+                        className={`opnet-browser-row ${protocolRegistered ? 'disabled' : 'clickable'}`}
+                        onClick={!protocolRegistered ? handleRegisterProtocol : undefined}>
+                        <div className="opnet-browser-row-icon">
+                            <LinkOutlined style={{ fontSize: 18, color: '#f37413' }} />
                         </div>
-
-                        <div style={{ flex: 1 }}>
+                        <div className="opnet-browser-row-content">
+                            <div className="opnet-browser-row-title">Register web+opnet:// Protocol</div>
                             <div
-                                style={{
-                                    fontSize: '14px',
-                                    fontWeight: 500,
-                                    color: colors.text,
-                                    marginBottom: '2px',
-                                    fontFamily: 'Inter-Regular, serif'
-                                }}>
-                                Enable .btc Domain Browsing
+                                className="opnet-browser-row-status"
+                                style={{ color: protocolRegistered ? '#4ade80' : '#f37413' }}>
+                                {protocolRegistered ? 'Registered' : 'Click to register'}
                             </div>
+                            <div className="opnet-browser-row-desc">
+                                Handle web+opnet:// links in the browser
+                            </div>
+                        </div>
+                        {protocolRegistered && (
+                            <CheckCircleFilled style={{ fontSize: 16, color: '#4ade80' }} />
+                        )}
+                    </div>
+
+                    {/* Enable Toggle */}
+                    <div
+                        className={`opnet-browser-row ${enableLoading ? 'disabled' : 'clickable'}`}
+                        onClick={handleToggleEnabled}>
+                        <div className="opnet-browser-row-icon">
+                            <GlobalOutlined style={{ fontSize: 18, color: '#f37413' }} />
+                        </div>
+                        <div className="opnet-browser-row-content">
+                            <div className="opnet-browser-row-title">Enable .btc Domain Browsing</div>
                             <div
-                                style={{
-                                    fontSize: '12px',
-                                    color: browserSettings?.enabled ? colors.success : colors.textFaded,
-                                    fontWeight: 500
-                                }}>
+                                className="opnet-browser-row-status"
+                                style={{ color: browserSettings?.enabled ? '#4ade80' : '#888' }}>
                                 {browserSettings?.enabled ? 'Enabled' : 'Disabled'}
                             </div>
-                            <div
-                                style={{
-                                    fontSize: '11px',
-                                    color: colors.textFaded,
-                                    marginTop: '2px'
-                                }}>
+                            <div className="opnet-browser-row-desc">
                                 Intercept and resolve .btc domain navigation
                             </div>
                         </div>
-
                         <div
-                            style={{
-                                width: '44px',
-                                height: '24px',
-                                borderRadius: '12px',
-                                background: browserSettings?.enabled ? colors.main : colors.buttonBg,
-                                position: 'relative',
-                                transition: 'background 0.2s',
-                                cursor: enableLoading ? 'not-allowed' : 'pointer'
-                            }}>
+                            className="opnet-browser-toggle"
+                            style={{ background: browserSettings?.enabled ? '#f37413' : '#434343' }}>
                             <div
-                                style={{
-                                    width: '20px',
-                                    height: '20px',
-                                    borderRadius: '10px',
-                                    background: colors.text,
-                                    position: 'absolute',
-                                    top: '2px',
-                                    left: browserSettings?.enabled ? '22px' : '2px',
-                                    transition: 'left 0.2s',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center'
-                                }}>
-                                {enableLoading && <LoadingOutlined style={{ fontSize: 12, color: colors.main }} />}
+                                className="opnet-browser-toggle-knob"
+                                style={{ left: browserSettings?.enabled ? 22 : 2 }}>
+                                {enableLoading && (
+                                    <LoadingOutlined style={{ fontSize: 10, color: '#f37413' }} />
+                                )}
                             </div>
                         </div>
                     </div>
                 </div>
 
-                {/* Cache Settings */}
-                <div
-                    style={{
-                        fontSize: '11px',
-                        fontWeight: 600,
-                        color: colors.textFaded,
-                        textTransform: 'uppercase',
-                        letterSpacing: '0.5px',
-                        marginBottom: '8px',
-                        paddingLeft: '4px'
-                    }}>
-                    Cache Settings
-                </div>
+                {/* Cache Settings Label */}
+                <div className="opnet-browser-section-label">Cache Settings</div>
 
-                <div
-                    style={{
-                        background: colors.containerBgFaded,
-                        borderRadius: '14px',
-                        overflow: 'hidden',
-                        marginBottom: '16px'
-                    }}>
+                {/* Cache Settings Card */}
+                <div className="opnet-browser-card">
                     {/* Cache TTL */}
                     <div
-                        style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            padding: '14px 12px',
-                            borderBottom: `1px solid ${colors.containerBorder}`,
-                            cursor: 'pointer',
-                            transition: 'all 0.15s'
-                        }}
-                        onClick={() => setCacheTtlPopoverVisible(true)}
-                        onMouseEnter={(e) => {
-                            e.currentTarget.style.background = colors.buttonHoverBg;
-                        }}
-                        onMouseLeave={(e) => {
-                            e.currentTarget.style.background = 'transparent';
-                        }}>
-                        <div
-                            style={{
-                                width: '36px',
-                                height: '36px',
-                                borderRadius: '10px',
-                                background: colors.buttonHoverBg,
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                marginRight: '12px'
-                            }}>
-                            <ClockCircleOutlined style={{ fontSize: 18, color: colors.main }} />
+                        className="opnet-browser-row clickable"
+                        onClick={() => setCacheTtlPopoverVisible(true)}>
+                        <div className="opnet-browser-row-icon">
+                            <ClockCircleOutlined style={{ fontSize: 18, color: '#f37413' }} />
                         </div>
-
-                        <div style={{ flex: 1 }}>
-                            <div
-                                style={{
-                                    fontSize: '14px',
-                                    fontWeight: 500,
-                                    color: colors.text,
-                                    marginBottom: '2px',
-                                    fontFamily: 'Inter-Regular, serif'
-                                }}>
-                                Cache TTL
+                        <div className="opnet-browser-row-content">
+                            <div className="opnet-browser-row-title">Cache TTL</div>
+                            <div className="opnet-browser-row-status" style={{ color: '#f37413' }}>
+                                {cacheTtlLabel}
                             </div>
-                            <div
-                                style={{
-                                    fontSize: '12px',
-                                    color: colors.main,
-                                    fontWeight: 500
-                                }}>
-                                {cacheTtlConfig.label}
-                            </div>
-                            <div
-                                style={{
-                                    fontSize: '11px',
-                                    color: colors.textFaded,
-                                    marginTop: '2px'
-                                }}>
+                            <div className="opnet-browser-row-desc">
                                 How long to cache domain resolutions
                             </div>
                         </div>
-
-                        <RightOutlined style={{ fontSize: 12, color: colors.textFaded }} />
+                        <RightOutlined style={{ fontSize: 12, color: '#888' }} />
                     </div>
 
                     {/* Cache Stats */}
                     {cacheStats && (
-                        <div
-                            style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                padding: '14px 12px',
-                                borderBottom: `1px solid ${colors.containerBorder}`
-                            }}>
-                            <div
-                                style={{
-                                    width: '36px',
-                                    height: '36px',
-                                    borderRadius: '10px',
-                                    background: colors.buttonHoverBg,
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    marginRight: '12px'
-                                }}>
-                                <CloudServerOutlined style={{ fontSize: 18, color: colors.main }} />
+                        <div className="opnet-browser-row">
+                            <div className="opnet-browser-row-icon">
+                                <CloudServerOutlined style={{ fontSize: 18, color: '#f37413' }} />
                             </div>
-
-                            <div style={{ flex: 1 }}>
-                                <div
-                                    style={{
-                                        fontSize: '14px',
-                                        fontWeight: 500,
-                                        color: colors.text,
-                                        marginBottom: '2px',
-                                        fontFamily: 'Inter-Regular, serif'
-                                    }}>
-                                    Cache Usage
+                            <div className="opnet-browser-row-content">
+                                <div className="opnet-browser-row-title">Cache Usage</div>
+                                <div className="opnet-browser-row-status" style={{ color: '#888' }}>
+                                    {cacheStats.contenthashEntries} domains, {cacheStats.contentEntries}{' '}
+                                    files
                                 </div>
-                                <div
-                                    style={{
-                                        fontSize: '12px',
-                                        color: colors.textFaded,
-                                        fontWeight: 500
-                                    }}>
-                                    {cacheStats.contenthashEntries} domains, {cacheStats.contentEntries} files
-                                </div>
-                                <div
-                                    style={{
-                                        fontSize: '11px',
-                                        color: colors.textFaded,
-                                        marginTop: '2px'
-                                    }}>
+                                <div className="opnet-browser-row-desc">
                                     {cacheStats.contentSizeMb.toFixed(2)} MB / {cacheStats.maxSizeMb} MB
                                 </div>
                             </div>
@@ -473,216 +300,103 @@ export default function OpnetBrowserScreen() {
 
                     {/* Clear Cache */}
                     <div
-                        style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            padding: '14px 12px',
-                            cursor: clearingCache ? 'not-allowed' : 'pointer',
-                            transition: 'all 0.15s',
-                            opacity: clearingCache ? 0.7 : 1
-                        }}
-                        onClick={handleClearCache}
-                        onMouseEnter={(e) => {
-                            if (!clearingCache) e.currentTarget.style.background = colors.buttonHoverBg;
-                        }}
-                        onMouseLeave={(e) => {
-                            e.currentTarget.style.background = 'transparent';
-                        }}>
+                        className={`opnet-browser-row ${clearingCache ? 'disabled' : 'clickable'}`}
+                        onClick={handleClearCache}>
                         <div
-                            style={{
-                                width: '36px',
-                                height: '36px',
-                                borderRadius: '10px',
-                                background: `${colors.error}15`,
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                marginRight: '12px'
-                            }}>
+                            className="opnet-browser-row-icon"
+                            style={{ background: 'rgba(239, 68, 68, 0.1)' }}>
                             {clearingCache ? (
-                                <LoadingOutlined style={{ fontSize: 18, color: colors.error }} />
+                                <LoadingOutlined style={{ fontSize: 18, color: '#ef4444' }} />
                             ) : (
-                                <ClearOutlined style={{ fontSize: 18, color: colors.error }} />
+                                <ClearOutlined style={{ fontSize: 18, color: '#ef4444' }} />
                             )}
                         </div>
-
-                        <div style={{ flex: 1 }}>
-                            <div
-                                style={{
-                                    fontSize: '14px',
-                                    fontWeight: 500,
-                                    color: colors.error,
-                                    fontFamily: 'Inter-Regular, serif'
-                                }}>
+                        <div className="opnet-browser-row-content">
+                            <div className="opnet-browser-row-title" style={{ color: '#ef4444' }}>
                                 Clear Cache
                             </div>
-                            <div
-                                style={{
-                                    fontSize: '11px',
-                                    color: colors.textFaded,
-                                    marginTop: '2px'
-                                }}>
+                            <div className="opnet-browser-row-desc">
                                 Remove all cached domain resolutions and content
                             </div>
                         </div>
                     </div>
                 </div>
 
-                {/* IPFS Gateways */}
-                <div
-                    style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        marginBottom: '8px',
-                        paddingLeft: '4px',
-                        paddingRight: '4px'
-                    }}>
-                    <div
-                        style={{
-                            fontSize: '11px',
-                            fontWeight: 600,
-                            color: colors.textFaded,
-                            textTransform: 'uppercase',
-                            letterSpacing: '0.5px'
-                        }}>
-                        IPFS Gateways
-                    </div>
-                    <div style={{ display: 'flex', gap: '8px' }}>
+                {/* IPFS Gateways Label */}
+                <div className="opnet-browser-section-header">
+                    <div className="opnet-browser-section-label">IPFS Gateways</div>
+                    <div className="opnet-browser-section-actions">
                         <button
-                            style={{
-                                padding: '4px 8px',
-                                background: 'transparent',
-                                border: `1px solid ${colors.containerBorder}`,
-                                borderRadius: '6px',
-                                cursor: refreshingGateways ? 'not-allowed' : 'pointer',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '4px',
-                                opacity: refreshingGateways ? 0.7 : 1
-                            }}
-                            onClick={handleRefreshGateways}>
+                            className="opnet-browser-btn-secondary"
+                            onClick={handleRefreshGateways}
+                            disabled={refreshingGateways}>
                             {refreshingGateways ? (
-                                <LoadingOutlined style={{ fontSize: 10, color: colors.textFaded }} />
+                                <LoadingOutlined style={{ fontSize: 10 }} />
                             ) : (
-                                <ReloadOutlined style={{ fontSize: 10, color: colors.textFaded }} />
+                                <ReloadOutlined style={{ fontSize: 10 }} />
                             )}
-                            <span style={{ fontSize: '10px', color: colors.textFaded }}>Refresh</span>
+                            <span>Refresh</span>
                         </button>
                         <button
-                            style={{
-                                padding: '4px 8px',
-                                background: colors.main,
-                                border: 'none',
-                                borderRadius: '6px',
-                                cursor: 'pointer',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '4px'
-                            }}
+                            className="opnet-browser-btn-primary"
                             onClick={() => setAddGatewayPopoverVisible(true)}>
-                            <PlusOutlined style={{ fontSize: 10, color: '#fff' }} />
-                            <span style={{ fontSize: '10px', color: '#fff', fontWeight: 500 }}>Add</span>
+                            <PlusOutlined style={{ fontSize: 10 }} />
+                            <span>Add</span>
                         </button>
                     </div>
                 </div>
 
-                <div
-                    style={{
-                        background: colors.containerBgFaded,
-                        borderRadius: '14px',
-                        overflow: 'hidden',
-                        marginBottom: '16px'
-                    }}>
+                {/* Gateways Card */}
+                <div className="opnet-browser-card">
                     {gateways.map((gateway, index) => (
                         <div
                             key={gateway.config.url}
+                            className="opnet-browser-gateway-row"
                             style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                padding: '12px',
                                 borderBottom:
-                                    index < gateways.length - 1 ? `1px solid ${colors.containerBorder}` : 'none'
+                                    index < gateways.length - 1 ? '1px solid #303030' : 'none'
                             }}>
-                            {/* Health indicator */}
                             <div
+                                className="opnet-browser-gateway-dot"
                                 style={{
-                                    width: '8px',
-                                    height: '8px',
-                                    borderRadius: '4px',
-                                    background: gateway.health.isHealthy ? colors.success : colors.error,
-                                    marginRight: '10px',
-                                    flexShrink: 0
+                                    background: gateway.health.isHealthy ? '#4ade80' : '#ef4444'
                                 }}
                             />
-
-                            <div style={{ flex: 1, minWidth: 0 }}>
-                                <div
-                                    style={{
-                                        fontSize: '12px',
-                                        fontWeight: 500,
-                                        color: colors.text,
-                                        fontFamily: 'monospace',
-                                        overflow: 'hidden',
-                                        textOverflow: 'ellipsis',
-                                        whiteSpace: 'nowrap'
-                                    }}>
+                            <div className="opnet-browser-gateway-info">
+                                <div className="opnet-browser-gateway-url">
                                     {gateway.config.url.replace('https://', '')}
                                 </div>
-                                <div
-                                    style={{
-                                        fontSize: '10px',
-                                        color: colors.textFaded,
-                                        marginTop: '2px',
-                                        display: 'flex',
-                                        gap: '8px'
-                                    }}>
+                                <div className="opnet-browser-gateway-meta">
                                     {gateway.config.isLocalNode && (
-                                        <span style={{ color: colors.warning }}>Local</span>
+                                        <span style={{ color: '#fbbf24' }}>Local</span>
                                     )}
                                     {gateway.config.isDefault && <span>Default</span>}
-                                    {gateway.health.latency !== Infinity && (
-                                        <span>{gateway.health.latency}ms</span>
-                                    )}
+                                    {typeof gateway.health.latency === 'number' &&
+                                        isFinite(gateway.health.latency) &&
+                                        gateway.health.latency > 0 && (
+                                            <span>{gateway.health.latency}ms</span>
+                                        )}
                                 </div>
                             </div>
-
-                            {/* Remove button for user-configured gateways */}
                             {gateway.config.isUserConfigured && !gateway.config.isDefault && (
                                 <button
-                                    style={{
-                                        width: '28px',
-                                        height: '28px',
-                                        borderRadius: '6px',
-                                        background: `${colors.error}15`,
-                                        border: 'none',
-                                        cursor: 'pointer',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center'
-                                    }}
+                                    className="opnet-browser-gateway-delete"
                                     onClick={() => handleRemoveGateway(gateway.config.url)}>
-                                    <DeleteOutlined style={{ fontSize: 12, color: colors.error }} />
+                                    <DeleteOutlined style={{ fontSize: 12, color: '#ef4444' }} />
                                 </button>
                             )}
                         </div>
                     ))}
-
                     {gateways.length === 0 && (
-                        <div
-                            style={{
-                                padding: '20px',
-                                textAlign: 'center',
-                                color: colors.textFaded,
-                                fontSize: '12px'
-                            }}>
-                            No gateways configured
-                        </div>
+                        <div className="opnet-browser-empty">No gateways configured</div>
                     )}
                 </div>
-            </Content>
 
-            {/* Cache TTL Popover */}
+                {/* Bottom spacing */}
+                <div style={{ height: 24 }} />
+            </div>
+
+            {/* Popovers */}
             {cacheTtlPopoverVisible && (
                 <CacheTtlPopover
                     currentTtlMs={cacheSettings.contenthashTtlMs}
@@ -690,19 +404,244 @@ export default function OpnetBrowserScreen() {
                     onCancel={() => setCacheTtlPopoverVisible(false)}
                 />
             )}
-
-            {/* Add Gateway Popover */}
             {addGatewayPopoverVisible && (
                 <AddGatewayPopover
                     onAdd={handleAddGateway}
                     onCancel={() => setAddGatewayPopoverVisible(false)}
                 />
             )}
+
+            <style>{`
+                .opnet-browser-loading {
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
+                    justify-content: center;
+                    flex: 1;
+                    gap: 12px;
+                    color: #888;
+                }
+                .opnet-browser-scroll {
+                    flex: 1;
+                    overflow-y: auto;
+                    overflow-x: hidden;
+                    padding: 12px;
+                }
+                .opnet-browser-info {
+                    background: #292929;
+                    border-radius: 10px;
+                    padding: 10px;
+                    margin-bottom: 16px;
+                    display: flex;
+                    align-items: flex-start;
+                    gap: 8px;
+                }
+                .opnet-browser-info-icon {
+                    font-size: 13px;
+                    color: rgba(219, 219, 219, 0.7);
+                    margin-top: 1px;
+                    flex-shrink: 0;
+                }
+                .opnet-browser-info-title {
+                    font-size: 11px;
+                    color: #dbdbdb;
+                    font-weight: 500;
+                    margin-bottom: 3px;
+                }
+                .opnet-browser-info-desc {
+                    font-size: 10px;
+                    color: rgba(219, 219, 219, 0.7);
+                    line-height: 1.3;
+                }
+                .opnet-browser-card {
+                    background: #292929;
+                    border-radius: 14px;
+                    overflow: hidden;
+                    margin-bottom: 16px;
+                }
+                .opnet-browser-row {
+                    display: flex;
+                    align-items: center;
+                    padding: 14px 12px;
+                    border-bottom: 1px solid #303030;
+                }
+                .opnet-browser-row:last-child {
+                    border-bottom: none;
+                }
+                .opnet-browser-row.clickable {
+                    cursor: pointer;
+                    transition: background 0.15s;
+                }
+                .opnet-browser-row.clickable:hover {
+                    background: rgba(85, 85, 85, 0.3);
+                }
+                .opnet-browser-row.disabled {
+                    opacity: 0.7;
+                    cursor: not-allowed;
+                }
+                .opnet-browser-row-icon {
+                    width: 36px;
+                    height: 36px;
+                    border-radius: 10px;
+                    background: rgba(85, 85, 85, 0.3);
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    margin-right: 12px;
+                    flex-shrink: 0;
+                }
+                .opnet-browser-row-content {
+                    flex: 1;
+                    min-width: 0;
+                }
+                .opnet-browser-row-title {
+                    font-size: 14px;
+                    font-weight: 500;
+                    color: #dbdbdb;
+                    margin-bottom: 2px;
+                }
+                .opnet-browser-row-status {
+                    font-size: 12px;
+                    font-weight: 500;
+                }
+                .opnet-browser-row-desc {
+                    font-size: 11px;
+                    color: rgba(219, 219, 219, 0.7);
+                    margin-top: 2px;
+                }
+                .opnet-browser-toggle {
+                    width: 44px;
+                    height: 24px;
+                    border-radius: 12px;
+                    position: relative;
+                    transition: background 0.2s;
+                    flex-shrink: 0;
+                }
+                .opnet-browser-toggle-knob {
+                    width: 20px;
+                    height: 20px;
+                    border-radius: 10px;
+                    background: #dbdbdb;
+                    position: absolute;
+                    top: 2px;
+                    transition: left 0.2s;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                }
+                .opnet-browser-section-label {
+                    font-size: 11px;
+                    font-weight: 600;
+                    color: rgba(219, 219, 219, 0.7);
+                    text-transform: uppercase;
+                    letter-spacing: 0.5px;
+                    margin-bottom: 8px;
+                    padding-left: 4px;
+                }
+                .opnet-browser-section-header {
+                    display: flex;
+                    align-items: center;
+                    justify-content: space-between;
+                    margin-bottom: 8px;
+                    padding: 0 4px;
+                }
+                .opnet-browser-section-actions {
+                    display: flex;
+                    gap: 8px;
+                }
+                .opnet-browser-btn-secondary {
+                    padding: 4px 8px;
+                    background: transparent;
+                    border: 1px solid #303030;
+                    border-radius: 6px;
+                    cursor: pointer;
+                    display: flex;
+                    align-items: center;
+                    gap: 4px;
+                    font-size: 10px;
+                    color: rgba(219, 219, 219, 0.7);
+                }
+                .opnet-browser-btn-secondary:hover {
+                    background: rgba(85, 85, 85, 0.3);
+                }
+                .opnet-browser-btn-secondary:disabled {
+                    opacity: 0.7;
+                    cursor: not-allowed;
+                }
+                .opnet-browser-btn-primary {
+                    padding: 4px 8px;
+                    background: #f37413;
+                    border: none;
+                    border-radius: 6px;
+                    cursor: pointer;
+                    display: flex;
+                    align-items: center;
+                    gap: 4px;
+                    font-size: 10px;
+                    color: #fff;
+                    font-weight: 500;
+                }
+                .opnet-browser-btn-primary:hover {
+                    background: #e56b0e;
+                }
+                .opnet-browser-gateway-row {
+                    display: flex;
+                    align-items: center;
+                    padding: 12px;
+                }
+                .opnet-browser-gateway-dot {
+                    width: 8px;
+                    height: 8px;
+                    border-radius: 4px;
+                    margin-right: 10px;
+                    flex-shrink: 0;
+                }
+                .opnet-browser-gateway-info {
+                    flex: 1;
+                    min-width: 0;
+                }
+                .opnet-browser-gateway-url {
+                    font-size: 12px;
+                    font-weight: 500;
+                    color: #dbdbdb;
+                    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+                    overflow: hidden;
+                    text-overflow: ellipsis;
+                    white-space: nowrap;
+                }
+                .opnet-browser-gateway-meta {
+                    font-size: 10px;
+                    color: rgba(219, 219, 219, 0.7);
+                    margin-top: 2px;
+                    display: flex;
+                    gap: 8px;
+                }
+                .opnet-browser-gateway-delete {
+                    width: 28px;
+                    height: 28px;
+                    border-radius: 6px;
+                    background: rgba(239, 68, 68, 0.1);
+                    border: none;
+                    cursor: pointer;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                }
+                .opnet-browser-gateway-delete:hover {
+                    background: rgba(239, 68, 68, 0.2);
+                }
+                .opnet-browser-empty {
+                    padding: 20px;
+                    text-align: center;
+                    color: rgba(219, 219, 219, 0.7);
+                    font-size: 12px;
+                }
+            `}</style>
         </Layout>
     );
 }
 
-const CacheTtlPopover = ({
+function CacheTtlPopover({
     currentTtlMs,
     onSelect,
     onCancel
@@ -710,162 +649,107 @@ const CacheTtlPopover = ({
     currentTtlMs: number;
     onSelect: (ttl: number) => void;
     onCancel: () => void;
-}) => {
-    const [hoveredId, setHoveredId] = useState<number | null>(null);
-
+}) {
     return (
         <Popover onClose={onCancel}>
-            <Column style={{ width: '100%' }}>
+            <div style={{ width: '100%' }}>
                 <div
                     style={{
                         textAlign: 'center',
-                        paddingBottom: '12px',
-                        borderBottom: `1px solid ${colors.containerBorder}`
+                        paddingBottom: 12,
+                        borderBottom: '1px solid #303030'
                     }}>
-                    <div
-                        style={{
-                            fontSize: '16px',
-                            fontWeight: 600,
-                            color: colors.text,
-                            marginBottom: '4px',
-                            fontFamily: 'Inter-Regular, serif'
-                        }}>
+                    <div style={{ fontSize: 16, fontWeight: 600, color: '#dbdbdb', marginBottom: 4 }}>
                         Cache TTL
                     </div>
-                    <div style={{ fontSize: '12px', color: colors.textFaded }}>
+                    <div style={{ fontSize: 12, color: 'rgba(219, 219, 219, 0.7)' }}>
                         Choose how long to cache domain resolutions
                     </div>
                 </div>
-
                 <div style={{ margin: '12px 0' }}>
                     {CACHE_TTL_OPTIONS.map((option) => {
                         const isSelected = option.id === currentTtlMs;
-                        const isHovered = option.id === hoveredId;
-
                         return (
                             <div
                                 key={option.id}
+                                onClick={() => onSelect(option.id)}
                                 style={{
                                     display: 'flex',
                                     alignItems: 'center',
-                                    padding: '10px',
-                                    marginBottom: '6px',
+                                    padding: 10,
+                                    marginBottom: 6,
                                     background: isSelected
-                                        ? `linear-gradient(135deg, ${colors.main}15 0%, ${colors.main}08 100%)`
-                                        : isHovered
-                                          ? colors.buttonBg
-                                          : colors.buttonHoverBg,
-                                    border: `1px solid ${isSelected ? colors.main : 'transparent'}`,
-                                    borderRadius: '10px',
-                                    cursor: 'pointer',
-                                    transition: 'all 0.15s',
-                                    position: 'relative'
-                                }}
-                                onClick={() => onSelect(option.id)}
-                                onMouseEnter={() => setHoveredId(option.id)}
-                                onMouseLeave={() => setHoveredId(null)}>
-                                {isSelected && (
-                                    <div
-                                        style={{
-                                            position: 'absolute',
-                                            left: 0,
-                                            top: 0,
-                                            bottom: 0,
-                                            width: '3px',
-                                            background: colors.main,
-                                            borderRadius: '10px 0 0 10px'
-                                        }}
-                                    />
-                                )}
-
+                                        ? 'linear-gradient(135deg, rgba(243,116,19,0.15) 0%, rgba(243,116,19,0.05) 100%)'
+                                        : 'rgba(85, 85, 85, 0.3)',
+                                    border: isSelected ? '1px solid #f37413' : '1px solid transparent',
+                                    borderRadius: 10,
+                                    cursor: 'pointer'
+                                }}>
                                 <div
                                     style={{
-                                        width: '30px',
-                                        height: '30px',
-                                        minWidth: '30px',
-                                        borderRadius: '8px',
-                                        background: isSelected ? `${colors.main}20` : colors.containerBgFaded,
+                                        width: 30,
+                                        height: 30,
+                                        borderRadius: 8,
+                                        background: isSelected ? 'rgba(243,116,19,0.2)' : '#292929',
                                         display: 'flex',
                                         alignItems: 'center',
                                         justifyContent: 'center',
-                                        marginRight: '10px'
+                                        marginRight: 10
                                     }}>
                                     <ClockCircleOutlined
-                                        style={{
-                                            fontSize: 14,
-                                            color: isSelected ? colors.main : colors.textFaded
-                                        }}
+                                        style={{ fontSize: 14, color: isSelected ? '#f37413' : '#888' }}
                                     />
                                 </div>
-
-                                <div style={{ flex: 1 }}>
-                                    <div
-                                        style={{
-                                            fontSize: '12px',
-                                            fontWeight: isSelected ? 600 : 500,
-                                            color: colors.text,
-                                            fontFamily: 'Inter-Regular, serif'
-                                        }}>
-                                        {option.label}
-                                    </div>
+                                <div style={{ flex: 1, fontSize: 12, fontWeight: 500, color: '#dbdbdb' }}>
+                                    {option.label}
                                 </div>
-
                                 {isSelected && (
-                                    <CheckCircleFilled style={{ fontSize: 14, color: colors.main, marginLeft: '8px' }} />
+                                    <CheckCircleFilled style={{ fontSize: 14, color: '#f37413' }} />
                                 )}
                             </div>
                         );
                     })}
                 </div>
-
                 <button
+                    onClick={onCancel}
                     style={{
                         width: '100%',
-                        padding: '10px',
-                        background: colors.buttonHoverBg,
-                        border: `1px solid ${colors.containerBorder}`,
-                        borderRadius: '10px',
-                        color: colors.text,
-                        fontSize: '13px',
+                        padding: 10,
+                        background: 'rgba(85, 85, 85, 0.3)',
+                        border: '1px solid #303030',
+                        borderRadius: 10,
+                        color: '#dbdbdb',
+                        fontSize: 13,
                         fontWeight: 500,
-                        cursor: 'pointer',
-                        transition: 'all 0.15s',
-                        fontFamily: 'Inter-Regular, serif'
-                    }}
-                    onClick={onCancel}
-                    onMouseEnter={(e) => {
-                        e.currentTarget.style.background = colors.buttonBg;
-                    }}
-                    onMouseLeave={(e) => {
-                        e.currentTarget.style.background = colors.buttonHoverBg;
+                        cursor: 'pointer'
                     }}>
                     Cancel
                 </button>
-            </Column>
+            </div>
         </Popover>
     );
-};
+}
 
-const AddGatewayPopover = ({ onAdd, onCancel }: { onAdd: (url: string) => void; onCancel: () => void }) => {
+function AddGatewayPopover({
+    onAdd,
+    onCancel
+}: {
+    onAdd: (url: string) => void;
+    onCancel: () => void;
+}) {
     const [url, setUrl] = useState('');
     const [error, setError] = useState('');
 
     const handleAdd = () => {
-        // Validate URL
         let gatewayUrl = url.trim();
         if (!gatewayUrl) {
             setError('Please enter a gateway URL');
             return;
         }
-
-        // Add https if not present
         if (!gatewayUrl.startsWith('http://') && !gatewayUrl.startsWith('https://')) {
             gatewayUrl = 'https://' + gatewayUrl;
         }
-
-        // Remove trailing slash
         gatewayUrl = gatewayUrl.replace(/\/+$/, '');
-
         try {
             new URL(gatewayUrl);
             onAdd(gatewayUrl);
@@ -876,28 +760,20 @@ const AddGatewayPopover = ({ onAdd, onCancel }: { onAdd: (url: string) => void; 
 
     return (
         <Popover onClose={onCancel}>
-            <Column style={{ width: '100%' }}>
+            <div style={{ width: '100%' }}>
                 <div
                     style={{
                         textAlign: 'center',
-                        paddingBottom: '12px',
-                        borderBottom: `1px solid ${colors.containerBorder}`
+                        paddingBottom: 12,
+                        borderBottom: '1px solid #303030'
                     }}>
-                    <div
-                        style={{
-                            fontSize: '16px',
-                            fontWeight: 600,
-                            color: colors.text,
-                            marginBottom: '4px',
-                            fontFamily: 'Inter-Regular, serif'
-                        }}>
+                    <div style={{ fontSize: 16, fontWeight: 600, color: '#dbdbdb', marginBottom: 4 }}>
                         Add IPFS Gateway
                     </div>
-                    <div style={{ fontSize: '12px', color: colors.textFaded }}>
+                    <div style={{ fontSize: 12, color: 'rgba(219, 219, 219, 0.7)' }}>
                         Enter the URL of an IPFS gateway
                     </div>
                 </div>
-
                 <div style={{ margin: '16px 0' }}>
                     <input
                         type="text"
@@ -907,77 +783,59 @@ const AddGatewayPopover = ({ onAdd, onCancel }: { onAdd: (url: string) => void; 
                             setUrl(e.target.value);
                             setError('');
                         }}
+                        onKeyDown={(e) => e.key === 'Enter' && handleAdd()}
                         style={{
                             width: '100%',
-                            padding: '12px',
-                            background: colors.buttonHoverBg,
-                            border: `1px solid ${error ? colors.error : colors.containerBorder}`,
-                            borderRadius: '10px',
-                            color: colors.text,
-                            fontSize: '13px',
+                            padding: 12,
+                            background: 'rgba(85, 85, 85, 0.3)',
+                            border: `1px solid ${error ? '#ef4444' : '#303030'}`,
+                            borderRadius: 10,
+                            color: '#dbdbdb',
+                            fontSize: 13,
                             fontFamily: 'monospace',
-                            outline: 'none'
-                        }}
-                        onKeyDown={(e) => {
-                            if (e.key === 'Enter') handleAdd();
+                            outline: 'none',
+                            boxSizing: 'border-box'
                         }}
                     />
                     {error && (
-                        <div style={{ fontSize: '11px', color: colors.error, marginTop: '6px', paddingLeft: '4px' }}>
+                        <div style={{ fontSize: 11, color: '#ef4444', marginTop: 6, paddingLeft: 4 }}>
                             {error}
                         </div>
                     )}
                 </div>
-
-                <div style={{ display: 'flex', gap: '10px' }}>
+                <div style={{ display: 'flex', gap: 10 }}>
                     <button
+                        onClick={onCancel}
                         style={{
                             flex: 1,
-                            padding: '10px',
-                            background: colors.buttonHoverBg,
-                            border: `1px solid ${colors.containerBorder}`,
-                            borderRadius: '10px',
-                            color: colors.text,
-                            fontSize: '13px',
+                            padding: 10,
+                            background: 'rgba(85, 85, 85, 0.3)',
+                            border: '1px solid #303030',
+                            borderRadius: 10,
+                            color: '#dbdbdb',
+                            fontSize: 13,
                             fontWeight: 500,
-                            cursor: 'pointer',
-                            transition: 'all 0.15s',
-                            fontFamily: 'Inter-Regular, serif'
-                        }}
-                        onClick={onCancel}
-                        onMouseEnter={(e) => {
-                            e.currentTarget.style.background = colors.buttonBg;
-                        }}
-                        onMouseLeave={(e) => {
-                            e.currentTarget.style.background = colors.buttonHoverBg;
+                            cursor: 'pointer'
                         }}>
                         Cancel
                     </button>
                     <button
+                        onClick={handleAdd}
                         style={{
                             flex: 1,
-                            padding: '10px',
-                            background: colors.main,
+                            padding: 10,
+                            background: '#f37413',
                             border: 'none',
-                            borderRadius: '10px',
+                            borderRadius: 10,
                             color: '#fff',
-                            fontSize: '13px',
+                            fontSize: 13,
                             fontWeight: 500,
-                            cursor: 'pointer',
-                            transition: 'all 0.15s',
-                            fontFamily: 'Inter-Regular, serif'
-                        }}
-                        onClick={handleAdd}
-                        onMouseEnter={(e) => {
-                            e.currentTarget.style.background = '#e56b0e';
-                        }}
-                        onMouseLeave={(e) => {
-                            e.currentTarget.style.background = colors.main;
+                            cursor: 'pointer'
                         }}>
                         Add Gateway
                     </button>
                 </div>
-            </Column>
+            </div>
         </Popover>
     );
-};
+}

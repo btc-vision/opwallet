@@ -207,7 +207,7 @@ export const DEFAULT_CACHE_SETTINGS: OpnetCacheSettings = {
 
 /** Default browser settings */
 export const DEFAULT_BROWSER_SETTINGS: OpnetBrowserSettings = {
-    enabled: false, // Disabled by default
+    enabled: true, // Enabled by default
     interceptHttp: true, // Intercept http://*.btc when enabled
     showRedirectNotification: false,
     showResolverDetails: false

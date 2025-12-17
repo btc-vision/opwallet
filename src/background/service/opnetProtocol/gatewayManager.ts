@@ -249,39 +249,91 @@ class GatewayManager {
         const gateways = this.getOrderedGateways();
         const fullPath = path ? `${cid}${path}` : cid;
 
-        let lastError: Error | null = null;
-
-        for (const gateway of gateways) {
-            try {
-                const url = `${gateway.url}/ipfs/${fullPath}`;
-                const response = await fetch(url, {
-                    redirect: 'follow',
-                    headers: { Accept: '*/*' }
-                });
-
-                if (response.ok) {
-                    // Update health on success
-                    const health = this.healthStatus.get(gateway.url);
-                    if (health) {
-                        health.successCount++;
-                        health.failureCount = 0;
-                    }
-                    return response;
-                }
-
-                // Non-OK response, try next gateway
-                lastError = new Error(`Gateway ${gateway.url} returned ${response.status}`);
-            } catch (error) {
-                lastError = error as Error;
-                // Mark gateway as potentially unhealthy
-                const health = this.healthStatus.get(gateway.url);
-                if (health) {
-                    health.failureCount++;
-                }
-            }
+        if (gateways.length === 0) {
+            throw new Error('No healthy gateways available');
         }
 
-        throw lastError || new Error('All gateways failed');
+        // AbortControllers to cancel losing requests
+        const controllers: Map<number, AbortController> = new Map();
+
+        // Race ALL gateways - return fastest successful response
+        const fetchPromises = gateways.map((gateway, index) => {
+            const controller = new AbortController();
+            controllers.set(index, controller);
+
+            const url = `${gateway.url}/ipfs/${fullPath}`;
+
+            return fetch(url, {
+                redirect: 'follow',
+                headers: { Accept: '*/*' },
+                signal: controller.signal
+            })
+                .then((response) => {
+                    if (response.ok) {
+                        // Update health on success
+                        const health = this.healthStatus.get(gateway.url);
+                        if (health) {
+                            health.successCount++;
+                            health.failureCount = 0;
+                        }
+                        return { response, index };
+                    }
+                    throw new Error(`Gateway ${gateway.url} returned ${response.status}`);
+                })
+                .catch((error) => {
+                    // Mark gateway as potentially unhealthy (only if not aborted)
+                    if (!controller.signal.aborted) {
+                        const health = this.healthStatus.get(gateway.url);
+                        if (health) {
+                            health.failureCount++;
+                        }
+                    }
+                    throw error;
+                });
+        });
+
+        try {
+            // Race for first successful response
+            const result = await this.raceForSuccess(fetchPromises);
+
+            // Cancel all other pending requests
+            controllers.forEach((controller, i) => {
+                if (i !== result.index) {
+                    controller.abort();
+                }
+            });
+
+            return result.response;
+        } catch (error) {
+            throw new Error('All gateways failed');
+        }
+    }
+
+    /**
+     * Race promises - resolve on first SUCCESS, reject only if ALL fail
+     */
+    private raceForSuccess<T>(promises: Promise<T>[]): Promise<T> {
+        return new Promise((resolve, reject) => {
+            let pendingCount = promises.length;
+            const errors: Error[] = [];
+
+            if (pendingCount === 0) {
+                reject(new Error('No promises to race'));
+                return;
+            }
+
+            promises.forEach((promise, index) => {
+                promise
+                    .then(resolve) // First success wins
+                    .catch((error) => {
+                        errors[index] = error;
+                        pendingCount--;
+                        if (pendingCount === 0) {
+                            reject(new AggregateError(errors, 'All requests failed'));
+                        }
+                    });
+            });
+        });
     }
 
     cleanup(): void {

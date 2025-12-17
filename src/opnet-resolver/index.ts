@@ -5,6 +5,9 @@
  */
 
 import browser from 'webextension-polyfill';
+
+// Initialize window.opnet provider
+import './opnetProvider';
 import {
     ContenthashType,
     OpnetDomainRecord,
@@ -67,8 +70,8 @@ const ERROR_CONFIG: Record<
 
 // DOM Elements
 let addressBar: HTMLElement | null;
-let domainDisplay: HTMLElement | null;
-let pathDisplay: HTMLElement | null;
+let urlInput: HTMLInputElement | null;
+let goBtn: HTMLElement | null;
 let loadingContainer: HTMLElement | null;
 let loadingText: HTMLElement | null;
 let errorContainer: HTMLElement | null;
@@ -85,8 +88,8 @@ let currentParsedUrl: ParsedOpnetUrl | null = null;
 // Initialize DOM elements
 function initElements(): void {
     addressBar = document.getElementById('address-bar');
-    domainDisplay = document.getElementById('domain-display');
-    pathDisplay = document.getElementById('path-display');
+    urlInput = document.getElementById('url-input') as HTMLInputElement;
+    goBtn = document.getElementById('go-btn');
     loadingContainer = document.getElementById('loading-container');
     loadingText = document.getElementById('loading-text');
     errorContainer = document.getElementById('error-container');
@@ -144,19 +147,41 @@ function updateAddressBar(parsed: ParsedOpnetUrl): void {
     if (addressBar) {
         addressBar.style.display = 'flex';
     }
-    if (domainDisplay) {
-        domainDisplay.textContent = parsed.fullDomain;
-    }
-    if (pathDisplay) {
-        pathDisplay.textContent = parsed.path + parsed.query + parsed.hash;
+    if (urlInput) {
+        // Show domain + path in input (without opnet:// prefix)
+        const pathPart = parsed.path + parsed.query + parsed.hash;
+        urlInput.value = parsed.fullDomain + pathPart;
     }
 
     // Update document title
     document.title = `${parsed.fullDomain} - OPNet Browser`;
 }
 
+// Navigate to a new URL
+function navigateToUrl(input: string): void {
+    let url = input.trim();
+    if (!url) return;
+
+    // Add .btc if no TLD specified
+    if (!url.includes('.') || (!url.includes('.btc') && !url.includes('/'))) {
+        const slashIndex = url.indexOf('/');
+        if (slashIndex === -1) {
+            url = url + '.btc';
+        } else {
+            url = url.substring(0, slashIndex) + '.btc' + url.substring(slashIndex);
+        }
+    }
+
+    // Build the full opnet URL
+    const opnetUrl = `opnet://${url}`;
+
+    // Navigate to the resolver with the new URL
+    const resolverUrl = `${window.location.pathname}?url=${encodeURIComponent(opnetUrl)}`;
+    window.location.href = resolverUrl;
+}
+
 // Show loading state
-function showLoading(message: string = 'Resolving OPNet domain...'): void {
+function showLoading(message: string = 'Resolving OPNet domain'): void {
     if (loadingContainer) {
         loadingContainer.classList.remove('hidden');
     }
@@ -205,68 +230,8 @@ function showError(error: OpnetProtocolErrorInfo): void {
     }
 }
 
-// Rewrite URLs in content for proper resolution
-function rewriteContent(
-    html: string,
-    ipfsHash: string,
-    domain: string
-): string {
-    const baseUrl = `https://ipfs.opnet.org/ipfs/${ipfsHash}`;
-
-    // Add base tag for relative URLs
-    const baseTag = `<base href="${baseUrl}/">`;
-
-    // Inject base tag after <head>
-    if (html.includes('<head>')) {
-        html = html.replace('<head>', `<head>\n${baseTag}`);
-    } else if (html.includes('<HEAD>')) {
-        html = html.replace('<HEAD>', `<HEAD>\n${baseTag}`);
-    } else {
-        html = `${baseTag}${html}`;
-    }
-
-    // Inject link interception script
-    const interceptScript = `
-<script>
-(function() {
-    document.addEventListener('click', function(e) {
-        var link = e.target;
-        while (link && link.tagName !== 'A') {
-            link = link.parentElement;
-        }
-        if (link && link.href) {
-            var href = link.getAttribute('href') || '';
-            // Check for .btc or opnet:// links
-            if (href.match(/\\.btc(\\/|$|\\?|#)/i) ||
-                href.startsWith('opnet://') ||
-                href.startsWith('web+opnet://')) {
-                e.preventDefault();
-                e.stopPropagation();
-                window.parent.postMessage({
-                    type: 'opnet-navigate',
-                    url: href
-                }, '*');
-            }
-        }
-    }, true);
-})();
-</script>
-`;
-
-    // Inject before </body> or at end
-    if (html.includes('</body>')) {
-        html = html.replace('</body>', `${interceptScript}</body>`);
-    } else if (html.includes('</BODY>')) {
-        html = html.replace('</BODY>', `${interceptScript}</BODY>`);
-    } else {
-        html = `${html}${interceptScript}`;
-    }
-
-    return html;
-}
-
-// Render content in iframe
-function renderContent(content: ResolvedContent, domain: string): void {
+// Render content in sandboxed iframe - load directly from IPFS gateway
+function renderContent(content: ResolvedContent, path: string): void {
     if (loadingContainer) {
         loadingContainer.classList.add('hidden');
     }
@@ -275,34 +240,42 @@ function renderContent(content: ResolvedContent, domain: string): void {
     }
 
     if (contentFrame) {
-        // Rewrite content for proper URL handling
-        const processedHtml = rewriteContent(content.html, content.ipfsHash, domain);
-
-        // Create blob URL for sandboxed content
-        const blob = new Blob([processedHtml], { type: content.contentType });
-        const blobUrl = URL.createObjectURL(blob);
-
-        contentFrame.src = blobUrl;
+        // Load directly from IPFS gateway - sandbox still applies via iframe attribute
+        // This avoids CSP inheritance issues with blob URLs
+        const gatewayPath = path === '/' || path === '' ? '' : path;
+        const ipfsUrl = `https://ipfs.opnet.org/ipfs/${content.ipfsHash}${gatewayPath}`;
+        contentFrame.src = ipfsUrl;
         contentFrame.style.display = 'block';
     }
 }
 
-// Set up message listener for navigation
+// Set up message listener for navigation from iframe
 function setupMessageListener(): void {
     window.addEventListener('message', (event) => {
+        // Only accept navigation messages from trusted IPFS gateways
+        const trustedOrigins = [
+            'https://ipfs.opnet.org',
+            'https://dweb.link',
+            'https://cloudflare-ipfs.com'
+        ];
+
+        // Check if origin is trusted or from blob (null origin)
+        const isFromIframe = event.source === contentFrame?.contentWindow;
+        const isTrustedOrigin = trustedOrigins.some(origin =>
+            event.origin === origin || event.origin.endsWith('.ipfs.io')
+        );
+
+        if (!isFromIframe || (!isTrustedOrigin && event.origin !== 'null')) {
+            return; // Reject untrusted messages
+        }
+
         if (event.data?.type === 'opnet-navigate') {
             const url = event.data.url;
-            navigateToUrl(url);
+            if (typeof url === 'string' && url.length < 2048) {
+                navigateToUrl(url);
+            }
         }
     });
-}
-
-// Navigate to a new opnet URL
-function navigateToUrl(url: string): void {
-    const resolverUrl = browser.runtime.getURL(
-        `opnet-resolver.html?url=${encodeURIComponent(url)}`
-    );
-    window.location.href = resolverUrl;
 }
 
 // Retry function
@@ -327,6 +300,22 @@ function setupButtonListeners(): void {
     }
     if (backBtn) {
         backBtn.addEventListener('click', goBack);
+    }
+
+    // URL input navigation
+    if (urlInput) {
+        urlInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                navigateToUrl(urlInput.value);
+            }
+        });
+    }
+    if (goBtn) {
+        goBtn.addEventListener('click', () => {
+            if (urlInput) {
+                navigateToUrl(urlInput.value);
+            }
+        });
     }
 }
 
@@ -355,13 +344,13 @@ async function init(): Promise<void> {
     currentUrl = opnetUrl;
 
     try {
-        showLoading('Parsing URL...');
+        showLoading('Parsing URL');
 
         // Parse the URL
         currentParsedUrl = await parseUrl(opnetUrl);
         updateAddressBar(currentParsedUrl);
 
-        showLoading('Resolving domain...');
+        showLoading('Resolving domain');
 
         // Resolve the domain
         const domainResult = await resolveDomain(currentParsedUrl.domain);
@@ -389,7 +378,7 @@ async function init(): Promise<void> {
             return;
         }
 
-        showLoading('Fetching content...');
+        showLoading('Fetching content');
 
         // Fetch the content
         const contentResult = await fetchContent(
@@ -404,7 +393,7 @@ async function init(): Promise<void> {
         }
 
         // Render the content
-        renderContent(contentResult, currentParsedUrl.domain);
+        renderContent(contentResult, currentParsedUrl.path);
     } catch (error) {
         console.error('Resolver error:', error);
         showError({
