@@ -334,6 +334,7 @@ export interface WalletController {
     addOpnetGateway(url: string): Promise<void>;
     removeOpnetGateway(url: string): Promise<void>;
     refreshOpnetGateways(): Promise<void>;
+    resolveBtcDomain(domain: string): Promise<string | null>;
 }
 
 const WalletContext = createContext<{

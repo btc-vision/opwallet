@@ -207,11 +207,32 @@ export const AddressInput = (props: InputProps) => {
         setParseName('');
     };
 
-    const handleInputAddress = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleInputAddress = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const inputAddress = e.target.value.trim();
         setInputVal(inputAddress);
 
         resetState();
+
+        // Check if it's a .btc domain
+        if (inputAddress.toLowerCase().endsWith('.btc')) {
+            setSearching(true);
+            try {
+                const resolvedAddress = await wallet.resolveBtcDomain(inputAddress);
+                setSearching(false);
+
+                if (resolvedAddress) {
+                    setValidAddress(resolvedAddress);
+                    setParseAddress(resolvedAddress);
+                    setParseName(inputAddress);
+                } else {
+                    setParseError(`Domain "${inputAddress}" not found or has no owner`);
+                }
+            } catch (error) {
+                setSearching(false);
+                setParseError('Failed to resolve domain');
+            }
+            return;
+        }
 
         const isValid = AddressVerificator.detectAddressType(inputAddress, Web3API.network);
         if (!isValid) {

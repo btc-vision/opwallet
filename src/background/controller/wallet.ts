@@ -3468,6 +3468,39 @@ export class WalletController {
     public refreshOpnetGateways = async (): Promise<void> => {
         await opnetProtocolService.refreshGateways();
     };
+
+    /**
+     * Resolve a .btc domain to a P2TR address
+     * @param domain - The .btc domain (with or without .btc suffix)
+     * @returns The P2TR address of the domain owner, or null if not found
+     */
+    public resolveBtcDomain = async (domain: string): Promise<string | null> => {
+        try {
+            // Normalize domain - remove .btc suffix if present for the resolver
+            const normalizedDomain = domain.toLowerCase().replace(/\.btc$/, '');
+
+            const result = await opnetProtocolService.resolveDomain(normalizedDomain);
+
+            // Check if it's an error (OpnetProtocolErrorInfo has a 'type' property that is a number)
+            if ('type' in result && typeof result.type === 'number') {
+                return null;
+            }
+
+            // Now we know result is OpnetDomainRecord
+            const domainRecord = result as { exists: boolean; owner: string };
+
+            // Check if domain exists and has an owner
+            if (!domainRecord.exists || !domainRecord.owner) {
+                return null;
+            }
+
+            // Service now returns P2TR address directly
+            return domainRecord.owner;
+        } catch (error) {
+            console.error('Failed to resolve .btc domain:', error);
+            return null;
+        }
+    };
 }
 
 // Export a single instance.

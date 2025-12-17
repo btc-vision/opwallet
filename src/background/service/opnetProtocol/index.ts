@@ -359,7 +359,20 @@ class OpnetProtocolService {
             }
 
             const ttl = Number(domainResult.properties.ttl);
-            const ownerAddress = domainResult.properties.owner.toString();
+            // Get owner's P2TR address using provider.getPublicKeyInfo
+            const ownerHex = domainResult.properties.owner.toHex();
+            let ownerAddress = '';
+            try {
+                const pubKeyInfo = await Web3API.provider.getPublicKeyInfo(ownerHex, false);
+                if (pubKeyInfo) {
+                    // getPublicKeyInfo returns an Address object that has proper p2tr method
+                    ownerAddress = pubKeyInfo.p2tr(Web3API.network);
+                }
+            } catch (e) {
+                console.warn('Could not get P2TR address from owner:', e);
+                // Fallback: use the hex directly if it looks like an address
+                ownerAddress = ownerHex;
+            }
 
             // Cache the result
             contenthashCacheService.set(
@@ -458,7 +471,20 @@ class OpnetProtocolService {
             }
 
             const ttl = Number(subdomainResult.properties.ttl);
-            const ownerAddress = subdomainResult.properties.owner.toString();
+            // Get owner's P2TR address using provider.getPublicKeyInfo
+            const ownerHex = subdomainResult.properties.owner.toHex();
+            let ownerAddress = '';
+            try {
+                const pubKeyInfo = await Web3API.provider.getPublicKeyInfo(ownerHex, false);
+                if (pubKeyInfo) {
+                    // getPublicKeyInfo returns an Address object that has proper p2tr method
+                    ownerAddress = pubKeyInfo.p2tr(Web3API.network);
+                }
+            } catch (e) {
+                console.warn('Could not get P2TR address from subdomain owner:', e);
+                // Fallback: use the hex directly if it looks like an address
+                ownerAddress = ownerHex;
+            }
 
             // Cache the result
             contenthashCacheService.set(nameLower, hashString, hashType, this.currentNetworkType, ttl);
