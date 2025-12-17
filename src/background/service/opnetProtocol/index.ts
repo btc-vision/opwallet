@@ -269,7 +269,7 @@ class OpnetProtocolService {
             }
 
             const ttl = Number(domainResult.properties.ttl);
-            const ownerAddress = domainResult.properties.owner.p2tr(Web3API.network);
+            const ownerAddress = domainResult.properties.owner.toString();
 
             // Cache the result
             contenthashCacheService.set(
@@ -368,7 +368,7 @@ class OpnetProtocolService {
             }
 
             const ttl = Number(subdomainResult.properties.ttl);
-            const ownerAddress = subdomainResult.properties.owner.p2tr(Web3API.network);
+            const ownerAddress = subdomainResult.properties.owner.toString();
 
             // Cache the result
             contenthashCacheService.set(nameLower, hashString, hashType, this.currentNetworkType, ttl);

@@ -190,7 +190,12 @@ export default function OpnetBrowserScreen() {
     return (
         <Layout>
             <Header onBack={() => window.history.go(-1)} title="OPNet Browser" />
-            <Content style={{ padding: '12px' }}>
+            <Content
+                style={{
+                    padding: '12px',
+                    alignItems: 'stretch',
+                    justifyItems: 'stretch'
+                }}>
                 {/* Info Card */}
                 <div
                     style={{

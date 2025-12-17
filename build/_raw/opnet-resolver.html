@@ -95,14 +95,7 @@
                 text-align: center;
                 gap: 20px;
                 max-width: 400px;
-            }
-
-            .error-container {
-                display: none;
-            }
-
-            .error-container.visible {
-                display: flex;
+                width: 100%;
             }
 
             .logo-large {
@@ -246,8 +239,8 @@
                     Check the domain name spelling or try again later.
                 </p>
                 <div class="button-group">
-                    <button class="button button-primary" onclick="retry()">Try Again</button>
-                    <button class="button button-secondary" onclick="goBack()">Go Back</button>
+                    <button class="button button-primary" id="retry-btn">Try Again</button>
+                    <button class="button button-secondary" id="back-btn">Go Back</button>
                 </div>
             </div>
         </div>

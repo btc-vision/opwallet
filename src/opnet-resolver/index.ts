@@ -305,17 +305,30 @@ function navigateToUrl(url: string): void {
     window.location.href = resolverUrl;
 }
 
-// Retry function (exposed globally for button)
-(window as unknown as { retry: () => void }).retry = function retry(): void {
+// Retry function
+function retry(): void {
     if (currentUrl) {
         init();
     }
-};
+}
 
-// Go back function (exposed globally for button)
-(window as unknown as { goBack: () => void }).goBack = function goBack(): void {
+// Go back function
+function goBack(): void {
     window.history.back();
-};
+}
+
+// Set up button event listeners
+function setupButtonListeners(): void {
+    const retryBtn = document.getElementById('retry-btn');
+    const backBtn = document.getElementById('back-btn');
+
+    if (retryBtn) {
+        retryBtn.addEventListener('click', retry);
+    }
+    if (backBtn) {
+        backBtn.addEventListener('click', goBack);
+    }
+}
 
 // Check if result is an error
 function isError(
@@ -327,6 +340,7 @@ function isError(
 // Main initialization
 async function init(): Promise<void> {
     initElements();
+    setupButtonListeners();
     setupMessageListener();
 
     const opnetUrl = getOpnetUrl();
