@@ -174,6 +174,7 @@ export enum ChainId {
 export interface ContractsDetails {
     moto?: string;
     pill?: string;
+    btcResolver?: string;
 }
 
 export interface CustomNetwork {
@@ -277,7 +278,8 @@ export const DEFAULT_CHAINS_MAP: { [key in ChainType]?: TypeChain<key> } = {
         defaultExplorer: 'mempool-space',
         contractAddresses: {
             moto: '0x0a6732489a31e6de07917a28ff7df311fc5f98f6e1664943ac1c3fe7893bdab5',
-            pill: '0xfb7df2f08d8042d4df0506c0d4cee3cfa5f2d7b02ef01ec76dd699551393a438'
+            pill: '0xfb7df2f08d8042d4df0506c0d4cee3cfa5f2d7b02ef01ec76dd699551393a438',
+            btcResolver: '0x336dcb0b117e29a61aef4856dc438f9951de39edcc4745a255713da8f807779c'
         }
     },
     [ChainType.BITCOIN_SIGNET]: {

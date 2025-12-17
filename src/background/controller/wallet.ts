@@ -13,6 +13,7 @@ import openapiService from '@/background/service/openapi';
 import permissionService from '@/background/service/permission';
 import preferenceService, { WalletSaveList } from '@/background/service/preference';
 import sessionService from '@/background/service/session';
+import opnetProtocolService from '@/background/service/opnetProtocol';
 import transactionHistoryService from '@/background/service/transactionHistory';
 import transactionStatusPoller from '@/background/service/transactionStatusPoller';
 import { BroadcastTransactionOptions } from '@/content-script/pageProvider/Web3Provider.js';
@@ -83,6 +84,13 @@ import {
     toNetwork
 } from '@btc-vision/wallet-sdk';
 
+import {
+    GatewayConfig,
+    GatewayHealth,
+    OpnetBrowserSettings,
+    OpnetCacheSettings,
+    OpnetCacheStats
+} from '@/shared/types/OpnetProtocol';
 import { RecordTransactionInput, TransactionOrigin, TransactionType } from '@/shared/types/TransactionHistory';
 import { customNetworksManager } from '@/shared/utils/CustomNetworksManager';
 import {
@@ -3385,6 +3393,113 @@ export class WalletController {
 
         const chainType = this.getChainType();
         await transactionHistoryService.clearHistory(chainType, account.pubkey);
+    };
+
+    // =========================================================================
+    // OPNet Browser / Protocol Methods
+    // =========================================================================
+
+    /**
+     * Get OPNet browser settings
+     */
+    public getOpnetBrowserSettings = (): OpnetBrowserSettings => {
+        return opnetProtocolService.getBrowserSettings();
+    };
+
+    /**
+     * Update OPNet browser settings
+     */
+    public setOpnetBrowserSettings = async (settings: Partial<OpnetBrowserSettings>): Promise<void> => {
+        await opnetProtocolService.setBrowserSettings(settings);
+    };
+
+    /**
+     * Get OPNet cache settings
+     */
+    public getOpnetCacheSettings = (): OpnetCacheSettings => {
+        return opnetProtocolService.getCacheSettings();
+    };
+
+    /**
+     * Update OPNet cache settings
+     */
+    public updateOpnetCacheSettings = async (settings: Partial<OpnetCacheSettings>): Promise<void> => {
+        await opnetProtocolService.updateCacheSettings(settings);
+    };
+
+    /**
+     * Get OPNet cache statistics
+     */
+    public getOpnetCacheStats = (): OpnetCacheStats => {
+        return opnetProtocolService.getCacheStats();
+    };
+
+    /**
+     * Clear OPNet cache
+     */
+    public clearOpnetCache = async (): Promise<void> => {
+        await opnetProtocolService.clearCache();
+    };
+
+    /**
+     * Get IPFS gateways with health status
+     */
+    public getOpnetGateways = (): { config: GatewayConfig; health: GatewayHealth }[] => {
+        return opnetProtocolService.getGateways();
+    };
+
+    /**
+     * Add a custom IPFS gateway
+     */
+    public addOpnetGateway = async (url: string): Promise<void> => {
+        await opnetProtocolService.addGateway(url);
+    };
+
+    /**
+     * Remove a custom IPFS gateway
+     */
+    public removeOpnetGateway = async (url: string): Promise<void> => {
+        await opnetProtocolService.removeGateway(url);
+    };
+
+    /**
+     * Refresh IPFS gateway health status
+     */
+    public refreshOpnetGateways = async (): Promise<void> => {
+        await opnetProtocolService.refreshGateways();
+    };
+
+    /**
+     * Resolve a .btc domain to a P2TR address
+     * @param domain - The .btc domain (with or without .btc suffix)
+     * @returns The P2TR address of the domain owner, or null if not found
+     */
+    public resolveBtcDomain = async (domain: string): Promise<string | null> => {
+        try {
+            // Normalize domain - remove .btc suffix if present for the resolver
+            const normalizedDomain = domain.toLowerCase().replace(/\.btc$/, '');
+
+            const result = await opnetProtocolService.resolveDomain(normalizedDomain);
+
+            // Check if it's an error (OpnetProtocolErrorInfo has a 'type' property that is a number)
+            if ('type' in result && typeof result.type === 'number') {
+                return null;
+            }
+
+            // Now we know result is OpnetDomainRecord
+            const domainRecord = result as { exists: boolean; owner: string };
+
+            // Check if domain exists and has an owner
+            if (!domainRecord.exists || !domainRecord.owner) {
+                return null;
+            }
+
+            // Service now returns P2TR address directly
+            return domainRecord.owner;
+        } catch (error) {
+            console.error('Failed to resolve .btc domain:', error);
+            return null;
+        }
     };
 }
 

@@ -133,8 +133,28 @@ function blockedDomainCheck(): boolean {
     return false;
 }
 
-function iframeCheck(): boolean {
-    return self != top;
+function isIframe(): boolean {
+    return self !== top;
+}
+
+/**
+ * Check if we're in an IPFS gateway iframe (should allow provider injection)
+ */
+function isIpfsGatewayIframe(): boolean {
+    if (!isIframe()) return false;
+
+    const ipfsGateways = [
+        'ipfs.opnet.org',
+        'ipfs.io',
+        'dweb.link',
+        'cloudflare-ipfs.com',
+        'gateway.pinata.cloud'
+    ];
+
+    const hostname = window.location.hostname;
+    return ipfsGateways.some(gateway =>
+        hostname === gateway || hostname.endsWith('.' + gateway)
+    );
 }
 
 /**
@@ -143,7 +163,18 @@ function iframeCheck(): boolean {
  * @returns {boolean} {@code true} Whether the provider should be injected
  */
 function shouldInjectProvider(): boolean {
-    return doctypeCheck() && suffixCheck() && documentElementCheck() && !blockedDomainCheck() && !iframeCheck();
+    const basicChecks = doctypeCheck() && suffixCheck() && documentElementCheck() && !blockedDomainCheck();
+
+    if (!basicChecks) return false;
+
+    // Allow injection in top-level pages
+    if (!isIframe()) return true;
+
+    // Allow injection in IPFS gateway iframes (for OPNet browser)
+    if (isIpfsGatewayIframe()) return true;
+
+    // Block other iframes
+    return false;
 }
 
 if (shouldInjectProvider()) {

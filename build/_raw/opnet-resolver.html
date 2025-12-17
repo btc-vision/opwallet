@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8" />
+        <link rel="icon" href="/favicon.ico" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <meta name="theme-color" content="#070606" />
+        <meta name="description" content="OPNet Domain Resolver" />
+        <meta
+            http-equiv="Content-Security-Policy"
+            content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; frame-src 'self' blob: https://ipfs.opnet.org https://*.ipfs.io https://dweb.link https://cloudflare-ipfs.com; img-src 'self' data: blob: https: http:;"
+        />
+        <link rel="stylesheet" href="css/style.css" />
+        <title>OPNet Browser</title>
+        <style>
+            * {
+                box-sizing: border-box;
+                margin: 0;
+                padding: 0;
+            }
+
+            html, body {
+                width: 100%;
+                height: 100%;
+            }
+
+            body {
+                font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+                background: #070606;
+                color: #dbdbdb;
+                min-height: 100vh;
+            }
+
+            .address-bar {
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                height: 44px;
+                background: #212121;
+                border-bottom: 1px solid #303030;
+                display: flex;
+                align-items: center;
+                padding: 0 12px;
+                gap: 10px;
+                z-index: 1000;
+            }
+
+            .address-bar .logo {
+                width: 24px;
+                height: 24px;
+                flex-shrink: 0;
+            }
+
+            .url-input-wrapper {
+                flex: 1;
+                display: flex;
+                align-items: center;
+                background: #434343;
+                border-radius: 8px;
+                padding: 0 4px 0 12px;
+                height: 32px;
+                border: 1px solid transparent;
+                transition: border-color 0.15s;
+            }
+
+            .url-input-wrapper:focus-within {
+                border-color: #f37413;
+            }
+
+            .protocol-prefix {
+                color: #4ade80;
+                font-size: 13px;
+                font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+                flex-shrink: 0;
+            }
+
+            .url-input {
+                flex: 1;
+                background: transparent;
+                border: none;
+                outline: none;
+                font-size: 13px;
+                color: #f37413;
+                font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+                padding: 0;
+                min-width: 0;
+            }
+
+            .url-input::placeholder {
+                color: #707070;
+            }
+
+            .go-btn {
+                width: 26px;
+                height: 26px;
+                border-radius: 6px;
+                background: #555;
+                border: none;
+                cursor: pointer;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                color: #dbdbdb;
+                flex-shrink: 0;
+                transition: background 0.15s;
+            }
+
+            .go-btn:hover {
+                background: #f37413;
+            }
+
+            .resolver-page {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                width: 100%;
+                min-height: 100vh;
+                padding: 60px 20px 20px;
+            }
+
+            .resolver-loading-content,
+            .resolver-error-content {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                text-align: center;
+                gap: 16px;
+                max-width: 400px;
+                width: 100%;
+            }
+
+            /* OPNet Loader */
+            .opnet-loader {
+                position: relative;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                width: 120px;
+                height: 120px;
+            }
+
+            .opnet-ring-spin {
+                position: absolute;
+                animation: opnet-spin 2s linear infinite;
+            }
+
+            .opnet-logo-pulse {
+                animation: opnet-pulse 2s ease-in-out infinite;
+            }
+
+            @keyframes opnet-spin {
+                to {
+                    transform: rotate(360deg);
+                }
+            }
+
+            @keyframes opnet-pulse {
+                0%, 100% {
+                    opacity: 0.85;
+                    filter: drop-shadow(0 0 4px rgba(238, 119, 27, 0.3));
+                }
+                50% {
+                    opacity: 1;
+                    filter: drop-shadow(0 0 16px rgba(238, 119, 27, 0.5));
+                }
+            }
+
+            .loading-text {
+                font-size: 14px;
+                color: rgba(255, 255, 255, 0.85);
+                display: flex;
+                align-items: center;
+                gap: 2px;
+            }
+
+            .opnet-dot-1, .opnet-dot-2, .opnet-dot-3 {
+                animation: opnet-dot-pulse 1.4s infinite;
+            }
+
+            .opnet-dot-1 { animation-delay: 0s; }
+            .opnet-dot-2 { animation-delay: 0.2s; }
+            .opnet-dot-3 { animation-delay: 0.4s; }
+
+            @keyframes opnet-dot-pulse {
+                0%, 20% { opacity: 0; }
+                40%, 100% { opacity: 1; }
+            }
+
+            .error-logo {
+                width: 80px;
+                height: 54px;
+            }
+
+            .error-title {
+                font-size: 22px;
+                font-weight: 600;
+                color: #dbdbdb;
+            }
+
+            .error-domain {
+                background: #434343;
+                border-radius: 8px;
+                padding: 10px 18px;
+                font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+                font-size: 14px;
+                color: #f37413;
+            }
+
+            .error-message {
+                font-size: 14px;
+                color: #a0a0a0;
+                line-height: 1.5;
+            }
+
+            .error-suggestion {
+                font-size: 12px;
+                color: #707070;
+                font-style: italic;
+            }
+
+            .button {
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                gap: 8px;
+                padding: 12px 24px;
+                border-radius: 10px;
+                border: none;
+                font-size: 14px;
+                font-weight: 500;
+                cursor: pointer;
+                transition: all 0.15s;
+            }
+
+            .button-primary {
+                background: #f37413;
+                color: #fff;
+            }
+
+            .button-primary:hover {
+                background: #e56b0e;
+            }
+
+            .button-secondary {
+                background: #434343;
+                color: #dbdbdb;
+            }
+
+            .button-secondary:hover {
+                background: #555555;
+            }
+
+            .button-group {
+                display: flex;
+                gap: 12px;
+                margin-top: 10px;
+            }
+
+            #content-frame {
+                position: fixed;
+                top: 44px;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                border: none;
+                width: 100%;
+                height: calc(100vh - 44px);
+                display: none;
+                background: #fff;
+            }
+
+            .hidden {
+                display: none !important;
+            }
+        </style>
+    </head>
+
+    <body>
+        <!-- Address Bar -->
+        <div class="address-bar" id="address-bar" style="display: none">
+            <img src="images/logo/opwallet_onlylogo.svg" alt="OPNet" class="logo" />
+            <div class="url-input-wrapper">
+                <span class="protocol-prefix">opnet://</span>
+                <input
+                    type="text"
+                    class="url-input"
+                    id="url-input"
+                    placeholder="domain.btc/path"
+                    spellcheck="false"
+                    autocomplete="off"
+                />
+                <button class="go-btn" id="go-btn" title="Navigate">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M5 12h14M12 5l7 7-7 7"/>
+                    </svg>
+                </button>
+            </div>
+        </div>
+
+        <!-- Loading State -->
+        <div class="resolver-page" id="loading-container">
+            <div class="resolver-loading-content">
+                <div class="opnet-loader">
+                    <!-- Spinning ring -->
+                    <svg class="opnet-ring-spin" width="120" height="120" viewBox="0 0 200 200">
+                        <circle
+                            cx="100"
+                            cy="100"
+                            r="90"
+                            fill="none"
+                            stroke="#ee771b"
+                            stroke-width="2"
+                            stroke-dasharray="80 420"
+                            stroke-linecap="round"
+                            style="filter: drop-shadow(0 0 8px rgba(238, 119, 27, 0.6))"
+                        />
+                    </svg>
+                    <!-- Pulsing logo -->
+                    <svg class="opnet-logo-pulse" width="80" height="54" viewBox="0 0 165 112" fill="none">
+                        <path d="M164.28 45.35C163.61 20.68 142.85 0.28 118.17 0C109.48 -0.1 101.35 2.21 94.36 6.26C91.78 7.75 91.07 11.17 92.81 13.59C96.26 18.39 98.96 23.75 100.79 29.5C101.8 32.7 105.61 33.73 108.45 31.93C112 29.68 116.42 28.68 121.13 29.6C127.66 30.87 133.08 36.04 134.57 42.53C137.19 53.93 128.6 64.04 117.65 64.04C114.24 64.04 111.07 63.05 108.4 61.34C105.58 59.54 101.78 60.68 100.77 63.87C96.29 77.92 86.5 89.59 73.75 96.54C72.08 97.45 70.99 99.14 70.99 101.04V106.62C70.99 109.42 73.26 111.69 76.06 111.69H95.19C97.99 111.69 100.26 109.42 100.26 106.62V96.86C100.26 93.51 103.43 91.19 106.68 91.99C110.2 92.85 113.87 93.31 117.65 93.31C143.85 93.31 165.01 71.71 164.29 45.35H164.28Z" fill="#ee771b"/>
+                        <path d="M46.66 0C20.89 0 0 20.89 0 46.66C0 72.43 20.89 93.32 46.66 93.32C72.43 93.32 93.32 72.43 93.32 46.66C93.32 20.89 72.43 0 46.66 0ZM46.66 64.05C37.06 64.05 29.27 56.26 29.27 46.66C29.27 37.06 37.06 29.27 46.66 29.27C56.26 29.27 64.05 37.06 64.05 46.66C64.05 56.26 56.26 64.05 46.66 64.05Z" fill="white"/>
+                    </svg>
+                </div>
+                <div class="loading-text">
+                    <span id="loading-text">Resolving domain</span>
+                    <span class="opnet-dot-1">.</span>
+                    <span class="opnet-dot-2">.</span>
+                    <span class="opnet-dot-3">.</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Error State -->
+        <div class="resolver-page hidden" id="error-container">
+            <div class="resolver-error-content">
+                <svg class="error-logo" width="80" height="54" viewBox="0 0 165 112" fill="none">
+                    <path d="M164.28 45.35C163.61 20.68 142.85 0.28 118.17 0C109.48 -0.1 101.35 2.21 94.36 6.26C91.78 7.75 91.07 11.17 92.81 13.59C96.26 18.39 98.96 23.75 100.79 29.5C101.8 32.7 105.61 33.73 108.45 31.93C112 29.68 116.42 28.68 121.13 29.6C127.66 30.87 133.08 36.04 134.57 42.53C137.19 53.93 128.6 64.04 117.65 64.04C114.24 64.04 111.07 63.05 108.4 61.34C105.58 59.54 101.78 60.68 100.77 63.87C96.29 77.92 86.5 89.59 73.75 96.54C72.08 97.45 70.99 99.14 70.99 101.04V106.62C70.99 109.42 73.26 111.69 76.06 111.69H95.19C97.99 111.69 100.26 109.42 100.26 106.62V96.86C100.26 93.51 103.43 91.19 106.68 91.99C110.2 92.85 113.87 93.31 117.65 93.31C143.85 93.31 165.01 71.71 164.29 45.35H164.28Z" fill="#ee771b"/>
+                    <path d="M46.66 0C20.89 0 0 20.89 0 46.66C0 72.43 20.89 93.32 46.66 93.32C72.43 93.32 93.32 72.43 93.32 46.66C93.32 20.89 72.43 0 46.66 0ZM46.66 64.05C37.06 64.05 29.27 56.26 29.27 46.66C29.27 37.06 37.06 29.27 46.66 29.27C56.26 29.27 64.05 37.06 64.05 46.66C64.05 56.26 56.26 64.05 46.66 64.05Z" fill="white"/>
+                </svg>
+                <h2 class="error-title" id="error-title">Domain Not Found</h2>
+                <div class="error-domain" id="error-domain"></div>
+                <p class="error-message" id="error-message">
+                    This OPNet domain has not been registered yet.
+                </p>
+                <p class="error-suggestion" id="error-suggestion">
+                    Check the domain name spelling or try again later.
+                </p>
+                <div class="button-group">
+                    <button class="button button-primary" id="retry-btn">Try Again</button>
+                    <button class="button button-secondary" id="back-btn">Go Back</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Content Frame -->
+        <iframe
+            id="content-frame"
+            sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals"
+            loading="lazy"
+            referrerpolicy="no-referrer"
+        ></iframe>
+
+        <script type="module" src="opnet-resolver.js"></script>
+    </body>
+</html>
