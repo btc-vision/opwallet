@@ -356,9 +356,11 @@
         </div>
 
         <!-- Content Frame -->
+        <!-- Note: allow-same-origin is intentionally omitted for security -->
+        <!-- This means iframe content cannot make API calls but prevents sandbox escape -->
         <iframe
             id="content-frame"
-            sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals"
+            sandbox="allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox"
             loading="lazy"
             referrerpolicy="no-referrer"
         ></iframe>
