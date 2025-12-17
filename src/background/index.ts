@@ -141,6 +141,18 @@ browserRuntimeOnConnect((port: Runtime.Port) => {
     }
 
     const pm = new PortMessage(port);
+
+    // SECURITY: Get the verified origin from the browser, not from the page
+    // This prevents origin spoofing attacks where a malicious page claims to be a trusted site
+    let verifiedOrigin = '';
+    if (port.sender?.url) {
+        try {
+            verifiedOrigin = new URL(port.sender.url).origin;
+        } catch {
+            // Invalid URL, leave origin empty
+        }
+    }
+
     pm.listen(async (data) => {
         if (!appStoreLoaded) {
             // todo
@@ -152,6 +164,12 @@ browserRuntimeOnConnect((port: Runtime.Port) => {
         }
 
         const session = sessionService.getOrCreateSession(sessionId);
+
+        // SECURITY: Always set origin from browser-verified source, never trust page-provided origin
+        if (verifiedOrigin && session.origin !== verifiedOrigin) {
+            session.origin = verifiedOrigin;
+        }
+
         const req: ProviderControllerRequest = { data, session };
 
         // for background push to respective page

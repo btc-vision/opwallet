@@ -6,8 +6,14 @@ import { ProviderControllerRequest } from '@/shared/types/Request';
 import wallet from '../wallet';
 
 const tabCheckin = (req: ProviderControllerRequest) => {
-    const { origin, name, icon } = req.data.params as SessionInfo;
-    req.session.setProp({ origin, name, icon });
+    // SECURITY: Only allow page to set name and icon, NOT origin
+    // Origin is set from browser-verified source in background/index.ts
+    // This prevents origin spoofing attacks
+    const { name, icon } = req.data.params as SessionInfo;
+
+    // Only update name and icon, preserve the browser-verified origin
+    req.session.name = name || req.session.name;
+    req.session.icon = icon || req.session.icon;
 };
 
 const getProviderState = async (_req: ProviderControllerRequest): Promise<ProviderState> => {
