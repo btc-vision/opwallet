@@ -471,7 +471,8 @@ export default function TxOpnetConfirmScreen() {
                     gasSatFee: 0n,
                     to: parameters.to,
                     from: fromAddress,
-                    note: parameters.note
+                    note: parameters.note,
+                    splitInputsInto: parameters.splitInputsInto
                 };
 
                 // Create and sign the transaction (without broadcasting)

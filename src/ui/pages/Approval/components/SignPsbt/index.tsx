@@ -5,6 +5,7 @@ import { KEYRING_TYPE } from '@/shared/constant';
 import { DecodedPsbt, ParsedSignPsbtUr, RawTxInfo, ToSignInput, TxType } from '@/shared/types';
 import { SignPsbtApprovalParams } from '@/shared/types/Approval';
 import { isWalletError } from '@/shared/utils/errors';
+import Web3API from '@/shared/web3/Web3API';
 import { Button, Card, Column, Content, Footer, Header, Icon, Image, Layout, Row, Text, TxFlowPreview } from '@/ui/components';
 import { useTools } from '@/ui/components/ActionComponent';
 import { AddressText } from '@/ui/components/AddressText';
@@ -17,6 +18,7 @@ import { colors } from '@/ui/theme/colors';
 import { fontSizes } from '@/ui/theme/font';
 import { amountToSatoshis, copyToClipboard, satoshisToAmount, shortAddress, useApproval, useWallet } from '@/ui/utils';
 import { LoadingOutlined } from '@ant-design/icons';
+import { Address } from '@btc-vision/transaction';
 
 export interface Props {
     header?: React.ReactNode;
@@ -235,6 +237,71 @@ export default function SignPsbt({
 
     const address = useAccountAddress();
     const currentAccount = useCurrentAccount();
+
+    // State to hold all user addresses for accurate output detection
+    const [userAddresses, setUserAddresses] = useState<Set<string>>(new Set());
+
+    // Fetch all user addresses for accurate change/refund detection
+    // Includes: main address, all CSV variants, p2wda, p2tr, p2wpkh, p2pkh, p2shp2wpkh
+    useEffect(() => {
+        const fetchUserAddresses = async () => {
+            try {
+                const account = await wallet.getCurrentAccount();
+                const addresses = new Set<string>();
+
+                // Add main address
+                addresses.add(account.address.toLowerCase());
+
+                // Derive all address types from pubkey
+                if (account.pubkey) {
+                    const zeroHash = '0x0000000000000000000000000000000000000000000000000000000000000000';
+                    const addressInst = Address.fromString(zeroHash, account.pubkey);
+
+                    // Add CSV addresses
+                    try {
+                        addresses.add(addressInst.toCSV(75, Web3API.network).address.toLowerCase());
+                    } catch { /* ignore if derivation fails */ }
+                    try {
+                        addresses.add(addressInst.toCSV(2, Web3API.network).address.toLowerCase());
+                    } catch { /* ignore if derivation fails */ }
+                    try {
+                        addresses.add(addressInst.toCSV(1, Web3API.network).address.toLowerCase());
+                    } catch { /* ignore if derivation fails */ }
+
+                    // Add p2wda address
+                    try {
+                        addresses.add(addressInst.p2wda(Web3API.network).address.toLowerCase());
+                    } catch { /* ignore if derivation fails */ }
+
+                    // Add p2tr (taproot) address
+                    try {
+                        addresses.add(addressInst.p2tr(Web3API.network).toLowerCase());
+                    } catch { /* ignore if derivation fails */ }
+
+                    // Add p2wpkh (native segwit) address
+                    try {
+                        addresses.add(addressInst.p2wpkh(Web3API.network).toLowerCase());
+                    } catch { /* ignore if derivation fails */ }
+
+                    // Add p2pkh (legacy) address
+                    try {
+                        addresses.add(addressInst.p2pkh(Web3API.network).toLowerCase());
+                    } catch { /* ignore if derivation fails */ }
+
+                    // Add p2shp2wpkh (nested segwit) address
+                    try {
+                        addresses.add(addressInst.p2shp2wpkh(Web3API.network).toLowerCase());
+                    } catch { /* ignore if derivation fails */ }
+                }
+
+                setUserAddresses(addresses);
+            } catch (e) {
+                console.error('Failed to fetch user addresses:', e);
+            }
+        };
+
+        void fetchUserAddresses();
+    }, [wallet]);
 
     const [isKeystoneSigning, setIsKeystoneSigning] = useState(false);
     const init = async () => {
@@ -547,7 +614,10 @@ export default function SignPsbt({
                                 <Card>
                                     <Column full justifyCenter gap="lg">
                                         {txInfo.decodedPsbt.outputs.map((v, index) => {
-                                            const isMyAddress = v.address == currentAccount.address;
+                                            // Check against ALL user addresses (main, CSV variants, p2wda, p2tr, etc.)
+                                            const isMyAddress = v.address
+                                                ? userAddresses.has(v.address.toLowerCase())
+                                                : false;
                                             return (
                                                 <Column
                                                     key={`output_${index}`}

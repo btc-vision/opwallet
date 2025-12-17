@@ -304,7 +304,6 @@ export function OPNetList() {
         try {
             await Web3API.setNetwork(chainType);
             const addresses = loadTokenAddresses();
-            console.log('Loaded addresses:', addresses.length, addresses);
             setAllTokenAddresses(addresses);
 
             if (addresses.length > 0) {
