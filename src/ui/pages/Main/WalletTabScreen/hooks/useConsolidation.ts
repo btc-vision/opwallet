@@ -1,4 +1,5 @@
 import { UTXO_CONFIG } from '@/shared/config';
+import { Action, Features, SendBitcoinParameters, SourceType } from '@/shared/interfaces/RawTxParameters';
 import { BitcoinBalance } from '@/shared/types';
 import { useCurrentAccount } from '@/ui/state/accounts/hooks';
 import { useResetUiTxCreateScreen } from '@/ui/state/ui/hooks';
@@ -73,6 +74,8 @@ export function useConsolidation() {
             accountBalance.unspent_utxos_count >= warningThreshold ||
             accountBalance.csv75_locked_utxos_count >= warningThreshold ||
             accountBalance.csv75_unlocked_utxos_count >= warningThreshold ||
+            accountBalance.csv2_locked_utxos_count >= warningThreshold ||
+            accountBalance.csv2_unlocked_utxos_count >= warningThreshold ||
             accountBalance.csv1_locked_utxos_count >= warningThreshold ||
             accountBalance.csv1_unlocked_utxos_count >= warningThreshold ||
             accountBalance.p2wda_utxos_count >= warningThreshold ||
@@ -227,21 +230,44 @@ export function useConsolidation() {
     }, [wallet, currentAccount, resetUiTxCreateScreen, navigate, selectConsolidationType]);
 
     /**
-     * Navigate to the split screen with the specified split count
+     * Navigate directly to the confirmation screen with split parameters
      */
     const navigateToSplit = useCallback(
-        async (splitCount: number) => {
+        async (splitCount: number, feeRate: number) => {
             resetUiTxCreateScreen();
 
-            navigate(RouteTypes.TxCreateScreen, {
-                split: {
-                    enabled: true,
-                    splitCount: splitCount,
-                    autoFillAmount: true
-                }
-            });
+            // Fetch fresh balance to get accurate amount
+            const freshBalance = await wallet.getAddressBalance(currentAccount.address, currentAccount.pubkey);
+
+            // Use confirmed amount from main wallet for splitting
+            const splitAmount = freshBalance.btc_confirm_amount || '0';
+            const inputAmount = parseFloat(splitAmount);
+
+            if (inputAmount <= 0) {
+                throw new Error('No available balance to split');
+            }
+
+            // Build the transaction parameters
+            const txParams: SendBitcoinParameters = {
+                to: currentAccount.address, // Send to self
+                inputAmount: inputAmount,
+                feeRate: feeRate,
+                features: { [Features.rbf]: true, [Features.taproot]: true },
+                priorityFee: 0n,
+                header: 'Split UTXOs',
+                tokens: [],
+                action: Action.SendBitcoin,
+                note: `UTXO Split - Creating ${splitCount} UTXOs`,
+                from: currentAccount.address,
+                sourceType: SourceType.CURRENT,
+                optimize: true,
+                splitInputsInto: splitCount
+            };
+
+            // Navigate directly to confirmation screen
+            navigate(RouteTypes.TxOpnetConfirmScreen, { rawTxInfo: txParams });
         },
-        [resetUiTxCreateScreen, navigate]
+        [wallet, currentAccount, resetUiTxCreateScreen, navigate]
     );
 
     /**

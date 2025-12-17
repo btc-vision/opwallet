@@ -539,8 +539,90 @@ export default function TxCreateScreen() {
         setPendingBalance(null);
     };
 
-    // Show address selection screen first
+    // Show address selection screen first (unless in split/consolidation mode and still loading)
+    // When in split or consolidation mode, wait for auto-selection before showing anything
     if (!hasSelectedAddress) {
+        // If in split or consolidation mode and still loading, show a loading screen
+        if ((splitParams?.enabled || consolidationParams?.enabled) && loadingBalances) {
+            return (
+                <Layout>
+                    <Header
+                        title={splitParams?.enabled ? `Split UTXOs` : `Consolidate UTXOs`}
+                        onBack={() => navigate(RouteTypes.MainScreen)}
+                    />
+                    <Content style={{ padding: '16px' }}>
+                        <div style={{ textAlign: 'center', padding: '40px 20px' }}>
+                            <OPNetLoader
+                                size={60}
+                                text={splitParams?.enabled ? 'Preparing split transaction' : 'Preparing consolidation'}
+                            />
+                        </div>
+                    </Content>
+                </Layout>
+            );
+        }
+
+        // If in split mode and balances are loaded but auto-selection hasn't happened yet
+        if (splitParams?.enabled && !loadingBalances) {
+            const currentBalance = addressBalances.find((b) => b.type === SourceType.CURRENT);
+            const hasAvailableBalance = currentBalance && currentBalance.available && currentBalance.satoshis > 0n;
+
+            // If no available balance, show error
+            if (!hasAvailableBalance) {
+                return (
+                    <Layout>
+                        <Header title="Split UTXOs" onBack={() => navigate(RouteTypes.MainScreen)} />
+                        <Content style={{ padding: '16px' }}>
+                            <div
+                                style={{
+                                    textAlign: 'center',
+                                    padding: '40px 20px',
+                                    background: colors.containerBgFaded,
+                                    borderRadius: '12px'
+                                }}>
+                                <WarningOutlined style={{ fontSize: 48, color: colors.warning, marginBottom: 16 }} />
+                                <h3 style={{ fontSize: '16px', color: colors.text, marginBottom: 8 }}>
+                                    No Available Balance
+                                </h3>
+                                <p style={{ fontSize: '13px', color: colors.textFaded }}>
+                                    You need a balance in your primary wallet to split UTXOs.
+                                </p>
+                            </div>
+                        </Content>
+                    </Layout>
+                );
+            }
+
+            // If balance exists, wait for useEffect auto-selection (show loading)
+            // This prevents flashing the address selection screen before auto-selection
+            if (!hasAutoSelectedOnce) {
+                return (
+                    <Layout>
+                        <Header title="Split UTXOs" onBack={() => navigate(RouteTypes.MainScreen)} />
+                        <Content style={{ padding: '16px' }}>
+                            <div style={{ textAlign: 'center', padding: '40px 20px' }}>
+                                <OPNetLoader size={60} text="Preparing split transaction" />
+                            </div>
+                        </Content>
+                    </Layout>
+                );
+            }
+        }
+
+        // Similar handling for consolidation mode
+        if (consolidationParams?.enabled && !loadingBalances && !hasAutoSelectedOnce) {
+            return (
+                <Layout>
+                    <Header title="Consolidate UTXOs" onBack={() => navigate(RouteTypes.MainScreen)} />
+                    <Content style={{ padding: '16px' }}>
+                        <div style={{ textAlign: 'center', padding: '40px 20px' }}>
+                            <OPNetLoader size={60} text="Preparing consolidation" />
+                        </div>
+                    </Content>
+                </Layout>
+            );
+        }
+
         return (
             <Layout>
                 <Header title={`Send ${btcUnit}`} onBack={() => navigate(RouteTypes.MainScreen)} />

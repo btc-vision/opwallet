@@ -5,6 +5,7 @@ import { UTXO_CONFIG } from '@/shared/config';
 import { checkAddressFlag } from '@/shared/utils';
 import { Column, Content, Footer, Header, Image, Layout } from '@/ui/components';
 import AccountSelect from '@/ui/components/AccountSelect';
+import { FeeRateBar } from '@/ui/components/FeeRateBar';
 import { QuantumMigrationBanner } from '@/ui/components/QuantumMigrationBanner';
 import { DisableUnconfirmedsPopover } from '@/ui/components/DisableUnconfirmedPopover';
 import { NavTabBar } from '@/ui/components/NavTabBar';
@@ -145,6 +146,7 @@ export default function WalletTabScreen() {
     const [showDisableUnconfirmedUtxoNotice, setShowDisableUnconfirmedUtxoNotice] = useState(false);
     const [showOptimizeModal, setShowOptimizeModal] = useState(false);
     const [splitCount, setSplitCount] = useState(25);
+    const [splitFeeRate, setSplitFeeRate] = useState(5); // Default fee rate
     const [needsQuantumMigration, setNeedsQuantumMigration] = useState(false);
 
     // Check if quantum migration is needed (SimpleKeyring without quantum key)
@@ -223,11 +225,11 @@ export default function WalletTabScreen() {
 
     // Handle split action
     const handleSplit = useCallback(async () => {
-        if (isSplitValid) {
+        if (isSplitValid && splitFeeRate > 0) {
             setShowOptimizeModal(false);
-            await navigateToSplit(splitCount);
+            await navigateToSplit(splitCount, splitFeeRate);
         }
-    }, [isSplitValid, splitCount, navigateToSplit]);
+    }, [isSplitValid, splitCount, splitFeeRate, navigateToSplit]);
 
     // Handle consolidate action
     const handleConsolidate = useCallback(async () => {
@@ -418,6 +420,8 @@ export default function WalletTabScreen() {
                                         accountBalance.unspent_utxos_count >= errorThreshold ||
                                         accountBalance.csv75_locked_utxos_count >= errorThreshold ||
                                         accountBalance.csv75_unlocked_utxos_count >= errorThreshold ||
+                                        accountBalance.csv2_locked_utxos_count >= errorThreshold ||
+                                        accountBalance.csv2_unlocked_utxos_count >= errorThreshold ||
                                         accountBalance.csv1_locked_utxos_count >= errorThreshold ||
                                         accountBalance.csv1_unlocked_utxos_count >= errorThreshold ||
                                         accountBalance.p2wda_utxos_count >= errorThreshold ||
@@ -1116,19 +1120,32 @@ export default function WalletTabScreen() {
                                         )}
                                     </div>
 
+                                    {/* Fee Rate Selection */}
+                                    <div style={{ marginBottom: '12px' }}>
+                                        <div
+                                            style={{
+                                                fontSize: '11px',
+                                                color: colors.textFaded,
+                                                marginBottom: '6px'
+                                            }}>
+                                            Network Fee
+                                        </div>
+                                        <FeeRateBar onChange={(val) => setSplitFeeRate(val)} />
+                                    </div>
+
                                     <button
                                         onClick={handleSplit}
-                                        disabled={!isSplitValid}
+                                        disabled={!isSplitValid || splitFeeRate <= 0}
                                         style={{
                                             width: '100%',
                                             padding: '12px',
-                                            background: isSplitValid ? colors.main : colors.buttonBg,
+                                            background: isSplitValid && splitFeeRate > 0 ? colors.main : colors.buttonBg,
                                             border: 'none',
                                             borderRadius: '8px',
-                                            cursor: isSplitValid ? 'pointer' : 'not-allowed',
+                                            cursor: isSplitValid && splitFeeRate > 0 ? 'pointer' : 'not-allowed',
                                             fontSize: '13px',
                                             fontWeight: 600,
-                                            color: isSplitValid ? '#000' : colors.textFaded,
+                                            color: isSplitValid && splitFeeRate > 0 ? '#000' : colors.textFaded,
                                             transition: 'all 0.2s'
                                         }}>
                                         Split UTXOs
