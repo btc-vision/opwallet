@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8" />
+        <link rel="icon" href="/favicon.ico" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <meta name="theme-color" content="#070606" />
+        <meta name="description" content="OPNet Domain Resolver" />
+        <meta
+            http-equiv="Content-Security-Policy"
+            content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; frame-src 'self' blob:; img-src 'self' data: https://ipfs.opnet.org https://*.ipfs.io;"
+        />
+        <link rel="stylesheet" href="css/style.css" />
+        <title>OPNet Browser</title>
+        <style>
+            * {
+                box-sizing: border-box;
+                margin: 0;
+                padding: 0;
+            }
+
+            body {
+                font-family:
+                    -apple-system,
+                    BlinkMacSystemFont,
+                    'Segoe UI',
+                    Roboto,
+                    sans-serif;
+                background: #070606;
+                color: #dbdbdb;
+                min-height: 100vh;
+            }
+
+            .address-bar {
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                height: 44px;
+                background: #212121;
+                border-bottom: 1px solid #303030;
+                display: flex;
+                align-items: center;
+                padding: 0 12px;
+                gap: 10px;
+                z-index: 1000;
+            }
+
+            .address-bar .logo {
+                width: 20px;
+                height: 20px;
+                flex-shrink: 0;
+            }
+
+            .address-bar .url-display {
+                flex: 1;
+                background: #434343;
+                border-radius: 8px;
+                padding: 8px 14px;
+                font-size: 13px;
+                color: #dbdbdb;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+                font-family: monospace;
+            }
+
+            .address-bar .protocol {
+                color: #4ade80;
+            }
+
+            .address-bar .domain {
+                color: #f37413;
+            }
+
+            .address-bar .path {
+                color: #a0a0a0;
+            }
+
+            .container {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                min-height: 100vh;
+                padding: 60px 20px 20px;
+            }
+
+            .loading-container,
+            .error-container {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                text-align: center;
+                gap: 20px;
+                max-width: 400px;
+            }
+
+            .error-container {
+                display: none;
+            }
+
+            .error-container.visible {
+                display: flex;
+            }
+
+            .logo-large {
+                width: 80px;
+                height: 80px;
+            }
+
+            .loading-text {
+                font-size: 16px;
+                color: #a0a0a0;
+            }
+
+            .spinner {
+                width: 40px;
+                height: 40px;
+                border: 3px solid #303030;
+                border-top-color: #f37413;
+                border-radius: 50%;
+                animation: spin 1s linear infinite;
+            }
+
+            @keyframes spin {
+                to {
+                    transform: rotate(360deg);
+                }
+            }
+
+            .error-title {
+                font-size: 22px;
+                font-weight: 600;
+                color: #dbdbdb;
+            }
+
+            .error-domain {
+                background: #434343;
+                border-radius: 8px;
+                padding: 10px 18px;
+                font-family: monospace;
+                font-size: 14px;
+                color: #f37413;
+            }
+
+            .error-message {
+                font-size: 14px;
+                color: #a0a0a0;
+                line-height: 1.5;
+            }
+
+            .error-suggestion {
+                font-size: 12px;
+                color: #707070;
+                font-style: italic;
+            }
+
+            .button {
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                gap: 8px;
+                padding: 12px 24px;
+                border-radius: 10px;
+                border: none;
+                font-size: 14px;
+                font-weight: 500;
+                cursor: pointer;
+                transition: all 0.15s;
+            }
+
+            .button-primary {
+                background: #f37413;
+                color: #fff;
+            }
+
+            .button-primary:hover {
+                background: #e56b0e;
+            }
+
+            .button-secondary {
+                background: #434343;
+                color: #dbdbdb;
+            }
+
+            .button-secondary:hover {
+                background: #555555;
+            }
+
+            .button-group {
+                display: flex;
+                gap: 12px;
+                margin-top: 10px;
+            }
+
+            #content-frame {
+                position: fixed;
+                top: 44px;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                border: none;
+                width: 100%;
+                height: calc(100vh - 44px);
+                display: none;
+                background: #fff;
+            }
+
+            .hidden {
+                display: none !important;
+            }
+        </style>
+    </head>
+
+    <body>
+        <!-- Address Bar -->
+        <div class="address-bar" id="address-bar" style="display: none">
+            <img src="images/logo/logo@16x.png" alt="OPNet" class="logo" />
+            <div class="url-display" id="url-display">
+                <span class="protocol">opnet://</span><span class="domain" id="domain-display"></span
+                ><span class="path" id="path-display"></span>
+            </div>
+        </div>
+
+        <!-- Loading State -->
+        <div class="container" id="loading-container">
+            <div class="loading-container">
+                <img src="images/logo/logo@128x.png" alt="OPNet" class="logo-large" />
+                <div class="spinner"></div>
+                <div class="loading-text" id="loading-text">Resolving OPNet domain...</div>
+            </div>
+        </div>
+
+        <!-- Error State -->
+        <div class="container hidden" id="error-container">
+            <div class="error-container visible">
+                <img src="images/logo/logo@128x.png" alt="OPNet" class="logo-large" />
+                <h2 class="error-title" id="error-title">Domain Not Found</h2>
+                <div class="error-domain" id="error-domain"></div>
+                <p class="error-message" id="error-message">
+                    This OPNet domain has not been registered yet.
+                </p>
+                <p class="error-suggestion" id="error-suggestion">
+                    Check the domain name spelling or try again later.
+                </p>
+                <div class="button-group">
+                    <button class="button button-primary" onclick="retry()">Try Again</button>
+                    <button class="button button-secondary" onclick="goBack()">Go Back</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Content Frame -->
+        <iframe
+            id="content-frame"
+            sandbox="allow-scripts allow-same-origin"
+            loading="lazy"
+        ></iframe>
+
+        <script type="module" src="opnet-resolver.js"></script>
+    </body>
+</html>

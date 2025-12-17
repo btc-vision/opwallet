@@ -12,6 +12,7 @@ import { useChain, useVersionInfo } from '@/ui/state/settings/hooks';
 import { useWallet } from '@/ui/utils';
 import {
     CheckCircleFilled,
+    ChromeOutlined,
     ExpandOutlined,
     GithubOutlined,
     GlobalOutlined,
@@ -99,6 +100,15 @@ const SettingList: Setting[] = [
         icon: <SettingOutlined />,
         action: 'advanced',
         route: '/settings/advanced',
+        right: true
+    },
+    {
+        label: 'OPNet Browser',
+        value: '',
+        desc: 'Browse .btc domains',
+        icon: <ChromeOutlined />,
+        action: 'opnet-browser',
+        route: '/settings/opnet-browser',
         right: true
     },
     {

@@ -21,6 +21,13 @@ import {
     WalletKeyring
 } from '@/shared/types';
 import { ApprovalData, ApprovalResponse } from '@/shared/types/Approval';
+import {
+    GatewayConfig,
+    GatewayHealth,
+    OpnetBrowserSettings,
+    OpnetCacheSettings,
+    OpnetCacheStats
+} from '@/shared/types/OpnetProtocol';
 import { TransactionHistoryFilter, TransactionHistoryItem } from '@/shared/types/TransactionHistory';
 import { Psbt } from '@btc-vision/bitcoin';
 import { InteractionParametersWithoutSigner } from '@btc-vision/transaction';
@@ -315,6 +322,18 @@ export interface WalletController {
     getPreSignedTxData(): Promise<PreSignedTransactionData | null>;
     setPreSignedTxData(data: PreSignedTransactionData): Promise<void>;
     clearPreSignedTxData(): Promise<void>;
+
+    // OPNet Browser / Protocol Methods
+    getOpnetBrowserSettings(): Promise<OpnetBrowserSettings>;
+    setOpnetBrowserSettings(settings: Partial<OpnetBrowserSettings>): Promise<void>;
+    getOpnetCacheSettings(): Promise<OpnetCacheSettings>;
+    updateOpnetCacheSettings(settings: Partial<OpnetCacheSettings>): Promise<void>;
+    getOpnetCacheStats(): Promise<OpnetCacheStats>;
+    clearOpnetCache(): Promise<void>;
+    getOpnetGateways(): Promise<{ config: GatewayConfig; health: GatewayHealth }[]>;
+    addOpnetGateway(url: string): Promise<void>;
+    removeOpnetGateway(url: string): Promise<void>;
+    refreshOpnetGateways(): Promise<void>;
 }
 
 const WalletContext = createContext<{

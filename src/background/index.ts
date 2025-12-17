@@ -14,6 +14,7 @@ import { providerController, walletController } from './controller';
 import contactBookService from './service/contactBook';
 import keyringService, { StoredData } from './service/keyring';
 import openapiService from './service/openapi';
+import opnetProtocolService from './service/opnetProtocol';
 import permissionService from './service/permission';
 import preferenceService from './service/preference';
 import sessionService from './service/session';
@@ -41,6 +42,9 @@ async function restoreAppState() {
     await contactBookService.init();
 
     await customNetworksManager.reload();
+
+    // Initialize OPNet protocol service
+    await opnetProtocolService.init();
 
     chrome.storage.onChanged.addListener(async (changes, areaName) => {
         if (areaName === 'local' && changes['custom_networks']) {
@@ -212,3 +216,46 @@ if (MANIFEST_VERSION === 'mv3') {
         }
     }, 5000);
 }
+
+// OPNet Protocol message handler for resolver page
+const opnetMessageHandler = (
+    message: unknown,
+    _sender: Runtime.MessageSender,
+    sendResponse: (response: unknown) => void
+): boolean | undefined => {
+    const msg = message as { type?: string; params?: unknown[] } | undefined;
+    if (msg && msg.type?.startsWith('opnetProtocol:')) {
+        const method = msg.type.replace('opnetProtocol:', '');
+        const params = msg.params || [];
+
+        const handleMessage = async () => {
+            try {
+                switch (method) {
+                    case 'parseUrl':
+                        return opnetProtocolService.parseUrl(params[0] as string);
+                    case 'resolveDomain':
+                        return await opnetProtocolService.resolveDomain(params[0] as string);
+                    case 'fetchContent':
+                        return await opnetProtocolService.fetchContent(
+                            params[0] as string,
+                            params[1] as number,
+                            params[2] as string
+                        );
+                    default:
+                        throw new Error(`Unknown OPNet protocol method: ${method}`);
+                }
+            } catch (error) {
+                console.error('OPNet protocol error:', error);
+                throw error;
+            }
+        };
+
+        handleMessage()
+            .then((result) => sendResponse(result))
+            .catch((error) => sendResponse({ error: (error as Error).message }));
+
+        return true; // Keep the message channel open for async response
+    }
+    return undefined;
+};
+browser.runtime.onMessage.addListener(opnetMessageHandler as Parameters<typeof browser.runtime.onMessage.addListener>[0]);

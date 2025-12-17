@@ -259,7 +259,8 @@ export default defineConfig(({ mode }) => {
                 input: {
                     background: resolve(__dirname, 'src/background/index.ts'),
                     pageProvider: resolve(__dirname, 'src/content-script/pageProvider/index.ts'),
-                    ui: resolve(__dirname, 'src/ui/index.tsx')
+                    ui: resolve(__dirname, 'src/ui/index.tsx'),
+                    'opnet-resolver': resolve(__dirname, 'src/opnet-resolver/index.ts')
                 },
                 output: {
                     entryFileNames: '[name].js',

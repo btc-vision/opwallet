@@ -38,6 +38,7 @@ import EditWalletNameScreen from './Settings/EditWalletNameScreen';
 import ExportMnemonicsScreen from './Settings/ExportMnemonicsScreen';
 import ExportPrivateKeyScreen from './Settings/ExportPrivateKeyScreen';
 import NetworkTypeScreen from './Settings/NetworkTypeScreen';
+import OpnetBrowserScreen from './Settings/OpnetBrowserScreen';
 import QuantumMigrationScreen from './Settings/QuantumMigrationScreen';
 import UpgradeNoticeScreen from './Settings/UpgradeNoticeScreen';
 import ReceiveScreen from './Wallet/ReceiveScreen';
@@ -99,7 +100,8 @@ export enum RouteTypes {
     ImportTokenScreen = 'ImportTokenScreen',
     QuantumMigrationScreen = 'QuantumMigrationScreen',
     HistoryScreen = 'HistoryScreen',
-    TransactionDetailScreen = 'TransactionDetailScreen'
+    TransactionDetailScreen = 'TransactionDetailScreen',
+    OpnetBrowserScreen = 'OpnetBrowserScreen'
 }
 
 type Routes = {
@@ -285,6 +287,10 @@ export const routes: Routes = {
     TransactionDetailScreen: {
         path: '/history/transaction',
         element: <TransactionDetailScreen />
+    },
+    OpnetBrowserScreen: {
+        path: '/settings/opnet-browser',
+        element: <OpnetBrowserScreen />
     }
 };
 

@@ -174,12 +174,25 @@ class Web3API {
         return Address.fromString(chainConfig.contractAddresses.pill);
     }
 
+    public get btcResolverAddress(): Address | null {
+        if (!this.currentChain) return null;
+
+        const chainConfig = customNetworksManager.getChain(this.currentChain);
+        if (!chainConfig?.contractAddresses?.btcResolver) return null;
+
+        return Address.fromString(chainConfig.contractAddresses.btcResolver);
+    }
+
     public get motoAddressP2OP(): string | null {
         return this.motoAddress?.p2op(this.network) || null;
     }
 
     public get pillAddressP2OP(): string | null {
         return this.pillAddress?.p2op(this.network) || null;
+    }
+
+    public get btcResolverAddressP2OP(): string | null {
+        return this.btcResolverAddress?.p2op(this.network) || null;
     }
 
     public get chain(): ChainType {
