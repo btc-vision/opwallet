@@ -230,7 +230,7 @@ export const DEFAULT_IPFS_GATEWAYS: GatewayConfig[] = [
         isLocalNode: false
     },
     {
-        url: 'https://cloudflare-ipfs.com',
+        url: 'https://ipfs.io',
         priority: 2,
         isDefault: true,
         isUserConfigured: false,

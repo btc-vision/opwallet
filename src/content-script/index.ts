@@ -151,7 +151,6 @@ function isIpfsGatewayIframe(): boolean {
         'ipfs.opnet.org',
         'ipfs.io',
         'dweb.link',
-        'cloudflare-ipfs.com',
         'gateway.pinata.cloud'
     ];
 

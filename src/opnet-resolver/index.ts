@@ -256,7 +256,7 @@ function setupMessageListener(): void {
         const trustedOrigins = [
             'https://ipfs.opnet.org',
             'https://dweb.link',
-            'https://cloudflare-ipfs.com'
+            'https://ipfs.io'
         ];
 
         // Check if origin is trusted or from blob (null origin)

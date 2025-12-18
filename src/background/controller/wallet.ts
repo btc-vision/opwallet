@@ -12,7 +12,7 @@ import notificationService, {
     SerializedPreSignedInteractionData,
     serializePreSignedInteractionData
 } from '@/background/service/notification';
-import openapiService from '@/background/service/openapi';
+import opnetApi from '@/background/service/opnetApi';
 import permissionService from '@/background/service/permission';
 import preferenceService, { WalletSaveList } from '@/background/service/preference';
 import sessionService from '@/background/service/session';
@@ -108,7 +108,6 @@ import {
 } from '@btc-vision/bitcoin';
 import { Buffer } from 'buffer';
 import { ContactBookItem, ContactBookStore } from '../service/contactBook';
-import { OpenApiService } from '../service/openapi';
 import { ConnectedSite } from '../service/permission';
 
 export interface BalanceCacheEntry {
@@ -208,7 +207,6 @@ function parseTransactionForPreview(
 }
 
 export class WalletController {
-    public openapi: OpenApiService = openapiService;
     public timer: string | number | null = null;
     public getApproval = notificationService.getApproval;
     public getApprovalInteractionParametersToUse = notificationService.getApprovalInteractionParametersToUse;
@@ -480,16 +478,17 @@ export class WalletController {
      * Fetch address history (recent transactions).
      * @throws WalletControllerError
      */
-    public getAddressHistory = async (params: {
+    public getAddressHistory = async (_params: {
         address: string;
         start: number;
         limit: number;
     }): Promise<AddressRecentHistory> => {
-        try {
-            return await openapiService.getAddressRecentHistory(params);
-        } catch (err) {
-            throw new WalletControllerError(`Failed to get address history: ${String(err)}`, params);
-        }
+        // TODO: Implement address history via OPNet indexer when available
+        return {
+            start: 0,
+            total: 0,
+            detail: []
+        };
     };
 
     /**
@@ -958,7 +957,7 @@ export class WalletController {
         preferenceService.setCurrentKeyringIndex(keyring.index);
         preferenceService.setCurrentAccount(keyring.accounts[accountIndex]);
         const flag = preferenceService.getAddressFlag(keyring.accounts[accountIndex].address);
-        openapiService.setClientAddress(keyring.accounts[accountIndex].address, flag);
+        opnetApi.setClientAddress(keyring.accounts[accountIndex].address, flag);
     };
 
     /**
@@ -2002,8 +2001,6 @@ export class WalletController {
             const bitcoinNetwork = getBitcoinLibJSNetwork(chain.networkType, chainType);
             await keyringService.updateKeyringsNetwork(bitcoinNetwork);
 
-            await this.openapi.setEndpoints(chain.endpoints);
-
             const currentAccount = await this.getCurrentAccount();
             const keyring = await this.getCurrentKeyring();
             if (!keyring) {
@@ -2085,7 +2082,14 @@ export class WalletController {
      */
     public pushTx = async (rawtx: string): Promise<string> => {
         try {
-            return await this.openapi.pushTx(rawtx);
+            const result = await Web3API.provider.sendRawTransaction(rawtx, false);
+            if (!result) {
+                throw new Error('No response from broadcast');
+            }
+            if (result.error) {
+                throw new Error(result.error);
+            }
+            return result.result ? String(result.result) : '';
         } catch (err) {
             throw new WalletControllerError(`Failed to push transaction: ${String(err)}`, { rawtx });
         }
@@ -2246,7 +2250,7 @@ export class WalletController {
 
         if (currentAccount) {
             currentAccount.flag = preferenceService.getAddressFlag(currentAccount.address);
-            openapiService.setClientAddress(currentAccount.address, currentAccount.flag);
+            opnetApi.setClientAddress(currentAccount.address, currentAccount.flag);
         }
         return currentAccount ?? null;
     };
@@ -2274,83 +2278,19 @@ export class WalletController {
     };
 
     /**
-     * Get the app summary (list of recommended apps, etc.) from openapi, with read/unread flags.
+     * Get the app summary (list of recommended apps).
      */
     public getAppSummary = async (): Promise<AppSummary> => {
-        /*const appTab = preferenceService.getAppTab();
-        try {
-            const data = await openapiService.getAppSummary();
-            const readTabTime = appTab.readTabTime;
-            data.apps.forEach((w: { id: number; time?: number; new?: boolean }) => {
-                const readAppTime = appTab.readAppTime[w.id];
-                if (w.time) {
-                    if (Date.now() > w.time + 1000 * 60 * 60 * 24 * 7) {
-                        w.new = false;
-                    } else {
-                        w.new = !(readAppTime && readAppTime > w.time);
-                    }
-                } else {
-                    w.new = false;
-                }
-            });
-            data.readTabTime = readTabTime;
-            await preferenceService.setAppSummary(data);
-            return data;
-        } catch (e) {
-            console.log('getAppSummary error:', e);
-            return appTab.summary;
-        }*/
-
         const appTab = preferenceService.getAppTab();
-        const readTabTime = appTab.readTabTime;
 
-        const opWalletAppSummaryResponse: AppSummary = {
-            apps: [
-                {
-                    desc: 'Easily and smoothly create your inscriptions.',
-                    id: 1,
-                    logo: 'https://static.unisat.io/res/images/app-fractal-inscribe.png',
-                    new: false,
-                    tag: 'Inscription Service',
-                    tagColor: 'rgba(34,249,128,0.6)',
-                    title: 'Fractal Inscribe',
-                    url: 'https://fractal-testnet.unisat.io/inscribe',
-                    time: 0, // Adding required field
-                    readtime: undefined
-                },
-                {
-                    desc: 'Trade your Ordinals and Runes on the Fractal Marketplace, including brc-20 and runes assets.',
-                    id: 3,
-                    logo: 'https://static.unisat.io/res/images/app-fractal-market.png',
-                    new: false,
-                    tag: 'Marketplace',
-                    tagColor: 'rgba(249,192,34,0.8)',
-                    title: 'Fractal Marketplace',
-                    url: 'https://fractal-testnet.unisat.io/market',
-                    time: 0, // Adding required field
-                    readtime: undefined
-                },
-                {
-                    desc: 'Seamless asset swapping and management across chains on Fractal',
-                    id: 4,
-                    logo: 'https://static.unisat.io/res/images/app-fractal-swap.png',
-                    new: false,
-                    tag: 'Marketplace',
-                    tagColor: 'rgba(249,192,34,0.8)',
-                    title: 'Bridge & PizzaSwap',
-                    url: 'https://fractal-testnet.unisat.io/apps',
-                    time: 0, // Adding required field
-                    readtime: undefined
-                }
-            ],
-            readTabTime: 1
+        // Return empty apps list - no third-party app recommendations
+        const appSummary: AppSummary = {
+            apps: [],
+            readTabTime: appTab.readTabTime
         };
 
-        opWalletAppSummaryResponse.readTabTime = readTabTime;
-
-        await preferenceService.setAppSummary(opWalletAppSummaryResponse);
-
-        return opWalletAppSummaryResponse;
+        await preferenceService.setAppSummary(appSummary);
+        return appSummary;
     };
 
     public readTab = async (): Promise<void> => {
@@ -2365,7 +2305,14 @@ export class WalletController {
      * Fetch UTXOs for a given address.
      */
     public getAddressUtxo = async (address: string): Promise<UTXO[]> => {
-        return await openapiService.getBTCUtxos(address);
+        const utxos = await Web3API.getAllUTXOsForAddresses([address]);
+        return utxos.map((utxo) => ({
+            txid: utxo.transactionId,
+            vout: utxo.outputIndex,
+            satoshis: Number(utxo.value),
+            scriptPk: utxo.scriptPubKey.hex,
+            addressType: AddressTypes.P2TR
+        }));
     };
 
     public setRecentConnectedSites = (sites: ConnectedSite[]): void => {
@@ -2461,7 +2408,7 @@ export class WalletController {
      */
     public addAddressFlag = async (account: Account, flag: AddressFlagType): Promise<Account> => {
         account.flag = await preferenceService.addAddressFlag(account.address, flag);
-        openapiService.setClientAddress(account.address, account.flag);
+        opnetApi.setClientAddress(account.address, account.flag);
         return account;
     };
 
@@ -2470,12 +2417,12 @@ export class WalletController {
      */
     public removeAddressFlag = async (account: Account, flag: AddressFlagType): Promise<Account> => {
         account.flag = await preferenceService.removeAddressFlag(account.address, flag);
-        openapiService.setClientAddress(account.address, account.flag);
+        opnetApi.setClientAddress(account.address, account.flag);
         return account;
     };
 
     public getBtcPrice = async (): Promise<number> => {
-        return openapiService.getBtcPrice();
+        return opnetApi.getBtcPrice();
     };
 
     /**
@@ -2540,14 +2487,15 @@ export class WalletController {
     }
 
     /**
-     * Create a payment URL from the openapi service.
+     * Create a payment URL for buying BTC.
+     * TODO: Implement when payment provider is available
      */
-    public createPaymentUrl = (address: string, channel: string): Promise<string> => {
-        return openapiService.createPaymentUrl(address, channel);
+    public createPaymentUrl = async (_address: string, _channel: string): Promise<string> => {
+        return '';
     };
 
     public getWalletConfig = (): Promise<WalletConfig> => {
-        return openapiService.getWalletConfig();
+        return opnetApi.getWalletConfig();
     };
 
     public getSkippedVersion = (): string | null => {
@@ -2558,20 +2506,28 @@ export class WalletController {
         preferenceService.setSkippedVersion(version);
     };
 
-    public checkWebsite = (website: string): Promise<{ isScammer: boolean; warning: string }> => {
-        return openapiService.checkWebsite(website);
+    /**
+     * Check if a website is a known scammer.
+     * TODO: Implement proper scam detection service
+     */
+    public checkWebsite = async (_website: string): Promise<{ isScammer: boolean; warning: string }> => {
+        // Not implemented - always return safe
+        return { isScammer: false, warning: '' };
     };
 
     /**
-     * Return summary info for an address (balance, inscriptions, etc).
-     * @throws WalletControllerError
+     * Return summary info for an address (balance).
      */
     public getAddressSummary = async (address: string): Promise<AddressSummary> => {
-        try {
-            return await openapiService.getAddressSummary(address);
-        } catch (err) {
-            throw new WalletControllerError(`Failed to get address summary: ${String(err)}`, { address });
-        }
+        // Get balance from Web3API
+        const utxos = await Web3API.getAllUTXOsForAddresses([address]);
+        const totalSatoshis = utxos.reduce((sum, utxo) => sum + Number(utxo.value), 0);
+
+        return {
+            address,
+            totalSatoshis,
+            loading: false
+        };
     };
 
     public getShowSafeNotice = (): boolean => {
@@ -2582,8 +2538,13 @@ export class WalletController {
         preferenceService.setShowSafeNotice(show);
     };
 
-    public getVersionDetail = (version: string): Promise<VersionDetail> => {
-        return openapiService.getVersionDetail(version);
+    public getVersionDetail = async (_version: string): Promise<VersionDetail> => {
+        // TODO: Implement version checking when endpoint is available
+        return {
+            version: '',
+            title: '',
+            changelogs: []
+        };
     };
 
     /**
@@ -3500,7 +3461,7 @@ export class WalletController {
             const ownerAddress = result.properties.owner;
 
             // Check if owner is empty/zero address
-            if (!ownerAddress || ownerAddress.empty()) {
+            if (!ownerAddress || ownerAddress.isDead()) {
                 return null;
             }
 

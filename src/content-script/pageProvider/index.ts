@@ -311,16 +311,6 @@ export class OpnetProvider extends EventEmitter {
         });
     };
 
-    getInscriptions = async (cursor = 0, size = 20) => {
-        return this._request({
-            method: 'getInscriptions',
-            params: {
-                cursor,
-                size
-            }
-        });
-    };
-
     signMessage = async (message: string | Buffer, type: string) => {
         return this._request({
             method: 'signMessage',
