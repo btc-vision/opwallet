@@ -250,8 +250,8 @@ export const AddressInput = (props: InputProps) => {
                     placeholder={'Address or .btc domain'}
                     type={'text'}
                     className="op_input_address"
-                    onChange={async (e) => {
-                        await handleInputAddress(e);
+                    onChange={(e) => {
+                        handleInputAddress(e);
                     }}
                     defaultValue={inputVal}
                     {...rest}

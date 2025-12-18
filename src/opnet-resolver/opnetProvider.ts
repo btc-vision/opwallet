@@ -63,7 +63,10 @@ class OpnetResolverProvider extends EventEmitter {
         });
     }
 
-    // Public API methods
+    // =========================================================================
+    // Account Methods
+    // =========================================================================
+
     async requestAccounts(): Promise<string[]> {
         const accounts = await this._request({ method: 'requestAccounts' }) as string[];
         if (accounts?.length > 0) {
@@ -77,17 +80,47 @@ class OpnetResolverProvider extends EventEmitter {
         return this._request({ method: 'getAccounts' }) as Promise<string[]>;
     }
 
+    async disconnect(): Promise<void> {
+        await this._request({ method: 'disconnect' });
+        this._isConnected = false;
+        this._selectedAddress = null;
+    }
+
+    // =========================================================================
+    // Network Methods
+    // =========================================================================
+
     async getNetwork(): Promise<string> {
         return this._request({ method: 'getNetwork' }) as Promise<string>;
+    }
+
+    async switchNetwork(network: string): Promise<void> {
+        return this._request({ method: 'switchNetwork', params: { network } }) as Promise<void>;
     }
 
     async getChain(): Promise<string> {
         return this._request({ method: 'getChain' }) as Promise<string>;
     }
 
+    async switchChain(chain: string): Promise<void> {
+        return this._request({ method: 'switchChain', params: { chain } }) as Promise<void>;
+    }
+
+    // =========================================================================
+    // Key Methods
+    // =========================================================================
+
     async getPublicKey(): Promise<string> {
         return this._request({ method: 'getPublicKey' }) as Promise<string>;
     }
+
+    async getMLDSAPublicKey(): Promise<string> {
+        return this._request({ method: 'getMLDSAPublicKey' }) as Promise<string>;
+    }
+
+    // =========================================================================
+    // Balance & UTXOs
+    // =========================================================================
 
     async getBalance(): Promise<{ confirmed: number; unconfirmed: number; total: number }> {
         return this._request({ method: 'getBalance' }) as Promise<{
@@ -97,12 +130,72 @@ class OpnetResolverProvider extends EventEmitter {
         }>;
     }
 
+    async getBitcoinUtxos(cursor?: number, size?: number): Promise<unknown> {
+        return this._request({ method: 'getBitcoinUtxos', params: { cursor, size } });
+    }
+
+    // =========================================================================
+    // Signing Methods
+    // =========================================================================
+
     async signMessage(message: string, type?: string): Promise<string> {
         return this._request({
             method: 'signMessage',
             params: { message, type: type || 'ecdsa' }
         }) as Promise<string>;
     }
+
+    async signData(data: string, type: string): Promise<string> {
+        return this._request({
+            method: 'signData',
+            params: { data, type }
+        }) as Promise<string>;
+    }
+
+    async signMLDSAMessage(message: string): Promise<{
+        signature: string;
+        message: string;
+        publicKey: string;
+        securityLevel: number;
+    }> {
+        return this._request({
+            method: 'signMLDSAMessage',
+            params: { message }
+        }) as Promise<{
+            signature: string;
+            message: string;
+            publicKey: string;
+            securityLevel: number;
+        }>;
+    }
+
+    async verifyMLDSASignature(
+        message: string,
+        signature: string,
+        publicKey: string,
+        securityLevel: number
+    ): Promise<boolean> {
+        return this._request({
+            method: 'verifyMLDSASignature',
+            params: { message, signature, publicKey, securityLevel }
+        }) as Promise<boolean>;
+    }
+
+    async verifyMessageOfBIP322Simple(
+        address: string,
+        message: string,
+        signature: string,
+        network?: number
+    ): Promise<boolean> {
+        return this._request({
+            method: 'verifyMessageOfBIP322Simple',
+            params: { address, message, signature, network }
+        }) as Promise<boolean>;
+    }
+
+    // =========================================================================
+    // PSBT Methods
+    // =========================================================================
 
     async signPsbt(psbtHex: string, options?: unknown): Promise<string> {
         return this._request({
@@ -111,27 +204,95 @@ class OpnetResolverProvider extends EventEmitter {
         }) as Promise<string>;
     }
 
+    async signPsbts(psbtHexs: string[], options?: unknown[]): Promise<string[]> {
+        return this._request({
+            method: 'signPsbts',
+            params: { psbtHexs, options }
+        }) as Promise<string[]>;
+    }
+
+    async pushPsbt(psbtHex: string): Promise<string> {
+        return this._request({
+            method: 'pushPsbt',
+            params: { psbtHex }
+        }) as Promise<string>;
+    }
+
+    // =========================================================================
+    // Transaction Methods
+    // =========================================================================
+
     async sendBitcoin(
         toAddress: string,
         satoshis: number,
-        options?: { feeRate?: number }
+        options?: { feeRate?: number; memo?: string; memos?: string[] }
     ): Promise<string> {
         return this._request({
             method: 'sendBitcoin',
             params: {
-                sendBitcoinParams: { toAddress, satoshis, feeRate: options?.feeRate }
+                sendBitcoinParams: {
+                    toAddress,
+                    satoshis,
+                    feeRate: options?.feeRate,
+                    memo: options?.memo,
+                    memos: options?.memos
+                }
             }
         }) as Promise<string>;
     }
 
-    async getVersion(): Promise<string> {
-        return this._request({ method: 'getVersion' }) as Promise<string>;
+    async pushTx(rawtx: string): Promise<string> {
+        return this._request({
+            method: 'pushTx',
+            params: { rawtx }
+        }) as Promise<string>;
     }
 
-    async disconnect(): Promise<void> {
-        await this._request({ method: 'disconnect' });
-        this._isConnected = false;
-        this._selectedAddress = null;
+    // =========================================================================
+    // OPNet/Web3 Methods
+    // =========================================================================
+
+    async signInteraction(interactionParameters: unknown): Promise<unknown> {
+        return this._request({
+            method: 'signInteraction',
+            params: interactionParameters
+        });
+    }
+
+    async signAndBroadcastInteraction(interactionParameters: unknown): Promise<unknown> {
+        return this._request({
+            method: 'signAndBroadcastInteraction',
+            params: interactionParameters
+        });
+    }
+
+    async deployContract(params: unknown): Promise<unknown> {
+        return this._request({
+            method: 'deployContract',
+            params
+        });
+    }
+
+    async cancelTransaction(params: unknown): Promise<unknown> {
+        return this._request({
+            method: 'cancelTransaction',
+            params
+        });
+    }
+
+    async broadcast(transactions: unknown[]): Promise<unknown[]> {
+        return this._request({
+            method: 'broadcast',
+            params: transactions
+        }) as Promise<unknown[]>;
+    }
+
+    // =========================================================================
+    // Utility
+    // =========================================================================
+
+    async getVersion(): Promise<string> {
+        return this._request({ method: 'getVersion' }) as Promise<string>;
     }
 }
 

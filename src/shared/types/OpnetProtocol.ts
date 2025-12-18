@@ -122,6 +122,8 @@ export interface ResolvedContent {
     domain: string;
     path: string;
     error?: string;
+    /** True if this is a SPA fallback (path not found, serving index.html instead) */
+    isSpaFallback?: boolean;
 }
 
 // =============================================================================

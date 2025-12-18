@@ -5,6 +5,9 @@ import { RequestParams } from '@/shared/types/Request.js';
 import { Message } from '@/shared/utils';
 import browser from 'webextension-polyfill';
 
+// Import search redirect for .btc domain detection on search pages
+import './btcSearchRedirect';
+
 function injectScript() {
     try {
         const channelName = nanoid();
@@ -142,7 +145,7 @@ function isIframe(): boolean {
 }
 
 /**
- * Check if we're in an IPFS gateway iframe (should allow provider injection)
+ * Check if we're in an IPFS gateway iframe (OPNet browser context)
  */
 function isIpfsGatewayIframe(): boolean {
     if (!isIframe()) return false;
@@ -170,14 +173,13 @@ function shouldInjectProvider(): boolean {
 
     if (!basicChecks) return false;
 
-    // Allow injection in top-level pages
-    if (!isIframe()) return true;
-
     // Allow injection in IPFS gateway iframes (for OPNet browser)
     if (isIpfsGatewayIframe()) return true;
 
-    // Block other iframes
-    return false;
+    // For other iframes, don't inject anything
+    if (isIframe()) return false;
+
+    return true;
 }
 
 if (shouldInjectProvider()) {

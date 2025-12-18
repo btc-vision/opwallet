@@ -127,7 +127,19 @@ export class OpnetProvider extends EventEmitter {
 
         opnetProviderPrivate._bcm.connect().on('message', this._handleBackgroundMessage);
         domReadyCall(async () => {
-            const origin = window.top?.location.origin || '';
+            let origin = '';
+            try {
+                // Try to get origin from top window first, fall back to current window
+                origin = window.top?.location.origin || window.location.origin || '';
+            } catch {
+                // In sandboxed iframes, cross-origin access throws SecurityError
+                try {
+                    origin = window.location.origin || '';
+                } catch {
+                    // Even window.location.origin can fail in some sandboxed contexts
+                    origin = '';
+                }
+            }
 
             const iconElement = $('head > link[rel~="icon"]');
             let icon = iconElement instanceof HTMLLinkElement ? iconElement.href : '';

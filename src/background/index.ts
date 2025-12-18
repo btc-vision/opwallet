@@ -263,6 +263,14 @@ const opnetMessageHandler = (
     sendResponse: (response: unknown) => void
 ): boolean | undefined => {
     const msg = message as { type?: string; params?: unknown[] } | undefined;
+
+    // Handle isOpnetBrowserEnabled check (used by search redirect banner)
+    if (msg?.type === 'isOpnetBrowserEnabled') {
+        const settings = opnetProtocolService.getBrowserSettings();
+        sendResponse({ enabled: settings.enabled });
+        return true;
+    }
+
     if (msg && msg.type?.startsWith('opnetProtocol:')) {
         const method = msg.type.replace('opnetProtocol:', '');
         const params = msg.params || [];
