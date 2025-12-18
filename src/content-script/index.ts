@@ -9,10 +9,14 @@ function injectScript() {
     try {
         const channelName = nanoid();
 
-        // Use sessionStorage (works across page context)
-        sessionStorage.setItem('__opnetChannel', channelName);
+        // Try sessionStorage (works across page context), but may fail in sandboxed iframes
+        try {
+            sessionStorage.setItem('__opnetChannel', channelName);
+        } catch {
+            // sessionStorage not available in sandboxed iframes - fallback to data attribute only
+        }
 
-        // Use a data attribute on the script tag itself
+        // Use a data attribute on the script tag itself (primary method for sandboxed contexts)
         const scriptTag = document.createElement('script');
         scriptTag.setAttribute('type', 'module');
         scriptTag.setAttribute('data-channel', channelName);

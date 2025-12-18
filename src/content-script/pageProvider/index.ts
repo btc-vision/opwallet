@@ -36,14 +36,18 @@ const log = (event: string, ...args: unknown[]) => {
 };
 
 const getChannelName = (): string => {
-    // From sessionStorage
-    const stored = sessionStorage.getItem('__opnetChannel');
-    if (stored) {
-        sessionStorage.removeItem('__opnetChannel');
-        return stored;
+    // Try sessionStorage first (may fail in sandboxed iframes)
+    try {
+        const stored = sessionStorage.getItem('__opnetChannel');
+        if (stored) {
+            sessionStorage.removeItem('__opnetChannel');
+            return stored;
+        }
+    } catch {
+        // sessionStorage not available in sandboxed iframes - use data attribute fallback
     }
 
-    // From the script tag that loaded us
+    // From the script tag that loaded us (primary method for sandboxed contexts)
     const currentScript = document.currentScript as HTMLScriptElement;
     if (currentScript?.dataset.channel) {
         return currentScript.dataset.channel;
