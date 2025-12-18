@@ -35,7 +35,7 @@
         "https://gateway.pinata.cloud/*"
     ],
     "omnibox": {
-        "keyword": "btc"
+        "keyword": "op"
     },
     "side_panel": {
         "default_path": "index.html"
