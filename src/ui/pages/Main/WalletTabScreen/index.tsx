@@ -41,6 +41,7 @@ import {
     DownOutlined,
     ExclamationCircleOutlined,
     ExperimentOutlined,
+    GlobalOutlined,
     HistoryOutlined,
     QrcodeOutlined,
     SendOutlined,
@@ -521,13 +522,7 @@ export default function WalletTabScreen() {
                                                     color: 'rgba(219, 219, 219, 0.7)',
                                                     marginBottom: '8px'
                                                 }}>
-                                                Your total balance is not fully displayed since it has exceeded 2,000
-                                                UTXOs.
-                                                <strong
-                                                    style={{ display: 'block', marginTop: '4px', color: colors.main }}>
-                                                    You can consolidate up to {consolidationLimit} UTXOs at a time to
-                                                    fix this issue.
-                                                </strong>
+                                                Balance incomplete (2,000+ UTXOs). Consolidate to fix.
                                             </div>
                                             <button
                                                 onClick={navigateToConsolidation}
@@ -872,6 +867,41 @@ export default function WalletTabScreen() {
                                 onClick={() => navigate(RouteTypes.HistoryScreen)}
                             />
                         </div>
+
+                        {/* Assign .btc Domain Card */}
+                        <div
+                            onClick={() => navigate(RouteTypes.BtcDomainScreen)}
+                            style={{
+                                margin: '0 12px 12px',
+                                padding: '10px 14px',
+                                background: `linear-gradient(135deg, ${colors.main}15 0%, ${colors.main}08 100%)`,
+                                border: `1px solid ${colors.main}30`,
+                                borderRadius: '10px',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '10px',
+                                transition: 'all 0.2s'
+                            }}
+                            onMouseEnter={(e) => {
+                                e.currentTarget.style.borderColor = `${colors.main}60`;
+                                e.currentTarget.style.background = `linear-gradient(135deg, ${colors.main}20 0%, ${colors.main}10 100%)`;
+                            }}
+                            onMouseLeave={(e) => {
+                                e.currentTarget.style.borderColor = `${colors.main}30`;
+                                e.currentTarget.style.background = `linear-gradient(135deg, ${colors.main}15 0%, ${colors.main}08 100%)`;
+                            }}>
+                            <GlobalOutlined style={{ fontSize: 18, color: colors.main }} />
+                            <div style={{ flex: 1 }}>
+                                <div style={{ fontSize: '12px', fontWeight: 600, color: colors.text }}>
+                                    .btc Domains
+                                </div>
+                                <div style={{ fontSize: '10px', color: colors.textFaded }}>
+                                    Register domains & publish websites
+                                </div>
+                            </div>
+                            <DownOutlined style={{ fontSize: 10, color: colors.textFaded, transform: 'rotate(-90deg)' }} />
+                        </div>
                     </div>
                     {/* Tokens Section */}
                     <div style={{ marginTop: '4px' }}>
@@ -1202,6 +1232,7 @@ export default function WalletTabScreen() {
                         </div>
                     </div>
                 )}
+
             </Content>
 
             <Footer px="zero" py="zero">

@@ -3474,6 +3474,172 @@ export class WalletController {
             return null;
         }
     };
+
+    /**
+     * Get .btc domain information including availability, owner, and price
+     */
+    public getBtcDomainInfo = async (
+        domainName: string
+    ): Promise<{
+        exists: boolean;
+        owner: string | null;
+        price: bigint;
+        treasuryAddress: string;
+    }> => {
+        const normalizedDomain = domainName.toLowerCase().replace(/\.btc$/, '');
+
+        const resolverAddress = Web3API.btcResolverAddressP2OP;
+        if (!resolverAddress) {
+            throw new WalletControllerError('BtcNameResolver contract not configured for this network');
+        }
+
+        const resolverContract = getContract<IBtcNameResolverContract>(
+            resolverAddress,
+            BTC_NAME_RESOLVER_ABI,
+            Web3API.provider,
+            Web3API.network
+        );
+
+        // Get domain info
+        const domainResult = await resolverContract.getDomain(normalizedDomain);
+        const exists = domainResult.properties.exists;
+
+        let owner: string | null = null;
+        if (exists && domainResult.properties.owner && !domainResult.properties.owner.isDead()) {
+            try {
+                const publicOwner = await Web3API.provider.getPublicKeyInfo(
+                    domainResult.properties.owner.toHex(),
+                    false
+                );
+                owner = publicOwner.p2tr(Web3API.network);
+            } catch {
+                owner = domainResult.properties.owner.toHex();
+            }
+        }
+
+        // Get price for this domain
+        const priceResult = await resolverContract.getDomainPrice(normalizedDomain);
+        const price = priceResult.properties.priceSats;
+
+        // Get treasury address
+        const treasuryResult = await resolverContract.getTreasuryAddress();
+        const treasuryAddress = treasuryResult.properties.treasuryAddress;
+
+        return { exists, owner, price, treasuryAddress };
+    };
+
+    /**
+     * Upload a file to IPFS via ipfs.opnet.org
+     * Returns the CID of the uploaded file
+     */
+    public uploadToIpfs = async (fileData: string, fileName: string): Promise<string> => {
+        // Convert base64 data to binary
+        const base64Data = fileData.split(',')[1] || fileData;
+        const binaryData = Buffer.from(base64Data, 'base64');
+
+        // Use ipfs.opnet.org pinning endpoint
+        const pinEndpoint = 'https://ipfs.opnet.org/api/v0/add';
+
+        const formData = new FormData();
+        const blob = new Blob([binaryData], { type: 'text/html' });
+        formData.append('file', blob, fileName);
+
+        const response = await fetch(pinEndpoint, {
+            method: 'POST',
+            body: formData
+        });
+
+        if (!response.ok) {
+            throw new WalletControllerError('Failed to upload to IPFS');
+        }
+
+        const result = await response.json();
+        return result.Hash || result.cid;
+    };
+
+    /**
+     * Get tracked domains for the current account
+     */
+    public getTrackedDomains = async (): Promise<
+        Array<{
+            name: string;
+            registeredAt?: number;
+            lastVerified?: number;
+            isOwner: boolean;
+        }>
+    > => {
+        const account = preferenceService.getCurrentAccount();
+        if (!account?.address) return [];
+
+        const trackedDomains = preferenceService.getTrackedDomains(account.address);
+        const results = [];
+
+        // Verify ownership for each domain
+        for (const domain of trackedDomains) {
+            try {
+                const info = await this.getBtcDomainInfo(domain.name);
+                const isOwner = info.owner?.toLowerCase() === account.address.toLowerCase();
+
+                // Update verification timestamp if still owner
+                if (isOwner) {
+                    await preferenceService.updateTrackedDomainVerification(account.address, domain.name);
+                }
+
+                results.push({
+                    name: domain.name,
+                    registeredAt: domain.registeredAt,
+                    lastVerified: Date.now(),
+                    isOwner
+                });
+            } catch {
+                // If verification fails, still show domain but mark as unverified
+                results.push({
+                    name: domain.name,
+                    registeredAt: domain.registeredAt,
+                    lastVerified: domain.lastVerified,
+                    isOwner: false
+                });
+            }
+        }
+
+        return results;
+    };
+
+    /**
+     * Add a domain to track
+     */
+    public addTrackedDomain = async (domainName: string): Promise<void> => {
+        const account = preferenceService.getCurrentAccount();
+        if (!account?.address) throw new WalletControllerError('No account selected');
+
+        const normalizedDomain = domainName.toLowerCase().replace(/\.btc$/, '');
+
+        // Verify ownership before adding
+        const info = await this.getBtcDomainInfo(normalizedDomain);
+        if (!info.exists) {
+            throw new WalletControllerError('Domain does not exist');
+        }
+        if (info.owner?.toLowerCase() !== account.address.toLowerCase()) {
+            throw new WalletControllerError('You do not own this domain');
+        }
+
+        await preferenceService.addTrackedDomain(account.address, {
+            name: normalizedDomain,
+            registeredAt: Date.now(),
+            lastVerified: Date.now()
+        });
+    };
+
+    /**
+     * Remove a tracked domain
+     */
+    public removeTrackedDomain = async (domainName: string): Promise<void> => {
+        const account = preferenceService.getCurrentAccount();
+        if (!account?.address) throw new WalletControllerError('No account selected');
+
+        const normalizedDomain = domainName.toLowerCase().replace(/\.btc$/, '');
+        await preferenceService.removeTrackedDomain(account.address, normalizedDomain);
+    };
 }
 
 // Export a single instance.

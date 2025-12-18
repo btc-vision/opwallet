@@ -279,7 +279,7 @@ export const DEFAULT_CHAINS_MAP: { [key in ChainType]?: TypeChain<key> } = {
         contractAddresses: {
             moto: '0x0a6732489a31e6de07917a28ff7df311fc5f98f6e1664943ac1c3fe7893bdab5',
             pill: '0xfb7df2f08d8042d4df0506c0d4cee3cfa5f2d7b02ef01ec76dd699551393a438',
-            btcResolver: '0x84da2929ee0e5f4ac84d6910150b9ede78f912847496f8689ffad16c6e44cbbe'
+            btcResolver: '0x271ea47b91797e5900a3c9bdd39b87a79919eac7c9ec2c860f494704fb0dcaea'
         }
     },
     [ChainType.BITCOIN_SIGNET]: {
