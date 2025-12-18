@@ -3465,8 +3465,10 @@ export class WalletController {
                 return null;
             }
 
+            const publicOwner = await Web3API.provider.getPublicKeyInfo(ownerAddress.toHex());
+
             // Convert to P2TR address
-            return ownerAddress.p2tr(Web3API.network);
+            return publicOwner.p2tr(Web3API.network);
         } catch (error) {
             console.error('Failed to resolve .btc domain:', error);
             return null;
