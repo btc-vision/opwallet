@@ -335,6 +335,15 @@ export interface WalletController {
     removeOpnetGateway(url: string): Promise<void>;
     refreshOpnetGateways(): Promise<void>;
     resolveBtcDomain(domain: string): Promise<string | null>;
+    getBtcDomainInfo(domainName: string): Promise<{
+        exists: boolean;
+        owner: string | null;
+        price: bigint;
+        treasuryAddress: string;
+    }>;
+    registerBtcDomain(domainName: string, feeRate: number): Promise<void>;
+    uploadToIpfs(fileData: string, fileName: string): Promise<string>;
+    publishBtcDomainWebsite(domainName: string, cid: string, feeRate: number): Promise<void>;
 }
 
 const WalletContext = createContext<{

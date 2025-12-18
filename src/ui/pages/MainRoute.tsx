@@ -39,6 +39,7 @@ import ExportMnemonicsScreen from './Settings/ExportMnemonicsScreen';
 import ExportPrivateKeyScreen from './Settings/ExportPrivateKeyScreen';
 import NetworkTypeScreen from './Settings/NetworkTypeScreen';
 import OpnetBrowserScreen from './Settings/OpnetBrowserScreen';
+import BtcDomainScreen from './Domain/BtcDomainScreen';
 import QuantumMigrationScreen from './Settings/QuantumMigrationScreen';
 import UpgradeNoticeScreen from './Settings/UpgradeNoticeScreen';
 import ReceiveScreen from './Wallet/ReceiveScreen';
@@ -101,7 +102,8 @@ export enum RouteTypes {
     QuantumMigrationScreen = 'QuantumMigrationScreen',
     HistoryScreen = 'HistoryScreen',
     TransactionDetailScreen = 'TransactionDetailScreen',
-    OpnetBrowserScreen = 'OpnetBrowserScreen'
+    OpnetBrowserScreen = 'OpnetBrowserScreen',
+    BtcDomainScreen = 'BtcDomainScreen'
 }
 
 type Routes = {
@@ -291,6 +293,10 @@ export const routes: Routes = {
     OpnetBrowserScreen: {
         path: '/settings/opnet-browser',
         element: <OpnetBrowserScreen />
+    },
+    BtcDomainScreen: {
+        path: '/domain',
+        element: <BtcDomainScreen />
     }
 };
 

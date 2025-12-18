@@ -1,6 +1,6 @@
 import React, { CSSProperties, useCallback, useEffect, useMemo, useState } from 'react';
 
-import { AddressFlagType, KEYRING_TYPE, NETWORK_TYPES, NetworkType } from '@/shared/constant';
+import { AddressFlagType, KEYRING_TYPE } from '@/shared/constant';
 import { UTXO_CONFIG } from '@/shared/config';
 import { checkAddressFlag } from '@/shared/utils';
 import { Column, Content, Footer, Header, Image, Layout } from '@/ui/components';
@@ -38,7 +38,6 @@ import ParticleField from '@/ui/components/ParticleField/ParticleField';
 import {
     CheckCircleOutlined,
     CloseOutlined,
-    CopyOutlined,
     DownOutlined,
     ExclamationCircleOutlined,
     ExperimentOutlined,
@@ -147,7 +146,6 @@ export default function WalletTabScreen() {
 
     const [showDisableUnconfirmedUtxoNotice, setShowDisableUnconfirmedUtxoNotice] = useState(false);
     const [showOptimizeModal, setShowOptimizeModal] = useState(false);
-    const [showBtcDomainModal, setShowBtcDomainModal] = useState(false);
     const [splitCount, setSplitCount] = useState(25);
     const [splitFeeRate, setSplitFeeRate] = useState(5); // Default fee rate
     const [needsQuantumMigration, setNeedsQuantumMigration] = useState(false);
@@ -225,12 +223,6 @@ export default function WalletTabScreen() {
         if (splitCount <= 0) return 0n;
         return optimizationStatus.availableBalance / BigInt(splitCount);
     }, [optimizationStatus.availableBalance, splitCount]);
-
-    // Get network flag for CLI commands (empty for mainnet, -n <network> for others)
-    const networkFlag = useMemo(() => {
-        if (chain.networkType === NetworkType.MAINNET) return '';
-        return ` -n ${NETWORK_TYPES[chain.networkType].name}`;
-    }, [chain.networkType]);
 
     // Handle split action
     const handleSplit = useCallback(async () => {
@@ -878,7 +870,7 @@ export default function WalletTabScreen() {
 
                         {/* Assign .btc Domain Card */}
                         <div
-                            onClick={() => setShowBtcDomainModal(true)}
+                            onClick={() => navigate(RouteTypes.BtcDomainScreen)}
                             style={{
                                 margin: '0 12px 12px',
                                 padding: '10px 14px',
@@ -902,10 +894,10 @@ export default function WalletTabScreen() {
                             <GlobalOutlined style={{ fontSize: 18, color: colors.main }} />
                             <div style={{ flex: 1 }}>
                                 <div style={{ fontSize: '12px', fontWeight: 600, color: colors.text }}>
-                                    Assign .btc Domain
+                                    .btc Domains
                                 </div>
                                 <div style={{ fontSize: '10px', color: colors.textFaded }}>
-                                    Register your own .btc domain name
+                                    Register domains & publish websites
                                 </div>
                             </div>
                             <DownOutlined style={{ fontSize: 10, color: colors.textFaded, transform: 'rotate(-90deg)' }} />
@@ -1241,325 +1233,6 @@ export default function WalletTabScreen() {
                     </div>
                 )}
 
-                {/* .btc Domain Registration Modal */}
-                {showBtcDomainModal && (
-                    <div
-                        style={{
-                            position: 'fixed',
-                            top: 0,
-                            left: 0,
-                            right: 0,
-                            bottom: 0,
-                            background: 'rgba(0, 0, 0, 0.7)',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            zIndex: 1000
-                        }}
-                        onClick={() => setShowBtcDomainModal(false)}>
-                        <div
-                            style={{
-                                background: colors.containerBgFaded,
-                                borderRadius: '12px',
-                                padding: '20px',
-                                maxWidth: '360px',
-                                width: '90%',
-                                maxHeight: '80vh',
-                                overflowY: 'auto',
-                                border: `1px solid ${colors.containerBorder}`
-                            }}
-                            onClick={(e) => e.stopPropagation()}>
-                            {/* Modal Header */}
-                            <div
-                                style={{
-                                    display: 'flex',
-                                    justifyContent: 'space-between',
-                                    alignItems: 'center',
-                                    marginBottom: '16px'
-                                }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                    <GlobalOutlined style={{ fontSize: 18, color: colors.main }} />
-                                    <span style={{ fontSize: '14px', fontWeight: 600, color: colors.text }}>
-                                        Register .btc Domain
-                                    </span>
-                                </div>
-                                <button
-                                    onClick={() => setShowBtcDomainModal(false)}
-                                    style={{
-                                        background: 'transparent',
-                                        border: 'none',
-                                        cursor: 'pointer',
-                                        padding: '4px',
-                                        display: 'flex'
-                                    }}>
-                                    <CloseOutlined style={{ fontSize: 14, color: colors.textFaded }} />
-                                </button>
-                            </div>
-
-                            {/* Instructions */}
-                            <div style={{ fontSize: '11px', color: colors.textFaded, marginBottom: '16px', lineHeight: 1.5 }}>
-                                Registering a .btc domain is easy! Follow these steps:
-                            </div>
-
-                            {/* Step 1 */}
-                            <div
-                                style={{
-                                    background: colors.background,
-                                    borderRadius: '8px',
-                                    padding: '12px',
-                                    marginBottom: '10px'
-                                }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
-                                    <span
-                                        style={{
-                                            width: '20px',
-                                            height: '20px',
-                                            borderRadius: '50%',
-                                            background: colors.main,
-                                            color: '#000',
-                                            fontSize: '11px',
-                                            fontWeight: 700,
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            justifyContent: 'center'
-                                        }}>
-                                        1
-                                    </span>
-                                    <span style={{ fontSize: '12px', fontWeight: 600, color: colors.text }}>
-                                        Download Node.js
-                                    </span>
-                                </div>
-                                <div style={{ fontSize: '10px', color: colors.textFaded, marginLeft: '28px' }}>
-                                    Install from{' '}
-                                    <a
-                                        href="https://nodejs.org"
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        style={{ color: colors.main, textDecoration: 'none' }}>
-                                        nodejs.org
-                                    </a>
-                                </div>
-                            </div>
-
-                            {/* Step 2 */}
-                            <div
-                                style={{
-                                    background: colors.background,
-                                    borderRadius: '8px',
-                                    padding: '12px',
-                                    marginBottom: '10px'
-                                }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
-                                    <span
-                                        style={{
-                                            width: '20px',
-                                            height: '20px',
-                                            borderRadius: '50%',
-                                            background: colors.main,
-                                            color: '#000',
-                                            fontSize: '11px',
-                                            fontWeight: 700,
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            justifyContent: 'center'
-                                        }}>
-                                        2
-                                    </span>
-                                    <span style={{ fontSize: '12px', fontWeight: 600, color: colors.text }}>
-                                        Open Terminal
-                                    </span>
-                                </div>
-                                <div style={{ fontSize: '10px', color: colors.textFaded, marginLeft: '28px' }}>
-                                    Open your system terminal or command prompt
-                                </div>
-                            </div>
-
-                            {/* Step 3 */}
-                            <div
-                                style={{
-                                    background: colors.background,
-                                    borderRadius: '8px',
-                                    padding: '12px',
-                                    marginBottom: '10px'
-                                }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
-                                    <span
-                                        style={{
-                                            width: '20px',
-                                            height: '20px',
-                                            borderRadius: '50%',
-                                            background: colors.main,
-                                            color: '#000',
-                                            fontSize: '11px',
-                                            fontWeight: 700,
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            justifyContent: 'center'
-                                        }}>
-                                        3
-                                    </span>
-                                    <span style={{ fontSize: '12px', fontWeight: 600, color: colors.text }}>
-                                        Login to CLI
-                                    </span>
-                                </div>
-                                <div
-                                    style={{
-                                        background: '#1a1a1a',
-                                        borderRadius: '6px',
-                                        padding: '8px 10px',
-                                        marginLeft: '28px',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'space-between',
-                                        gap: '8px'
-                                    }}>
-                                    <code style={{ fontSize: '10px', color: colors.success, fontFamily: 'monospace' }}>
-                                        npx @btc-vision/cli login
-                                    </code>
-                                    <button
-                                        onClick={async () => {
-                                            await copyToClipboard('npx @btc-vision/cli login');
-                                            tools.toastSuccess('Copied!');
-                                        }}
-                                        style={{
-                                            background: 'transparent',
-                                            border: 'none',
-                                            cursor: 'pointer',
-                                            padding: '2px'
-                                        }}>
-                                        <CopyOutlined style={{ fontSize: 12, color: colors.textFaded }} />
-                                    </button>
-                                </div>
-                            </div>
-
-                            {/* Step 4 */}
-                            <div
-                                style={{
-                                    background: colors.background,
-                                    borderRadius: '8px',
-                                    padding: '12px',
-                                    marginBottom: '10px'
-                                }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
-                                    <span
-                                        style={{
-                                            width: '20px',
-                                            height: '20px',
-                                            borderRadius: '50%',
-                                            background: colors.main,
-                                            color: '#000',
-                                            fontSize: '11px',
-                                            fontWeight: 700,
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            justifyContent: 'center'
-                                        }}>
-                                        4
-                                    </span>
-                                    <span style={{ fontSize: '12px', fontWeight: 600, color: colors.text }}>
-                                        Register Domain
-                                    </span>
-                                </div>
-                                <div
-                                    style={{
-                                        background: '#1a1a1a',
-                                        borderRadius: '6px',
-                                        padding: '8px 10px',
-                                        marginLeft: '28px',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'space-between',
-                                        gap: '8px'
-                                    }}>
-                                    <code style={{ fontSize: '9px', color: colors.success, fontFamily: 'monospace' }}>
-                                        npx @btc-vision/cli domain register YOUR_DOMAIN.btc{networkFlag}
-                                    </code>
-                                    <button
-                                        onClick={async () => {
-                                            await copyToClipboard(`npx @btc-vision/cli domain register YOUR_DOMAIN.btc${networkFlag}`);
-                                            tools.toastSuccess('Copied!');
-                                        }}
-                                        style={{
-                                            background: 'transparent',
-                                            border: 'none',
-                                            cursor: 'pointer',
-                                            padding: '2px'
-                                        }}>
-                                        <CopyOutlined style={{ fontSize: 12, color: colors.textFaded }} />
-                                    </button>
-                                </div>
-                                <div style={{ fontSize: '10px', color: colors.textFaded, marginLeft: '28px', marginTop: '6px' }}>
-                                    Replace <code style={{ color: colors.main }}>YOUR_DOMAIN</code> with your desired name
-                                </div>
-                            </div>
-
-                            {/* Optional Step 5 */}
-                            <div
-                                style={{
-                                    background: `linear-gradient(135deg, ${colors.main}10 0%, ${colors.main}05 100%)`,
-                                    border: `1px solid ${colors.main}20`,
-                                    borderRadius: '8px',
-                                    padding: '12px'
-                                }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
-                                    <span
-                                        style={{
-                                            width: '20px',
-                                            height: '20px',
-                                            borderRadius: '50%',
-                                            background: colors.buttonBg,
-                                            color: colors.main,
-                                            fontSize: '11px',
-                                            fontWeight: 700,
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            justifyContent: 'center'
-                                        }}>
-                                        5
-                                    </span>
-                                    <span style={{ fontSize: '12px', fontWeight: 600, color: colors.text }}>
-                                        Publish Website{' '}
-                                        <span style={{ fontSize: '9px', color: colors.textFaded, fontWeight: 400 }}>
-                                            (optional)
-                                        </span>
-                                    </span>
-                                </div>
-                                <div
-                                    style={{
-                                        background: '#1a1a1a',
-                                        borderRadius: '6px',
-                                        padding: '8px 10px',
-                                        marginLeft: '28px',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'space-between',
-                                        gap: '8px'
-                                    }}>
-                                    <code style={{ fontSize: '9px', color: colors.success, fontFamily: 'monospace' }}>
-                                        npx @btc-vision/cli deploy YOUR_DOMAIN.btc .{networkFlag}
-                                    </code>
-                                    <button
-                                        onClick={async () => {
-                                            await copyToClipboard(`npx @btc-vision/cli deploy YOUR_DOMAIN.btc .${networkFlag}`);
-                                            tools.toastSuccess('Copied!');
-                                        }}
-                                        style={{
-                                            background: 'transparent',
-                                            border: 'none',
-                                            cursor: 'pointer',
-                                            padding: '2px'
-                                        }}>
-                                        <CopyOutlined style={{ fontSize: 12, color: colors.textFaded }} />
-                                    </button>
-                                </div>
-                                <div style={{ fontSize: '10px', color: colors.textFaded, marginLeft: '28px', marginTop: '6px' }}>
-                                    Requires <code style={{ color: colors.main }}>index.html</code> in your directory.
-                                    Use <code style={{ color: colors.main }}>.</code> for full directory or specify a file path.
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                )}
             </Content>
 
             <Footer px="zero" py="zero">
