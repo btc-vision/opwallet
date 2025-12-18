@@ -8,7 +8,7 @@ export const AppDimensions = (props: { children: ReactNode }) => {
         <div
             style={{
                 width: extensionIsInTab ? '100vw' : '357px',
-                height: extensionIsInTab ? '100vh' : '700px'
+                height: extensionIsInTab ? '100vh' : '600px'
             }}
             {...props}
         />
