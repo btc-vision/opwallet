@@ -3529,63 +3529,16 @@ export class WalletController {
     };
 
     /**
-     * Register a .btc domain
-     * This creates an approval request for the user to confirm
-     */
-    public registerBtcDomain = async (domainName: string, feeRate: number): Promise<void> => {
-        const normalizedDomain = domainName.toLowerCase().replace(/\.btc$/, '');
-
-        // Get domain info first
-        const info = await this.getBtcDomainInfo(normalizedDomain);
-        if (info.exists) {
-            throw new WalletControllerError('Domain is already registered');
-        }
-
-        const resolverAddress = Web3API.btcResolverAddressP2OP;
-        if (!resolverAddress) {
-            throw new WalletControllerError('BtcNameResolver contract not configured for this network');
-        }
-
-        // Create the contract call
-        const resolverContract = getContract<IBtcNameResolverContract>(
-            resolverAddress,
-            BTC_NAME_RESOLVER_ABI,
-            Web3API.provider,
-            Web3API.network
-        );
-
-        // Build the registration call
-        const callResult = await resolverContract.registerDomain(normalizedDomain);
-
-        // Create approval request with the transaction
-        // The transaction needs to include payment to treasury
-        await notificationService.createApproval('btcDomainRegister', {
-            domainName: normalizedDomain,
-            price: info.price.toString(),
-            treasuryAddress: info.treasuryAddress,
-            feeRate,
-            calldata: callResult.calldata,
-            contractAddress: resolverAddress
-        });
-    };
-
-    /**
-     * Upload a file to IPFS
+     * Upload a file to IPFS via ipfs.opnet.org
      * Returns the CID of the uploaded file
      */
     public uploadToIpfs = async (fileData: string, fileName: string): Promise<string> => {
-        // Use the OPNet IPFS pinning service
-        const gateway = await opnetProtocolService.getHealthiestGateway();
-        if (!gateway) {
-            throw new WalletControllerError('No healthy IPFS gateway available');
-        }
-
-        // Convert base64 data to blob
+        // Convert base64 data to binary
         const base64Data = fileData.split(',')[1] || fileData;
         const binaryData = Buffer.from(base64Data, 'base64');
 
-        // Pin to IPFS using the gateway's pinning endpoint
-        const pinEndpoint = gateway.url.replace(/\/ipfs\/?$/, '') + '/api/v0/add';
+        // Use ipfs.opnet.org pinning endpoint
+        const pinEndpoint = 'https://ipfs.opnet.org/api/v0/add';
 
         const formData = new FormData();
         const blob = new Blob([binaryData], { type: 'text/html' });
@@ -3605,50 +3558,87 @@ export class WalletController {
     };
 
     /**
-     * Publish website to a .btc domain by setting contenthash
+     * Get tracked domains for the current account
      */
-    public publishBtcDomainWebsite = async (
-        domainName: string,
-        cid: string,
-        feeRate: number
-    ): Promise<void> => {
+    public getTrackedDomains = async (): Promise<
+        Array<{
+            name: string;
+            registeredAt?: number;
+            lastVerified?: number;
+            isOwner: boolean;
+        }>
+    > => {
+        const account = preferenceService.getCurrentAccount();
+        if (!account?.address) return [];
+
+        const trackedDomains = preferenceService.getTrackedDomains(account.address);
+        const results = [];
+
+        // Verify ownership for each domain
+        for (const domain of trackedDomains) {
+            try {
+                const info = await this.getBtcDomainInfo(domain.name);
+                const isOwner = info.owner?.toLowerCase() === account.address.toLowerCase();
+
+                // Update verification timestamp if still owner
+                if (isOwner) {
+                    await preferenceService.updateTrackedDomainVerification(account.address, domain.name);
+                }
+
+                results.push({
+                    name: domain.name,
+                    registeredAt: domain.registeredAt,
+                    lastVerified: Date.now(),
+                    isOwner
+                });
+            } catch {
+                // If verification fails, still show domain but mark as unverified
+                results.push({
+                    name: domain.name,
+                    registeredAt: domain.registeredAt,
+                    lastVerified: domain.lastVerified,
+                    isOwner: false
+                });
+            }
+        }
+
+        return results;
+    };
+
+    /**
+     * Add a domain to track
+     */
+    public addTrackedDomain = async (domainName: string): Promise<void> => {
+        const account = preferenceService.getCurrentAccount();
+        if (!account?.address) throw new WalletControllerError('No account selected');
+
         const normalizedDomain = domainName.toLowerCase().replace(/\.btc$/, '');
 
-        const resolverAddress = Web3API.btcResolverAddressP2OP;
-        if (!resolverAddress) {
-            throw new WalletControllerError('BtcNameResolver contract not configured for this network');
+        // Verify ownership before adding
+        const info = await this.getBtcDomainInfo(normalizedDomain);
+        if (!info.exists) {
+            throw new WalletControllerError('Domain does not exist');
+        }
+        if (info.owner?.toLowerCase() !== account.address.toLowerCase()) {
+            throw new WalletControllerError('You do not own this domain');
         }
 
-        const resolverContract = getContract<IBtcNameResolverContract>(
-            resolverAddress,
-            BTC_NAME_RESOLVER_ABI,
-            Web3API.provider,
-            Web3API.network
-        );
-
-        // Determine CID type and call appropriate method
-        let callResult;
-        if (cid.startsWith('Qm') && cid.length === 46) {
-            // CIDv0
-            callResult = await resolverContract.setContenthashCIDv0(normalizedDomain, cid);
-        } else if (cid.startsWith('baf')) {
-            // CIDv1
-            callResult = await resolverContract.setContenthashCIDv1(normalizedDomain, cid);
-        } else if (cid.startsWith('k')) {
-            // IPNS
-            callResult = await resolverContract.setContenthashIPNS(normalizedDomain, cid);
-        } else {
-            throw new WalletControllerError('Invalid CID format');
-        }
-
-        // Create approval request
-        await notificationService.createApproval('btcDomainPublish', {
-            domainName: normalizedDomain,
-            cid,
-            feeRate,
-            calldata: callResult.calldata,
-            contractAddress: resolverAddress
+        await preferenceService.addTrackedDomain(account.address, {
+            name: normalizedDomain,
+            registeredAt: Date.now(),
+            lastVerified: Date.now()
         });
+    };
+
+    /**
+     * Remove a tracked domain
+     */
+    public removeTrackedDomain = async (domainName: string): Promise<void> => {
+        const account = preferenceService.getCurrentAccount();
+        if (!account?.address) throw new WalletControllerError('No account selected');
+
+        const normalizedDomain = domainName.toLowerCase().replace(/\.btc$/, '');
+        await preferenceService.removeTrackedDomain(account.address, normalizedDomain);
     };
 }
 

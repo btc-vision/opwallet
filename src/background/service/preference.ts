@@ -11,6 +11,12 @@ const version = process.env.release ?? '0';
 
 export type WalletSaveList = [];
 
+export interface TrackedDomain {
+    name: string; // domain name without .btc
+    registeredAt?: number; // timestamp when registered
+    lastVerified?: number; // timestamp when ownership was last verified
+}
+
 export interface PreferenceStore {
     currentKeyringIndex: number;
     currentAccount: Account | undefined | null;
@@ -43,6 +49,7 @@ export interface PreferenceStore {
     customNetworks: Record<string, CustomNetwork>;
     notificationWindowMode: 'auto' | 'popup' | 'fullscreen';
     useSidePanel: boolean;
+    trackedDomains: Record<string, TrackedDomain[]>; // keyed by address
 }
 
 const SUPPORT_LOCALES = ['en'];
@@ -80,7 +87,8 @@ const DEFAULTS = {
         autoLockTimeId: DEFAULT_LOCKTIME_ID,
         customNetworks: {},
         notificationWindowMode: 'popup',
-        useSidePanel: false
+        useSidePanel: false,
+        trackedDomains: {}
     } as PreferenceStore
 };
 
@@ -514,6 +522,45 @@ class PreferenceService {
     setUseSidePanel = async (useSidePanel: boolean) => {
         this.store.useSidePanel = useSidePanel;
         await this.persist();
+    };
+
+    // Tracked .btc domains
+    getTrackedDomains = (address: string): TrackedDomain[] => {
+        return this.store.trackedDomains?.[address] || [];
+    };
+
+    addTrackedDomain = async (address: string, domain: TrackedDomain) => {
+        if (!this.store.trackedDomains) {
+            this.store.trackedDomains = {};
+        }
+        if (!this.store.trackedDomains[address]) {
+            this.store.trackedDomains[address] = [];
+        }
+        // Check if domain already exists
+        const exists = this.store.trackedDomains[address].some((d) => d.name === domain.name);
+        if (!exists) {
+            this.store.trackedDomains[address].push(domain);
+            await this.persist();
+        }
+    };
+
+    removeTrackedDomain = async (address: string, domainName: string) => {
+        if (this.store.trackedDomains?.[address]) {
+            this.store.trackedDomains[address] = this.store.trackedDomains[address].filter(
+                (d) => d.name !== domainName
+            );
+            await this.persist();
+        }
+    };
+
+    updateTrackedDomainVerification = async (address: string, domainName: string) => {
+        if (this.store.trackedDomains?.[address]) {
+            const domain = this.store.trackedDomains[address].find((d) => d.name === domainName);
+            if (domain) {
+                domain.lastVerified = Date.now();
+                await this.persist();
+            }
+        }
     };
 
     private persist = async () => {

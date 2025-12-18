@@ -341,9 +341,17 @@ export interface WalletController {
         price: bigint;
         treasuryAddress: string;
     }>;
-    registerBtcDomain(domainName: string, feeRate: number): Promise<void>;
     uploadToIpfs(fileData: string, fileName: string): Promise<string>;
-    publishBtcDomainWebsite(domainName: string, cid: string, feeRate: number): Promise<void>;
+    getTrackedDomains(): Promise<
+        Array<{
+            name: string;
+            registeredAt?: number;
+            lastVerified?: number;
+            isOwner: boolean;
+        }>
+    >;
+    addTrackedDomain(domainName: string): Promise<void>;
+    removeTrackedDomain(domainName: string): Promise<void>;
 }
 
 const WalletContext = createContext<{

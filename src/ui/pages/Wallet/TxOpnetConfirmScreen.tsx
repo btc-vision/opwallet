@@ -4,7 +4,9 @@ import {
     AirdropParameters,
     DeployContractParameters,
     MintParameters,
+    PublishDomainParameters,
     RawTxInfo,
+    RegisterDomainParameters,
     SendBitcoinParameters,
     SendNFTParameters,
     SourceType,
@@ -21,11 +23,13 @@ import { useLocationState, useWallet } from '@/ui/utils';
 import {
     ArrowRightOutlined,
     CheckCircleOutlined,
+    CloudUploadOutlined,
     CopyOutlined,
     DownOutlined,
     DollarOutlined,
     FileTextOutlined,
     GiftOutlined,
+    GlobalOutlined,
     LoadingOutlined,
     PictureOutlined,
     RightOutlined,
@@ -61,8 +65,12 @@ import {
     IOP20Contract,
     OP_20_ABI,
     SignedInteractionTransactionReceipt,
+    StrippedTransactionOutput,
+    TransactionOutputFlags,
     TransactionParameters
 } from 'opnet';
+import { BTC_NAME_RESOLVER_ABI } from '@/shared/web3/abi/BTC_NAME_RESOLVER_ABI';
+import { IBtcNameResolverContract } from '@/shared/web3/interfaces/IBtcNameResolverContract';
 import { Dispatch, SetStateAction, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { RouteTypes, useNavigate } from '../MainRoute';
 
@@ -204,8 +212,8 @@ export default function TxOpnetConfirmScreen() {
 
     // Pre-sign OPNet interaction transactions on mount
     useEffect(() => {
-        // Only pre-sign for OPNet interactions (Transfer, Mint, Airdrop, SendNFT)
-        const supportedActions = [Action.Transfer, Action.Mint, Action.Airdrop, Action.SendNFT];
+        // Only pre-sign for OPNet interactions (Transfer, Mint, Airdrop, SendNFT, RegisterDomain, PublishDomain)
+        const supportedActions = [Action.Transfer, Action.Mint, Action.Airdrop, Action.SendNFT, Action.RegisterDomain, Action.PublishDomain];
         if (!supportedActions.includes(rawTxInfo.action)) return;
         if (preSigningRef.current) return;
         preSigningRef.current = true;
@@ -219,7 +227,8 @@ export default function TxOpnetConfirmScreen() {
                 const userWallet = await getOPNetWallet();
                 const currentWalletAddress = await wallet.getCurrentAccount();
 
-                const interactionParameters: TransactionParameters = {
+                // Create mutable interaction parameters - extraOutputs will be added for domain registration
+                let interactionParameters: TransactionParameters = {
                     signer: userWallet.keypair,
                     mldsaSigner: userWallet.mldsaKeypair,
                     refundTo: currentWalletAddress.address,
@@ -299,6 +308,83 @@ export default function TxOpnetConfirmScreen() {
                         symbol = rawTxInfo.collectionName;
                         break;
                     }
+                    case Action.RegisterDomain: {
+                        // Get the resolver contract address from Web3API
+                        const resolverAddress = Web3API.btcResolverAddressP2OP;
+                        if (!resolverAddress) {
+                            throw new Error('Domain resolver not available on this network');
+                        }
+                        const contract: IBtcNameResolverContract = getContract<IBtcNameResolverContract>(
+                            resolverAddress,
+                            BTC_NAME_RESOLVER_ABI,
+                            Web3API.provider,
+                            Web3API.network,
+                            userWallet.address
+                        );
+
+                        // Set transaction details for simulation - contract needs to know about treasury payment
+                        const outSimulation: StrippedTransactionOutput[] = [
+                            {
+                                index: 1,
+                                to: rawTxInfo.treasuryAddress,
+                                value: rawTxInfo.price,
+                                flags: TransactionOutputFlags.hasTo,
+                                scriptPubKey: undefined
+                            }
+                        ];
+                        contract.setTransactionDetails({
+                            inputs: [],
+                            outputs: outSimulation
+                        });
+
+                        // Register the domain - payment to treasury is handled via extraOutputs
+                        simulation = await contract.registerDomain(rawTxInfo.domainName);
+                        symbol = `${rawTxInfo.domainName}.btc`;
+
+                        // Add treasury payment as extra output and increase max sat to spend
+                        interactionParameters = {
+                            ...interactionParameters,
+                            maximumAllowedSatToSpend: rawTxInfo.priorityFee + rawTxInfo.price,
+                            extraOutputs: [
+                                {
+                                    address: rawTxInfo.treasuryAddress,
+                                    value: Number(rawTxInfo.price)
+                                }
+                            ]
+                        };
+                        break;
+                    }
+                    case Action.PublishDomain: {
+                        // Get the resolver contract address from Web3API
+                        const resolverAddress = Web3API.btcResolverAddressP2OP;
+                        if (!resolverAddress) {
+                            throw new Error('Domain resolver not available on this network');
+                        }
+                        const contract: IBtcNameResolverContract = getContract<IBtcNameResolverContract>(
+                            resolverAddress,
+                            BTC_NAME_RESOLVER_ABI,
+                            Web3API.provider,
+                            Web3API.network,
+                            userWallet.address
+                        );
+                        // Determine CID type and call appropriate method
+                        const cid = rawTxInfo.cid;
+                        if (cid.startsWith('Qm')) {
+                            // CIDv0
+                            simulation = await contract.setContenthashCIDv0(rawTxInfo.domainName, cid);
+                        } else if (cid.startsWith('bafy') || cid.startsWith('bafk')) {
+                            // CIDv1
+                            simulation = await contract.setContenthashCIDv1(rawTxInfo.domainName, cid);
+                        } else if (cid.startsWith('k') || cid.startsWith('12D3')) {
+                            // IPNS
+                            simulation = await contract.setContenthashIPNS(rawTxInfo.domainName, cid);
+                        } else {
+                            // Default to CIDv1
+                            simulation = await contract.setContenthashCIDv1(rawTxInfo.domainName, cid);
+                        }
+                        symbol = `${rawTxInfo.domainName}.btc`;
+                        break;
+                    }
                     default:
                         return;
                 }
@@ -322,6 +408,7 @@ export default function TxOpnetConfirmScreen() {
                     );
 
                     // Build PreSignedTransactionData for OPNetTxFlowPreview
+                    // Note: domain_registration and domain_publish use 'interaction' as the base type
                     const txType = rawTxInfo.action === Action.Transfer ? 'token_transfer'
                         : rawTxInfo.action === Action.Mint ? 'mint'
                         : rawTxInfo.action === Action.Airdrop ? 'airdrop'
@@ -975,6 +1062,117 @@ export default function TxOpnetConfirmScreen() {
         }
     };
 
+    const registerDomain = async (parameters: RegisterDomainParameters) => {
+        try {
+            const currentWalletAddress = await wallet.getCurrentAccount();
+
+            // Check if we have a cached pre-signed transaction
+            if (!cachedSignedTx) {
+                throw new Error('No pre-signed transaction available. Please try again.');
+            }
+
+            // Check expiration
+            if (isPreSignedExpired()) {
+                throw new Error('Pre-signed transaction expired. Please go back and try again.');
+            }
+
+            // Broadcast using the cached pre-signed transaction
+            const sendTransaction = await cachedSignedTx.simulation.sendPresignedTransaction(cachedSignedTx.signedTx);
+            if (!sendTransaction?.transactionId) {
+                setOpenLoading(false);
+                setDisabled(false);
+                setCachedSignedTx(null);
+                tools.toastError('Could not register domain');
+                return;
+            }
+
+            tools.toastSuccess(`Successfully registered ${parameters.domainName}.btc!`);
+
+            // Record transaction in history
+            const txRecord: RecordTransactionInput = {
+                txid: sendTransaction.transactionId || '',
+                type: TransactionType.OPNET_INTERACTION,
+                from: currentWalletAddress.address,
+                contractMethod: 'registerDomain',
+                fee: Number(parameters.priorityFee || 0),
+                feeRate: parameters.feeRate,
+                note: `Register domain ${parameters.domainName}.btc`
+            };
+            void wallet.recordTransaction(txRecord);
+
+            // Add domain to tracked domains
+            void wallet.addTrackedDomain(parameters.domainName);
+
+            // Clear cached transaction
+            setCachedSignedTx(null);
+
+            navigate(RouteTypes.TxSuccessScreen, {
+                txid: sendTransaction.transactionId,
+                domainRegistered: parameters.domainName
+            });
+        } catch (e) {
+            const error = e as Error;
+            console.error(e);
+            setCachedSignedTx(null);
+            setDisabled(false);
+            navigate(RouteTypes.TxFailScreen, { error: error.message });
+        }
+    };
+
+    const publishDomainWebsite = async (parameters: PublishDomainParameters) => {
+        try {
+            const currentWalletAddress = await wallet.getCurrentAccount();
+
+            // Check if we have a cached pre-signed transaction
+            if (!cachedSignedTx) {
+                throw new Error('No pre-signed transaction available. Please try again.');
+            }
+
+            // Check expiration
+            if (isPreSignedExpired()) {
+                throw new Error('Pre-signed transaction expired. Please go back and try again.');
+            }
+
+            // Broadcast using the cached pre-signed transaction
+            const sendTransaction = await cachedSignedTx.simulation.sendPresignedTransaction(cachedSignedTx.signedTx);
+            if (!sendTransaction?.transactionId) {
+                setOpenLoading(false);
+                setDisabled(false);
+                setCachedSignedTx(null);
+                tools.toastError('Could not publish website');
+                return;
+            }
+
+            tools.toastSuccess(`Successfully published website to ${parameters.domainName}.btc!`);
+
+            // Record transaction in history
+            const txRecord: RecordTransactionInput = {
+                txid: sendTransaction.transactionId || '',
+                type: TransactionType.OPNET_INTERACTION,
+                from: currentWalletAddress.address,
+                contractMethod: 'setContenthash',
+                fee: Number(parameters.priorityFee || 0),
+                feeRate: parameters.feeRate,
+                note: `Publish to ${parameters.domainName}.btc: ${parameters.cid.slice(0, 20)}...`
+            };
+            void wallet.recordTransaction(txRecord);
+
+            // Clear cached transaction
+            setCachedSignedTx(null);
+
+            navigate(RouteTypes.TxSuccessScreen, {
+                txid: sendTransaction.transactionId,
+                domainPublished: parameters.domainName
+            });
+        } catch (e) {
+            const error = e as Error;
+            console.error(e);
+            setCachedSignedTx(null);
+            setDisabled(false);
+            navigate(RouteTypes.TxFailScreen, { error: error.message });
+        }
+    };
+
     // Get action label
     const getActionLabel = () => {
         switch (rawTxInfo.action) {
@@ -990,6 +1188,10 @@ export default function TxOpnetConfirmScreen() {
                 return 'Airdrop Tokens';
             case Action.Transfer:
                 return 'Token Transfer';
+            case Action.RegisterDomain:
+                return 'Register Domain';
+            case Action.PublishDomain:
+                return 'Publish Website';
             default:
                 return 'Transaction';
         }
@@ -1010,6 +1212,10 @@ export default function TxOpnetConfirmScreen() {
                 return <ArrowRightOutlined style={iconStyle} />;
             case Action.SendNFT:
                 return <PictureOutlined style={iconStyle} />;
+            case Action.RegisterDomain:
+                return <GlobalOutlined style={iconStyle} />;
+            case Action.PublishDomain:
+                return <CloudUploadOutlined style={iconStyle} />;
             default:
                 return <FileTextOutlined style={iconStyle} />;
         }
@@ -1531,6 +1737,12 @@ export default function TxOpnetConfirmScreen() {
                                     await transferToken(rawTxInfo);
                                     break;
                                 }
+                                case Action.RegisterDomain:
+                                    await registerDomain(rawTxInfo);
+                                    break;
+                                case Action.PublishDomain:
+                                    await publishDomainWebsite(rawTxInfo);
+                                    break;
                             }
                         }}
                         onMouseEnter={(e) => {

@@ -26,7 +26,7 @@
         "type": "module"
     },
     "homepage_url": "https://opnet.org",
-    "permissions": ["storage", "unlimitedStorage", "activeTab", "sidePanel", "webNavigation", "tabs", "declarativeNetRequest"],
+    "permissions": ["storage", "unlimitedStorage", "activeTab", "sidePanel", "webNavigation", "tabs"],
     "host_permissions": [
         "*://*.btc/*",
         "https://ipfs.opnet.org/*",

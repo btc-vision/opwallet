@@ -1,10 +1,10 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { NETWORK_TYPES } from '@/shared/constant';
+import { Action, Features, RegisterDomainParameters, PublishDomainParameters } from '@/shared/interfaces/RawTxParameters';
 import { NetworkType } from '@/shared/types';
 import { Content, Header, Layout } from '@/ui/components';
 import { useTools } from '@/ui/components/ActionComponent';
-import { FeeRateBar } from '@/ui/components/FeeRateBar';
 import { useAccountAddress } from '@/ui/state/accounts/hooks';
 import { useChain } from '@/ui/state/settings/hooks';
 import { copyToClipboard, useWallet } from '@/ui/utils';
@@ -14,9 +14,12 @@ import {
     CloudUploadOutlined,
     CodeOutlined,
     CopyOutlined,
+    DeleteOutlined,
     DownOutlined,
     GlobalOutlined,
     LoadingOutlined,
+    PlusOutlined,
+    ReloadOutlined,
     SearchOutlined,
     UploadOutlined
 } from '@ant-design/icons';
@@ -39,7 +42,14 @@ const colors = {
     info: '#3b82f6'
 };
 
-type Tab = 'register' | 'publish';
+type Tab = 'mydomains' | 'register' | 'publish';
+
+interface TrackedDomainInfo {
+    name: string;
+    registeredAt?: number;
+    lastVerified?: number;
+    isOwner: boolean;
+}
 
 interface DomainInfo {
     exists: boolean;
@@ -55,8 +65,15 @@ export default function BtcDomainScreen() {
     const wallet = useWallet();
     const chain = useChain();
     const userAddress = useAccountAddress();
+    const defaultFeeRate = 5; // Default fee rate in sat/vB
 
-    const [activeTab, setActiveTab] = useState<Tab>('register');
+    const [activeTab, setActiveTab] = useState<Tab>('mydomains');
+
+    // My Domains state
+    const [myDomains, setMyDomains] = useState<TrackedDomainInfo[]>([]);
+    const [isLoadingDomains, setIsLoadingDomains] = useState(false);
+    const [addDomainInput, setAddDomainInput] = useState('');
+    const [isAddingDomain, setIsAddingDomain] = useState(false);
 
     // Registration state
     const [domainInput, setDomainInput] = useState('');
@@ -81,6 +98,54 @@ export default function BtcDomainScreen() {
         if (chain.networkType === NetworkType.MAINNET) return '';
         return ` -n ${NETWORK_TYPES[chain.networkType].name}`;
     }, [chain.networkType]);
+
+    // Load tracked domains
+    const loadMyDomains = useCallback(async () => {
+        setIsLoadingDomains(true);
+        try {
+            const domains = await wallet.getTrackedDomains();
+            setMyDomains(domains);
+        } catch (err) {
+            console.error('Failed to load domains:', err);
+        } finally {
+            setIsLoadingDomains(false);
+        }
+    }, [wallet]);
+
+    // Load domains on mount and when tab changes
+    useEffect(() => {
+        if (activeTab === 'mydomains') {
+            loadMyDomains();
+        }
+    }, [activeTab, loadMyDomains]);
+
+    // Add domain to tracking
+    const handleAddDomain = useCallback(async () => {
+        if (!addDomainInput.trim()) return;
+
+        setIsAddingDomain(true);
+        try {
+            await wallet.addTrackedDomain(addDomainInput);
+            setAddDomainInput('');
+            await loadMyDomains();
+            tools.toastSuccess('Domain added!');
+        } catch (err: any) {
+            tools.toastError(err.message || 'Failed to add domain');
+        } finally {
+            setIsAddingDomain(false);
+        }
+    }, [addDomainInput, wallet, loadMyDomains, tools]);
+
+    // Remove domain from tracking
+    const handleRemoveDomain = useCallback(async (domainName: string) => {
+        try {
+            await wallet.removeTrackedDomain(domainName);
+            await loadMyDomains();
+            tools.toastSuccess('Domain removed');
+        } catch (err) {
+            tools.toastError('Failed to remove domain');
+        }
+    }, [wallet, loadMyDomains, tools]);
 
     // Normalize domain name
     const normalizeDomain = (input: string): string => {
@@ -201,47 +266,56 @@ export default function BtcDomainScreen() {
         }
     }, [selectedFile, wallet, tools]);
 
-    // Register domain
-    const handleRegister = useCallback(async () => {
-        if (!domainInfo || domainInfo.exists) return;
-
-        const normalized = normalizeDomain(domainInput);
-
-        try {
-            await wallet.registerBtcDomain(normalized, feeRate);
-            tools.toastSuccess('Registration transaction submitted!');
-            // Reset state
-            setDomainInput('');
-            setDomainInfo(null);
-        } catch (err) {
-            console.error('Failed to register domain:', err);
-            tools.toastError('Failed to register domain');
-        }
-    }, [domainInput, domainInfo, feeRate, wallet, tools]);
-
-    // Publish website
-    const handlePublish = useCallback(async () => {
-        if (!publishDomainInfo?.isOwner || !uploadedCid) return;
-
-        const normalized = normalizeDomain(publishDomain);
-
-        try {
-            await wallet.publishBtcDomainWebsite(normalized, uploadedCid, publishFeeRate);
-            tools.toastSuccess('Website publish transaction submitted!');
-            // Reset state
-            setSelectedFile(null);
-            setUploadedCid(null);
-        } catch (err) {
-            console.error('Failed to publish website:', err);
-            tools.toastError('Failed to publish website');
-        }
-    }, [publishDomain, publishDomainInfo, uploadedCid, publishFeeRate, wallet, tools]);
-
     // Format satoshis to BTC
     const formatBtc = (sats: bigint): string => {
         const btc = Number(sats) / 100_000_000;
         return btc.toFixed(8).replace(/\.?0+$/, '');
     };
+
+    // Handle domain registration - navigate to TxOpnetConfirmScreen
+    const handleRegisterDomain = useCallback(() => {
+        if (!domainInfo || domainInfo.exists) return;
+
+        const normalizedDomain = normalizeDomain(domainInput);
+        const rawTxInfo: RegisterDomainParameters = {
+            header: `Register ${normalizedDomain}.btc`,
+            features: {
+                [Features.rbf]: true,
+                [Features.taproot]: true
+            },
+            tokens: [],
+            feeRate: feeRate || defaultFeeRate,
+            priorityFee: 10000n,
+            action: Action.RegisterDomain,
+            domainName: normalizedDomain,
+            price: domainInfo.price,
+            treasuryAddress: domainInfo.treasuryAddress
+        };
+
+        navigate(RouteTypes.TxOpnetConfirmScreen, { rawTxInfo });
+    }, [domainInfo, domainInput, feeRate, navigate]);
+
+    // Handle website publishing - navigate to TxOpnetConfirmScreen
+    const handlePublishWebsite = useCallback(() => {
+        if (!publishDomainInfo?.isOwner || !uploadedCid) return;
+
+        const normalizedDomain = normalizeDomain(publishDomain);
+        const rawTxInfo: PublishDomainParameters = {
+            header: `Publish to ${normalizedDomain}.btc`,
+            features: {
+                [Features.rbf]: true,
+                [Features.taproot]: true
+            },
+            tokens: [],
+            feeRate: publishFeeRate || defaultFeeRate,
+            priorityFee: 10000n,
+            action: Action.PublishDomain,
+            domainName: normalizedDomain,
+            cid: uploadedCid
+        };
+
+        navigate(RouteTypes.TxOpnetConfirmScreen, { rawTxInfo });
+    }, [publishDomainInfo, publishDomain, uploadedCid, publishFeeRate, navigate]);
 
     return (
         <Layout>
@@ -252,45 +326,214 @@ export default function BtcDomainScreen() {
                 <div
                     style={{
                         display: 'flex',
-                        gap: '8px',
+                        gap: '4px',
                         marginBottom: '20px',
                         background: colors.containerBgFaded,
                         borderRadius: '10px',
                         padding: '4px'
                     }}>
                     <button
-                        onClick={() => setActiveTab('register')}
+                        onClick={() => setActiveTab('mydomains')}
                         style={{
                             flex: 1,
-                            padding: '10px',
+                            padding: '8px 4px',
                             border: 'none',
                             borderRadius: '8px',
                             cursor: 'pointer',
-                            fontSize: '13px',
+                            fontSize: '11px',
+                            fontWeight: 600,
+                            background: activeTab === 'mydomains' ? colors.main : 'transparent',
+                            color: activeTab === 'mydomains' ? '#000' : colors.textFaded,
+                            transition: 'all 0.2s'
+                        }}>
+                        My Domains
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('register')}
+                        style={{
+                            flex: 1,
+                            padding: '8px 4px',
+                            border: 'none',
+                            borderRadius: '8px',
+                            cursor: 'pointer',
+                            fontSize: '11px',
                             fontWeight: 600,
                             background: activeTab === 'register' ? colors.main : 'transparent',
                             color: activeTab === 'register' ? '#000' : colors.textFaded,
                             transition: 'all 0.2s'
                         }}>
-                        Register Domain
+                        Register
                     </button>
                     <button
                         onClick={() => setActiveTab('publish')}
                         style={{
                             flex: 1,
-                            padding: '10px',
+                            padding: '8px 4px',
                             border: 'none',
                             borderRadius: '8px',
                             cursor: 'pointer',
-                            fontSize: '13px',
+                            fontSize: '11px',
                             fontWeight: 600,
                             background: activeTab === 'publish' ? colors.main : 'transparent',
                             color: activeTab === 'publish' ? '#000' : colors.textFaded,
                             transition: 'all 0.2s'
                         }}>
-                        Publish Website
+                        Publish
                     </button>
                 </div>
+
+                {/* My Domains Tab */}
+                {activeTab === 'mydomains' && (
+                    <div>
+                        {/* Add Domain Input */}
+                        <div style={{ marginBottom: '16px' }}>
+                            <div style={{ fontSize: '12px', color: colors.textFaded, marginBottom: '8px' }}>
+                                Add Owned Domain
+                            </div>
+                            <div style={{ display: 'flex', gap: '8px' }}>
+                                <div
+                                    style={{
+                                        flex: 1,
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        background: colors.inputBg,
+                                        borderRadius: '8px',
+                                        border: `1px solid ${colors.containerBorder}`,
+                                        padding: '0 12px'
+                                    }}>
+                                    <input
+                                        type="text"
+                                        value={addDomainInput}
+                                        onChange={(e) => setAddDomainInput(e.target.value)}
+                                        onKeyDown={(e) => e.key === 'Enter' && handleAddDomain()}
+                                        placeholder="yourdomain"
+                                        style={{
+                                            flex: 1,
+                                            background: 'transparent',
+                                            border: 'none',
+                                            outline: 'none',
+                                            color: colors.text,
+                                            fontSize: '14px',
+                                            padding: '12px 0'
+                                        }}
+                                    />
+                                    <span style={{ color: colors.main, fontWeight: 600 }}>.btc</span>
+                                </div>
+                                <button
+                                    onClick={handleAddDomain}
+                                    disabled={isAddingDomain || !addDomainInput.trim()}
+                                    style={{
+                                        padding: '12px 16px',
+                                        background: colors.main,
+                                        border: 'none',
+                                        borderRadius: '8px',
+                                        cursor: isAddingDomain || !addDomainInput.trim() ? 'not-allowed' : 'pointer',
+                                        opacity: isAddingDomain || !addDomainInput.trim() ? 0.5 : 1
+                                    }}>
+                                    {isAddingDomain ? (
+                                        <LoadingOutlined style={{ color: '#000' }} />
+                                    ) : (
+                                        <PlusOutlined style={{ color: '#000' }} />
+                                    )}
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Refresh Button */}
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '12px' }}>
+                            <button
+                                onClick={loadMyDomains}
+                                disabled={isLoadingDomains}
+                                style={{
+                                    background: 'transparent',
+                                    border: 'none',
+                                    cursor: 'pointer',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '4px',
+                                    color: colors.textFaded,
+                                    fontSize: '11px'
+                                }}>
+                                <ReloadOutlined spin={isLoadingDomains} /> Refresh
+                            </button>
+                        </div>
+
+                        {/* Domain List */}
+                        {isLoadingDomains ? (
+                            <div style={{ textAlign: 'center', padding: '40px', color: colors.textFaded }}>
+                                <LoadingOutlined style={{ fontSize: 24 }} />
+                                <div style={{ marginTop: '8px' }}>Loading domains...</div>
+                            </div>
+                        ) : myDomains.length === 0 ? (
+                            <div
+                                style={{
+                                    textAlign: 'center',
+                                    padding: '40px',
+                                    color: colors.textFaded,
+                                    background: colors.containerBgFaded,
+                                    borderRadius: '12px'
+                                }}>
+                                <GlobalOutlined style={{ fontSize: 32, marginBottom: '12px', opacity: 0.5 }} />
+                                <div style={{ fontSize: '13px' }}>No domains tracked yet</div>
+                                <div style={{ fontSize: '11px', marginTop: '4px' }}>
+                                    Add a domain you own or register a new one
+                                </div>
+                            </div>
+                        ) : (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                {myDomains.map((domain) => (
+                                    <div
+                                        key={domain.name}
+                                        style={{
+                                            background: colors.containerBgFaded,
+                                            borderRadius: '10px',
+                                            padding: '12px 14px',
+                                            border: `1px solid ${domain.isOwner ? colors.success : colors.error}20`,
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '12px'
+                                        }}>
+                                        <div
+                                            style={{
+                                                width: '36px',
+                                                height: '36px',
+                                                borderRadius: '8px',
+                                                background: domain.isOwner ? `${colors.success}15` : `${colors.error}15`,
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center'
+                                            }}>
+                                            {domain.isOwner ? (
+                                                <CheckCircleOutlined style={{ color: colors.success, fontSize: 18 }} />
+                                            ) : (
+                                                <CloseCircleOutlined style={{ color: colors.error, fontSize: 18 }} />
+                                            )}
+                                        </div>
+                                        <div style={{ flex: 1 }}>
+                                            <div style={{ fontSize: '14px', fontWeight: 600, color: colors.text }}>
+                                                {domain.name}.btc
+                                            </div>
+                                            <div style={{ fontSize: '10px', color: colors.textFaded }}>
+                                                {domain.isOwner ? 'Verified owner' : 'Not owned'}
+                                            </div>
+                                        </div>
+                                        <button
+                                            onClick={() => handleRemoveDomain(domain.name)}
+                                            style={{
+                                                background: 'transparent',
+                                                border: 'none',
+                                                cursor: 'pointer',
+                                                padding: '8px',
+                                                color: colors.textFaded
+                                            }}>
+                                            <DeleteOutlined />
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                )}
 
                 {/* Register Tab */}
                 {activeTab === 'register' && (
@@ -314,7 +557,10 @@ export default function BtcDomainScreen() {
                                     <input
                                         type="text"
                                         value={domainInput}
-                                        onChange={(e) => setDomainInput(e.target.value)}
+                                        onChange={(e) => {
+                                            setDomainInput(e.target.value);
+                                            setDomainInfo(null); // Clear old info when input changes
+                                        }}
                                         onKeyDown={(e) => e.key === 'Enter' && checkDomain()}
                                         placeholder="yourdomain"
                                         style={{
@@ -403,15 +649,9 @@ export default function BtcDomainScreen() {
                                             </span>
                                         </div>
 
-                                        <div style={{ marginBottom: '12px' }}>
-                                            <div style={{ fontSize: '11px', color: colors.textFaded, marginBottom: '6px' }}>
-                                                Network Fee
-                                            </div>
-                                            <FeeRateBar onChange={setFeeRate} />
-                                        </div>
-
+                                        {/* Register Button */}
                                         <button
-                                            onClick={handleRegister}
+                                            onClick={handleRegisterDomain}
                                             style={{
                                                 width: '100%',
                                                 padding: '14px',
@@ -421,10 +661,42 @@ export default function BtcDomainScreen() {
                                                 cursor: 'pointer',
                                                 fontSize: '14px',
                                                 fontWeight: 600,
-                                                color: '#000'
+                                                color: '#000',
+                                                marginBottom: '12px',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                gap: '8px'
                                             }}>
-                                            Register {normalizeDomain(domainInput)}.btc
+                                            <GlobalOutlined /> Register {normalizeDomain(domainInput)}.btc
                                         </button>
+
+                                        {/* CLI Command to register */}
+                                        <div style={{ fontSize: '11px', color: colors.textFaded, marginBottom: '6px' }}>
+                                            Or register via CLI:
+                                        </div>
+                                        <div
+                                            style={{
+                                                background: colors.inputBg,
+                                                borderRadius: '8px',
+                                                padding: '10px 12px',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'space-between',
+                                                gap: '8px'
+                                            }}>
+                                            <code style={{ fontSize: '10px', color: colors.success, fontFamily: 'monospace' }}>
+                                                npx @btc-vision/cli domain register {normalizeDomain(domainInput)}.btc{networkFlag}
+                                            </code>
+                                            <button
+                                                onClick={async () => {
+                                                    await copyToClipboard(`npx @btc-vision/cli domain register ${normalizeDomain(domainInput)}.btc${networkFlag}`);
+                                                    tools.toastSuccess('Copied!');
+                                                }}
+                                                style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: '4px' }}>
+                                                <CopyOutlined style={{ fontSize: 14, color: colors.textFaded }} />
+                                            </button>
+                                        </div>
                                     </>
                                 )}
                             </div>
@@ -442,7 +714,7 @@ export default function BtcDomainScreen() {
                                 lineHeight: 1.5
                             }}>
                             <GlobalOutlined style={{ color: colors.info, marginRight: '8px' }} />
-                            Domain names are registered on the OPNet network. Once registered, you can publish
+                            Domain names are registered on Bitcoin directly. Once registered, you can publish
                             websites and receive payments to your .btc address.
                         </div>
                     </div>
@@ -662,30 +934,57 @@ export default function BtcDomainScreen() {
 
                                 {/* Publish Button */}
                                 {uploadedCid && (
-                                    <>
-                                        <div style={{ marginBottom: '12px' }}>
-                                            <div style={{ fontSize: '11px', color: colors.textFaded, marginBottom: '6px' }}>
-                                                Network Fee
-                                            </div>
-                                            <FeeRateBar onChange={setPublishFeeRate} />
-                                        </div>
+                                    <button
+                                        onClick={handlePublishWebsite}
+                                        style={{
+                                            width: '100%',
+                                            padding: '14px',
+                                            background: colors.main,
+                                            border: 'none',
+                                            borderRadius: '8px',
+                                            cursor: 'pointer',
+                                            fontSize: '14px',
+                                            fontWeight: 600,
+                                            color: '#000',
+                                            marginBottom: '12px',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            gap: '8px'
+                                        }}>
+                                        <CloudUploadOutlined /> Publish to {normalizeDomain(publishDomain)}.btc
+                                    </button>
+                                )}
 
-                                        <button
-                                            onClick={handlePublish}
+                                {/* Publish via CLI */}
+                                {uploadedCid && (
+                                    <div>
+                                        <div style={{ fontSize: '11px', color: colors.textFaded, marginBottom: '6px' }}>
+                                            Or publish via CLI:
+                                        </div>
+                                        <div
                                             style={{
-                                                width: '100%',
-                                                padding: '14px',
-                                                background: colors.main,
-                                                border: 'none',
+                                                background: colors.inputBg,
                                                 borderRadius: '8px',
-                                                cursor: 'pointer',
-                                                fontSize: '14px',
-                                                fontWeight: 600,
-                                                color: '#000'
+                                                padding: '10px 12px',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'space-between',
+                                                gap: '8px'
                                             }}>
-                                            Publish to {normalizeDomain(publishDomain)}.btc
-                                        </button>
-                                    </>
+                                            <code style={{ fontSize: '9px', color: colors.success, fontFamily: 'monospace' }}>
+                                                npx @btc-vision/cli publish {normalizeDomain(publishDomain)}.btc {uploadedCid}{networkFlag}
+                                            </code>
+                                            <button
+                                                onClick={async () => {
+                                                    await copyToClipboard(`npx @btc-vision/cli publish ${normalizeDomain(publishDomain)}.btc ${uploadedCid}${networkFlag}`);
+                                                    tools.toastSuccess('Copied!');
+                                                }}
+                                                style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: '4px' }}>
+                                                <CopyOutlined style={{ fontSize: 14, color: colors.textFaded }} />
+                                            </button>
+                                        </div>
+                                    </div>
                                 )}
                             </>
                         )}

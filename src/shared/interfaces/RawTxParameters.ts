@@ -44,7 +44,9 @@ export enum Action {
     Mint = 'mint',
     Swap = 'swap',
     SendNFT = 'SendNFT',
-    MintNFT = 'MintNFT'
+    MintNFT = 'MintNFT',
+    RegisterDomain = 'registerDomain',
+    PublishDomain = 'publishDomain'
 }
 
 export interface BaseRawTxInfo<T extends Action> {
@@ -123,6 +125,17 @@ export interface MintParameters extends BaseRawTxInfo<Action.Mint> {
     readonly to: string;
 }
 
+export interface RegisterDomainParameters extends BaseRawTxInfo<Action.RegisterDomain> {
+    readonly domainName: string;
+    readonly price: bigint;
+    readonly treasuryAddress: string;
+}
+
+export interface PublishDomainParameters extends BaseRawTxInfo<Action.PublishDomain> {
+    readonly domainName: string;
+    readonly cid: string;
+}
+
 export type RawTxInfo =
     | TransferParameters
     | AirdropParameters
@@ -130,4 +143,6 @@ export type RawTxInfo =
     | DeployContractParameters
     | MintParameters
     | SendNFTParameters
-    | MintNFTParameters;
+    | MintNFTParameters
+    | RegisterDomainParameters
+    | PublishDomainParameters;
