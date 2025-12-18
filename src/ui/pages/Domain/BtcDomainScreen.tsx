@@ -1,6 +1,7 @@
 import React, { useCallback, useMemo, useState } from 'react';
 
-import { NETWORK_TYPES, NetworkType } from '@/shared/constant';
+import { NETWORK_TYPES } from '@/shared/constant';
+import { NetworkType } from '@/shared/types';
 import { Content, Header, Layout } from '@/ui/components';
 import { useTools } from '@/ui/components/ActionComponent';
 import { FeeRateBar } from '@/ui/components/FeeRateBar';
