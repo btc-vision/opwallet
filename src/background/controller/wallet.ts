@@ -3465,7 +3465,7 @@ export class WalletController {
                 return null;
             }
 
-            const publicOwner = await Web3API.provider.getPublicKeyInfo(ownerAddress.toHex());
+            const publicOwner = await Web3API.provider.getPublicKeyInfo(ownerAddress.toHex(), false);
 
             // Convert to P2TR address
             return publicOwner.p2tr(Web3API.network);
