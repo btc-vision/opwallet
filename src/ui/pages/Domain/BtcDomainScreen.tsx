@@ -285,7 +285,7 @@ export default function BtcDomainScreen() {
             },
             tokens: [],
             feeRate: feeRate || defaultFeeRate,
-            priorityFee: 10000n,
+            priorityFee: 0n,
             action: Action.RegisterDomain,
             domainName: normalizedDomain,
             price: domainInfo.price,
@@ -308,7 +308,7 @@ export default function BtcDomainScreen() {
             },
             tokens: [],
             feeRate: publishFeeRate || defaultFeeRate,
-            priorityFee: 10000n,
+            priorityFee: 0n,
             action: Action.PublishDomain,
             domainName: normalizedDomain,
             cid: uploadedCid
