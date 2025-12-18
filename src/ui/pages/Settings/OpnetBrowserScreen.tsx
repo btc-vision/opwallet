@@ -12,7 +12,6 @@ import {
     DeleteOutlined,
     GlobalOutlined,
     InfoCircleOutlined,
-    LinkOutlined,
     LoadingOutlined,
     PlusOutlined,
     ReloadOutlined,
@@ -50,7 +49,6 @@ export default function OpnetBrowserScreen() {
     const [addGatewayPopoverVisible, setAddGatewayPopoverVisible] = useState(false);
     const [clearingCache, setClearingCache] = useState(false);
     const [refreshingGateways, setRefreshingGateways] = useState(false);
-    const [protocolRegistered, setProtocolRegistered] = useState(false);
 
     useEffect(() => {
         const initSettings = async () => {
@@ -155,18 +153,6 @@ export default function OpnetBrowserScreen() {
         }
     };
 
-    const handleRegisterProtocol = () => {
-        try {
-            const extensionUrl = chrome.runtime.getURL('opnet-resolver.html?url=%s');
-            navigator.registerProtocolHandler('web+opnet', extensionUrl);
-            setProtocolRegistered(true);
-            tools.toastSuccess('Protocol handler registered');
-        } catch (error) {
-            console.error('Failed to register protocol:', error);
-            tools.toastError('Failed to register protocol');
-        }
-    };
-
     if (!init) {
         return (
             <Layout>
@@ -200,29 +186,6 @@ export default function OpnetBrowserScreen() {
 
                 {/* Main Settings Card */}
                 <div className="opnet-browser-card">
-                    {/* Register Protocol */}
-                    <div
-                        className={`opnet-browser-row ${protocolRegistered ? 'disabled' : 'clickable'}`}
-                        onClick={!protocolRegistered ? handleRegisterProtocol : undefined}>
-                        <div className="opnet-browser-row-icon">
-                            <LinkOutlined style={{ fontSize: 18, color: '#f37413' }} />
-                        </div>
-                        <div className="opnet-browser-row-content">
-                            <div className="opnet-browser-row-title">Register web+opnet:// Protocol</div>
-                            <div
-                                className="opnet-browser-row-status"
-                                style={{ color: protocolRegistered ? '#4ade80' : '#f37413' }}>
-                                {protocolRegistered ? 'Registered' : 'Click to register'}
-                            </div>
-                            <div className="opnet-browser-row-desc">
-                                Handle web+opnet:// links in the browser
-                            </div>
-                        </div>
-                        {protocolRegistered && (
-                            <CheckCircleFilled style={{ fontSize: 16, color: '#4ade80' }} />
-                        )}
-                    </div>
-
                     {/* Enable Toggle */}
                     <div
                         className={`opnet-browser-row ${enableLoading ? 'disabled' : 'clickable'}`}

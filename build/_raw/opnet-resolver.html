@@ -8,7 +8,7 @@
         <meta name="description" content="OPNet Domain Resolver" />
         <meta
             http-equiv="Content-Security-Policy"
-            content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; frame-src 'self' blob: https://ipfs.opnet.org https://*.ipfs.io https://dweb.link https://cloudflare-ipfs.com; img-src 'self' data: blob: https: http:;"
+            content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; frame-src 'self' blob: https://ipfs.opnet.org https://*.ipfs.io https://dweb.link https://gateway.pinata.cloud; img-src 'self' data: blob: https: http:;"
         />
         <link rel="stylesheet" href="css/style.css" />
         <title>OPNet Browser</title>
@@ -356,9 +356,11 @@
         </div>
 
         <!-- Content Frame -->
+        <!-- allow-same-origin is required for dApps to use localStorage/sessionStorage -->
+        <!-- Security note: iframe content gets IPFS gateway origin, but cannot access extension -->
         <iframe
             id="content-frame"
-            sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals"
+            sandbox="allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox allow-same-origin"
             loading="lazy"
             referrerpolicy="no-referrer"
         ></iframe>

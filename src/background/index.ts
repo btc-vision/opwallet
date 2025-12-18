@@ -13,12 +13,12 @@ import { Runtime } from 'webextension-polyfill';
 import { providerController, walletController } from './controller';
 import contactBookService from './service/contactBook';
 import keyringService, { StoredData } from './service/keyring';
-import openapiService from './service/openapi';
+import opnetApi from './service/opnetApi';
 import opnetProtocolService from './service/opnetProtocol';
 import permissionService from './service/permission';
 import preferenceService from './service/preference';
 import sessionService from './service/session';
-import { isOpenapiServiceMethod, isWalletControllerMethod } from './utils/controller';
+import { isWalletControllerMethod } from './utils/controller';
 import { storage } from './webapi';
 import browser, { browserRuntimeOnConnect, browserRuntimeOnInstalled } from './webapi/browser';
 
@@ -35,7 +35,7 @@ async function restoreAppState() {
 
     await preferenceService.init();
 
-    await openapiService.init();
+    await opnetApi.init();
 
     await permissionService.init();
 
@@ -76,22 +76,6 @@ browserRuntimeOnConnect((port: Runtime.Port) => {
                     case 'broadcast':
                         eventBus.emit(data.method, data.params);
                         return Promise.resolve();
-                    case 'openapi':
-                        // TODO (typing): Check this again as it's not the most ideal solution.
-                        // However, the problem is that we have a general type like RequestParams for
-                        // incoming request data as we have different handlers. So, we assumed that
-                        // the params are passed correctly for each method for now
-                        if (isOpenapiServiceMethod(data.method)) {
-                            const method = walletController.openapi[data.method];
-                            const params = Array.isArray(data.params) ? data.params : [];
-                            return Promise.resolve(
-                                (method as (...args: unknown[]) => unknown).apply(walletController.openapi, params)
-                            );
-                        } else {
-                            const errorMsg = `Method ${data.method} not found in openapi`;
-                            console.error(errorMsg);
-                            return Promise.reject(new Error(errorMsg));
-                        }
                     case 'controller':
                     default:
                         // TODO (typing): Check this again as it's not the most ideal solution.
@@ -141,6 +125,18 @@ browserRuntimeOnConnect((port: Runtime.Port) => {
     }
 
     const pm = new PortMessage(port);
+
+    // SECURITY: Get the verified origin from the browser, not from the page
+    // This prevents origin spoofing attacks where a malicious page claims to be a trusted site
+    let verifiedOrigin = '';
+    if (port.sender?.url) {
+        try {
+            verifiedOrigin = new URL(port.sender.url).origin;
+        } catch {
+            // Invalid URL, leave origin empty
+        }
+    }
+
     pm.listen(async (data) => {
         if (!appStoreLoaded) {
             // todo
@@ -152,6 +148,12 @@ browserRuntimeOnConnect((port: Runtime.Port) => {
         }
 
         const session = sessionService.getOrCreateSession(sessionId);
+
+        // SECURITY: Always set origin from browser-verified source, never trust page-provided origin
+        if (verifiedOrigin && session.origin !== verifiedOrigin) {
+            session.origin = verifiedOrigin;
+        }
+
         const req: ProviderControllerRequest = { data, session };
 
         // for background push to respective page
@@ -261,6 +263,14 @@ const opnetMessageHandler = (
     sendResponse: (response: unknown) => void
 ): boolean | undefined => {
     const msg = message as { type?: string; params?: unknown[] } | undefined;
+
+    // Handle isOpnetBrowserEnabled check (used by search redirect banner)
+    if (msg?.type === 'isOpnetBrowserEnabled') {
+        const settings = opnetProtocolService.getBrowserSettings();
+        sendResponse({ enabled: settings.enabled });
+        return true;
+    }
+
     if (msg && msg.type?.startsWith('opnetProtocol:')) {
         const method = msg.type.replace('opnetProtocol:', '');
         const params = msg.params || [];

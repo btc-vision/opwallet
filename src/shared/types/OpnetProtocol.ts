@@ -122,6 +122,8 @@ export interface ResolvedContent {
     domain: string;
     path: string;
     error?: string;
+    /** True if this is a SPA fallback (path not found, serving index.html instead) */
+    isSpaFallback?: boolean;
 }
 
 // =============================================================================
@@ -230,7 +232,7 @@ export const DEFAULT_IPFS_GATEWAYS: GatewayConfig[] = [
         isLocalNode: false
     },
     {
-        url: 'https://cloudflare-ipfs.com',
+        url: 'https://ipfs.io',
         priority: 2,
         isDefault: true,
         isUserConfigured: false,

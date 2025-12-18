@@ -36,14 +36,18 @@ const log = (event: string, ...args: unknown[]) => {
 };
 
 const getChannelName = (): string => {
-    // From sessionStorage
-    const stored = sessionStorage.getItem('__opnetChannel');
-    if (stored) {
-        sessionStorage.removeItem('__opnetChannel');
-        return stored;
+    // Try sessionStorage first (may fail in sandboxed iframes)
+    try {
+        const stored = sessionStorage.getItem('__opnetChannel');
+        if (stored) {
+            sessionStorage.removeItem('__opnetChannel');
+            return stored;
+        }
+    } catch {
+        // sessionStorage not available in sandboxed iframes - use data attribute fallback
     }
 
-    // From the script tag that loaded us
+    // From the script tag that loaded us (primary method for sandboxed contexts)
     const currentScript = document.currentScript as HTMLScriptElement;
     if (currentScript?.dataset.channel) {
         return currentScript.dataset.channel;
@@ -123,7 +127,19 @@ export class OpnetProvider extends EventEmitter {
 
         opnetProviderPrivate._bcm.connect().on('message', this._handleBackgroundMessage);
         domReadyCall(async () => {
-            const origin = window.top?.location.origin || '';
+            let origin = '';
+            try {
+                // Try to get origin from top window first, fall back to current window
+                origin = window.top?.location.origin || window.location.origin || '';
+            } catch {
+                // In sandboxed iframes, cross-origin access throws SecurityError
+                try {
+                    origin = window.location.origin || '';
+                } catch {
+                    // Even window.location.origin can fail in some sandboxed contexts
+                    origin = '';
+                }
+            }
 
             const iconElement = $('head > link[rel~="icon"]');
             let icon = iconElement instanceof HTMLLinkElement ? iconElement.href : '';
@@ -304,16 +320,6 @@ export class OpnetProvider extends EventEmitter {
     getBalance = async () => {
         return this._request({
             method: 'getBalance'
-        });
-    };
-
-    getInscriptions = async (cursor = 0, size = 20) => {
-        return this._request({
-            method: 'getInscriptions',
-            params: {
-                cursor,
-                size
-            }
         });
     };
 

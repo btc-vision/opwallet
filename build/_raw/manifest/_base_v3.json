@@ -26,16 +26,16 @@
         "type": "module"
     },
     "homepage_url": "https://opnet.org",
-    "permissions": ["storage", "unlimitedStorage", "activeTab", "sidePanel", "webNavigation", "tabs"],
+    "permissions": ["storage", "unlimitedStorage", "activeTab", "sidePanel", "webNavigation", "tabs", "declarativeNetRequest"],
     "host_permissions": [
         "*://*.btc/*",
         "https://ipfs.opnet.org/*",
         "https://*.ipfs.io/*",
         "https://dweb.link/*",
-        "https://cloudflare-ipfs.com/*"
+        "https://gateway.pinata.cloud/*"
     ],
     "omnibox": {
-        "keyword": "btc"
+        "keyword": "op"
     },
     "side_panel": {
         "default_path": "index.html"

@@ -242,8 +242,19 @@ function renderContent(content: ResolvedContent, path: string): void {
     if (contentFrame) {
         // Load directly from IPFS gateway - sandbox still applies via iframe attribute
         // This avoids CSP inheritance issues with blob URLs
-        const gatewayPath = path === '/' || path === '' ? '' : path;
-        const ipfsUrl = `https://ipfs.opnet.org/ipfs/${content.ipfsHash}${gatewayPath}`;
+        let ipfsUrl: string;
+
+        if (content.isSpaFallback) {
+            // SPA mode: load root and pass original path as hash for client-side routing
+            // This allows React Router, Vue Router, etc. to handle the route
+            const hashPath = path.startsWith('/') ? path : `/${path}`;
+            ipfsUrl = `https://ipfs.opnet.org/ipfs/${content.ipfsHash}/#${hashPath}`;
+        } else {
+            // Normal mode: load the exact path
+            const gatewayPath = path === '/' || path === '' ? '' : path;
+            ipfsUrl = `https://ipfs.opnet.org/ipfs/${content.ipfsHash}${gatewayPath}`;
+        }
+
         contentFrame.src = ipfsUrl;
         contentFrame.style.display = 'block';
     }
@@ -252,23 +263,13 @@ function renderContent(content: ResolvedContent, path: string): void {
 // Set up message listener for navigation from iframe
 function setupMessageListener(): void {
     window.addEventListener('message', (event) => {
-        // Only accept navigation messages from trusted IPFS gateways
-        const trustedOrigins = [
-            'https://ipfs.opnet.org',
-            'https://dweb.link',
-            'https://cloudflare-ipfs.com'
-        ];
-
-        // Check if origin is trusted or from blob (null origin)
+        // Only accept messages from our content iframe
         const isFromIframe = event.source === contentFrame?.contentWindow;
-        const isTrustedOrigin = trustedOrigins.some(origin =>
-            event.origin === origin || event.origin.endsWith('.ipfs.io')
-        );
-
-        if (!isFromIframe || (!isTrustedOrigin && event.origin !== 'null')) {
-            return; // Reject untrusted messages
+        if (!isFromIframe) {
+            return;
         }
 
+        // Handle navigation requests
         if (event.data?.type === 'opnet-navigate') {
             const url = event.data.url;
             if (typeof url === 'string' && url.length < 2048) {

@@ -528,6 +528,20 @@ class OpnetProtocolService {
     // Content Fetching
     // =========================================================================
 
+    /**
+     * Check if a path looks like a static file (has a file extension)
+     */
+    private isStaticFilePath(path: string): boolean {
+        const staticExtensions = [
+            '.html', '.htm', '.css', '.js', '.mjs', '.json', '.xml',
+            '.png', '.jpg', '.jpeg', '.gif', '.svg', '.ico', '.webp',
+            '.woff', '.woff2', '.ttf', '.eot', '.otf',
+            '.pdf', '.txt', '.md', '.map', '.wasm'
+        ];
+        const lowerPath = path.toLowerCase();
+        return staticExtensions.some(ext => lowerPath.endsWith(ext));
+    }
+
     async fetchContent(
         contenthash: string,
         contenthashType: ContenthashType,
@@ -572,32 +586,59 @@ class OpnetProtocolService {
             };
         }
 
+        // Try to fetch the exact path first
+        let response: Response | null = null;
+        let isSpaFallback = false;
+
         try {
-            const response = await gatewayManager.fetchFromGateway(cid, path || undefined);
-            const contentType = response.headers.get('content-type') || 'text/html';
-            const html = await response.text();
-
-            // Cache the content
-            const cacheHeaders: Record<string, string> = {};
-            response.headers.forEach((value, key) => {
-                cacheHeaders[key] = value;
-            });
-            contentCacheService.set(cacheKey, html, contentType, cacheHeaders);
-
-            return {
-                html,
-                contentType,
-                ipfsHash: cid,
-                domain: '',
-                path
-            };
+            response = await gatewayManager.fetchFromGateway(cid, path || undefined);
         } catch (error) {
-            console.error('Content fetch error:', error);
+            // If exact path failed and it doesn't look like a static file, try SPA fallback
+            const normalizedPath = path || '/';
+            if (normalizedPath !== '/' && !this.isStaticFilePath(normalizedPath)) {
+                console.log(`Path ${path} not found, trying SPA fallback...`);
+                try {
+                    // Try fetching root (index.html is usually served by default)
+                    response = await gatewayManager.fetchFromGateway(cid, undefined);
+                    isSpaFallback = true;
+                } catch {
+                    // Also try explicit /index.html
+                    try {
+                        response = await gatewayManager.fetchFromGateway(cid, '/index.html');
+                        isSpaFallback = true;
+                    } catch {
+                        // All fallbacks failed
+                    }
+                }
+            }
+        }
+
+        if (!response) {
+            console.error('Content fetch error: all attempts failed');
             return {
                 type: OpnetProtocolError.IPFS_UNREACHABLE,
                 message: 'Unable to fetch content from IPFS gateways'
             };
         }
+
+        const contentType = response.headers.get('content-type') || 'text/html';
+        const html = await response.text();
+
+        // Cache the content
+        const cacheHeaders: Record<string, string> = {};
+        response.headers.forEach((value, key) => {
+            cacheHeaders[key] = value;
+        });
+        contentCacheService.set(cacheKey, html, contentType, cacheHeaders);
+
+        return {
+            html,
+            contentType,
+            ipfsHash: cid,
+            domain: '',
+            path,
+            isSpaFallback
+        };
     }
 
     // =========================================================================

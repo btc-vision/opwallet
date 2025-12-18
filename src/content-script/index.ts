@@ -5,14 +5,21 @@ import { RequestParams } from '@/shared/types/Request.js';
 import { Message } from '@/shared/utils';
 import browser from 'webextension-polyfill';
 
+// Import search redirect for .btc domain detection on search pages
+import './btcSearchRedirect';
+
 function injectScript() {
     try {
         const channelName = nanoid();
 
-        // Use sessionStorage (works across page context)
-        sessionStorage.setItem('__opnetChannel', channelName);
+        // Try sessionStorage (works across page context), but may fail in sandboxed iframes
+        try {
+            sessionStorage.setItem('__opnetChannel', channelName);
+        } catch {
+            // sessionStorage not available in sandboxed iframes - fallback to data attribute only
+        }
 
-        // Use a data attribute on the script tag itself
+        // Use a data attribute on the script tag itself (primary method for sandboxed contexts)
         const scriptTag = document.createElement('script');
         scriptTag.setAttribute('type', 'module');
         scriptTag.setAttribute('data-channel', channelName);
@@ -138,7 +145,7 @@ function isIframe(): boolean {
 }
 
 /**
- * Check if we're in an IPFS gateway iframe (should allow provider injection)
+ * Check if we're in an IPFS gateway iframe (OPNet browser context)
  */
 function isIpfsGatewayIframe(): boolean {
     if (!isIframe()) return false;
@@ -147,7 +154,6 @@ function isIpfsGatewayIframe(): boolean {
         'ipfs.opnet.org',
         'ipfs.io',
         'dweb.link',
-        'cloudflare-ipfs.com',
         'gateway.pinata.cloud'
     ];
 
@@ -167,14 +173,13 @@ function shouldInjectProvider(): boolean {
 
     if (!basicChecks) return false;
 
-    // Allow injection in top-level pages
-    if (!isIframe()) return true;
-
     // Allow injection in IPFS gateway iframes (for OPNet browser)
     if (isIpfsGatewayIframe()) return true;
 
-    // Block other iframes
-    return false;
+    // For other iframes, don't inject anything
+    if (isIframe()) return false;
+
+    return true;
 }
 
 if (shouldInjectProvider()) {
