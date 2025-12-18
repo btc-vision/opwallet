@@ -247,7 +247,7 @@ export const AddressInput = (props: InputProps) => {
         <div style={{ alignSelf: 'stretch' }}>
             <div className="op_input_amount_container">
                 <input
-                    placeholder={'Address or name (sats, unisat, ...) '}
+                    placeholder={'Address or .btc domain'}
                     type={'text'}
                     className="op_input_address"
                     onChange={(e) => {
@@ -259,23 +259,14 @@ export const AddressInput = (props: InputProps) => {
 
                 {searching && (
                     <Row full mt="sm">
-                        <Text preset="sub" text={'Loading...'} />
+                        <Text preset="sub" text={'Resolving domain...'} />
                     </Row>
                 )}
             </div>
 
             {parseName ? (
                 <Row mt="sm" gap="zero" itemsCenter>
-                    <Text preset="sub" size="sm" text={'Name recognized and resolved. ('} />
-                    <Text
-                        preset="link"
-                        color="yellow"
-                        text={'More details'}
-                        onClick={() => {
-                            window.open('https://docs.unisat.io/unisat-wallet/name-recognized-and-resolved');
-                        }}
-                    />
-                    <Text preset="sub" size="sm" text={')'} />
+                    <Text preset="sub" size="sm" color="green" text={`Resolved ${parseName} via OPNet`} />
                 </Row>
             ) : null}
             {parseError && <Text text={parseError} preset="regular" color="error" />}

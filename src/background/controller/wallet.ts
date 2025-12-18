@@ -1,4 +1,7 @@
-import { BitcoinUtils, BroadcastedTransaction, UTXOs } from 'opnet';
+import { BitcoinUtils, BroadcastedTransaction, getContract, UTXOs } from 'opnet';
+
+import { BTC_NAME_RESOLVER_ABI } from '@/shared/web3/abi/BTC_NAME_RESOLVER_ABI';
+import { IBtcNameResolverContract } from '@/shared/web3/interfaces/IBtcNameResolverContract';
 
 import contactBookService from '@/background/service/contactBook';
 import keyringService, { DisplayedKeyring, EmptyKeyring, Keyring, SavedVault } from '@/background/service/keyring';
@@ -3479,23 +3482,30 @@ export class WalletController {
             // Normalize domain - remove .btc suffix if present for the resolver
             const normalizedDomain = domain.toLowerCase().replace(/\.btc$/, '');
 
-            const result = await opnetProtocolService.resolveDomain(normalizedDomain);
-
-            // Check if it's an error (OpnetProtocolErrorInfo has a 'type' property that is a number)
-            if ('type' in result && typeof result.type === 'number') {
+            const resolverAddress = Web3API.btcResolverAddressP2OP;
+            if (!resolverAddress) {
+                console.error('BtcNameResolver contract not configured for this network');
                 return null;
             }
 
-            // Now we know result is OpnetDomainRecord
-            const domainRecord = result as { exists: boolean; owner: string };
+            const resolverContract = getContract<IBtcNameResolverContract>(
+                resolverAddress,
+                BTC_NAME_RESOLVER_ABI,
+                Web3API.provider,
+                Web3API.network
+            );
 
-            // Check if domain exists and has an owner
-            if (!domainRecord.exists || !domainRecord.owner) {
+            // Use the simple resolve method that just returns the owner
+            const result = await resolverContract.resolve(normalizedDomain);
+            const ownerAddress = result.properties.owner;
+
+            // Check if owner is empty/zero address
+            if (!ownerAddress || ownerAddress.empty()) {
                 return null;
             }
 
-            // Service now returns P2TR address directly
-            return domainRecord.owner;
+            // Convert to P2TR address
+            return ownerAddress.p2tr(Web3API.network);
         } catch (error) {
             console.error('Failed to resolve .btc domain:', error);
             return null;
