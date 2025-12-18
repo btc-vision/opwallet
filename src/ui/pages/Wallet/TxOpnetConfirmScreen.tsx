@@ -322,12 +322,15 @@ export default function TxOpnetConfirmScreen() {
                             userWallet.address
                         );
 
+                        // Convert price to BigInt explicitly in case it was serialized as string during navigation
+                        const domainPrice = BigInt(rawTxInfo.price);
+
                         // Set transaction details for simulation - contract needs to know about treasury payment
                         const outSimulation: StrippedTransactionOutput[] = [
                             {
                                 index: 1,
                                 to: rawTxInfo.treasuryAddress,
-                                value: rawTxInfo.price,
+                                value: domainPrice,
                                 flags: TransactionOutputFlags.hasTo,
                                 scriptPubKey: undefined
                             }
@@ -340,15 +343,13 @@ export default function TxOpnetConfirmScreen() {
                         // Register the domain - payment to treasury is handled via extraOutputs
                         simulation = await contract.registerDomain(rawTxInfo.domainName);
                         symbol = `${rawTxInfo.domainName}.btc`;
-
-                        // Add treasury payment as extra output and increase max sat to spend
                         interactionParameters = {
                             ...interactionParameters,
-                            maximumAllowedSatToSpend: rawTxInfo.priorityFee + rawTxInfo.price,
+                            maximumAllowedSatToSpend: BigInt(rawTxInfo.priorityFee) + domainPrice,
                             extraOutputs: [
                                 {
                                     address: rawTxInfo.treasuryAddress,
-                                    value: Number(rawTxInfo.price)
+                                    value: Number(domainPrice)
                                 }
                             ]
                         };
