@@ -26,15 +26,10 @@ export const DEFAULT_BITCOIN_BALANCE: BitcoinBalance = {
 
     consolidation_amount: '0',
     consolidation_unspent_amount: '0',
-    consolidation_unspent_count: 0,
     consolidation_csv75_unlocked_amount: '0',
-    consolidation_csv75_unlocked_count: 0,
     consolidation_csv2_unlocked_amount: '0',
-    consolidation_csv2_unlocked_count: 0,
     consolidation_csv1_unlocked_amount: '0',
-    consolidation_csv1_unlocked_count: 0,
     consolidation_p2wda_unspent_amount: '0',
-    consolidation_p2wda_unspent_count: 0,
 
     usd_value: '0.00',
 

@@ -14,7 +14,7 @@ export const UTXO_CONFIG = {
      * Warning threshold for UTXO count (yellow warning)
      * UI will show yellow warning indicators when UTXO count exceeds this value
      */
-    WARNING_THRESHOLD: 500,
+    WARNING_THRESHOLD: 1,
 
     /**
      * Error threshold for UTXO count (red warning)

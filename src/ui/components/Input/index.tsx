@@ -110,11 +110,13 @@ function AmountInput(props: InputProps) {
     const [inputValue, setInputValue] = useState(props.value ?? '');
     const [validAmount, setValidAmount] = useState(props.value ?? '');
 
+    // Sync local state with props.value when it changes externally (e.g., from Redux)
     useEffect(() => {
-        if (onAmountInputChange) {
-            onAmountInputChange(validAmount);
+        if (props.value !== undefined && props.value !== inputValue) {
+            setInputValue(props.value);
+            setValidAmount(props.value);
         }
-    }, [validAmount, onAmountInputChange]);
+    }, [props.value]);
 
     if (!onAmountInputChange) {
         return <div />;
@@ -126,6 +128,7 @@ function AmountInput(props: InputProps) {
             if (/^[1-9]\d*$/.test(value) || value === '') {
                 setValidAmount(value);
                 setInputValue(value);
+                onAmountInputChange(value);
             }
         } else {
             const maxDecimals = decimalPlaces ?? 8;
@@ -133,6 +136,7 @@ function AmountInput(props: InputProps) {
             if (decimalRegex.test(value) || value === '') {
                 setValidAmount(value);
                 setInputValue(value);
+                onAmountInputChange(value);
             }
         }
     };
@@ -175,15 +179,13 @@ export const AddressInput = (props: InputProps) => {
     const wallet = useWallet();
     const tools = useTools();
 
+    // Sync local state with addressInputData when it changes externally (e.g., from Redux)
     useEffect(() => {
-        if (onAddressInputChange) {
-            onAddressInputChange({
-                address: validAddress,
-                domain: parseAddress ? inputVal : ''
-            });
+        if (addressInputData?.address !== undefined && addressInputData.address !== validAddress) {
+            setValidAddress(addressInputData.address);
+            setInputVal(addressInputData.domain || addressInputData.address || '');
         }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [validAddress, parseAddress, inputVal]);
+    }, [addressInputData?.address, addressInputData?.domain]);
 
     if (!addressInputData || !onAddressInputChange) {
         return <div />;
@@ -216,10 +218,12 @@ export const AddressInput = (props: InputProps) => {
         const isValid = AddressVerificator.detectAddressType(inputAddress, Web3API.network);
         if (!isValid) {
             setFormatError('Recipient address is invalid');
+            onAddressInputChange({ address: '', domain: '' });
             return;
         }
 
         setValidAddress(inputAddress);
+        onAddressInputChange({ address: inputAddress, domain: '' });
     };
 
     return (
@@ -232,7 +236,7 @@ export const AddressInput = (props: InputProps) => {
                     onChange={(e) => {
                         handleInputAddress(e);
                     }}
-                    defaultValue={inputVal}
+                    value={inputVal}
                     {...rest}
                 />
 
