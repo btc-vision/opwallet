@@ -1,14 +1,15 @@
-import React, { CSSProperties, useCallback, useEffect, useMemo, useState } from 'react';
+import { CSSProperties, useCallback, useEffect, useMemo, useState } from 'react';
 
-import { AddressFlagType, KEYRING_TYPE } from '@/shared/constant';
 import { UTXO_CONFIG } from '@/shared/config';
+import { AddressFlagType, KEYRING_TYPE } from '@/shared/constant';
 import { checkAddressFlag } from '@/shared/utils';
 import { Column, Content, Footer, Header, Image, Layout } from '@/ui/components';
 import AccountSelect from '@/ui/components/AccountSelect';
-import { FeeRateBar } from '@/ui/components/FeeRateBar';
-import { QuantumMigrationBanner } from '@/ui/components/QuantumMigrationBanner';
 import { DisableUnconfirmedsPopover } from '@/ui/components/DisableUnconfirmedPopover';
+import { FeeRateBar } from '@/ui/components/FeeRateBar';
+import { MldsaBackupReminder } from '@/ui/components/MldsaBackupReminder';
 import { NavTabBar } from '@/ui/components/NavTabBar';
+import { QuantumMigrationBanner } from '@/ui/components/QuantumMigrationBanner';
 import { UpgradePopover } from '@/ui/components/UpgradePopover';
 import { BalanceDisplay } from '@/ui/pages/Main/WalletTabScreen/components/BalanceDisplay';
 import {
@@ -56,7 +57,7 @@ import ActionButton from '../../../components/ActionButton/index';
 import { RouteTypes, useNavigate } from '../../MainRoute';
 import { SwitchChainModal } from '../../Settings/network/SwitchChainModal';
 import { OPNetList } from './OPNetList';
-import { useConsolidation, OptimizationStatus } from './hooks';
+import { useConsolidation } from './hooks';
 
 const colors = {
     main: '#f37413',
@@ -149,6 +150,7 @@ export default function WalletTabScreen() {
     const [splitCount, setSplitCount] = useState(25);
     const [splitFeeRate, setSplitFeeRate] = useState(5); // Default fee rate
     const [needsQuantumMigration, setNeedsQuantumMigration] = useState(false);
+    const [showMldsaBackupReminder, setShowMldsaBackupReminder] = useState(false);
 
     // Check if quantum migration is needed (SimpleKeyring without quantum key)
     useEffect(() => {
@@ -171,6 +173,32 @@ export default function WalletTabScreen() {
         };
         void checkQuantumStatus();
     }, [currentKeyring, wallet]);
+
+    // Check if MLDSA backup reminder should be shown (only for Simple Keyrings / WIF imports)
+    useEffect(() => {
+        const checkMldsaBackupReminder = async () => {
+            try {
+                // Only show for SimpleKeyring (WIF imports) - HD wallets derive MLDSA from seed phrase
+                if (currentKeyring.type !== KEYRING_TYPE.SimpleKeyring) {
+                    setShowMldsaBackupReminder(false);
+                    return;
+                }
+
+                // Don't show if wallet still needs quantum migration
+                if (needsQuantumMigration) {
+                    setShowMldsaBackupReminder(false);
+                    return;
+                }
+
+                // Check if user has already dismissed the reminder for this wallet
+                const dismissed = await wallet.getMldsaBackupDismissed(currentAccount.pubkey);
+                setShowMldsaBackupReminder(!dismissed);
+            } catch {
+                setShowMldsaBackupReminder(false);
+            }
+        };
+        void checkMldsaBackupReminder();
+    }, [currentAccount.pubkey, currentKeyring.type, needsQuantumMigration, wallet]);
 
     useEffect(() => {
         void (async () => {
@@ -900,7 +928,9 @@ export default function WalletTabScreen() {
                                     Register domains & publish websites
                                 </div>
                             </div>
-                            <DownOutlined style={{ fontSize: 10, color: colors.textFaded, transform: 'rotate(-90deg)' }} />
+                            <DownOutlined
+                                style={{ fontSize: 10, color: colors.textFaded, transform: 'rotate(-90deg)' }}
+                            />
                         </div>
                     </div>
                     {/* Tokens Section */}
@@ -919,6 +949,10 @@ export default function WalletTabScreen() {
 
                 {showDisableUnconfirmedUtxoNotice && (
                     <DisableUnconfirmedsPopover onClose={() => setShowDisableUnconfirmedUtxoNotice(false)} />
+                )}
+
+                {showMldsaBackupReminder && (
+                    <MldsaBackupReminder account={currentAccount} onClose={() => setShowMldsaBackupReminder(false)} />
                 )}
 
                 {switchChainModalVisible && (
@@ -1144,8 +1178,8 @@ export default function WalletTabScreen() {
                                                     color: colors.error,
                                                     marginTop: '4px'
                                                 }}>
-                                                Each output must be at least {UTXO_CONFIG.MIN_SPLIT_OUTPUT.toLocaleString()}{' '}
-                                                sats
+                                                Each output must be at least{' '}
+                                                {UTXO_CONFIG.MIN_SPLIT_OUTPUT.toLocaleString()} sats
                                             </div>
                                         )}
                                     </div>
@@ -1169,7 +1203,8 @@ export default function WalletTabScreen() {
                                         style={{
                                             width: '100%',
                                             padding: '12px',
-                                            background: isSplitValid && splitFeeRate > 0 ? colors.main : colors.buttonBg,
+                                            background:
+                                                isSplitValid && splitFeeRate > 0 ? colors.main : colors.buttonBg,
                                             border: 'none',
                                             borderRadius: '8px',
                                             cursor: isSplitValid && splitFeeRate > 0 ? 'pointer' : 'not-allowed',
@@ -1232,7 +1267,6 @@ export default function WalletTabScreen() {
                         </div>
                     </div>
                 )}
-
             </Content>
 
             <Footer px="zero" py="zero">
