@@ -13,10 +13,10 @@ import notificationService, {
     serializePreSignedInteractionData
 } from '@/background/service/notification';
 import opnetApi from '@/background/service/opnetApi';
+import opnetProtocolService from '@/background/service/opnetProtocol';
 import permissionService from '@/background/service/permission';
 import preferenceService, { WalletSaveList } from '@/background/service/preference';
 import sessionService from '@/background/service/session';
-import opnetProtocolService from '@/background/service/opnetProtocol';
 import transactionHistoryService from '@/background/service/transactionHistory';
 import transactionStatusPoller from '@/background/service/transactionStatusPoller';
 import { BroadcastTransactionOptions } from '@/content-script/pageProvider/Web3Provider.js';
@@ -2536,6 +2536,14 @@ export class WalletController {
 
     public setShowSafeNotice = (show: boolean): void => {
         preferenceService.setShowSafeNotice(show);
+    };
+
+    public getMldsaBackupDismissed = (pubkey: string): boolean => {
+        return preferenceService.getMldsaBackupDismissed(pubkey);
+    };
+
+    public setMldsaBackupDismissed = async (pubkey: string, dismissed: boolean): Promise<void> => {
+        await preferenceService.setMldsaBackupDismissed(pubkey, dismissed);
     };
 
     public getVersionDetail = async (_version: string): Promise<VersionDetail> => {

@@ -50,6 +50,7 @@ export interface PreferenceStore {
     notificationWindowMode: 'auto' | 'popup' | 'fullscreen';
     useSidePanel: boolean;
     trackedDomains: Record<string, TrackedDomain[]>; // keyed by address
+    mldsaBackupDismissed: Record<string, boolean>; // keyed by wallet pubkey
 }
 
 const SUPPORT_LOCALES = ['en'];
@@ -88,7 +89,8 @@ const DEFAULTS = {
         customNetworks: {},
         notificationWindowMode: 'popup',
         useSidePanel: false,
-        trackedDomains: {}
+        trackedDomains: {},
+        mldsaBackupDismissed: {}
     } as PreferenceStore
 };
 
@@ -561,6 +563,19 @@ class PreferenceService {
                 await this.persist();
             }
         }
+    };
+
+    // MLDSA Backup Reminder dismissed state (keyed by wallet pubkey)
+    getMldsaBackupDismissed = (pubkey: string): boolean => {
+        return this.store.mldsaBackupDismissed?.[pubkey] || false;
+    };
+
+    setMldsaBackupDismissed = async (pubkey: string, dismissed: boolean) => {
+        if (!this.store.mldsaBackupDismissed) {
+            this.store.mldsaBackupDismissed = {};
+        }
+        this.store.mldsaBackupDismissed[pubkey] = dismissed;
+        await this.persist();
     };
 
     private persist = async () => {

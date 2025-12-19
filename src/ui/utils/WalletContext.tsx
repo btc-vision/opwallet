@@ -249,6 +249,10 @@ export interface WalletController {
 
     setShowSafeNotice(show: boolean): Promise<void>;
 
+    getMldsaBackupDismissed(pubkey: string): Promise<boolean>;
+
+    setMldsaBackupDismissed(pubkey: string, dismissed: boolean): Promise<void>;
+
     // address flag
     addAddressFlag(account: Account, flag: AddressFlagType): Promise<Account>;
 
