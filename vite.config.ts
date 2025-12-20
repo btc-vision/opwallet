@@ -383,6 +383,8 @@ export default defineConfig(({ mode }) => {
 
         define: {
             'process.env.version': JSON.stringify(version),
+            'process.env.tosVersion': '1.0.0',
+            'process.env.tosLastUpdate': '2025-12-20',
             'process.env.release': JSON.stringify(version),
             'process.env.channel': JSON.stringify(process.env.CHANNEL || 'stable'),
             'process.env.BUILD_ENV': JSON.stringify(isProd ? 'PRO' : 'DEV'),
