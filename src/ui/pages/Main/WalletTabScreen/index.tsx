@@ -1,4 +1,4 @@
-import { CSSProperties, useCallback, useEffect, useMemo, useState } from 'react';
+import React, { CSSProperties, useCallback, useEffect, useMemo, useState } from 'react';
 
 import { UTXO_CONFIG } from '@/shared/config';
 import { AddressFlagType, KEYRING_TYPE } from '@/shared/constant';
@@ -58,6 +58,7 @@ import { RouteTypes, useNavigate } from '../../MainRoute';
 import { SwitchChainModal } from '../../Settings/network/SwitchChainModal';
 import { OPNetList } from './OPNetList';
 import { useConsolidation } from './hooks';
+import {BTCDomainModal, TOS_DOMAIN_ACCEPTED_KEY} from "@/ui/components/AcceptModals/btcDomainTermsModal";
 
 const colors = {
     main: '#f37413',
@@ -267,6 +268,16 @@ export default function WalletTabScreen() {
     }, [navigateToConsolidation]);
 
     const tools = useTools();
+
+    const [termsVisible, setTermsVisible] = useState(false);
+    const [showTerms, setShowTerms] = useState(false);
+
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+
+        const accepted = window.localStorage.getItem(TOS_DOMAIN_ACCEPTED_KEY) === '1';
+        if (!accepted) setTermsVisible(true);
+    }, []);
 
     return (
         <Layout>
@@ -898,7 +909,7 @@ export default function WalletTabScreen() {
 
                         {/* Assign .btc Domain Card */}
                         <div
-                            onClick={() => navigate(RouteTypes.BtcDomainScreen)}
+                            onClick={() => termsVisible ? setShowTerms(true) : navigate(RouteTypes.BtcDomainScreen)}
                             style={{
                                 margin: '0 12px 12px',
                                 padding: '10px 14px',
@@ -1268,6 +1279,14 @@ export default function WalletTabScreen() {
                     </div>
                 )}
             </Content>
+
+            <BTCDomainModal
+                open={termsVisible && showTerms}
+                onAccept={() => {
+                    setTermsVisible(false);
+                    navigate(RouteTypes.BtcDomainScreen)
+                }}
+            />
 
             <Footer px="zero" py="zero">
                 <NavTabBar tab="home" />
