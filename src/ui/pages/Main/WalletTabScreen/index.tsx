@@ -1,4 +1,4 @@
-import { CSSProperties, useCallback, useEffect, useMemo, useState } from 'react';
+import React, { CSSProperties, useCallback, useEffect, useMemo, useState } from 'react';
 
 import { UTXO_CONFIG } from '@/shared/config';
 import { AddressFlagType, KEYRING_TYPE } from '@/shared/constant';
@@ -58,6 +58,8 @@ import { RouteTypes, useNavigate } from '../../MainRoute';
 import { SwitchChainModal } from '../../Settings/network/SwitchChainModal';
 import { OPNetList } from './OPNetList';
 import { useConsolidation } from './hooks';
+import {BTCDomainModal, TOS_DOMAIN_ACCEPTED_KEY} from "@/ui/components/AcceptModals/btcDomainTermsModal";
+import {TermsOfServiceModal, TOS_ACCEPTED_KEY} from "@/ui/components/AcceptModals/TermsModal";
 
 const colors = {
     main: '#f37413',
@@ -267,6 +269,22 @@ export default function WalletTabScreen() {
     }, [navigateToConsolidation]);
 
     const tools = useTools();
+
+    const [termsVisible, setTermsVisible] = useState(false);
+
+    const [domainTermsVisible, setDomainTermsVisible] = useState(false);
+    const [showDomainTerms, setShowDomainTerms] = useState(false);
+
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+
+        const accepted = window.localStorage.getItem(TOS_ACCEPTED_KEY) === '1';
+        if (!accepted) setTermsVisible(true);
+
+        const acceptedDomain = window.localStorage.getItem(TOS_DOMAIN_ACCEPTED_KEY) === '1';
+        if (!acceptedDomain) setDomainTermsVisible(true);
+
+    }, []);
 
     return (
         <Layout>
@@ -898,7 +916,7 @@ export default function WalletTabScreen() {
 
                         {/* Assign .btc Domain Card */}
                         <div
-                            onClick={() => navigate(RouteTypes.BtcDomainScreen)}
+                            onClick={() => domainTermsVisible ? setShowDomainTerms(true) : navigate(RouteTypes.BtcDomainScreen)}
                             style={{
                                 margin: '0 12px 12px',
                                 padding: '10px 14px',
@@ -1268,6 +1286,22 @@ export default function WalletTabScreen() {
                     </div>
                 )}
             </Content>
+
+            <TermsOfServiceModal
+                open={termsVisible}
+                onAccept={() => {
+                    setTermsVisible(false);
+                }}
+            />
+
+            <BTCDomainModal
+                onClose={() => setShowDomainTerms(false)}
+                open={domainTermsVisible && showDomainTerms}
+                onAccept={() => {
+                    setDomainTermsVisible(false);
+                    navigate(RouteTypes.BtcDomainScreen)
+                }}
+            />
 
             <Footer px="zero" py="zero">
                 <NavTabBar tab="home" />

@@ -1,16 +1,26 @@
-import { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 
 import { Button, Column, Content, Layout, Logo, Row, Text } from '@/ui/components';
 import { useWallet } from '@/ui/utils';
 
 import { RouteTypes, useNavigate } from '../MainRoute';
 import { ConnectHardwareModal } from './ConnectHardwareModal';
+import { TermsOfServiceModal, TOS_ACCEPTED_KEY } from '@/ui/components/AcceptModals/TermsModal';
 
 export default function WelcomeScreen() {
     const navigate = useNavigate();
     const wallet = useWallet();
 
     const [connectHardwareModalVisible, setConnectHardwareModalVisible] = useState(false);
+    const [termsVisible, setTermsVisible] = useState(false);
+
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+
+        // Only show if they haven't accepted yet (tied to the accept button).
+        const accepted = window.localStorage.getItem(TOS_ACCEPTED_KEY) === '1';
+        if (!accepted) setTermsVisible(true);
+    }, []);
 
     return (
         <Layout>
@@ -19,11 +29,10 @@ export default function WelcomeScreen() {
                     <Row justifyCenter>
                         <Logo preset="large" />
                     </Row>
+
                     <Column gap="xl" mt="xxl">
                         <Text
-                            text={
-                                'A browser extension for managing tokens and interacting with apps on the OP_NET Bitcoin Layer 1 Metaprotocol.'
-                            }
+                            text="A browser extension for managing tokens and interacting with apps on the OP_NET Bitcoin Layer 1 Metaprotocol."
                             preset="sub"
                             textCenter
                         />
@@ -40,6 +49,7 @@ export default function WelcomeScreen() {
                                 }
                             }}
                         />
+
                         <Button
                             text="I already have a wallet"
                             preset="default"
@@ -52,6 +62,7 @@ export default function WelcomeScreen() {
                                 }
                             }}
                         />
+
                         <Button
                             text="I have an Ethereum wallet"
                             preset="default"
@@ -60,18 +71,25 @@ export default function WelcomeScreen() {
                                 if (isBooted) {
                                     navigate(RouteTypes.CreateSimpleWalletScreen, { isImport: true });
                                 } else {
-                                    navigate(RouteTypes.CreatePasswordScreen, {
-                                        isNewAccount: false,
-                                        isEthereum: true
-                                    });
+                                    navigate(RouteTypes.CreatePasswordScreen, { isNewAccount: false, isEthereum: true });
                                 }
                             }}
                         />
+
                         <Button
                             text="Connect to Hardware Wallet"
                             preset="default"
                             onClick={() => {
                                 setConnectHardwareModalVisible(true);
+                            }}
+                        />
+
+                        {/* Optional: reopen the Terms modal manually (it still only closes via “I accept”) */}
+                        <Button
+                            text="Terms of service"
+                            preset="approval"
+                            onClick={() => {
+                                setTermsVisible(true);
                             }}
                         />
 
@@ -82,6 +100,13 @@ export default function WelcomeScreen() {
                                 }}
                             />
                         )}
+
+                        <TermsOfServiceModal
+                            open={termsVisible}
+                            onAccept={() => {
+                                setTermsVisible(false);
+                            }}
+                        />
                     </Column>
                 </Column>
             </Content>
