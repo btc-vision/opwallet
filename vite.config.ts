@@ -383,10 +383,10 @@ export default defineConfig(({ mode }) => {
 
         define: {
             'process.env.version': JSON.stringify(version),
-            'process.env.tosVersion': '1.0.0',
-            'process.env.domainTosVersion ': '1.0.0',
-            'process.env.tosLastUpdate': '2025-12-20',
-            'process.env.domainTosLastUpdate': '2025-12-20',
+            'process.env.tosVersion': JSON.stringify('1.0.0'),
+            'process.env.domainTosVersion ': JSON.stringify('1.0.0'),
+            'process.env.tosLastUpdate': JSON.stringify('2025-12-20'),
+            'process.env.domainTosLastUpdate': JSON.stringify('2025-12-20'),
             'process.env.release': JSON.stringify(version),
             'process.env.channel': JSON.stringify(process.env.CHANNEL || 'stable'),
             'process.env.BUILD_ENV': JSON.stringify(isProd ? 'PRO' : 'DEV'),
