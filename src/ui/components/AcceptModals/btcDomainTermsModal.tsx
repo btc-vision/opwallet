@@ -76,7 +76,7 @@ export function BTCDomainModal({
         const modal: CSSProperties = {
             width: '100%',
             maxWidth: 920,
-            height: 'min(78vh, 720px)',
+            height: 'calc(95vh)',
             borderRadius: 18,
             border: '1px solid rgba(255,255,255,0.10)',
             background: 'rgba(30,30,30,0.98)',

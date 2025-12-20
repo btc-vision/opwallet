@@ -1,10 +1,17 @@
-import React, { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
+import React, { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { Button, Row } from '@/ui/components';
 import { TOS_VERSION, TOS_LAST_UPDATE } from '@/shared/constant';
+
+import { TermsText, type LegalDocStyles } from '@/legal-documents/Terms';
+import { PrivacyPolicyText } from '@/legal-documents/Privacy';
 
 export const TOS_SEEN_KEY = 'opnet_tos_seen_' + TOS_VERSION;
 export const TOS_ACCEPTED_KEY = 'opnet_tos_accepted_' + TOS_VERSION;
 
+export const LEGAL_SEEN_KEY = 'opnet_legal_seen_' + TOS_VERSION;
+export const LEGAL_ACCEPTED_KEY = 'opnet_legal_accepted_' + TOS_VERSION;
+
+type DocKey = 'tos' | 'privacy';
 
 export function TermsOfServiceModal({
                                         open,
@@ -13,39 +20,128 @@ export function TermsOfServiceModal({
     open: boolean;
     onAccept: () => void;
 }) {
+    const [activeDoc, setActiveDoc] = useState<DocKey>('tos');
+
+    const [tosScrolledBottom, setTosScrolledBottom] = useState(false);
+    const [privacyScrolledBottom, setPrivacyScrolledBottom] = useState(false);
+
+    // Require user interaction per doc to prevent “carry-over bottom”
+    const [tosInteracted, setTosInteracted] = useState(false);
+    const [privacyInteracted, setPrivacyInteracted] = useState(false);
+
+    // single checkbox for both docs
     const [accepted, setAccepted] = useState(false);
-    const [canInteract, setCanInteract] = useState(false);
+
+    // During doc switch, ignore scroll checks until after we force scrollTop=0 and layout settles
+    const [switchingDoc, setSwitchingDoc] = useState(false);
 
     const scrollRef = useRef<HTMLDivElement | null>(null);
+
+    const bothScrolled = tosScrolledBottom && privacyScrolledBottom;
 
     useEffect(() => {
         if (!open) return;
         if (typeof window === 'undefined') return;
 
-        const prevAccepted = window.localStorage.getItem(TOS_ACCEPTED_KEY) === '1';
+        const prevAccepted =
+            window.localStorage.getItem(LEGAL_ACCEPTED_KEY) === '1' ||
+            window.localStorage.getItem(TOS_ACCEPTED_KEY) === '1'; // legacy support
         setAccepted(prevAccepted);
 
-        // force scroll-to-bottom gating each time it opens
-        setCanInteract(false);
+        // reset gating every time modal opens
+        setTosScrolledBottom(false);
+        setPrivacyScrolledBottom(false);
+        setTosInteracted(false);
+        setPrivacyInteracted(false);
 
-        requestAnimationFrame(() => {
-            scrollRef.current?.scrollTo({ top: 0, behavior: 'auto' });
-        });
+        setActiveDoc('tos');
+        setSwitchingDoc(true);
     }, [open]);
 
-    const checkScrolledToBottom = () => {
+    const isAtBottom = (el: HTMLDivElement) => {
+        const tolerancePx = 8;
+        return el.scrollTop + el.clientHeight >= el.scrollHeight - tolerancePx;
+    };
+
+    const markActiveAsRead = () => {
+        if (activeDoc === 'tos') setTosScrolledBottom(true);
+        else setPrivacyScrolledBottom(true);
+    };
+
+    const hasInteractedWithActiveDoc = () => {
+        return activeDoc === 'tos' ? tosInteracted : privacyInteracted;
+    };
+
+    const setInteractedForActiveDoc = () => {
+        if (activeDoc === 'tos') setTosInteracted(true);
+        else setPrivacyInteracted(true);
+    };
+
+    const checkReadStatus = () => {
         const el = scrollRef.current;
         if (!el) return;
 
         const tolerancePx = 8;
-        const atBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - tolerancePx;
-        if (atBottom) setCanInteract(true);
+        const noScrollNeeded = el.scrollHeight <= el.clientHeight + tolerancePx;
+
+        // If no scrolling is possible/needed, mark as read right away
+        if (noScrollNeeded) {
+            markActiveAsRead();
+            return;
+        }
+
+        // Prevent “auto read” unless user actually interacted with this doc
+        if (!hasInteractedWithActiveDoc()) return;
+
+        if (isAtBottom(el)) markActiveAsRead();
+    };
+
+    // Hard reset scroll when switching documents (this prevents “clamped-to-bottom” carry-over)
+    useLayoutEffect(() => {
+        if (!open) return;
+
+        setSwitchingDoc(true);
+
+        // Wait for the doc content to mount/update, then force scrollTop = 0
+        requestAnimationFrame(() => {
+            const el = scrollRef.current;
+            if (el) {
+                el.scrollTo({ top: 0, behavior: 'auto' });
+            }
+
+            // Wait one more frame so scrollHeight/clientHeight settle for new content
+            requestAnimationFrame(() => {
+                setSwitchingDoc(false);
+
+                // Only auto-check the "noScrollNeeded" case after settle.
+                // (Does NOT allow auto “at bottom” without interaction.)
+                checkReadStatus();
+            });
+        });
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [activeDoc, open]);
+
+    const onScroll = () => {
+        if (switchingDoc) return;
+        setInteractedForActiveDoc();
+        checkReadStatus();
     };
 
     const scrollToBottom = () => {
         const el = scrollRef.current;
         if (!el) return;
+
+        // Jump button counts as interaction
+        setInteractedForActiveDoc();
+
         el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
+
+        // After the smooth scroll completes-ish, re-check (cheap + safe)
+        requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+                checkReadStatus();
+            });
+        });
     };
 
     const styles = useMemo(() => {
@@ -56,15 +152,16 @@ export function TermsOfServiceModal({
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            padding: 16,
+            padding: 10,
             zIndex: 9999,
         };
 
+        // Chrome extension popup width-friendly
         const modal: CSSProperties = {
             width: '100%',
-            maxWidth: 920,
-            height: 'min(78vh, 720px)',
-            borderRadius: 18,
+            maxWidth: 360,
+            height: 'min(84vh, 680px)',
+            borderRadius: 16,
             border: '1px solid rgba(255,255,255,0.10)',
             background: 'rgba(30,30,30,0.98)',
             boxShadow: '0 18px 60px rgba(0,0,0,0.55)',
@@ -75,12 +172,11 @@ export function TermsOfServiceModal({
         };
 
         const header: CSSProperties = {
-            padding: '14px 16px',
+            padding: '12px 12px',
             borderBottom: '1px solid rgba(255,255,255,0.10)',
             display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: 12,
+            flexDirection: 'column',
+            gap: 10,
             flex: '0 0 auto',
         };
 
@@ -93,8 +189,8 @@ export function TermsOfServiceModal({
 
         const title: CSSProperties = {
             margin: 0,
-            fontSize: 16,
-            fontWeight: 800,
+            fontSize: 14.5,
+            fontWeight: 850,
             color: 'rgba(255,255,255,0.92)',
             letterSpacing: '-0.01em',
             overflow: 'hidden',
@@ -104,8 +200,69 @@ export function TermsOfServiceModal({
 
         const subtitle: CSSProperties = {
             margin: 0,
-            fontSize: 12,
+            fontSize: 11.5,
             color: 'rgba(255,255,255,0.60)',
+        };
+
+        const docTabsWrap: CSSProperties = {
+            display: 'flex',
+            flexDirection: 'row',
+            gap: 8,
+            width: '100%',
+        };
+
+        const docTab: CSSProperties = {
+            flex: '1 1 0',
+            borderRadius: 12,
+            border: '1px solid rgba(255,255,255,0.12)',
+            background: 'rgba(255,255,255,0.03)',
+            padding: '10px 10px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 8,
+            cursor: 'pointer',
+            userSelect: 'none',
+            color: 'rgba(255,255,255,0.90)',
+            fontSize: 12.25,
+            fontWeight: 800,
+            minWidth: 0,
+        };
+
+        const docTabActive: CSSProperties = {
+            border: '1px solid rgba(147,197,253,0.35)',
+            background: 'rgba(147,197,253,0.08)',
+        };
+
+        const docName: CSSProperties = {
+            margin: 0,
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+        };
+
+        const tickWrap: CSSProperties = {
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            width: 16,
+            height: 16,
+            borderRadius: 6,
+            border: '1px solid rgba(255,255,255,0.16)',
+            background: 'rgba(0,0,0,0.20)',
+            flex: '0 0 auto',
+        };
+
+        const tickOn: CSSProperties = {
+            border: '1px solid rgba(147,197,253,0.65)',
+            background: 'rgba(147,197,253,0.12)',
+        };
+
+        const tickMark: CSSProperties = {
+            fontSize: 11,
+            lineHeight: 1,
+            transform: 'translateY(-0.5px)',
+            color: 'rgba(255,255,255,0.92)',
         };
 
         const body: CSSProperties = {
@@ -119,12 +276,12 @@ export function TermsOfServiceModal({
             height: '100%',
             overflowY: 'auto',
             overflowX: 'hidden',
-            padding: '14px 16px',
+            padding: '12px 12px',
         };
 
         const baseText: CSSProperties = {
             color: 'rgba(255,255,255,0.84)',
-            fontSize: 13,
+            fontSize: 12.5,
             lineHeight: 1.68,
             letterSpacing: '0.01em',
             fontFamily:
@@ -132,27 +289,18 @@ export function TermsOfServiceModal({
             margin: '8px 0',
         };
 
-        const h1: CSSProperties = {
-            ...baseText,
-            fontSize: 18,
-            fontWeight: 900,
-            letterSpacing: '-0.015em',
-            margin: '0 0 4px 0',
-            color: 'rgba(255,255,255,0.94)',
-        };
-
         const h2: CSSProperties = {
             ...baseText,
-            fontSize: 14.5,
-            fontWeight: 800,
-            margin: '16px 0 6px 0',
+            fontSize: 13.5,
+            fontWeight: 850,
+            margin: '14px 0 6px 0',
             color: 'rgba(255,255,255,0.92)',
         };
 
         const h3: CSSProperties = {
             ...baseText,
-            fontSize: 13,
-            fontWeight: 800,
+            fontSize: 12.5,
+            fontWeight: 850,
             margin: '12px 0 4px 0',
             color: 'rgba(255,255,255,0.88)',
         };
@@ -173,16 +321,16 @@ export function TermsOfServiceModal({
             padding: '10px 12px',
             margin: '10px 0',
             color: 'rgba(255,255,255,0.85)',
-            fontSize: 12.5,
+            fontSize: 12.25,
             lineHeight: 1.5,
         };
 
         const jumpBtn: CSSProperties = {
             position: 'absolute',
-            right: 14,
-            bottom: 14,
-            width: 38,
-            height: 38,
+            right: 10,
+            bottom: 10,
+            width: 36,
+            height: 36,
             borderRadius: 14,
             border: '1px solid rgba(255,255,255,0.14)',
             background: 'rgba(0,0,0,0.40)',
@@ -193,12 +341,10 @@ export function TermsOfServiceModal({
             cursor: 'pointer',
             boxShadow: '0 12px 24px rgba(0,0,0,0.35)',
             userSelect: 'none',
-            opacity: canInteract ? 0 : 1,
-            pointerEvents: canInteract ? 'none' : 'auto',
         };
 
         const footer: CSSProperties = {
-            padding: '12px 16px',
+            padding: '12px 12px',
             borderTop: '1px solid rgba(255,255,255,0.10)',
             background: 'rgba(0,0,0,0.18)',
             flex: '0 0 auto',
@@ -210,20 +356,21 @@ export function TermsOfServiceModal({
         const consentPill: CSSProperties = {
             display: 'flex',
             alignItems: 'center',
-            gap: 12,
-            padding: '10px 12px',
+            gap: 10,
+            padding: '10px 10px',
             borderRadius: 14,
             border: accepted ? '1px solid rgba(147,197,253,0.35)' : '1px solid rgba(255,255,255,0.12)',
             background: accepted ? 'rgba(147,197,253,0.08)' : 'rgba(255,255,255,0.03)',
-            cursor: canInteract ? 'pointer' : 'not-allowed',
+            cursor: bothScrolled ? 'pointer' : 'not-allowed',
             userSelect: 'none',
-            opacity: canInteract ? 1 : 0.55,
+            opacity: bothScrolled ? 1 : 0.55,
         };
 
+        // smaller checkbox
         const box: CSSProperties = {
-            width: 18,
-            height: 18,
-            borderRadius: 6,
+            width: 14,
+            height: 14,
+            borderRadius: 5,
             border: accepted ? '1px solid rgba(147,197,253,0.95)' : '1px solid rgba(255,255,255,0.25)',
             background: accepted ? 'rgba(147,197,253,0.22)' : 'rgba(0,0,0,0.20)',
             display: 'flex',
@@ -234,8 +381,8 @@ export function TermsOfServiceModal({
         };
 
         const check: CSSProperties = {
-            width: 10,
-            height: 6,
+            width: 8,
+            height: 4.5,
             borderLeft: '2px solid rgba(255,255,255,0.92)',
             borderBottom: '2px solid rgba(255,255,255,0.92)',
             transform: 'rotate(-45deg)',
@@ -246,15 +393,16 @@ export function TermsOfServiceModal({
 
         const consentText: CSSProperties = {
             color: 'rgba(255,255,255,0.80)',
-            fontSize: 12.5,
+            fontSize: 12,
             lineHeight: 1.35,
             margin: 0,
         };
 
         const hint: CSSProperties = {
             margin: 0,
-            fontSize: 12,
+            fontSize: 11.5,
             color: 'rgba(255,255,255,0.55)',
+            lineHeight: 1.35,
         };
 
         return {
@@ -264,10 +412,16 @@ export function TermsOfServiceModal({
             titleWrap,
             title,
             subtitle,
+            docTabsWrap,
+            docTab,
+            docTabActive,
+            docName,
+            tickWrap,
+            tickOn,
+            tickMark,
             body,
             scrollArea,
             baseText,
-            h1,
             h2,
             h3,
             ul,
@@ -282,527 +436,84 @@ export function TermsOfServiceModal({
             consentText,
             hint,
         };
-    }, [accepted, canInteract]);
+    }, [accepted, bothScrolled]);
+
+    const legalDocStyles: LegalDocStyles = useMemo(
+        () => ({
+            baseText: styles.baseText,
+            h2: styles.h2,
+            h3: styles.h3,
+            ul: styles.ul,
+            li: styles.li,
+            hr: styles.hr,
+            callout: styles.callout,
+        }),
+        [styles]
+    );
 
     if (!open) return null;
 
     return (
-        <div style={styles.overlay} role="dialog" aria-modal="true" aria-label="OPWALLET Terms of Use">
+        <div style={styles.overlay} role="dialog" aria-modal="true" aria-label="Legal agreements">
             <div style={styles.modal}>
                 <div style={styles.header}>
                     <div style={styles.titleWrap}>
-                        <h1 style={styles.title}>OPWALLET Terms of Use</h1>
+                        <h1 style={styles.title}>Legal Agreements</h1>
                         <p style={styles.subtitle}>Effective Date: {TOS_LAST_UPDATE}</p>
+                    </div>
+
+                    <div style={styles.docTabsWrap}>
+                        <button
+                            type="button"
+                            style={{
+                                ...styles.docTab,
+                                ...(activeDoc === 'tos' ? styles.docTabActive : null),
+                            }}
+                            onClick={() => setActiveDoc('tos')}
+                            aria-pressed={activeDoc === 'tos'}
+                        >
+                            <p style={styles.docName}>Terms</p>
+                            <div
+                                style={{
+                                    ...styles.tickWrap,
+                                    ...(tosScrolledBottom ? styles.tickOn : null),
+                                }}
+                                aria-hidden="true"
+                            >
+                                {tosScrolledBottom ? <span style={styles.tickMark}>✓</span> : null}
+                            </div>
+                        </button>
+
+                        <button
+                            type="button"
+                            style={{
+                                ...styles.docTab,
+                                ...(activeDoc === 'privacy' ? styles.docTabActive : null),
+                            }}
+                            onClick={() => setActiveDoc('privacy')}
+                            aria-pressed={activeDoc === 'privacy'}
+                        >
+                            <p style={styles.docName}>Privacy</p>
+                            <div
+                                style={{
+                                    ...styles.tickWrap,
+                                    ...(privacyScrolledBottom ? styles.tickOn : null),
+                                }}
+                                aria-hidden="true"
+                            >
+                                {privacyScrolledBottom ? <span style={styles.tickMark}>✓</span> : null}
+                            </div>
+                        </button>
                     </div>
                 </div>
 
                 <div style={styles.body}>
-                    <div
-                        ref={scrollRef}
-                        style={styles.scrollArea}
-                        onScroll={() => {
-                            if (!canInteract) checkScrolledToBottom();
-                        }}
-                    >
-                        {/* ===== OPWALLET TERMS OF USE (FULL) ===== */}
-                        <div style={{ marginBottom: 10 }}>
-                            <div style={{ ...styles.h1, fontSize: 16, marginTop: 2 }}>TERMS OF USE</div>
-                            <p style={{ ...styles.baseText, marginTop: 6, color: 'rgba(255,255,255,0.70)' }}>
-                                ORANGE PILL LABS HOLDING LTD
-                                <br />
-                                Effective Date: {TOS_LAST_UPDATE}
-                            </p>
-                        </div>
-
-                        <div style={styles.callout}>
-                            <strong>IMPORTANT NOTICE:</strong> THIS AGREEMENT CONTAINS A BINDING ARBITRATION PROVISION AND CLASS ACTION
-                            WAIVER IN ARTICLE 12. PLEASE READ THIS AGREEMENT CAREFULLY AS IT AFFECTS YOUR LEGAL RIGHTS.
-                        </div>
-
-                        <h2 style={styles.h2}>PREAMBLE</h2>
-                        <p style={styles.baseText}>
-                            ORANGE PILL LABS HOLDING LTD, a company incorporated in Abu Dhabi Global Market, United Arab Emirates
-                            (&quot;OPNET,&quot; &quot;Company,&quot; &quot;we,&quot; &quot;us,&quot; or &quot;our&quot;), develops and
-                            publishes OPWALLET, a non-custodial cryptocurrency wallet browser extension enabling users to manage digital
-                            assets on the Bitcoin blockchain and the OPNet consensus layer. These Terms of Use (&quot;Terms,&quot;
-                            &quot;Terms of Use,&quot; or &quot;Agreement&quot;) contain the terms and conditions governing your access
-                            to and use of the OPWALLET browser extension, associated websites, and all related services (collectively,
-                            the &quot;Wallet&quot; or &quot;Software&quot;).
-                        </p>
-                        <p style={styles.baseText}>
-                            By installing, accessing, or using the Wallet, by clicking a button or checkbox to accept these Terms, or
-                            by taking any action that indicates acceptance, you (1) accept and agree to be bound by these Terms and all
-                            policies incorporated by reference, and (2) consent to the collection, use, and disclosure of information
-                            as described herein. If you do not agree to these Terms, you must not install, access, or use the Wallet.
-                            You represent that you are legally able to enter into contracts in your jurisdiction. If you are entering
-                            into this Agreement on behalf of an entity, you represent that you have authority to bind that entity to
-                            these Terms.
-                        </p>
-                        <p style={styles.baseText}>
-                            You represent and warrant that you and your financial institutions, or any party that owns or controls you
-                            or your financial institutions, are (1) not subject to sanctions or otherwise designated on any list of
-                            prohibited or restricted parties, including lists maintained by the United Nations Security Council, the
-                            United States Government, the European Union or its Member States, the United Arab Emirates, or other
-                            applicable government authority, and (2) not located in any country subject to comprehensive sanctions
-                            programs implemented by any of the foregoing jurisdictions.
-                        </p>
-
-                        <h2 style={styles.h2}>ARTICLE 1: DEFINITIONS</h2>
-                        <p style={styles.baseText}>
-                            In these Terms: &quot;Bitcoin&quot; means the decentralised peer-to-peer electronic cash system operating on
-                            the Bitcoin blockchain. &quot;BTC&quot; means the native cryptocurrency of the Bitcoin network.
-                            &quot;OPNet&quot; means the trustless, permissionless consensus layer enabling smart contract execution
-                            directly on Bitcoin Layer 1. &quot;OP20 Token&quot; means a fungible token standard deployed on the OPNet
-                            consensus layer. &quot;OP721 Token&quot; or &quot;NFT&quot; means a non-fungible token standard deployed on
-                            the OPNet consensus layer. &quot;.btc Domain&quot; means a human-readable identifier registered on the
-                            Bitcoin blockchain within the .btc namespace. &quot;Private Key&quot; means a cryptographic key that
-                            controls access to digital assets and enables transaction signing. &quot;Seed Phrase&quot; or &quot;Recovery
-                            Phrase&quot; means a series of words generated by the Wallet that can be used to recover Private Keys.
-                            &quot;Smart Contract&quot; means self-executing code deployed on OPNet. &quot;Third-Party Service&quot;
-                            means any product, service, or content provided by parties other than OPNET. &quot;Your Content&quot; means
-                            any data or content you submit through the Wallet.
-                        </p>
-
-                        <h2 style={styles.h2}>ARTICLE 2: THE WALLET AND ITS FUNCTIONALITY</h2>
-
-                        <h3 style={styles.h3}>2.1 Wallet Functionality</h3>
-                        <p style={styles.baseText}>
-                            OPWALLET is a browser extension that provides the following functionality: generation and management of
-                            cryptographic key pairs for Bitcoin and OPNet addresses, storage of Private Keys locally on your device in
-                            encrypted form, signing and broadcasting of Bitcoin transactions, management and transfer of BTC and OP20
-                            Tokens, management and transfer of OP721 Tokens (NFTs), registration and management of .btc Domains,
-                            resolution and navigation to .btc Domain addresses, and interaction with decentralised applications and
-                            Smart Contracts on OPNet. The Wallet is provided as a tool to facilitate your direct interaction with the
-                            Bitcoin blockchain and OPNet consensus layer.
-                        </p>
-
-                        <h3 style={styles.h3}>2.2 Non-Custodial Architecture</h3>
-                        <p style={styles.baseText}>
-                            <strong>THE WALLET IS ENTIRELY NON-CUSTODIAL.</strong> OPNET DOES NOT STORE, HAVE ACCESS TO, OR MAINTAIN
-                            CUSTODY OF YOUR PRIVATE KEYS, SEED PHRASES, PASSWORDS, OR ANY DIGITAL ASSETS. YOUR PRIVATE KEYS ARE GENERATED
-                            LOCALLY ON YOUR DEVICE AND STORED ONLY ON YOUR DEVICE IN ENCRYPTED FORM. OPNET CANNOT ACCESS YOUR PRIVATE
-                            KEYS, CANNOT RECOVER YOUR PRIVATE KEYS IF LOST, CANNOT REVERSE OR MODIFY ANY TRANSACTION YOU EXECUTE, CANNOT
-                            FREEZE OR SEIZE YOUR ASSETS, AND CANNOT RECOVER ASSETS SENT TO INCORRECT ADDRESSES. YOU ARE SOLELY AND
-                            EXCLUSIVELY RESPONSIBLE FOR THE SECURITY AND BACKUP OF YOUR PRIVATE KEYS AND SEED PHRASES.
-                        </p>
-
-                        <h3 style={styles.h3}>2.3 OPNet Consensus Layer</h3>
-                        <p style={styles.baseText}>
-                            The Wallet enables interaction with OPNet, a consensus layer that reads Bitcoin transactions and executes
-                            Smart Contract logic. OPNet operates directly on Bitcoin Layer 1 without introducing a separate gas token;
-                            all transactions use native BTC for fees. You must understand a critical characteristic: OPNet can revert
-                            Smart Contract execution if contract logic fails, but OPNet cannot reverse Bitcoin transfers that have
-                            already been broadcast. Once you send BTC in a Bitcoin transaction, that transfer is governed by Bitcoin's
-                            consensus rules and is irreversible regardless of whether the corresponding OPNet execution succeeds or
-                            fails. This creates the possibility of partial transaction reversion where you send BTC but do not receive
-                            expected tokens or other consideration.
-                        </p>
-
-                        <h3 style={styles.h3}>2.4 .btc Domain Functionality</h3>
-                        <p style={styles.baseText}>
-                            The Wallet provides functionality for registering, managing, and resolving .btc Domains. Domain
-                            registrations occur directly on the Bitcoin blockchain through transactions you broadcast; OPNET does not
-                            intermediate registrations. Once confirmed on Bitcoin, domain registrations are immutable and OPNET cannot
-                            modify, revoke, or transfer them. However, OPNET reserves the absolute right to block any .btc Domain from
-                            resolution through the Wallet at any time, for any reason, without notice. Blocking prevents the domain from
-                            resolving through OPNET services but does not affect on-chain ownership. Grounds for blocking include but
-                            are not limited to trademark infringement, illegal content, fraud, or any other reason OPNET deems
-                            appropriate. Separate .btc Domain Terms of Service may apply and are incorporated by reference.
-                        </p>
-
-                        <h3 style={styles.h3}>2.5 Integration with Third-Party Services</h3>
-                        <p style={styles.baseText}>
-                            The Wallet integrates with MotoSwap for token swapping functionality. When you execute swaps through the
-                            Wallet, you interact directly with MotoSwap Smart Contracts. Your use of MotoSwap is governed by the
-                            MotoSwap Terms of Service, which are separate from and in addition to these Terms. OPNET does not control
-                            MotoSwap Smart Contracts and is not responsible for swap execution, pricing, slippage, failed transactions,
-                            or any losses arising from swap functionality. The Wallet may also enable interaction with other
-                            decentralised applications and Smart Contracts deployed on OPNet. OPNET does not control, audit, endorse, or
-                            guarantee any third-party Smart Contract or decentralised application.
-                        </p>
-
-                        <h2 style={styles.h2}>ARTICLE 3: YOUR RESPONSIBILITIES</h2>
-
-                        <h3 style={styles.h3}>3.1 Key Security</h3>
-                        <p style={styles.baseText}>
-                            YOU ARE SOLELY AND EXCLUSIVELY RESPONSIBLE FOR MAINTAINING THE SECURITY AND CONFIDENTIALITY OF YOUR PRIVATE
-                            KEYS, SEED PHRASES, AND PASSWORDS. YOU MUST RECORD YOUR SEED PHRASE SECURELY AND MAINTAIN BACKUP COPIES IN
-                            SECURE LOCATIONS. YOU MUST NOT SHARE YOUR PRIVATE KEYS, SEED PHRASES, OR PASSWORDS WITH ANY PERSON OR ENTITY.
-                            OPNET WILL NEVER ASK FOR YOUR PRIVATE KEYS OR SEED PHRASES. ANYONE WHO OBTAINS YOUR PRIVATE KEYS OR SEED
-                            PHRASES CAN ACCESS AND TRANSFER ALL ASSETS IN YOUR WALLET. LOSS OF YOUR PRIVATE KEYS OR SEED PHRASES WILL
-                            RESULT IN PERMANENT, IRRECOVERABLE LOSS OF ALL ASSOCIATED ASSETS. OPNET HAS NO ABILITY TO RECOVER LOST KEYS
-                            OR PHRASES.
-                        </p>
-
-                        <h3 style={styles.h3}>3.2 Transaction Verification</h3>
-                        <p style={styles.baseText}>
-                            You are solely responsible for verifying all transaction details before signing and broadcasting. This
-                            includes verifying recipient addresses, token amounts, fee amounts, and Smart Contract interactions.
-                            Blockchain transactions are irreversible once broadcast and confirmed. OPNET cannot reverse, cancel, or
-                            modify any transaction you execute. Sending assets to incorrect addresses, interacting with malicious Smart
-                            Contracts, or approving fraudulent transactions will result in permanent loss that OPNET cannot recover.
-                        </p>
-
-                        <h3 style={styles.h3}>3.3 Software Updates</h3>
-                        <p style={styles.baseText}>
-                            You are responsible for keeping the Wallet software updated. We may release updates that contain security
-                            patches, bug fixes, or protocol compatibility changes. Failure to update may result in degraded
-                            functionality, security vulnerabilities, or incompatibility with network upgrades. OPNET is not responsible
-                            for any losses arising from your failure to maintain updated software.
-                        </p>
-
-                        <h3 style={styles.h3}>3.4 Compliance with Law</h3>
-                        <p style={styles.baseText}>
-                            You are solely responsible for compliance with all applicable laws, regulations, and rules in your
-                            jurisdiction. The legal status of cryptocurrency, digital assets, and blockchain technology varies by
-                            jurisdiction. You must independently determine whether your use of the Wallet complies with applicable law.
-                            OPNET does not provide legal, tax, or regulatory advice.
-                        </p>
-
-                        <h3 style={styles.h3}>3.5 Account Security for Third-Party Services</h3>
-                        <p style={styles.baseText}>
-                            To the extent you create accounts with Third-Party Services accessed through the Wallet, you are
-                            responsible for all activities occurring under those accounts. OPNET is not responsible for unauthorised
-                            access to third-party accounts, including access resulting from fraud, phishing, or other criminal activity.
-                        </p>
-
-                        <h2 style={styles.h2}>ARTICLE 4: THIRD-PARTY CONTENT AND SERVICES</h2>
-
-                        <h3 style={styles.h3}>4.1 Price Data</h3>
-                        <p style={styles.baseText}>
-                            The Wallet displays USD pricing information sourced from CoinGecko and potentially other third-party data
-                            providers. This pricing data is provided for informational convenience only. OPNET does not guarantee the
-                            accuracy, completeness, timeliness, or reliability of any price data. Price data may be delayed, inaccurate,
-                            or manipulated. Displayed prices may not reflect actual executable prices. You must not rely on displayed
-                            price data for trading decisions, financial planning, or any other purpose. OPNET disclaims all liability
-                            for decisions made based on displayed price data.
-                        </p>
-
-                        <h3 style={styles.h3}>4.2 Third-Party Smart Contracts and Tokens</h3>
-                        <p style={styles.baseText}>
-                            The Wallet enables interaction with Smart Contracts and tokens created by third parties. OPNET does not
-                            create, control, audit, endorse, or verify any third-party Smart Contract or token. Third-party tokens may
-                            be fraudulent, worthless, or designed to steal assets. Smart Contracts may contain bugs, vulnerabilities,
-                            or malicious code. Interacting with third-party Smart Contracts may result in total loss of assets. The
-                            appearance of a token in the Wallet does not constitute endorsement. You are solely responsible for
-                            evaluating the risks of any Smart Contract or token interaction.
-                        </p>
-
-                        <h3 style={styles.h3}>4.3 Third-Party Websites and Services</h3>
-                        <p style={styles.baseText}>
-                            The Wallet may contain links to or integrations with third-party websites and services. OPNET does not
-                            control and is not responsible for the content, privacy policies, terms of service, or practices of any
-                            third-party website or service. Your interactions with third-party services are governed by those services'
-                            terms and policies. OPNET disclaims all liability arising from your use of third-party services.
-                        </p>
-
-                        <h3 style={styles.h3}>4.4 Analytics</h3>
-                        <p style={styles.baseText}>
-                            The Wallet uses Google Analytics and potentially other analytics services to collect usage data. Analytics
-                            data may include device information, browser type, usage patterns, and other technical information.
-                            Analytics data is used to improve the Wallet and understand user behaviour. By using the Wallet, you consent
-                            to the collection of analytics data. You may disable certain analytics through browser settings, though this
-                            may affect functionality.
-                        </p>
-
-                        <h2 style={styles.h2}>ARTICLE 5: PROHIBITED USES</h2>
-                        <p style={styles.baseText}>
-                            You agree not to use the Wallet to: violate any applicable law, regulation, or rule; engage in money
-                            laundering, terrorist financing, or sanctions evasion; facilitate fraud, phishing, or other deceptive
-                            practices; distribute malware or malicious code; infringe intellectual property rights of any party; engage
-                            in market manipulation or wash trading; circumvent security measures or access controls; interfere with the
-                            operation of the Wallet or related systems; reverse engineer, decompile, or disassemble the Wallet except as
-                            permitted by law; use the Wallet in any manner that could damage, disable, or impair OPNET systems; or assist
-                            any third party in any of the foregoing activities.
-                        </p>
-
-                        <h2 style={styles.h2}>ARTICLE 6: CHANGES</h2>
-                        <h3 style={styles.h3}>6.1 Changes to the Wallet</h3>
-                        <p style={styles.baseText}>
-                            We may change, update, or discontinue any or all functionality of the Wallet at any time. We will use
-                            commercially reasonable efforts to communicate material changes through the Wallet interface, our website,
-                            or public communication channels. Some changes may be required to maintain compatibility with Bitcoin network
-                            upgrades, OPNet protocol changes, or browser updates. We are not liable for any modification, suspension, or
-                            discontinuation of the Wallet or any functionality thereof.
-                        </p>
-                        <h3 style={styles.h3}>6.2 Changes to These Terms</h3>
-                        <p style={styles.baseText}>
-                            We may modify these Terms at any time by posting updated Terms on our website or through the Wallet. For
-                            material changes that significantly affect your rights, we will provide thirty (30) days advance notice.
-                            Your continued use of the Wallet after the effective date of any modification constitutes acceptance of the
-                            modified Terms. If you do not agree to modified Terms, you must cease using the Wallet before the effective
-                            date.
-                        </p>
-
-                        <h2 style={styles.h2}>ARTICLE 7: PROPRIETARY RIGHTS</h2>
-                        <h3 style={styles.h3}>7.1 OPNET Intellectual Property</h3>
-                        <p style={styles.baseText}>
-                            We and our licensors own all right, title, and interest in the Wallet, including all intellectual property
-                            rights. Subject to these Terms, we grant you a limited, revocable, non-exclusive, non-transferable,
-                            non-sublicensable license to use the Wallet solely for your personal, non-commercial use in accordance with
-                            these Terms. You obtain no ownership rights in the Wallet. All rights not expressly granted are reserved.
-                        </p>
-                        <h3 style={styles.h3}>7.2 Restrictions</h3>
-                        <p style={styles.baseText}>
-                            You may not: modify, adapt, translate, or create derivative works of the Wallet; reverse engineer,
-                            disassemble, decompile, or otherwise attempt to derive source code except as permitted by applicable law;
-                            remove, alter, or obscure any proprietary notices; use the Wallet for any commercial purpose without our
-                            written consent; sublicense, sell, rent, lease, or transfer the Wallet; use our trademarks, logos, or
-                            branding without our written consent; or misrepresent your relationship with OPNET.
-                        </p>
-                        <h3 style={styles.h3}>7.3 Feedback</h3>
-                        <p style={styles.baseText}>
-                            If you provide suggestions, ideas, or feedback regarding the Wallet, you grant us a perpetual, irrevocable,
-                            worldwide, royalty-free license to use, modify, and incorporate such feedback without any obligation to you.
-                        </p>
-
-                        <h2 style={styles.h2}>ARTICLE 8: DISCLAIMERS</h2>
-                        <h3 style={styles.h3}>8.1 No Warranties</h3>
-                        <p style={styles.baseText}>
-                            THE WALLET IS PROVIDED &quot;AS IS&quot; AND &quot;AS AVAILABLE&quot; WITHOUT WARRANTIES OF ANY KIND, WHETHER
-                            EXPRESS, IMPLIED, STATUTORY, OR OTHERWISE. TO THE FULLEST EXTENT PERMITTED BY LAW, OPNET DISCLAIMS ALL
-                            WARRANTIES INCLUDING IMPLIED WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, TITLE,
-                            NON-INFRINGEMENT, AND QUIET ENJOYMENT. OPNET DOES NOT WARRANT THAT THE WALLET WILL BE UNINTERRUPTED,
-                            ERROR-FREE, SECURE, OR FREE FROM VIRUSES OR HARMFUL COMPONENTS. OPNET DOES NOT WARRANT THAT ANY DEFECTS WILL
-                            BE CORRECTED. OPNET DOES NOT WARRANT THE ACCURACY OF ANY INFORMATION PROVIDED THROUGH THE WALLET.
-                        </p>
-                        <h3 style={styles.h3}>8.2 Blockchain and Cryptographic Risks</h3>
-                        <p style={styles.baseText}>
-                            THE WALLET RELIES ON BLOCKCHAIN TECHNOLOGY AND CRYPTOGRAPHIC SYSTEMS THAT PRESENT INHERENT RISKS. YOU
-                            ACKNOWLEDGE AND ACCEPT: BLOCKCHAIN TRANSACTIONS ARE IRREVERSIBLE AND OPNET CANNOT REVERSE OR MODIFY ANY
-                            TRANSACTION; PRIVATE KEY LOSS RESULTS IN PERMANENT ASSET LOSS; SMART CONTRACTS MAY CONTAIN BUGS OR
-                            VULNERABILITIES RESULTING IN ASSET LOSS; OPNET EXECUTIONS MAY FAIL WHILE BITCOIN TRANSFERS SUCCEED, RESULTING
-                            IN PARTIAL TRANSACTION REVERSION; DIGITAL ASSET VALUES ARE VOLATILE AND MAY DECLINE TO ZERO; NETWORK
-                            CONGESTION MAY DELAY OR PREVENT TRANSACTION CONFIRMATION; PROTOCOL UPGRADES MAY AFFECT WALLET FUNCTIONALITY;
-                            REGULATORY CHANGES MAY AFFECT THE LEGALITY OR AVAILABILITY OF SERVICES; AND CYBERSECURITY THREATS MAY
-                            COMPROMISE YOUR DEVICE OR THE WALLET.
-                        </p>
-                        <h3 style={styles.h3}>8.3 No Financial Advice</h3>
-                        <p style={styles.baseText}>
-                            OPNET DOES NOT PROVIDE FINANCIAL, INVESTMENT, LEGAL, OR TAX ADVICE. NOTHING IN THE WALLET OR THESE TERMS
-                            CONSTITUTES A RECOMMENDATION TO BUY, SELL, OR HOLD ANY DIGITAL ASSET. PRICE DATA DISPLAYED IN THE WALLET IS
-                            FOR INFORMATIONAL PURPOSES ONLY AND MUST NOT BE RELIED UPON FOR TRADING DECISIONS. YOU ARE SOLELY RESPONSIBLE
-                            FOR YOUR FINANCIAL DECISIONS.
-                        </p>
-                        <h3 style={styles.h3}>8.4 Third-Party Disclaimer</h3>
-                        <p style={styles.baseText}>
-                            OPNET DOES NOT CONTROL AND IS NOT RESPONSIBLE FOR ANY THIRD-PARTY SERVICE, SMART CONTRACT, TOKEN,
-                            DECENTRALISED APPLICATION, OR CONTENT ACCESSED THROUGH THE WALLET. OPNET MAKES NO REPRESENTATIONS OR
-                            WARRANTIES REGARDING THIRD-PARTY SERVICES. YOUR USE OF THIRD-PARTY SERVICES IS AT YOUR SOLE RISK.
-                        </p>
-
-                        <h2 style={styles.h2}>ARTICLE 9: LIMITATION OF LIABILITY</h2>
-                        <h3 style={styles.h3}>9.1 Exclusion of Damages</h3>
-                        <p style={styles.baseText}>
-                            TO THE MAXIMUM EXTENT PERMITTED BY LAW, IN NO EVENT SHALL OPNET OR ITS DIRECTORS, OFFICERS, EMPLOYEES,
-                            AGENTS, AFFILIATES, SUCCESSORS, OR ASSIGNS BE LIABLE FOR ANY INDIRECT, INCIDENTAL, SPECIAL, CONSEQUENTIAL,
-                            PUNITIVE, OR EXEMPLARY DAMAGES, INCLUDING DAMAGES FOR LOSS OF PROFITS, REVENUE, GOODWILL, DATA, DIGITAL
-                            ASSETS, USE, OR OTHER INTANGIBLE LOSSES, ARISING FROM OR RELATED TO THESE TERMS OR THE WALLET, REGARDLESS OF
-                            THE THEORY OF LIABILITY AND REGARDLESS OF WHETHER OPNET WAS ADVISED OF THE POSSIBILITY OF SUCH DAMAGES. THIS
-                            EXCLUSION APPLIES TO: LOSS OF DIGITAL ASSETS DUE TO PRIVATE KEY LOSS OR COMPROMISE; LOSS OF DIGITAL ASSETS
-                            DUE TO TRANSACTION ERRORS OR INCORRECT ADDRESSES; LOSS OF DIGITAL ASSETS DUE TO SMART CONTRACT BUGS OR
-                            EXPLOITS; LOSS OF DIGITAL ASSETS DUE TO PARTIAL TRANSACTION REVERSION; LOSS OF VALUE DUE TO MARKET
-                            FLUCTUATIONS; INABILITY TO ACCESS THE WALLET OR YOUR ASSETS; UNAUTHORISED ACCESS TO YOUR WALLET OR ACCOUNTS;
-                            ACTIONS OF THIRD PARTIES; AND ANY OTHER LOSSES ARISING FROM YOUR USE OF THE WALLET.
-                        </p>
-                        <h3 style={styles.h3}>9.2 Maximum Liability</h3>
-                        <p style={styles.baseText}>
-                            TO THE MAXIMUM EXTENT PERMITTED BY LAW, OPNET&apos;S TOTAL AGGREGATE LIABILITY ARISING FROM OR RELATED TO
-                            THESE TERMS OR THE WALLET SHALL NOT EXCEED ONE HUNDRED UNITED STATES DOLLARS (USD 100.00). THIS LIMITATION
-                            APPLIES REGARDLESS OF THE NUMBER OF CLAIMS AND REGARDLESS OF WHETHER OPNET HAS BEEN ADVISED OF THE
-                            POSSIBILITY OF SUCH DAMAGES.
-                        </p>
-                        <h3 style={styles.h3}>9.3 Essential Basis</h3>
-                        <p style={styles.baseText}>
-                            You acknowledge that the disclaimers and limitations in these Terms reflect a reasonable allocation of
-                            risk, form an essential basis of the bargain between you and OPNET, and that OPNET would not provide the
-                            Wallet without these limitations.
-                        </p>
-                        <h3 style={styles.h3}>9.4 Jurisdictional Limitations</h3>
-                        <p style={styles.baseText}>
-                            Some jurisdictions do not allow exclusion of certain warranties or limitation of certain damages. In such
-                            jurisdictions, OPNET&apos;s liability shall be limited to the fullest extent permitted by applicable law.
-                        </p>
-
-                        <h2 style={styles.h2}>ARTICLE 10: INDEMNIFICATION</h2>
-                        <p style={styles.baseText}>
-                            You agree to indemnify, defend, and hold harmless OPNET and its directors, officers, employees, agents,
-                            affiliates, successors, and assigns from and against any claims, damages, losses, liabilities, costs, and
-                            expenses (including reasonable legal fees) arising from or related to: your use of the Wallet; your
-                            violation of these Terms; your violation of any applicable law or third-party rights; your negligence or
-                            misconduct; your transactions or interactions with third parties; any content you submit through the Wallet;
-                            and any dispute between you and any third party. OPNET reserves the right to assume exclusive defence and
-                            control of any matter subject to indemnification by you, and you agree to cooperate with our defence.
-                        </p>
-
-                        <h2 style={styles.h2}>ARTICLE 11: TERMINATION</h2>
-                        <h3 style={styles.h3}>11.1 Termination by You</h3>
-                        <p style={styles.baseText}>
-                            You may terminate this Agreement at any time by uninstalling the Wallet and ceasing all use. Termination
-                            does not affect any transactions already broadcast to the blockchain or any assets stored in addresses
-                            associated with your Private Keys.
-                        </p>
-                        <h3 style={styles.h3}>11.2 Termination by OPNET</h3>
-                        <p style={styles.baseText}>
-                            We may terminate or suspend your access to the Wallet at any time, for any reason, with or without cause,
-                            with or without notice. Grounds for termination include but are not limited to: violation of these Terms;
-                            violation of applicable law; conduct harmful to OPNET or third parties; discontinuation of the Wallet; or
-                            any other reason in our sole discretion.
-                        </p>
-                        <h3 style={styles.h3}>11.3 Effect of Termination</h3>
-                        <p style={styles.baseText}>
-                            Upon termination: your license to use the Wallet immediately terminates; you must cease all use of the
-                            Wallet; your Private Keys and Seed Phrases remain under your control and can be used with compatible wallet
-                            software; your assets remain in your blockchain addresses and are not affected by termination; and Articles
-                            7 through 13 and any other provisions that by their nature should survive termination shall survive.
-                        </p>
-
-                        <h2 style={styles.h2}>ARTICLE 12: DISPUTE RESOLUTION AND ARBITRATION</h2>
-                        <div style={styles.callout}>
-                            <strong>PLEASE READ THIS SECTION CAREFULLY.</strong> IT AFFECTS YOUR LEGAL RIGHTS, INCLUDING YOUR RIGHT TO
-                            FILE A LAWSUIT IN COURT.
-                        </div>
-
-                        <h3 style={styles.h3}>12.1 Governing Law</h3>
-                        <p style={styles.baseText}>
-                            These Terms and any dispute arising from or related to these Terms or the Wallet shall be governed by and
-                            construed in accordance with the laws of Abu Dhabi Global Market, United Arab Emirates, and, to the extent
-                            applicable, the federal laws of the United Arab Emirates, without regard to conflict of laws principles.
-                        </p>
-
-                        <h3 style={styles.h3}>12.2 Binding Arbitration</h3>
-                        <p style={styles.baseText}>
-                            Any dispute, claim, or controversy arising from or related to these Terms or the Wallet shall be resolved by
-                            binding arbitration rather than in court, except that you may assert claims in small claims court if your
-                            claims qualify. The arbitration shall be conducted under the rules of the Abu Dhabi Commercial Conciliation
-                            and Arbitration Centre, or such other arbitral institution as the parties may agree. The seat of arbitration
-                            shall be Abu Dhabi. The language of arbitration shall be English. The arbitrator&apos;s decision shall be
-                            final, binding, and non-appealable. Judgment upon the award may be entered in any court having jurisdiction.
-                        </p>
-
-                        <h3 style={styles.h3}>12.3 Class Action Waiver</h3>
-                        <p style={styles.baseText}>
-                            YOU AND OPNET AGREE THAT EACH MAY BRING CLAIMS AGAINST THE OTHER ONLY IN YOUR OR ITS INDIVIDUAL CAPACITY, AND
-                            NOT AS A PLAINTIFF OR CLASS MEMBER IN ANY PURPORTED CLASS, COLLECTIVE, OR REPRESENTATIVE PROCEEDING. YOU AND
-                            OPNET EXPRESSLY WAIVE ANY RIGHT TO FILE OR PARTICIPATE IN A CLASS ACTION OR SEEK RELIEF ON A CLASS BASIS.
-                            Unless both you and OPNET agree, no arbitrator or judge may consolidate more than one person&apos;s claims or
-                            otherwise preside over any form of representative or class proceeding.
-                        </p>
-
-                        <h3 style={styles.h3}>12.4 Jury Trial Waiver</h3>
-                        <p style={styles.baseText}>
-                            TO THE FULLEST EXTENT PERMITTED BY LAW, YOU AND OPNET EACH WAIVE ANY RIGHT TO A JURY TRIAL IN ANY PROCEEDING
-                            ARISING FROM OR RELATED TO THESE TERMS OR THE WALLET.
-                        </p>
-
-                        <h3 style={styles.h3}>12.5 International Users</h3>
-                        <p style={styles.baseText}>
-                            The Wallet is operated from the United Arab Emirates. If you access the Wallet from outside the United Arab
-                            Emirates, you do so at your own risk and are solely responsible for compliance with all applicable local,
-                            national, and international laws. The legal status of cryptocurrency wallets, digital assets, and blockchain
-                            technology varies by jurisdiction. OPNET makes no representation that the Wallet is appropriate, lawful, or
-                            available in any particular jurisdiction.
-                        </p>
-
-                        <h3 style={styles.h3}>12.6 Pre-Litigation Contact</h3>
-                        <p style={styles.baseText}>
-                            If any governmental authority, regulatory body, or law enforcement agency has concerns regarding the Wallet
-                            or wishes to take enforcement action, OPNET respectfully requests contact at report@opnet.org prior to
-                            initiating formal legal proceedings. OPNET commits to good-faith cooperation with legitimate regulatory
-                            inquiries and will take appropriate action to address valid concerns, including restricting access from
-                            affected jurisdictions if required by law.
-                        </p>
-
-                        <h2 style={styles.h2}>ARTICLE 13: GENERAL PROVISIONS</h2>
-                        <h3 style={styles.h3}>13.1 Entire Agreement</h3>
-                        <p style={styles.baseText}>
-                            These Terms, together with any documents incorporated by reference, constitute the entire agreement between
-                            you and OPNET regarding the Wallet and supersede all prior agreements and communications.
-                        </p>
-
-                        <h3 style={styles.h3}>13.2 Severability</h3>
-                        <p style={styles.baseText}>
-                            If any provision of these Terms is held invalid or unenforceable, such provision shall be modified to the
-                            minimum extent necessary to make it valid and enforceable, or if modification is not possible, shall be
-                            severed, and the remaining provisions shall continue in full force and effect.
-                        </p>
-
-                        <h3 style={styles.h3}>13.3 No Waiver</h3>
-                        <p style={styles.baseText}>
-                            No failure or delay by OPNET in exercising any right shall constitute a waiver of that right. Any waiver must
-                            be in writing and signed by OPNET.
-                        </p>
-
-                        <h3 style={styles.h3}>13.4 Assignment</h3>
-                        <p style={styles.baseText}>
-                            You may not assign these Terms without OPNET&apos;s prior written consent. OPNET may assign these Terms without
-                            notice in connection with a merger, acquisition, sale of assets, or corporate reorganisation, or to any
-                            affiliate. Subject to the foregoing, these Terms shall bind and inure to the benefit of the parties and their
-                            permitted successors and assigns.
-                        </p>
-
-                        <h3 style={styles.h3}>13.5 Force Majeure</h3>
-                        <p style={styles.baseText}>
-                            OPNET shall not be liable for any failure or delay in performance due to causes beyond reasonable control,
-                            including acts of God, war, terrorism, civil unrest, government action, network failures, blockchain
-                            congestion, protocol changes, cyberattacks, or other events beyond OPNET&apos;s control.
-                        </p>
-
-                        <h3 style={styles.h3}>13.6 Independent Contractors</h3>
-                        <p style={styles.baseText}>
-                            You and OPNET are independent contractors. These Terms do not create any partnership, joint venture, agency,
-                            or employment relationship.
-                        </p>
-
-                        <h3 style={styles.h3}>13.7 No Third-Party Beneficiaries</h3>
-                        <p style={styles.baseText}>
-                            These Terms do not create any third-party beneficiary rights in any person or entity.
-                        </p>
-
-                        <h3 style={styles.h3}>13.8 Export Compliance</h3>
-                        <p style={styles.baseText}>
-                            You agree to comply with all applicable export control laws, sanctions, and regulations. You may not use the
-                            Wallet if you are subject to sanctions or located in a jurisdiction subject to comprehensive sanctions.
-                        </p>
-
-                        <h3 style={styles.h3}>13.9 Language</h3>
-                        <p style={styles.baseText}>
-                            These Terms are drafted in English. If translated into another language, the English version shall prevail
-                            in the event of any conflict.
-                        </p>
-
-                        <h3 style={styles.h3}>13.10 Notices</h3>
-                        <p style={styles.baseText}>
-                            OPNET may provide notices to you through the Wallet interface, our website, or public communication channels.
-                            Notices are effective upon posting or transmission. Notices to OPNET must be sent to report@opnet.org or to
-                            our registered address.
-                        </p>
-
-                        <hr style={styles.hr} />
-
-                        <h2 style={styles.h2}>ACKNOWLEDGMENT AND ACCEPTANCE</h2>
-                        <ul style={styles.ul}>
-                            <li style={styles.li}>BY INSTALLING, ACCESSING, OR USING OPWALLET, YOU ACKNOWLEDGE THAT:</li>
-                            <li style={styles.li}>YOU HAVE READ AND UNDERSTAND THESE TERMS IN THEIR ENTIRETY.</li>
-                            <li style={styles.li}>YOU UNDERSTAND THAT THE WALLET IS NON-CUSTODIAL AND OPNET CANNOT RECOVER LOST KEYS.</li>
-                            <li style={styles.li}>YOU ARE SOLELY RESPONSIBLE FOR SECURING YOUR PRIVATE KEYS AND SEED PHRASES.</li>
-                            <li style={styles.li}>YOU UNDERSTAND THAT BLOCKCHAIN TRANSACTIONS ARE IRREVERSIBLE.</li>
-                            <li style={styles.li}>YOU UNDERSTAND AND ACCEPT THE RISK OF PARTIAL TRANSACTION REVERSION.</li>
-                            <li style={styles.li}>YOU ACCEPT ALL RISKS DESCRIBED IN THESE TERMS.</li>
-                            <li style={styles.li}>YOU AGREE TO BE BOUND BY THE ARBITRATION AND CLASS ACTION WAIVER PROVISIONS.</li>
-                            <li style={styles.li}>YOU HAVE THE LEGAL CAPACITY TO ENTER INTO THIS AGREEMENT.</li>
-                            <li style={styles.li}>IF YOU DO NOT AGREE TO THESE TERMS, DO NOT INSTALL OR USE OPWALLET.</li>
-                        </ul>
-
-                        <h2 style={styles.h2}>CONTACT INFORMATION</h2>
-                        <p style={styles.baseText}>
-                            ORANGE PILL LABS HOLDING LTD
-                            <br />
-                            Abu Dhabi Global Market, United Arab Emirates
-                            <br />
-                            Email: report@opnet.org
-                        </p>
-
+                    <div ref={scrollRef} style={styles.scrollArea} onScroll={onScroll}>
+                        {activeDoc === 'tos' ? (
+                            <TermsText effectiveDate={TOS_LAST_UPDATE} styles={legalDocStyles} />
+                        ) : (
+                            <PrivacyPolicyText effectiveDate={TOS_LAST_UPDATE} styles={legalDocStyles} />
+                        )}
                         <div style={{ height: 14 }} />
                     </div>
 
@@ -822,14 +533,14 @@ export function TermsOfServiceModal({
                         style={styles.consentPill}
                         role="checkbox"
                         aria-checked={accepted}
-                        aria-disabled={!canInteract}
-                        tabIndex={canInteract ? 0 : -1}
+                        aria-disabled={!bothScrolled}
+                        tabIndex={bothScrolled ? 0 : -1}
                         onClick={() => {
-                            if (!canInteract) return;
+                            if (!bothScrolled) return;
                             setAccepted((v) => !v);
                         }}
                         onKeyDown={(e) => {
-                            if (!canInteract) return;
+                            if (!bothScrolled) return;
                             if (e.key === 'Enter' || e.key === ' ') {
                                 e.preventDefault();
                                 setAccepted((v) => !v);
@@ -840,14 +551,16 @@ export function TermsOfServiceModal({
                             <div style={styles.check} />
                         </div>
                         <p style={styles.consentText}>
-                            I agree to the OPWALLET Terms of Use.
-                            {!canInteract ? ' (Scroll to the bottom to enable.)' : ''}
+                            I have read and agree to the Terms & Privacy.
+                            {!bothScrolled ? ' (Read both to enable.)' : ''}
                         </p>
                     </div>
 
                     <p style={styles.hint}>
-                        {!canInteract
-                            ? 'Please scroll to the bottom to enable acceptance.'
+                        {!bothScrolled
+                            ? `Scroll both docs to the bottom. (${tosScrolledBottom ? '✓' : '•'} Terms, ${
+                                privacyScrolledBottom ? '✓' : '•'
+                            } Privacy)`
                             : accepted
                                 ? 'Click “I accept” to continue.'
                                 : 'Tick the box to enable “I accept”.'}
@@ -857,14 +570,19 @@ export function TermsOfServiceModal({
                         <Button
                             text="I accept"
                             preset="primary"
-                            disabled={!canInteract || !accepted}
+                            disabled={!bothScrolled || !accepted}
                             onClick={() => {
-                                if (!canInteract || !accepted) return;
+                                if (!bothScrolled || !accepted) return;
 
                                 if (typeof window !== 'undefined') {
                                     try {
+                                        // legacy
                                         window.localStorage.setItem(TOS_SEEN_KEY, '1');
                                         window.localStorage.setItem(TOS_ACCEPTED_KEY, '1');
+
+                                        // combined
+                                        window.localStorage.setItem(LEGAL_SEEN_KEY, '1');
+                                        window.localStorage.setItem(LEGAL_ACCEPTED_KEY, '1');
                                     } catch {
                                         // ignore
                                     }

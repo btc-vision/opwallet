@@ -59,7 +59,7 @@ import { SwitchChainModal } from '../../Settings/network/SwitchChainModal';
 import { OPNetList } from './OPNetList';
 import { useConsolidation } from './hooks';
 import {BTCDomainModal, TOS_DOMAIN_ACCEPTED_KEY} from "@/ui/components/AcceptModals/btcDomainTermsModal";
-import {TermsOfServiceModal} from "@/ui/components/AcceptModals/TermsModal";
+import {TermsOfServiceModal, TOS_ACCEPTED_KEY} from "@/ui/components/AcceptModals/TermsModal";
 
 const colors = {
     main: '#f37413',
@@ -278,7 +278,7 @@ export default function WalletTabScreen() {
     useEffect(() => {
         if (typeof window === 'undefined') return;
 
-        const accepted = window.localStorage.getItem(TOS_DOMAIN_ACCEPTED_KEY) === '1';
+        const accepted = window.localStorage.getItem(TOS_ACCEPTED_KEY) === '1';
         if (!accepted) setTermsVisible(true);
 
         const acceptedDomain = window.localStorage.getItem(TOS_DOMAIN_ACCEPTED_KEY) === '1';
@@ -916,7 +916,7 @@ export default function WalletTabScreen() {
 
                         {/* Assign .btc Domain Card */}
                         <div
-                            onClick={() => termsVisible ? setShowDomainTerms(true) : navigate(RouteTypes.BtcDomainScreen)}
+                            onClick={() => domainTermsVisible ? setShowDomainTerms(true) : navigate(RouteTypes.BtcDomainScreen)}
                             style={{
                                 margin: '0 12px 12px',
                                 padding: '10px 14px',
