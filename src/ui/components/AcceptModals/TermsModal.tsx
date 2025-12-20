@@ -160,7 +160,7 @@ export function TermsOfServiceModal({
         const modal: CSSProperties = {
             width: '100%',
             maxWidth: 360,
-            height: 'min(84vh, 680px)',
+            height: 'calc(95vh)',
             borderRadius: 16,
             border: '1px solid rgba(255,255,255,0.10)',
             background: 'rgba(30,30,30,0.98)',
