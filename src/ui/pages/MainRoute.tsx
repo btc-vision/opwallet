@@ -78,6 +78,7 @@ import TxCreateScreen from './Wallet/TxCreateScreen';
 import TxFailScreen from './Wallet/TxFailScreen';
 import TxSuccessScreen from './Wallet/TxSuccessScreen';
 import './index.module.less';
+<<<<<<< Updated upstream
 
 export const routes = {
   BoostScreen: {
@@ -372,13 +373,265 @@ if (process.env.NODE_ENV === 'development') {
     path: '/test-cosmos-sign',
     element: <CosmosSignDemo />
   };
+=======
+import ImportNFTScreen from '@/ui/pages/Wallet/ImportNFTScreen';
+import NFTTabScreen from '@/ui/pages/Main/NFTTabScreen';
+import ImportSelectionScreen from '@/ui/pages/Wallet/ImportSelectionScreen';
+import NFTSendScreen from '@/ui/pages/Wallet/NFTSendScreen';
+import ImportTokenScreen from '@/ui/pages/Wallet/ImportOP20Screen';
+import HistoryScreen from '@/ui/pages/History/HistoryScreen';
+import TransactionDetailScreen from '@/ui/pages/History/TransactionDetailScreen';
+import TermsOfServicePane from '@/ui/components/TermsOfServicePane';
+
+export enum RouteTypes {
+    BoostScreen = 'BoostScreen',
+    WelcomeScreen = 'WelcomeScreen',
+    MainScreen = 'MainScreen',
+    AppTabScrren = 'AppTabScrren',
+    SettingsTabScreen = 'SettingsTabScreen',
+    CreateHDWalletScreen = 'CreateHDWalletScreen',
+    CreateAccountScreen = 'CreateAccountScreen',
+    CreatePasswordScreen = 'CreatePasswordScreen',
+    UnlockScreen = 'UnlockScreen',
+    SwitchAccountScreen = 'SwitchAccountScreen',
+    ReceiveScreen = 'ReceiveScreen',
+    TxConfirmScreen = 'TxConfirmScreen',
+    TxOpnetConfirmScreen = 'TxOpnetConfirmScreen',
+    TxSuccessScreen = 'TxSuccessScreen',
+    TxFailScreen = 'TxFailScreen',
+    NetworkTypeScreen = 'NetworkTypeScreen',
+    ChangePasswordScreen = 'ChangePasswordScreen',
+    ExportMnemonicsScreen = 'ExportMnemonicsScreen',
+    ExportPrivateKeyScreen = 'ExportPrivateKeyScreen',
+    AdvancedScreen = 'AdvancedScreen',
+    ApprovalScreen = 'ApprovalScreen',
+    ConnectedSitesScreen = 'ConnectedSitesScreen',
+    SwitchKeyringScreen = 'SwitchKeyringScreen',
+    AddKeyringScreen = 'AddKeyringScreen',
+    EditWalletNameScreen = 'EditWalletNameScreen',
+    CreateSimpleWalletScreen = 'CreateSimpleWalletScreen',
+    CreateKeystoneWalletScreen = 'CreateKeystoneWalletScreen',
+    UpgradeNoticeScreen = 'UpgradeNoticeScreen',
+    AddressTypeScreen = 'AddressTypeScreen',
+    EditAccountNameScreen = 'EditAccountNameScreen',
+    UnavailableUtxoScreen = 'UnavailableUtxoScreen',
+    OpNetTokenScreen = 'OpNetTokenScreen',
+    SendOpNetScreen = 'SendOpNetScreen',
+    TxCreateScreen = 'TxCreateScreen',
+    DeployContract = 'DeployContract',
+    Mint = 'Mint',
+    ImportSelectionScreen = 'ImportSelectionScreen',
+    ImportNFTScreen = 'ImportNFTScreen',
+    NFTTabScreen = 'NFTTabScreen',
+    NFTSendScreen = 'NFTSendScreen',
+    ImportTokenScreen = 'ImportTokenScreen',
+    QuantumMigrationScreen = 'QuantumMigrationScreen',
+    HistoryScreen = 'HistoryScreen',
+    TransactionDetailScreen = 'TransactionDetailScreen',
+    OpnetBrowserScreen = 'OpnetBrowserScreen',
+    BtcDomainScreen = 'BtcDomainScreen',
+    TermsOfServiceScreen = 'TermsOfServiceScreen'
+>>>>>>> Stashed changes
 }
 
 type RouteTypes = keyof typeof routes;
 
+<<<<<<< Updated upstream
 export function useNavigate() {
   const navigate = useNavigateOrigin();
   const navigatingRef = useRef(false);
+=======
+export const routes: Routes = {
+    BoostScreen: {
+        path: '/',
+        element: <BoostScreen />
+    },
+    WelcomeScreen: {
+        path: '/welcome',
+        element: <WelcomeScreen />
+    },
+    MainScreen: {
+        path: '/main',
+        element: <WalletTabScreen />
+    },
+    AppTabScrren: {
+        path: '/app',
+        element: <AppTabScrren />
+    },
+    SettingsTabScreen: {
+        path: '/settings',
+        element: <SettingsTabScreen />
+    },
+    CreateHDWalletScreen: {
+        path: '/account/create-hd-wallet',
+        element: <CreateHDWalletScreen />
+    },
+    TxCreateScreen: {
+        path: '/wallet/tx/create',
+        element: <TxCreateScreen />
+    },
+    CreateAccountScreen: {
+        path: '/account/create',
+        element: <CreateAccountScreen />
+    },
+    CreatePasswordScreen: {
+        path: '/account/create-password',
+        element: <CreatePasswordScreen />
+    },
+    UnlockScreen: {
+        path: '/account/unlock',
+        element: <UnlockScreen />
+    },
+    SwitchAccountScreen: {
+        path: '/account/switch-account',
+        element: <SwitchAccountScreen />
+    },
+    ReceiveScreen: {
+        path: '/wallet/receive',
+        element: <ReceiveScreen />
+    },
+    TxConfirmScreen: {
+        path: '/wallet/tx/confirm',
+        element: <TxConfirmScreen />
+    },
+    TxOpnetConfirmScreen: {
+        path: '/wallet/tx/confirm-opnet',
+        element: <TxOpnetConfirmScreen />
+    },
+    TxSuccessScreen: {
+        path: '/wallet/tx/success',
+        element: <TxSuccessScreen />
+    },
+    TxFailScreen: {
+        path: '/wallet/tx/fail',
+        element: <TxFailScreen />
+    },
+    NetworkTypeScreen: {
+        path: '/settings/network-type',
+        element: <NetworkTypeScreen />
+    },
+    ChangePasswordScreen: {
+        path: '/settings/password',
+        element: <ChangePasswordScreen />
+    },
+    ExportMnemonicsScreen: {
+        path: '/settings/export-mnemonics',
+        element: <ExportMnemonicsScreen />
+    },
+    ExportPrivateKeyScreen: {
+        path: '/settings/export-privatekey',
+        element: <ExportPrivateKeyScreen />
+    },
+    AdvancedScreen: {
+        path: '/settings/advanced',
+        element: <AdvancedScreen />
+    },
+    ApprovalScreen: {
+        path: '/approval',
+        element: <ApprovalScreen />
+    },
+    ConnectedSitesScreen: {
+        path: '/connected-sites',
+        element: <ConnectedSitesScreen />
+    },
+    SwitchKeyringScreen: {
+        path: '/account/switch-keyring',
+        element: <SwitchKeyringScreen />
+    },
+    AddKeyringScreen: {
+        path: '/account/add-keyring',
+        element: <AddKeyringScreen />
+    },
+    EditWalletNameScreen: {
+        path: '/settings/edit-wallet-name',
+        element: <EditWalletNameScreen />
+    },
+    CreateSimpleWalletScreen: {
+        path: '/account/create-simple-wallet',
+        element: <CreateSimpleWalletScreen />
+    },
+    CreateKeystoneWalletScreen: {
+        path: '/account/create-keystone-wallet',
+        element: <CreateKeystoneWalletScreen />
+    },
+    UpgradeNoticeScreen: {
+        path: '/settings/upgrade-notice',
+        element: <UpgradeNoticeScreen />
+    },
+    AddressTypeScreen: {
+        path: '/settings/address-type',
+        element: <AddressTypeScreen />
+    },
+    EditAccountNameScreen: {
+        path: '/settings/edit-account-name',
+        element: <EditAccountNameScreen />
+    },
+    UnavailableUtxoScreen: {
+        path: '/wallet/unavailable-utxo',
+        element: <UnavailableUtxoScreen />
+    },
+    OpNetTokenScreen: {
+        path: '/opnet/token',
+        element: <OpNetTokenScreen />
+    },
+    SendOpNetScreen: {
+        path: '/opnet/send-opnet',
+        element: <SendOpNetScreen />
+    },
+    DeployContract: {
+        path: '/opnet/deploy-contract',
+        element: <DeployContract />
+    },
+    Mint: {
+        path: '/opnet/mint',
+        element: <Mint />
+    },
+    ImportSelectionScreen: {
+        path: '/import-selection',
+        element: <ImportSelectionScreen />
+    },
+    ImportNFTScreen: {
+        path: '/import-nft',
+        element: <ImportNFTScreen />
+    },
+    NFTTabScreen: {
+        path: '/nft',
+        element: <NFTTabScreen />
+    },
+    NFTSendScreen: {
+        path: '/nft-send',
+        element: <NFTSendScreen />
+    },
+    ImportTokenScreen: {
+        path: '/import-token',
+        element: <ImportTokenScreen />
+    },
+    QuantumMigrationScreen: {
+        path: '/settings/quantum-migration',
+        element: <QuantumMigrationScreen />
+    },
+    HistoryScreen: {
+        path: '/history',
+        element: <HistoryScreen />
+    },
+    TransactionDetailScreen: {
+        path: '/history/transaction',
+        element: <TransactionDetailScreen />
+    },
+    OpnetBrowserScreen: {
+        path: '/settings/opnet-browser',
+        element: <OpnetBrowserScreen />
+    },
+    BtcDomainScreen: {
+        path: '/domain',
+        element: <BtcDomainScreen />
+    },
+    TermsOfServiceScreen: {
+        path: '/tos',
+        element: <TermsOfServicePane/>
+    }
+};
+>>>>>>> Stashed changes
 
   return useCallback(
     (routKey: RouteTypes | '#back', state?: any, pathState?: any) => {

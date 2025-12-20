@@ -65,6 +65,7 @@ export default function WelcomeScreen() {
               }}
             />
 
+<<<<<<< Updated upstream
             {connectHardwareModalVisible && (
               <ConnectHardwareModal
                 onClose={() => {
@@ -77,4 +78,30 @@ export default function WelcomeScreen() {
       </Content>
     </Layout>
   );
+=======
+                        <Text
+                            text={'By using OP_WALLET you acknowledge you have read and agree to our Terms of Use.'}
+                            preset="sub"
+                            textCenter
+                        />
+
+                        <Button
+                            preset="approval"
+                            text="Terms of use"
+                            onClick={() => navigate(RouteTypes.TermsOfServiceScreen)}
+                        />
+
+                        {connectHardwareModalVisible && (
+                            <ConnectHardwareModal
+                                onClose={() => {
+                                    setConnectHardwareModalVisible(false);
+                                }}
+                            />
+                        )}
+                    </Column>
+                </Column>
+            </Content>
+        </Layout>
+    );
+>>>>>>> Stashed changes
 }
