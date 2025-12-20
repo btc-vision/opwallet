@@ -4,11 +4,11 @@ import {
     getContract,
     IExtendedOP721,
     IOP20Contract,
-    JSONRpcProvider,
     MetadataNFT,
     OP_20_ABI,
     TokenOfOwnerByIndex,
-    UTXOs
+    UTXOs,
+    WebSocketRpcProvider
 } from 'opnet';
 
 import { ChainId as WalletChainId, ChainType } from '@/shared/constant';
@@ -146,9 +146,9 @@ class Web3API {
         return this._limitedProvider;
     }
 
-    private _provider: JSONRpcProvider | undefined;
+    private _provider: WebSocketRpcProvider | undefined;
 
-    public get provider(): JSONRpcProvider {
+    public get provider(): WebSocketRpcProvider {
         if (!this._provider) {
             throw new Error('Provider not set');
         }
@@ -223,6 +223,11 @@ class Web3API {
             throw new Error(`Chain ${chainType} is disabled`);
         }
 
+        /*const state = this.provider.getState();
+        if (state !== ConnectionState.CONNECTED && state !== ConnectionState.CONNECTING) {
+
+        }*/
+
         // Set the Bitcoin network based on the chain's network type and chain type
         this.network = getBitcoinLibJSNetwork(chainConfig.networkType, chainType);
 
@@ -239,7 +244,7 @@ class Web3API {
                 console.warn(`Metadata not available for chain ${chainType}:`, e);
             }
 
-            this.setProvider(chainType);
+            await this.setProvider(chainType);
         }
     }
 
@@ -256,8 +261,14 @@ class Web3API {
         }
     }
 
-    public setProviderFromUrl(url: string): void {
-        this._provider = new JSONRpcProvider(url, this.network, 6000);
+    public async setProviderFromUrl(url: string): Promise<void> {
+        if (this._provider) {
+            this._provider.disconnect();
+        }
+
+        this._provider = new WebSocketRpcProvider(url, this.network); //6000
+        await this._provider.connect();
+
         this._limitedProvider = new OPNetLimitedProvider(url);
     }
 
@@ -507,7 +518,7 @@ class Web3API {
         return ContractNames[address] ?? 'Generic Contract';
     }
 
-    private setProvider(chainType: ChainType): void {
+    private async setProvider(chainType: ChainType): Promise<void> {
         const chainMetadata = customNetworksManager.getChain(chainType);
 
         if (!chainMetadata) {
@@ -518,7 +529,7 @@ class Web3API {
             throw new Error(`OPNet RPC URL not set for ${chainType}`);
         }
 
-        this.setProviderFromUrl(chainMetadata.opnetUrl);
+        await this.setProviderFromUrl(chainMetadata.opnetUrl);
     }
 }
 
