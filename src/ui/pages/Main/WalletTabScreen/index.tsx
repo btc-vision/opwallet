@@ -59,6 +59,7 @@ import { SwitchChainModal } from '../../Settings/network/SwitchChainModal';
 import { OPNetList } from './OPNetList';
 import { useConsolidation } from './hooks';
 import {BTCDomainModal, TOS_DOMAIN_ACCEPTED_KEY} from "@/ui/components/AcceptModals/btcDomainTermsModal";
+import {TermsOfServiceModal} from "@/ui/components/AcceptModals/TermsModal";
 
 const colors = {
     main: '#f37413',
@@ -270,13 +271,19 @@ export default function WalletTabScreen() {
     const tools = useTools();
 
     const [termsVisible, setTermsVisible] = useState(false);
-    const [showTerms, setShowTerms] = useState(false);
+
+    const [domainTermsVisible, setDomainTermsVisible] = useState(false);
+    const [showDomainTerms, setShowDomainTerms] = useState(false);
 
     useEffect(() => {
         if (typeof window === 'undefined') return;
 
         const accepted = window.localStorage.getItem(TOS_DOMAIN_ACCEPTED_KEY) === '1';
         if (!accepted) setTermsVisible(true);
+
+        const acceptedDomain = window.localStorage.getItem(TOS_DOMAIN_ACCEPTED_KEY) === '1';
+        if (!acceptedDomain) setDomainTermsVisible(true);
+
     }, []);
 
     return (
@@ -909,7 +916,7 @@ export default function WalletTabScreen() {
 
                         {/* Assign .btc Domain Card */}
                         <div
-                            onClick={() => termsVisible ? setShowTerms(true) : navigate(RouteTypes.BtcDomainScreen)}
+                            onClick={() => termsVisible ? setShowDomainTerms(true) : navigate(RouteTypes.BtcDomainScreen)}
                             style={{
                                 margin: '0 12px 12px',
                                 padding: '10px 14px',
@@ -1280,10 +1287,18 @@ export default function WalletTabScreen() {
                 )}
             </Content>
 
-            <BTCDomainModal
-                open={termsVisible && showTerms}
+            <TermsOfServiceModal
+                open={termsVisible}
                 onAccept={() => {
                     setTermsVisible(false);
+                }}
+            />
+
+            <BTCDomainModal
+                onClose={() => setShowDomainTerms(false)}
+                open={domainTermsVisible && showDomainTerms}
+                onAccept={() => {
+                    setDomainTermsVisible(false);
                     navigate(RouteTypes.BtcDomainScreen)
                 }}
             />
