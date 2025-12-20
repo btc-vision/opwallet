@@ -353,7 +353,6 @@ export function BTCDomainModal({
                         {/* ===== .BTC DOMAIN TERMS (FULL) ===== */}
 
                         <div style={{ marginBottom: 10 }}>
-                            <div style={styles.h1}>.BTC DOMAIN</div>
                             <div style={{ ...styles.h1, fontSize: 16, marginTop: 2 }}>
                                 TERMS OF SERVICE, DISCLOSURE POLICY, AND ACCEPTABLE USE POLICY
                             </div>
