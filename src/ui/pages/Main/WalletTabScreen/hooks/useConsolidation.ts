@@ -162,11 +162,11 @@ export function useConsolidation() {
             count: number;
         } => {
             const consolidationCounts = {
-                unspent: freshBalance.consolidation_unspent_count,
-                csv75: freshBalance.consolidation_csv75_unlocked_count,
-                csv2: freshBalance.consolidation_csv2_unlocked_count,
-                csv1: freshBalance.consolidation_csv1_unlocked_count,
-                p2wda: freshBalance.consolidation_p2wda_unspent_count
+                unspent: freshBalance.unspent_utxos_count,
+                csv75: freshBalance.csv75_unlocked_utxos_count,
+                csv2: freshBalance.csv2_unlocked_utxos_count,
+                csv1: freshBalance.csv1_unlocked_utxos_count,
+                p2wda: freshBalance.p2wda_utxos_count
             };
 
             // Find the type with the most UTXOs

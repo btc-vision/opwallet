@@ -148,7 +148,7 @@ export default function TxCreateScreen() {
                 const balances: AddressBalance[] = [];
 
                 console.log('currentBalance', currentBalance);
-
+                
                 // Always add current address
                 balances.push({
                     type: SourceType.CURRENT,
@@ -278,39 +278,46 @@ export default function TxCreateScreen() {
                     setHasSelectedAddress(true);
                     setHasAutoSelectedOnce(true);
 
-                    setUiState({
-                        toInfo: {
-                            address: account.address,
-                            domain: ''
-                        }
-                    });
-
                     // Autofill with consolidation amount if requested
                     if (consolidationParams.autoFillAmount) {
-                        // Get balance and use the appropriate consolidation amount based on type
+                        // Get balance first, then update UI state in a single call
                         const balance = await wallet.getAddressBalance(account.address, account.pubkey);
                         let consolidationAmount = '0';
 
                         switch (consolidationParams.selectedType) {
                             case 'csv1':
-                                consolidationAmount = balance.consolidation_csv1_unlocked_amount;
+                                consolidationAmount = balance.consolidation_csv1_unlocked_amount || '0';
                                 break;
                             case 'csv2':
-                                consolidationAmount = balance.consolidation_csv2_unlocked_amount;
+                                consolidationAmount = balance.consolidation_csv2_unlocked_amount || '0';
                                 break;
                             case 'csv75':
-                                consolidationAmount = balance.consolidation_csv75_unlocked_amount;
+                                consolidationAmount = balance.consolidation_csv75_unlocked_amount || '0';
                                 break;
                             case 'p2wda':
-                                consolidationAmount = balance.consolidation_p2wda_unspent_amount;
+                                consolidationAmount = balance.consolidation_p2wda_unspent_amount || '0';
                                 break;
                             case 'unspent':
                             default:
-                                consolidationAmount = balance.consolidation_unspent_amount;
+                                consolidationAmount = balance.consolidation_unspent_amount || '0';
                                 break;
                         }
 
-                        setUiState({ inputAmount: consolidationAmount });
+                        // Set both toInfo and inputAmount in a single call
+                        setUiState({
+                            toInfo: {
+                                address: account.address,
+                                domain: ''
+                            },
+                            inputAmount: consolidationAmount
+                        });
+                    } else {
+                        setUiState({
+                            toInfo: {
+                                address: account.address,
+                                domain: ''
+                            }
+                        });
                     }
 
                     // Add note for consolidation with type info
@@ -1369,10 +1376,38 @@ export default function TxCreateScreen() {
                                     cursor: 'pointer',
                                     transition: 'all 0.15s'
                                 }}
-                                onClick={() => {
+                                onClick={async () => {
                                     if (selectedBalance) {
                                         setAutoAdjust(true);
-                                        setUiState({ inputAmount: selectedBalance.balance });
+                                        // In consolidation mode, use the consolidation amount (first 1400 UTXOs)
+                                        if (consolidationParams?.enabled) {
+                                            const balance = await wallet.getAddressBalance(
+                                                account.address,
+                                                account.pubkey
+                                            );
+                                            let maxAmount = '0';
+                                            switch (consolidationParams.selectedType) {
+                                                case 'csv1':
+                                                    maxAmount = balance.consolidation_csv1_unlocked_amount || '0';
+                                                    break;
+                                                case 'csv2':
+                                                    maxAmount = balance.consolidation_csv2_unlocked_amount || '0';
+                                                    break;
+                                                case 'csv75':
+                                                    maxAmount = balance.consolidation_csv75_unlocked_amount || '0';
+                                                    break;
+                                                case 'p2wda':
+                                                    maxAmount = balance.consolidation_p2wda_unspent_amount || '0';
+                                                    break;
+                                                case 'unspent':
+                                                default:
+                                                    maxAmount = balance.consolidation_unspent_amount || '0';
+                                                    break;
+                                            }
+                                            setUiState({ inputAmount: maxAmount });
+                                        } else {
+                                            setUiState({ inputAmount: selectedBalance.balance });
+                                        }
                                     }
                                 }}
                                 onMouseEnter={(e) => {
