@@ -4,9 +4,14 @@ import { PreSignedTransactionData, SerializedPreSignedInteractionData } from '@/
 import { ConnectedSite } from '@/background/service/permission';
 import { AddressFlagType, ChainId, ChainType, CustomNetwork } from '@/shared/constant';
 import {
+    ConflictResolutionChoice,
+    DuplicationDetectionResult,
+    DuplicationState,
+    OnChainLinkageInfo
+} from '@/shared/types/Duplication';
+import {
     Account,
     AddressSummary,
-    AddressTypes,
     AppSummary,
     BitcoinBalance,
     DecodedPsbt,
@@ -30,7 +35,7 @@ import {
 } from '@/shared/types/OpnetProtocol';
 import { TransactionHistoryFilter, TransactionHistoryItem } from '@/shared/types/TransactionHistory';
 import { Psbt } from '@btc-vision/bitcoin';
-import { InteractionParametersWithoutSigner } from '@btc-vision/transaction';
+import { AddressTypes, InteractionParametersWithoutSigner } from '@btc-vision/transaction';
 import { createContext, ReactNode, useContext } from 'react';
 
 export interface WalletController {
@@ -356,6 +361,27 @@ export interface WalletController {
     >;
     addTrackedDomain(domainName: string): Promise<void>;
     removeTrackedDomain(domainName: string): Promise<void>;
+
+    // Duplication detection and resolution
+    checkForDuplicates(): Promise<DuplicationDetectionResult>;
+    getDuplicationState(): Promise<DuplicationState>;
+    createDuplicationBackup(password: string): Promise<boolean>;
+    exportDuplicationBackup(password: string): Promise<{ content: string; filename: string }>;
+    hasDuplicationBackup(): Promise<boolean>;
+    verifyAllOnChainLinkage(): Promise<Map<string, OnChainLinkageInfo>>;
+    resolveDuplicationConflict(choice: ConflictResolutionChoice): Promise<void>;
+    removeDuplicateWallet(keyringIndex: number): Promise<void>;
+    setDuplicationResolved(): Promise<void>;
+    resetDuplicationState(): Promise<void>;
+    importDuplicationBackup(
+        fileContent: string,
+        password: string
+    ): Promise<{ version: string; walletCount: number; createdAt: number }>;
+    restoreFromDuplicationBackup(password: string): Promise<{ restored: number; errors: string[] }>;
+
+    // [DEV/TEST] Conflict testing methods
+    createTestConflicts(): Promise<{ created: string[]; message: string }>;
+    clearTestConflicts(): Promise<void>;
 }
 
 const WalletContext = createContext<{

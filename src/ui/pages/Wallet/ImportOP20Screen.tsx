@@ -3,7 +3,7 @@ import { Column, Content, Header, Input, Layout, OPNetLoader } from '@/ui/compon
 import { useTools } from '@/ui/components/ActionComponent';
 import { Image } from '@/ui/components/Image';
 import { fontSizes } from '@/ui/theme/font';
-import { RouteTypes, useNavigate } from '@/ui/pages/MainRoute';
+import { RouteTypes, useNavigate } from '@/ui/pages/routeTypes';
 import { useCurrentAccount } from '@/ui/state/accounts/hooks';
 import { useChainType } from '@/ui/state/settings/hooks';
 import { DollarOutlined } from '@ant-design/icons';

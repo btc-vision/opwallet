@@ -4,7 +4,7 @@ import {
     InteractionOP20,
     InteractionTypeNativeSwap,
     isInteractionType
-} from '@/ui/pages/OpNet/decoded/InteractionType';
+} from '@/shared/types/InteractionType';
 
 export function selectorToString(calldata: string): string {
     if (calldata.length < 4) {

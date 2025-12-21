@@ -5,7 +5,7 @@ import { useLocationState } from '@/ui/utils';
 
 import { isWalletError } from '@/shared/utils/errors';
 import { SignPsbt } from '../Approval/components';
-import { RouteTypes, useNavigate } from '../MainRoute';
+import { RouteTypes, useNavigate } from '../routeTypes';
 import { SignPsbtApprovalParams } from '@/shared/types/Approval';
 
 interface LocationState {

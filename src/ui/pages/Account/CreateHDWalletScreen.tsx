@@ -1,7 +1,8 @@
 import { CheckCircleFilled } from '@ant-design/icons';
 import { useCallback, useMemo, useState } from 'react';
 
-import { AddressTypes, RestoreWalletType } from '@/shared/types';
+import { RestoreWalletType } from '@/shared/types';
+import { AddressTypes } from '@btc-vision/transaction';
 import { Content, Header, Layout } from '@/ui/components';
 import { Step0 } from '@/ui/pages/Account/createHDWalletComponents/Step0';
 import { Step1_Create } from '@/ui/pages/Account/createHDWalletComponents/Step1_Create';
@@ -15,7 +16,7 @@ import {
 } from '@/ui/pages/Account/createHDWalletComponents/types';
 
 import { useLocationState } from '@/ui/utils';
-import { RouteTypes, useNavigate } from '../MainRoute';
+import { RouteTypes, useNavigate } from '../routeTypes';
 
 const colors = {
     main: '#f37413',

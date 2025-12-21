@@ -9,7 +9,7 @@ import { Text } from '@/ui/components/Text';
 import { useUnlockCallback } from '@/ui/state/global/hooks';
 import { getUiType, useWallet } from '@/ui/utils';
 
-import { RouteTypes, useNavigate } from '../../MainRoute';
+import { RouteTypes, useNavigate } from '../../routeTypes';
 
 export default function UnlockScreen() {
     const wallet = useWallet();
@@ -20,10 +20,12 @@ export default function UnlockScreen() {
     const isInNotification = UIType.isNotification;
     const unlock = useUnlockCallback();
     const tools = useTools();
+
     const btnClick = async () => {
-        // run(password);
         try {
             await unlock(password);
+
+            // Duplication detection now happens in WalletTabScreen after navigation
             if (!isInNotification) {
                 const hasVault = await wallet.hasVault();
                 if (!hasVault) {

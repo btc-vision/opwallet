@@ -13,7 +13,7 @@ import { ProviderControllerRequest } from '@/shared/types/Request.js';
 import { getChainInfo } from '@/shared/utils';
 import Web3API from '@/shared/web3/Web3API';
 import { DetailedInteractionParameters } from '@/shared/web3/interfaces/DetailedInteractionParameters';
-import { amountToSatoshis } from '@/ui/utils';
+import { amountToSatoshis } from '@/shared/utils/btc-utils';
 import { Psbt } from '@btc-vision/bitcoin';
 import { ICancelTransactionParametersWithoutSigner, IDeploymentParametersWithoutSigner } from '@btc-vision/transaction';
 import { toNetwork, verifyBip322MessageWithNetworkType } from '@btc-vision/wallet-sdk';

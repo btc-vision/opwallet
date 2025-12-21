@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { ADDRESS_TYPES } from '@/shared/constant';
-import { AddressAssets, AddressTypes } from '@/shared/types';
+import { AddressAssets } from '@/shared/types';
+import { AddressTypes } from '@btc-vision/transaction';
 import Web3API, { getBitcoinLibJSNetwork } from '@/shared/web3/Web3API';
 import { Column, Content, Header, Layout, OPNetLoader, Text } from '@/ui/components';
 import { useTools } from '@/ui/components/ActionComponent';
@@ -21,7 +22,7 @@ import { getMLDSAConfig, QuantumBIP32Factory } from '@btc-vision/bip32';
 import { crypto as bitcoinCrypto, networks } from '@btc-vision/bitcoin';
 import { ethers } from 'ethers';
 
-import { RouteTypes, useNavigate } from '../MainRoute';
+import { RouteTypes, useNavigate } from '../routeTypes';
 
 // Get the expected MLDSA key size for LEVEL2
 const MLDSA_CONFIG = getMLDSAConfig(MLDSASecurityLevel.LEVEL2, networks.bitcoin);

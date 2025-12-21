@@ -1,7 +1,7 @@
 import { useCallback } from 'react';
 
 import { useApproval, useWallet } from '@/ui/utils';
-import { AddressTypes } from '@/shared/types';
+import { AddressTypes } from '@btc-vision/transaction';
 
 import { AppState } from '..';
 import { useAppDispatch, useAppSelector } from '../hooks';

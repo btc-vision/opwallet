@@ -1,5 +1,5 @@
 import { Column, Content, Header, Layout } from '@/ui/components';
-import { RouteTypes, useNavigate } from '@/ui/pages/MainRoute';
+import { RouteTypes, useNavigate } from '@/ui/pages/routeTypes';
 import { DollarOutlined, PictureOutlined } from '@ant-design/icons';
 import { useState } from 'react';
 

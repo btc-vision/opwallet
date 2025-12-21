@@ -8,7 +8,7 @@ import { useAccountAddress, useCurrentAccount } from '@/ui/state/accounts/hooks'
 import { useChain } from '@/ui/state/settings/hooks';
 import { sizes } from '@/ui/theme/spacing';
 import { copyToClipboard, useWallet } from '@/ui/utils';
-import { RouteTypes, useNavigate } from '@/ui/pages/MainRoute';
+import { RouteTypes, useNavigate } from '@/ui/pages/routeTypes';
 
 import './index.less';
 

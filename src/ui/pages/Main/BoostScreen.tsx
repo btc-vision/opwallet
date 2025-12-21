@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 
 import { getUiType, useApproval, useWallet } from '@/ui/utils';
 
-import { RouteTypes, useNavigate } from '../MainRoute';
+import { RouteTypes, useNavigate } from '../routeTypes';
 
 export default function BoostScreen() {
     const navigate = useNavigate();

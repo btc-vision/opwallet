@@ -1,4 +1,7 @@
+import { useState, useEffect } from 'react';
+
 import { Column, Content, Header, Layout } from '@/ui/components';
+import { WalletSetupGuideModal } from '@/ui/components/WalletSetupGuideModal';
 import { useExtensionIsInTab } from '@/ui/features/browser/tabs';
 import {
     FileTextOutlined,
@@ -10,7 +13,7 @@ import {
     UsbOutlined
 } from '@ant-design/icons';
 
-import { RouteTypes, useNavigate } from '../MainRoute';
+import { RouteTypes, useNavigate } from '../routeTypes';
 
 const colors = {
     main: '#f37413',
@@ -40,6 +43,27 @@ interface WalletOption {
 export default function AddKeyringScreen() {
     const navigate = useNavigate();
     const isInTab = useExtensionIsInTab();
+    const [showSetupGuide, setShowSetupGuide] = useState(false);
+
+    // Show setup guide on first mount
+    useEffect(() => {
+        // Check if this is a first-time visit or show guide for wallet creation
+        setShowSetupGuide(true);
+    }, []);
+
+    const handleSelectHD = () => {
+        setShowSetupGuide(false);
+        navigate(RouteTypes.CreateHDWalletScreen, { isImport: false });
+    };
+
+    const handleSelectWIF = () => {
+        setShowSetupGuide(false);
+        navigate(RouteTypes.CreateSimpleWalletScreen);
+    };
+
+    const handleCloseGuide = () => {
+        setShowSetupGuide(false);
+    };
 
     const createOptions: WalletOption[] = [
         {
@@ -310,6 +334,14 @@ export default function AddKeyringScreen() {
                     </div>
                 </Column>
             </Content>
+
+            {/* Setup Guide Modal */}
+            <WalletSetupGuideModal
+                open={showSetupGuide}
+                onSelectHD={handleSelectHD}
+                onSelectWIF={handleSelectWIF}
+                onClose={handleCloseGuide}
+            />
         </Layout>
     );
 }

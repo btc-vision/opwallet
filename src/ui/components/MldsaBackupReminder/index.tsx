@@ -1,7 +1,7 @@
 import { useState } from 'react';
 
 import { Account } from '@/shared/types';
-import { RouteTypes, useNavigate } from '@/ui/pages/MainRoute';
+import { RouteTypes, useNavigate } from '@/ui/pages/routeTypes';
 import { useWallet } from '@/ui/utils';
 import { KeyOutlined, SafetyOutlined, WarningOutlined } from '@ant-design/icons';
 

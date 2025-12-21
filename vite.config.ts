@@ -7,7 +7,7 @@ import { defineConfig, type PluginOption } from 'vite';
 import checker from 'vite-plugin-checker';
 import eslint from 'vite-plugin-eslint2';
 import { nodePolyfills } from 'vite-plugin-node-polyfills';
-import topLevelAwait from 'vite-plugin-top-level-await';
+// topLevelAwait removed - wraps chunks in async IIFEs breaking synchronous exports
 import wasm from 'vite-plugin-wasm';
 import tsconfigPaths from 'vite-tsconfig-paths';
 
@@ -177,6 +177,32 @@ function copyAssetsPlugin(): PluginOption {
     };
 }
 
+// Service worker polyfill plugin
+// Injects window/document polyfills at the start of chunks that need them
+function serviceWorkerPolyfillPlugin(): PluginOption {
+    // Minimal polyfill that only activates in service worker context
+    const polyfill = `(function(){if(typeof window==="undefined"){var n=function(){};globalThis.window=Object.assign({},globalThis,{dispatchEvent:n,addEventListener:n,removeEventListener:n});globalThis.document={createElement:function(){return{relList:{supports:function(){return false}}}},querySelector:function(){return null},querySelectorAll:function(){return[]},getElementsByTagName:function(){return[]},head:{appendChild:n}}}})();`;
+
+    return {
+        name: 'service-worker-polyfill',
+        generateBundle(options, bundle) {
+            for (const fileName of Object.keys(bundle)) {
+                const chunk = bundle[fileName];
+                if (chunk.type === 'chunk' && fileName.endsWith('.js')) {
+                    // Only inject into chunks that have window/document references
+                    if (
+                        chunk.code.includes('window.') ||
+                        chunk.code.includes('document.') ||
+                        chunk.code.includes('__vitePreload')
+                    ) {
+                        chunk.code = polyfill + chunk.code;
+                    }
+                }
+            }
+        }
+    };
+}
+
 // Package creation plugin
 function packagePlugin(): PluginOption {
     return {
@@ -257,7 +283,7 @@ export default defineConfig(({ mode }) => {
             rollupOptions: {
                 cache: true,
                 input: {
-                    background: resolve(__dirname, 'src/background/index.ts'),
+                    // background is built separately with vite.config.background.ts
                     pageProvider: resolve(__dirname, 'src/content-script/pageProvider/index.ts'),
                     ui: resolve(__dirname, 'src/ui/index.tsx'),
                     'opnet-resolver': resolve(__dirname, 'src/opnet-resolver/index.ts')
@@ -281,14 +307,51 @@ export default defineConfig(({ mode }) => {
                     },
                     //inlineDynamicImports: true,
                     manualChunks(id) {
-                        if (id.includes('crypto-browserify')) {
-                            return 'crypto-polyfill';
-                        } else if (id.includes('node_modules')) {
-                            // Split vendor code
-                            //if (id.includes('react') || id.includes('react-dom')) return 'react';
-                            if (id.includes('antd')) return 'antd';
-                            //if (id.includes('@btc-vision')) return 'btc';
-                            //return 'vendor';
+                        // crypto-browserify has internal circular deps - don't split it
+                        // Let it bundle with the main code
+                        if (id.includes('crypto-browserify') || id.includes('randombytes')) {
+                            return undefined; // Don't put in separate chunk
+                        }
+                        if (id.includes('node_modules')) {
+                            // Noble crypto libraries - shared across packages
+                            if (id.includes('@noble/curves')) return 'noble-curves';
+                            if (id.includes('@noble/hashes')) return 'noble-hashes';
+                            if (id.includes('@scure/')) return 'scure';
+
+                            // @btc-vision packages - split individually
+                            if (id.includes('@btc-vision/transaction')) return 'btc-transaction';
+                            if (id.includes('@btc-vision/bitcoin')) return 'btc-bitcoin';
+                            if (id.includes('@btc-vision/bip32')) return 'btc-bip32';
+                            if (id.includes('@btc-vision/post-quantum')) return 'btc-post-quantum';
+                            if (id.includes('@btc-vision/wallet-sdk')) return 'btc-wallet-sdk';
+                            if (id.includes('@btc-vision/logger')) return 'btc-logger';
+                            if (id.includes('@btc-vision/passworder')) return 'btc-passworder';
+
+                            // opnet library
+                            if (id.includes('node_modules/opnet')) return 'opnet';
+
+                            // Bitcoin utilities
+                            if (id.includes('bip39')) return 'bip39';
+                            if (id.includes('ecpair') || id.includes('tiny-secp256k1')) return 'bitcoin-utils';
+                            if (id.includes('bitcore-lib')) return 'bitcore';
+
+                            // UI libraries - react, react-dom, scheduler, and antd MUST be in same chunk
+                            // to ensure proper initialization order
+                            if (
+                                id.includes('node_modules/react-dom') ||
+                                id.includes('node_modules/react/') ||
+                                id.includes('node_modules/scheduler') ||
+                                id.includes('antd') ||
+                                id.includes('@ant-design') ||
+                                id.includes('rc-') ||
+                                id.includes('@rc-component')
+                            )
+                                return 'react-ui';
+
+                            // Other large deps
+                            if (id.includes('ethers')) return 'ethers';
+                            if (id.includes('protobufjs') || id.includes('@protobufjs')) return 'protobuf';
+                            if (id.includes('lodash')) return 'lodash';
                         }
                     }
                 }
@@ -302,12 +365,18 @@ export default defineConfig(({ mode }) => {
         },
 
         plugins: [
-            // Node.js polyfills
+            // Node.js polyfills - let it handle crypto properly
             nodePolyfills({
                 globals: {
                     Buffer: true,
                     global: true,
                     process: true
+                },
+                // Use native crypto where available
+                overrides: {
+                    crypto: 'crypto-browserify',
+                    // Use our ESM events shim instead of CJS polyfill
+                    events: resolve(__dirname, 'src/shims/events-browser.js')
                 }
             }),
 
@@ -324,7 +393,10 @@ export default defineConfig(({ mode }) => {
 
             // WASM support
             wasm(),
-            topLevelAwait(),
+
+            // topLevelAwait removed - it wraps chunks in async IIFEs which breaks
+            // synchronous exports like PortMessage (they become undefined until async completes)
+
             tailwindcss(),
 
             // ESLint
@@ -351,6 +423,7 @@ export default defineConfig(({ mode }) => {
             // Custom plugins
             manifestPlugin(),
             copyAssetsPlugin(),
+            serviceWorkerPolyfillPlugin(),
             packagePlugin()
         ].filter(Boolean) as PluginOption[],
 
@@ -360,10 +433,24 @@ export default defineConfig(({ mode }) => {
                     find: '@',
                     replacement: resolve(__dirname, './src')
                 },
-                /*{
-                    find: /^@btc-vision\/wallet-sdk$/,
-                    replacement: resolve(__dirname, 'node_modules/@btc-vision/wallet-sdk/lib/index.js')
-                },*/
+                // ESM-compatible events shim to avoid CJS bundling issues
+                {
+                    find: 'events',
+                    replacement: resolve(__dirname, 'src/shims/events-browser.js')
+                },
+                // Dedupe noble/scure packages to single version
+                {
+                    find: '@noble/curves',
+                    replacement: resolve(__dirname, 'node_modules/@noble/curves')
+                },
+                {
+                    find: '@noble/hashes',
+                    replacement: resolve(__dirname, 'node_modules/@noble/hashes')
+                },
+                {
+                    find: '@scure/base',
+                    replacement: resolve(__dirname, 'node_modules/@scure/base')
+                },
                 {
                     find: /^@btc-vision\/wallet-sdk\/(.*)/,
                     replacement: resolve(__dirname, 'node_modules/@btc-vision/wallet-sdk/$1')
@@ -371,14 +458,11 @@ export default defineConfig(({ mode }) => {
                 {
                     find: 'moment',
                     replacement: 'dayjs'
-                },
-                {
-                    find: 'crypto',
-                    replacement: 'crypto-browserify'
                 }
             ],
             extensions: ['.ts', '.tsx', '.js', '.jsx', '.json'],
-            mainFields: ['module', 'main', 'browser']
+            mainFields: ['module', 'main', 'browser'],
+            dedupe: ['@noble/curves', '@noble/hashes', '@scure/base', 'buffer', 'react', 'react-dom', 'scheduler']
         },
 
         define: {
@@ -454,22 +538,20 @@ export default defineConfig(({ mode }) => {
             include: [
                 'react',
                 'react-dom',
+                'scheduler',
                 'dayjs',
                 'buffer',
                 'process',
-                'events',
                 'stream-browserify',
-                'crypto-browserify',
                 'bitcore-lib',
-                'bip-schnorr',
-                'crypto-browserify'
+                'bip-schnorr'
             ],
-            exclude: ['@btc-vision/transaction']
+            exclude: ['@btc-vision/transaction', 'crypto-browserify']
         },
 
         worker: {
             format: 'es',
-            plugins: () => [wasm(), topLevelAwait()]
+            plugins: () => [wasm()]
         },
 
         esbuild: {

@@ -1,4 +1,5 @@
-import { AddressTypes, NetworkType, RestoreWalletType } from '../types';
+import { NetworkType, RestoreWalletType } from '../types';
+import { AddressTypes } from '@btc-vision/transaction';
 
 export enum CHAINS_ENUM {
     BTC = 'BTC'
@@ -50,6 +51,10 @@ export const KEYRING_TYPES: Record<
         alianName: 'Keystone'
     }
 };
+
+// Duplication backup storage
+export const DUPLICATION_BACKUP_STORAGE_KEY = 'duplicationBackupVault';
+export const DUPLICATION_BACKUP_VERSION = '1.0.0';
 
 export const IS_CHROME = /Chrome\//i.test(navigator.userAgent);
 

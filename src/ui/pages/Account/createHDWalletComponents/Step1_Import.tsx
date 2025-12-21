@@ -3,7 +3,8 @@ import * as bip39 from 'bip39';
 import { useEffect, useMemo, useState } from 'react';
 
 import { OW_HD_PATH } from '@/shared/constant';
-import { AddressTypes, RestoreWalletType } from '@/shared/types';
+import { RestoreWalletType } from '@/shared/types';
+import { AddressTypes } from '@btc-vision/transaction';
 import { isWalletError } from '@/shared/utils/errors';
 import { Button, Card, Column, Grid, Input, Row, Text } from '@/ui/components';
 import { useTools } from '@/ui/components/ActionComponent';
@@ -14,7 +15,7 @@ import {
     UpdateContextDataParams,
     WordsType
 } from '@/ui/pages/Account/createHDWalletComponents/types';
-import { RouteTypes, useNavigate } from '@/ui/pages/MainRoute';
+import { RouteTypes, useNavigate } from '@/ui/pages/routeTypes';
 import { useCreateAccountCallback } from '@/ui/state/global/hooks';
 
 const WORDS_12_ITEM = {

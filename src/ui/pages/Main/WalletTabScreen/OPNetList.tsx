@@ -18,7 +18,7 @@ import { useChainType } from '@/ui/state/settings/hooks';
 
 import { faEye, faEyeSlash, faPencil, faPlus, faRefresh, faTrash } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { RouteTypes, useNavigate } from '../../MainRoute';
+import { RouteTypes, useNavigate } from '../../routeTypes';
 
 BigNumber.config({ EXPONENTIAL_AT: 256 });
 

@@ -1,4 +1,4 @@
-import { isNull } from 'lodash';
+import { isNull } from 'lodash-es';
 import React, { CSSProperties, useEffect, useState } from 'react';
 
 import Web3API from '@/shared/web3/Web3API';

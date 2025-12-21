@@ -8,7 +8,7 @@ import Web3API from '@/shared/web3/Web3API';
 import { Column, Content, Header, Input, Layout, OPNetLoader } from '@/ui/components';
 import { FeeRateBar } from '@/ui/components/FeeRateBar';
 import { BalanceDisplay } from '@/ui/pages/Main/WalletTabScreen/components/BalanceDisplay';
-import { RouteTypes, useNavigate } from '@/ui/pages/MainRoute';
+import { RouteTypes, useNavigate } from '@/ui/pages/routeTypes';
 import { useAccountBalance, useCurrentAccount } from '@/ui/state/accounts/hooks';
 import { useBTCUnit } from '@/ui/state/settings/hooks';
 import { useUiTxCreateScreen, useUpdateUiTxCreateScreen } from '@/ui/state/ui/hooks';

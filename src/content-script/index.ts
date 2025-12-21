@@ -2,7 +2,9 @@ import { nanoid } from 'nanoid';
 
 import { SendMessagePayload } from '@/shared/types/Message';
 import { RequestParams } from '@/shared/types/Request.js';
-import { Message } from '@/shared/utils';
+// Import message classes directly to avoid circular dependency issues with events shim
+import BroadcastChannelMessage from '@/shared/utils/message/broadcastChannelMessage';
+import PortMessage from '@/shared/utils/message/portMessage';
 import browser from 'webextension-polyfill';
 
 // Import search redirect for .btc domain detection on search pages
@@ -49,8 +51,6 @@ function injectScript() {
         });
 
         // Set up communication channels
-        const { BroadcastChannelMessage, PortMessage } = Message;
-
         const pm = new PortMessage().connect();
         const bcm = new BroadcastChannelMessage(channelName).listen((data: RequestParams) => {
             return pm.request(data);

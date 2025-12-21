@@ -8,7 +8,7 @@ import {
     TransactionType
 } from '@/shared/types/TransactionHistory';
 import { Column, Content, Header, Layout, OPNetLoader } from '@/ui/components';
-import { RouteTypes, useNavigate } from '@/ui/pages/MainRoute';
+import { RouteTypes, useNavigate } from '@/ui/pages/routeTypes';
 import { useCurrentAccount } from '@/ui/state/accounts/hooks';
 import { useChainType } from '@/ui/state/settings/hooks';
 import { useWallet } from '@/ui/utils';

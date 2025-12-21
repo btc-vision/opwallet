@@ -7,7 +7,7 @@ import { colors } from '@/ui/theme/colors';
 import { useWallet } from '@/ui/utils';
 import { CloseOutlined } from '@ant-design/icons';
 
-import { RouteTypes, useNavigate } from '../MainRoute';
+import { RouteTypes, useNavigate } from '../routeTypes';
 
 function WalletItem(props: { walletType: HardwareWalletType; onClick?: () => void; disabled?: boolean }) {
     const walletInfo = HARDWARE_WALLETS[props.walletType];

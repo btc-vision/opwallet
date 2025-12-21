@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react';
-import { RouteTypes, useNavigate } from '@/ui/pages/MainRoute';
+import { RouteTypes, useNavigate } from '@/ui/pages/routeTypes';
 import { useCurrentAccount } from '@/ui/state/accounts/hooks';
 import { copyToClipboard, shortAddress, useWallet } from '@/ui/utils';
 import { CopyOutlined, WarningOutlined } from '@ant-design/icons';
 
 import { KEYRING_TYPE } from '@/shared/constant';
-import { AddressTypes } from '@/shared/types';
+import { AddressTypes } from '@btc-vision/transaction';
 import { useCurrentKeyring } from '@/ui/state/keyrings/hooks';
 import { useTools } from '../ActionComponent';
 import { Icon } from '../Icon';

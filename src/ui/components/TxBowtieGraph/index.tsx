@@ -5,24 +5,7 @@ import { useBTCUnit } from '@/ui/state/settings/hooks';
 import { satoshisToAmount, shortAddress } from '@/ui/utils';
 
 import { TxBowtieTooltip, TooltipPosition } from './TxBowtieTooltip';
-
-// Types for transaction inputs/outputs
-export interface TxInput {
-    txid?: string;
-    vout?: number;
-    address: string;
-    value: number; // in satoshis
-    isToSign?: boolean;
-    isCoinbase?: boolean;
-}
-
-export interface TxOutput {
-    address: string;
-    value: number; // in satoshis
-    isChange?: boolean;
-    isFee?: boolean;
-    isEpochMiner?: boolean; // OPNet epoch miner output (gas fee)
-}
+import { TxInput, TxOutput } from './types';
 
 export interface TxBowtieGraphProps {
     inputs: TxInput[];

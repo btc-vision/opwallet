@@ -1,14 +1,12 @@
 import { EVENTS, MANIFEST_VERSION } from '@/shared/constant';
 import eventBus from '@/shared/eventBus';
 import { ProviderControllerRequest, RequestParams } from '@/shared/types/Request.js';
-import { Message } from '@/shared/utils';
-import { openExtensionInTab } from '@/ui/features/browser/tabs';
+import { openExtensionInTab } from '@/shared/utils/browser-tabs';
 import 'reflect-metadata';
 
+import * as ecc from 'tiny-secp256k1';
 import { SessionEvent, SessionEventPayload } from '@/shared/interfaces/SessionEvent';
 import { customNetworksManager } from '@/shared/utils/CustomNetworksManager';
-import { initEccLib } from '@btc-vision/bitcoin';
-import * as ecc from 'tiny-secp256k1';
 import { Runtime } from 'webextension-polyfill';
 import { providerController, walletController } from './controller';
 import contactBookService from './service/contactBook';
@@ -21,14 +19,25 @@ import sessionService from './service/session';
 import { isWalletControllerMethod } from './utils/controller';
 import { storage } from './webapi';
 import browser, { browserRuntimeOnConnect, browserRuntimeOnInstalled } from './webapi/browser';
+import { initEccLib } from '@btc-vision/bitcoin';
+// Import PortMessage directly to avoid circular dependency issues with events shim
+import PortMessage from '@/shared/utils/message/portMessage';
 
-initEccLib(ecc);
+// Lazy-load tiny-secp256k1 to avoid top-level await in service worker
+let eccInitialized = false;
 
-const { PortMessage } = Message;
+function ensureEccLib(): void {
+    if (!eccInitialized) {
+        initEccLib(ecc); // ecc is already imported, just not initialized
+        eccInitialized = true;
+    }
+}
 
 let appStoreLoaded = false;
 
 async function restoreAppState() {
+    ensureEccLib();
+
     const keyringState = await storage.get<StoredData>('keyringState');
     keyringService.loadStore(keyringState ?? { booted: '', vault: '' });
     keyringService.store.subscribe((value) => storage.set('keyringState', value));
@@ -223,7 +232,7 @@ if (MANIFEST_VERSION === 'mv3') {
 const setupBtcDomainInterception = () => {
     // Listen for navigation to .btc domains
     chrome.webNavigation.onBeforeNavigate.addListener(
-        (details) => {
+        async (details) => {
             // Only intercept main frame navigations
             if (details.frameId !== 0) return;
 
@@ -239,16 +248,14 @@ const setupBtcDomainInterception = () => {
                     );
 
                     // Redirect to resolver
-                    chrome.tabs.update(details.tabId, { url: resolverUrl });
+                    await chrome.tabs.update(details.tabId, { url: resolverUrl });
                 }
             } catch {
                 // Invalid URL, ignore
             }
         },
         {
-            url: [
-                { hostSuffix: '.btc' }
-            ]
+            url: [{ hostSuffix: '.btc' }]
         }
     );
 };
@@ -299,10 +306,12 @@ const opnetMessageHandler = (
 
         handleMessage()
             .then((result) => sendResponse(result))
-            .catch((error) => sendResponse({ error: (error as Error).message }));
+            .catch((error: unknown) => sendResponse({ error: (error as Error).message }));
 
         return true; // Keep the message channel open for async response
     }
     return undefined;
 };
-browser.runtime.onMessage.addListener(opnetMessageHandler as Parameters<typeof browser.runtime.onMessage.addListener>[0]);
+browser.runtime.onMessage.addListener(
+    opnetMessageHandler as Parameters<typeof browser.runtime.onMessage.addListener>[0]
+);

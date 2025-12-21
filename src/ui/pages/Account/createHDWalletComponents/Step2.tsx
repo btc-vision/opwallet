@@ -2,14 +2,14 @@ import bitcore from 'bitcore-lib';
 import { useEffect, useMemo, useState } from 'react';
 
 import { ADDRESS_TYPES, RESTORE_WALLETS } from '@/shared/constant';
-import { AddressTypes } from '@/shared/types';
+import { AddressTypes } from '@btc-vision/transaction';
 import Web3API from '@/shared/web3/Web3API';
 import { Button, Column, Icon, Input, Row, Text } from '@/ui/components';
 import { useTools } from '@/ui/components/ActionComponent';
 import { AddressTypeCard2 } from '@/ui/components/AddressTypeCard';
 import { FooterButtonContainer } from '@/ui/components/FooterButtonContainer';
 import { ContextData, UpdateContextDataParams } from '@/ui/pages/Account/createHDWalletComponents/types';
-import { RouteTypes, useNavigate } from '@/ui/pages/MainRoute';
+import { RouteTypes, useNavigate } from '@/ui/pages/routeTypes';
 import { useCreateAccountCallback } from '@/ui/state/global/hooks';
 import { satoshisToAmount, useWallet } from '@/ui/utils';
 import { LoadingOutlined } from '@ant-design/icons';

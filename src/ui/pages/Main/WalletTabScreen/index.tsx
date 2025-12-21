@@ -1,11 +1,13 @@
-import React, { CSSProperties, useCallback, useEffect, useMemo, useState } from 'react';
+import React, { CSSProperties, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { UTXO_CONFIG } from '@/shared/config';
 import { AddressFlagType, KEYRING_TYPE } from '@/shared/constant';
+import { DuplicationDetectionResult } from '@/shared/types/Duplication';
 import { checkAddressFlag } from '@/shared/utils';
 import { Column, Content, Footer, Header, Image, Layout } from '@/ui/components';
 import AccountSelect from '@/ui/components/AccountSelect';
 import { DisableUnconfirmedsPopover } from '@/ui/components/DisableUnconfirmedPopover';
+import { DuplicationAlertModal } from '@/ui/components/DuplicationAlertModal';
 import { FeeRateBar } from '@/ui/components/FeeRateBar';
 import { MldsaBackupReminder } from '@/ui/components/MldsaBackupReminder';
 import { NavTabBar } from '@/ui/components/NavTabBar';
@@ -54,7 +56,7 @@ import {
 import { Address } from '@btc-vision/transaction';
 import { Tooltip } from 'antd';
 import ActionButton from '../../../components/ActionButton/index';
-import { RouteTypes, useNavigate } from '../../MainRoute';
+import { RouteTypes, useNavigate } from '../../routeTypes';
 import { SwitchChainModal } from '../../Settings/network/SwitchChainModal';
 import { OPNetList } from './OPNetList';
 import { useConsolidation } from './hooks';
@@ -154,6 +156,14 @@ export default function WalletTabScreen() {
     const [needsQuantumMigration, setNeedsQuantumMigration] = useState(false);
     const [showMldsaBackupReminder, setShowMldsaBackupReminder] = useState(false);
 
+    // Duplication detection state
+    const [duplicationDetection, setDuplicationDetection] = useState<DuplicationDetectionResult | null>(null);
+    const [showDuplicationAlert, setShowDuplicationAlert] = useState(false);
+    const duplicationCheckDoneRef = useRef(false);
+
+    // TOS state - must be declared before duplication check useEffect
+    const [termsVisible, setTermsVisible] = useState(false);
+
     // Check if quantum migration is needed (SimpleKeyring without quantum key)
     useEffect(() => {
         const checkQuantumStatus = async () => {
@@ -175,6 +185,51 @@ export default function WalletTabScreen() {
         };
         void checkQuantumStatus();
     }, [currentKeyring, wallet]);
+
+    // Check for wallet duplications - only once after TOS is accepted
+    useEffect(() => {
+        // Don't check for duplicates until TOS is accepted
+        if (termsVisible) {
+            return;
+        }
+
+        // Only check once per session
+        if (duplicationCheckDoneRef.current) {
+            return;
+        }
+
+        const checkForDuplicates = async () => {
+            duplicationCheckDoneRef.current = true;
+            try {
+                console.log('[WalletTabScreen] Checking for duplicates...');
+                const detection = await wallet.checkForDuplicates();
+                console.log('[WalletTabScreen] Detection result:', detection.hasDuplicates, 'conflicts:', detection.totalConflicts);
+
+                if (detection.hasDuplicates) {
+                    const state = await wallet.getDuplicationState();
+                    console.log('[WalletTabScreen] Duplication state:', state);
+
+                    // If there are still conflicts but state says resolved, reset it
+                    // This can happen if resolution didn't fully work or new conflicts appeared
+                    if (state.isResolved && detection.totalConflicts > 0) {
+                        console.log('[WalletTabScreen] Conflicts remain after resolution, resetting state');
+                        await wallet.resetDuplicationState();
+                    }
+
+                    if (!state.isResolved || detection.totalConflicts > 0) {
+                        console.log('[WalletTabScreen] Showing duplication alert modal');
+                        setDuplicationDetection(detection);
+                        setShowDuplicationAlert(true);
+                    }
+                }
+            } catch (e) {
+                console.error('[WalletTabScreen] Failed to check for duplicates:', e);
+            }
+        };
+
+        void checkForDuplicates();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [termsVisible]);
 
     // Check if MLDSA backup reminder should be shown (only for Simple Keyrings / WIF imports)
     useEffect(() => {
@@ -268,9 +323,13 @@ export default function WalletTabScreen() {
         await navigateToConsolidation();
     }, [navigateToConsolidation]);
 
-    const tools = useTools();
+    // Handle duplication resolution navigation
+    const handleDuplicationResolve = useCallback(() => {
+        setShowDuplicationAlert(false);
+        navigate(RouteTypes.DuplicationResolutionScreen);
+    }, [navigate]);
 
-    const [termsVisible, setTermsVisible] = useState(false);
+    const tools = useTools();
 
     const [domainTermsVisible, setDomainTermsVisible] = useState(false);
     const [showDomainTerms, setShowDomainTerms] = useState(false);
@@ -1302,6 +1361,14 @@ export default function WalletTabScreen() {
                     navigate(RouteTypes.BtcDomainScreen)
                 }}
             />
+
+            {/* Duplication Alert Modal - blocks interaction until resolved */}
+            {duplicationDetection && showDuplicationAlert && (
+                <DuplicationAlertModal
+                    detection={duplicationDetection}
+                    onResolve={handleDuplicationResolve}
+                />
+            )}
 
             <Footer px="zero" py="zero">
                 <NavTabBar tab="home" />
