@@ -43,7 +43,14 @@
         "// Utilities": "",
         "preview": "vite preview",
         "fix:modules": "node scripts/fix-modules.js",
-        "prepare": "npm run fix:modules"
+        "prepare": "npm run fix:modules",
+        "// Circular dependency check": "",
+        "check:circular": "madge --circular --extensions ts,tsx src/ && echo 'No circular dependencies found!'",
+        "prebuild:chrome": "npm run check:circular",
+        "prebuild:firefox": "npm run check:circular",
+        "prebuild:brave": "npm run check:circular",
+        "prebuild:edge": "npm run check:circular",
+        "prebuild:opera": "npm run check:circular"
     },
     "dependencies": {
         "@ant-design/icons": "^6.0.0",
@@ -246,6 +253,7 @@
         "eslint-plugin-unused-imports": "^4.1.4",
         "less": "^4.4.0",
         "less-loader": "^12.3.0",
+        "madge": "^8.0.0",
         "minimist": "^1.2.8",
         "prettier": "^3.6.2",
         "tailwindcss": "^4.1.12",

@@ -14,7 +14,7 @@ import { ObservableStore } from '@metamask/obs-store';
 
 import i18n from '../i18n';
 import preference from '../preference';
-import DisplayKeyring from './display';
+import DisplayKeyring, { setKeyringGetter } from './display';
 
 // Type for serialized keyring options
 export interface HdKeyringSerializedOptions {
@@ -1292,4 +1292,9 @@ class KeyringService extends EventEmitter {
     };
 }
 
-export default new KeyringService();
+const keyringService = new KeyringService();
+
+// Initialize the display keyring getter to break circular dependency
+setKeyringGetter((account: string, type: string) => keyringService.getKeyringForAccount(account, type));
+
+export default keyringService;

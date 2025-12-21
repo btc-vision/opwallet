@@ -281,9 +281,12 @@ export default defineConfig(({ mode }) => {
                     },
                     //inlineDynamicImports: true,
                     manualChunks(id) {
-                        if (id.includes('crypto-browserify')) {
-                            return 'crypto-polyfill';
-                        } else if (id.includes('node_modules')) {
+                        // crypto-browserify has internal circular deps - don't split it
+                        // Let it bundle with the main code
+                        if (id.includes('crypto-browserify') || id.includes('randombytes')) {
+                            return undefined; // Don't put in separate chunk
+                        }
+                        if (id.includes('node_modules')) {
                             // Noble crypto libraries - shared across packages
                             if (id.includes('@noble/curves')) return 'noble-curves';
                             if (id.includes('@noble/hashes')) return 'noble-hashes';
@@ -306,10 +309,10 @@ export default defineConfig(({ mode }) => {
                             if (id.includes('ecpair') || id.includes('tiny-secp256k1')) return 'bitcoin-utils';
                             if (id.includes('bitcore-lib')) return 'bitcore';
 
-                            // UI libraries
+                            // UI libraries - react and react-dom MUST be in same chunk
+                            if (id.includes('react-dom') || id.includes('react/')) return 'react';
+                            if (id.includes('/react.') || id.match(/node_modules\/react\//)) return 'react';
                             if (id.includes('antd') || id.includes('@ant-design')) return 'antd';
-                            if (id.includes('react-dom')) return 'react-dom';
-                            if (id.includes('react')) return 'react';
 
                             // Other large deps
                             if (id.includes('ethers')) return 'ethers';
@@ -328,12 +331,16 @@ export default defineConfig(({ mode }) => {
         },
 
         plugins: [
-            // Node.js polyfills
+            // Node.js polyfills - let it handle crypto properly
             nodePolyfills({
                 globals: {
                     Buffer: true,
                     global: true,
                     process: true
+                },
+                // Use native crypto where available
+                overrides: {
+                    crypto: 'crypto-browserify'
                 }
             }),
 
@@ -406,10 +413,6 @@ export default defineConfig(({ mode }) => {
                 {
                     find: 'moment',
                     replacement: 'dayjs'
-                },
-                {
-                    find: 'crypto',
-                    replacement: 'crypto-browserify'
                 }
             ],
             extensions: ['.ts', '.tsx', '.js', '.jsx', '.json'],
@@ -502,12 +505,10 @@ export default defineConfig(({ mode }) => {
                 'process',
                 'events',
                 'stream-browserify',
-                'crypto-browserify',
                 'bitcore-lib',
-                'bip-schnorr',
-                'crypto-browserify'
+                'bip-schnorr'
             ],
-            exclude: ['@btc-vision/transaction']
+            exclude: ['@btc-vision/transaction', 'crypto-browserify']
         },
 
         worker: {

@@ -7,7 +7,8 @@ import { DuplicationState } from '@/shared/types/Duplication';
 import { compareVersions } from 'compare-versions';
 import { cloneDeep } from 'lodash-es';
 import browser from '../webapi/browser';
-import { i18n, sessionService } from './index';
+import i18n from './i18n';
+import sessionService from './session';
 
 const version = process.env.release ?? '0';
 

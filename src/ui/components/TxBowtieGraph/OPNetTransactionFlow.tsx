@@ -5,7 +5,7 @@ import { ParsedTransaction, ParsedTxOutput } from '@/background/service/notifica
 import { ContractInformation } from '@/shared/web3/interfaces/ContractInformation';
 import { selectorToString } from '@/shared/web3/decoder/CalldataDecoder';
 import { shortAddress } from '@/ui/utils';
-import { TxInput, TxOutput } from './index';
+import { TxInput, TxOutput } from './types';
 import { MultiTxBowtieGraph, TransactionData } from './MultiTxBowtieGraph';
 
 // Interface for deserialized pre-signed data (BigInt restored)

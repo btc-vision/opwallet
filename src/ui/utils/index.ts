@@ -1,33 +1,10 @@
 import BigNumber from 'bignumber.js';
 import { useLocation } from 'react-router-dom';
 
-export * from './hooks';
-export * from './WalletContext';
-const UI_TYPE = {
-    Tab: 'index',
-    Pop: 'popup',
-    Notification: 'notification'
-};
-
-interface UiTypeCheck {
-    isTab: boolean;
-    isNotification: boolean;
-    isPop: boolean;
-
-    [key: string]: boolean;
-}
-
-export const getUiType = (): UiTypeCheck => {
-    const { pathname } = window.location;
-    return Object.entries(UI_TYPE).reduce<UiTypeCheck>(
-        (m, [key, value]) => {
-            m[`is${key}`] = pathname === `/${value}.html`;
-
-            return m;
-        },
-        { isNotification: false, isPop: false, isTab: false }
-    );
-};
+export { getUiType } from './uiType';
+export { useApproval, useWalletRequest } from './hooks';
+export { useWallet, WalletProvider } from './WalletContext';
+export type { WalletController } from './WalletContext';
 
 export const satoshisToBTC = (amount: number) => {
     return amount / 100000000;

@@ -1,6 +1,7 @@
 import React from 'react';
 import { ArrowDownOutlined } from '@ant-design/icons';
-import { TxBowtieGraph, TxInput, TxOutput } from './index';
+import { TxBowtieGraph } from './index';
+import { TxInput, TxOutput } from './types';
 
 // Colors matching the wallet theme
 const colors = {
