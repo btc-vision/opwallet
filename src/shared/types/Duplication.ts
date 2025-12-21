@@ -158,6 +158,8 @@ export interface ConflictResolutionChoice {
     resolution: DuplicationResolution;
     /** Index of the wallet the user selected as correct */
     correctWalletIndex: number;
+    /** For KEEP_SELECTED: indices of wallets to delete (all except correctWalletIndex) */
+    walletsToDelete?: number[];
     /** For MOVE_MLDSA: target wallet to move the key to */
     targetWalletIndex?: number;
     /** For REPLACE_MLDSA: the new quantum private key to use */

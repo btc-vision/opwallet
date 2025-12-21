@@ -29,7 +29,6 @@ class DuplicationDetectionService extends EventEmitter {
      * Detects both wallet duplicates and MLDSA duplicates
      */
     async detectDuplicates(): Promise<DuplicationDetectionResult> {
-        console.log('[DuplicationDetection] Starting duplicate detection...');
         const walletDuplicates = await this.detectWalletDuplicates();
         const mldsaDuplicates = await this.detectMldsaDuplicates();
 
@@ -41,12 +40,9 @@ class DuplicationDetectionService extends EventEmitter {
             detectedAt: Date.now()
         };
 
-        console.log('[DuplicationDetection] Result:', JSON.stringify({
-            hasDuplicates: result.hasDuplicates,
-            walletDuplicateCount: walletDuplicates.length,
-            mldsaDuplicateCount: mldsaDuplicates.length,
-            totalConflicts: result.totalConflicts
-        }));
+        if (result.hasDuplicates) {
+            console.log(`[DuplicationDetection] Found ${result.totalConflicts} conflicts`);
+        }
 
         return result;
     }
@@ -62,13 +58,9 @@ class DuplicationDetectionService extends EventEmitter {
         // Map: privateKeyHash -> { mldsaHash -> wallets[] }
         const privateKeyHashMap = new Map<string, Map<string, DuplicateWalletInfo[]>>();
 
-        console.log('[DuplicationDetection] Checking', keyrings.length, 'keyrings for duplicates');
-
         for (let i = 0; i < keyrings.length; i++) {
             const keyring = keyrings[i];
             const addressType = addressTypes[i];
-
-            console.log(`[DuplicationDetection] Keyring ${i}: type=${keyring.type}, instanceof SimpleKeyring=${keyring instanceof SimpleKeyring}, instanceof HdKeyring=${keyring instanceof HdKeyring}`);
 
             let privateKeyHash: string | undefined;
             let mldsaHash: string | undefined;
@@ -129,8 +121,6 @@ class DuplicationDetectionService extends EventEmitter {
             const mldsaKeys = Array.from(mldsaMap.keys());
             const allWallets = Array.from(mldsaMap.values()).flat();
 
-            console.log(`[DuplicationDetection] PrivateKey ${privateKeyHash.substring(0, 16)}: ${allWallets.length} wallets, ${mldsaKeys.length} unique MLDSA keys`);
-
             if (allWallets.length > 1) {
                 // There are duplicates
                 if (mldsaKeys.length === 1) {
@@ -154,7 +144,6 @@ class DuplicationDetectionService extends EventEmitter {
             }
         });
 
-        console.log('[DuplicationDetection] Found', conflicts.length, 'wallet duplicate conflicts');
         return conflicts;
     }
 
@@ -360,8 +349,6 @@ class DuplicationDetectionService extends EventEmitter {
 
         const networkType = preference.store.networkType;
 
-        console.log(`[DuplicationDetection] getWalletInfo: keyringIndex=${keyringIndex}, pubkey=${pubkey?.substring(0, 16)}..., addressType=${addressType}, networkType=${networkType}`);
-
         // Derive Bitcoin address from pubkey using proper method
         try {
             address = publicKeyToAddressWithNetworkType(
@@ -369,10 +356,8 @@ class DuplicationDetectionService extends EventEmitter {
                 addressType,
                 networkTypeToOPNet(networkType)
             );
-            console.log(`[DuplicationDetection] Derived address: ${address}`);
         } catch (e) {
-            console.error(`[DuplicationDetection] Address derivation failed:`, e);
-            // Address derivation failed, will be empty
+            console.error(`[DuplicationDetection] Address derivation failed for keyring ${keyringIndex}:`, e);
         }
 
         // Get MLDSA info
@@ -406,15 +391,10 @@ class DuplicationDetectionService extends EventEmitter {
                 onChainLinkedMldsaHash = (info as { mldsaHashedPublicKey?: string }).mldsaHashedPublicKey;
                 if (onChainLinkedMldsaHash && mldsaPublicKeyHash) {
                     isOnChainMatch = onChainLinkedMldsaHash.toLowerCase() === mldsaPublicKeyHash.toLowerCase();
-                    console.log(`[DuplicationDetection] On-chain check for ${pubkey.substring(0, 16)}...: onChain=${onChainLinkedMldsaHash?.substring(0, 16)}, local=${mldsaPublicKeyHash?.substring(0, 16)}, match=${isOnChainMatch}`);
-                } else {
-                    console.log(`[DuplicationDetection] No on-chain MLDSA for ${pubkey.substring(0, 16)}... (onChain=${onChainLinkedMldsaHash}, local=${mldsaPublicKeyHash})`);
                 }
-            } else {
-                console.log(`[DuplicationDetection] No info or error for pubkey ${pubkey.substring(0, 16)}...:`, info);
             }
-        } catch (e) {
-            console.error(`[DuplicationDetection] On-chain verification failed for ${pubkey.substring(0, 16)}...:`, e);
+        } catch {
+            // On-chain verification failed silently
         }
 
         // Get wallet name from preferences

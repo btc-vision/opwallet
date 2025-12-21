@@ -17,6 +17,7 @@ import {
 import { Button, Card, Column, Content, Header, Input, Layout, Row, Text } from '@/ui/components';
 import { useTools } from '@/ui/components/ActionComponent';
 import { RouteTypes, useNavigate } from '@/ui/pages/MainRoute';
+import { useReloadAccounts } from '@/ui/state/accounts/hooks';
 import { useWallet } from '@/ui/utils';
 
 const colors = {
@@ -52,6 +53,7 @@ export default function DuplicationResolutionScreen() {
     const wallet = useWallet();
     const navigate = useNavigate();
     const tools = useTools();
+    const reloadAccounts = useReloadAccounts();
 
     const [step, setStep] = useState<ResolutionStep>(ResolutionStep.PASSWORD);
     const [password, setPassword] = useState('');
@@ -62,11 +64,14 @@ export default function DuplicationResolutionScreen() {
     const [conflictSelections, setConflictSelections] = useState<ConflictSelection[]>([]);
     const [confirmAcknowledged, setConfirmAcknowledged] = useState(false);
 
-    // Load detection results on mount
+    // Load detection results once on mount
     useEffect(() => {
+        let mounted = true;
         const loadDetection = async () => {
             try {
                 const result = await wallet.checkForDuplicates();
+                if (!mounted) return;
+
                 setDetection(result);
 
                 // Initialize selections
@@ -82,7 +87,12 @@ export default function DuplicationResolutionScreen() {
             }
         };
         void loadDetection();
-    }, [wallet]);
+
+        return () => {
+            mounted = false;
+        };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []); // Only run once on mount
 
     const handlePasswordVerify = async () => {
         if (!password) return;
@@ -155,21 +165,50 @@ export default function DuplicationResolutionScreen() {
             return;
         }
 
+        if (!detection) {
+            tools.toastError('Detection data not loaded');
+            return;
+        }
+
         setIsLoading(true);
         try {
             // Apply resolutions for each conflict
+            const allConflicts = [...detection.walletDuplicates, ...detection.mldsaDuplicates];
+
             for (const selection of conflictSelections) {
+                // Find the conflict to get all wallet indices
+                const conflict = allConflicts.find((c) => c.conflictId === selection.conflictId);
+                if (!conflict) {
+                    console.error('[Resolution] Conflict not found:', selection.conflictId);
+                    continue;
+                }
+
+                // Get indices of wallets to delete (all except the selected one)
+                const allIndices = conflict.wallets.map((w) => w.keyringIndex);
+                const walletsToDelete = allIndices.filter((idx) => idx !== selection.selectedWalletIndex);
+
+                console.log('[Resolution] Conflict:', selection.conflictId);
+                console.log('[Resolution] All wallet indices:', allIndices);
+                console.log('[Resolution] Selected to keep:', selection.selectedWalletIndex);
+                console.log('[Resolution] Wallets to delete:', walletsToDelete);
+
                 await wallet.resolveDuplicationConflict({
                     conflictId: selection.conflictId,
                     resolution: DuplicationResolution.KEEP_SELECTED,
-                    correctWalletIndex: selection.selectedWalletIndex
+                    correctWalletIndex: selection.selectedWalletIndex,
+                    walletsToDelete
                 });
             }
 
             await wallet.setDuplicationResolved();
+
+            // Reload accounts to reflect the changes
+            await reloadAccounts();
+
             tools.toastSuccess('All conflicts resolved successfully');
             setStep(ResolutionStep.COMPLETE);
         } catch (e) {
+            console.error('Failed to apply resolutions:', e);
             tools.toastError('Failed to apply resolutions. Please try again.');
         } finally {
             setIsLoading(false);
@@ -564,7 +603,7 @@ export default function DuplicationResolutionScreen() {
         const allConflicts = [...detection.walletDuplicates, ...detection.mldsaDuplicates];
 
         return (
-            <Column gap="lg">
+            <Column gap="md" style={{ flex: 1, minHeight: 0 }}>
                 <Text text="Resolve Conflicts" preset="title" textCenter />
                 <Text
                     text="Select the correct wallet for each conflict. Wallets with on-chain verified MLDSA keys are marked."
@@ -573,7 +612,7 @@ export default function DuplicationResolutionScreen() {
                     textCenter
                 />
 
-                <div style={{ maxHeight: '300px', overflowY: 'auto' }}>
+                <div style={{ flex: 1, overflowY: 'auto', minHeight: 0, paddingBottom: '12px' }}>
                     {allConflicts.map((conflict) =>
                         renderConflictCard(
                             conflict,
@@ -719,10 +758,12 @@ export default function DuplicationResolutionScreen() {
                     <LockOutlined style={{ fontSize: 20, color: colors.error }} />
                 }
             />
-            <Content>
-                <Column fullX>
+            <Content style={{ display: 'flex', flexDirection: 'column' }}>
+                <Column fullX style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
                     {step < ResolutionStep.COMPLETE && renderStepIndicator()}
-                    {renderCurrentStep()}
+                    <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+                        {renderCurrentStep()}
+                    </div>
                 </Column>
             </Content>
         </Layout>

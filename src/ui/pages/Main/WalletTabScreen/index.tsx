@@ -1,4 +1,4 @@
-import React, { CSSProperties, useCallback, useEffect, useMemo, useState } from 'react';
+import React, { CSSProperties, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { UTXO_CONFIG } from '@/shared/config';
 import { AddressFlagType, KEYRING_TYPE } from '@/shared/constant';
@@ -159,6 +159,7 @@ export default function WalletTabScreen() {
     // Duplication detection state
     const [duplicationDetection, setDuplicationDetection] = useState<DuplicationDetectionResult | null>(null);
     const [showDuplicationAlert, setShowDuplicationAlert] = useState(false);
+    const duplicationCheckDoneRef = useRef(false);
 
     // TOS state - must be declared before duplication check useEffect
     const [termsVisible, setTermsVisible] = useState(false);
@@ -185,14 +186,20 @@ export default function WalletTabScreen() {
         void checkQuantumStatus();
     }, [currentKeyring, wallet]);
 
-    // Check for wallet duplications - only after TOS is accepted
+    // Check for wallet duplications - only once after TOS is accepted
     useEffect(() => {
         // Don't check for duplicates until TOS is accepted
         if (termsVisible) {
             return;
         }
 
+        // Only check once per session
+        if (duplicationCheckDoneRef.current) {
+            return;
+        }
+
         const checkForDuplicates = async () => {
+            duplicationCheckDoneRef.current = true;
             try {
                 console.log('[WalletTabScreen] Checking for duplicates...');
                 const detection = await wallet.checkForDuplicates();
@@ -214,7 +221,8 @@ export default function WalletTabScreen() {
         };
 
         void checkForDuplicates();
-    }, [wallet, termsVisible]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [termsVisible]);
 
     // Check if MLDSA backup reminder should be shown (only for Simple Keyrings / WIF imports)
     useEffect(() => {
