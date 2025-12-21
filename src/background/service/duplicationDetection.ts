@@ -8,7 +8,7 @@
 import { EventEmitter } from 'events';
 
 import { KEYRING_TYPE } from '@/shared/constant';
-import { AddressTypes } from '@/shared/types';
+import { AddressTypes, networkTypeToOPNet } from '@/shared/types';
 import {
     DuplicationConflict,
     DuplicationDetectionResult,
@@ -17,7 +17,7 @@ import {
     OnChainLinkageInfo
 } from '@/shared/types/Duplication';
 import { MessageSigner } from '@btc-vision/transaction';
-import { HdKeyring, SimpleKeyring } from '@btc-vision/wallet-sdk';
+import { HdKeyring, publicKeyToAddressWithNetworkType, SimpleKeyring } from '@btc-vision/wallet-sdk';
 
 import keyringService, { HdKeyringSerializedOptions, SimpleKeyringSerializedOptions } from './keyring';
 import preference from './preference';
@@ -53,11 +53,14 @@ class DuplicationDetectionService extends EventEmitter {
 
     /**
      * Detect same WIF/mnemonic imported multiple times
+     * Only reports as conflict if MLDSA keys are different
+     * Same wallet + same MLDSA = true duplicate (just redundant copies)
      */
     async detectWalletDuplicates(): Promise<DuplicationConflict[]> {
         const keyrings = keyringService.keyrings;
         const addressTypes = keyringService.addressTypes;
-        const privateKeyHashMap = new Map<string, DuplicateWalletInfo[]>();
+        // Map: privateKeyHash -> { mldsaHash -> wallets[] }
+        const privateKeyHashMap = new Map<string, Map<string, DuplicateWalletInfo[]>>();
 
         console.log('[DuplicationDetection] Checking', keyrings.length, 'keyrings for duplicates');
 
@@ -67,43 +70,87 @@ class DuplicationDetectionService extends EventEmitter {
 
             console.log(`[DuplicationDetection] Keyring ${i}: type=${keyring.type}, instanceof SimpleKeyring=${keyring instanceof SimpleKeyring}, instanceof HdKeyring=${keyring instanceof HdKeyring}`);
 
+            let privateKeyHash: string | undefined;
+            let mldsaHash: string | undefined;
+
             if (keyring instanceof SimpleKeyring) {
-                // Get the private key and hash it
                 const serialized = keyring.serialize() as SimpleKeyringSerializedOptions;
-                const privateKeyHash = this.hashKey(serialized.privateKey);
-
-                const info = await this.getWalletInfo(i, keyring as SimpleKeyring, addressType);
-
-                if (!privateKeyHashMap.has(privateKeyHash)) {
-                    privateKeyHashMap.set(privateKeyHash, []);
+                privateKeyHash = this.hashKey(serialized.privateKey);
+                if (keyring.hasQuantumKey()) {
+                    try {
+                        mldsaHash = keyring.getQuantumPublicKeyHash()?.toLowerCase() || 'no_mldsa';
+                    } catch {
+                        mldsaHash = 'no_mldsa';
+                    }
+                } else {
+                    mldsaHash = 'no_mldsa';
                 }
-                privateKeyHashMap.get(privateKeyHash)!.push(info);
             } else if (keyring instanceof HdKeyring) {
-                // Get the mnemonic and hash it with passphrase
                 const serialized = keyring.serialize() as HdKeyringSerializedOptions;
                 const mnemonicKey = (serialized.mnemonic || '') + '|' + (serialized.passphrase || '');
-                const mnemonicHash = this.hashKey(mnemonicKey);
-
-                const info = await this.getWalletInfo(i, keyring as HdKeyring, addressType);
-
-                if (!privateKeyHashMap.has(mnemonicHash)) {
-                    privateKeyHashMap.set(mnemonicHash, []);
+                privateKeyHash = this.hashKey(mnemonicKey);
+                const accounts = keyring.getAccounts();
+                if (accounts[0]) {
+                    try {
+                        const wallet = keyring.getWallet(accounts[0]);
+                        if (wallet?.mldsaKeypair) {
+                            mldsaHash = wallet.address.toHex().replace('0x', '').toLowerCase();
+                        } else {
+                            mldsaHash = 'no_mldsa';
+                        }
+                    } catch {
+                        mldsaHash = 'no_mldsa';
+                    }
+                } else {
+                    mldsaHash = 'no_mldsa';
                 }
-                privateKeyHashMap.get(mnemonicHash)!.push(info);
+            }
+
+            if (privateKeyHash && mldsaHash && (keyring instanceof SimpleKeyring || keyring instanceof HdKeyring)) {
+                const info = await this.getWalletInfo(i, keyring, addressType);
+
+                if (!privateKeyHashMap.has(privateKeyHash)) {
+                    privateKeyHashMap.set(privateKeyHash, new Map());
+                }
+                const mldsaMap = privateKeyHashMap.get(privateKeyHash)!;
+                if (!mldsaMap.has(mldsaHash)) {
+                    mldsaMap.set(mldsaHash, []);
+                }
+                mldsaMap.get(mldsaHash)!.push(info);
             }
         }
 
-        // Filter for duplicates (more than 1 wallet with same hash)
+        // Create conflicts only when:
+        // 1. Same private key with DIFFERENT MLDSA keys (conflict - user needs to choose)
+        // 2. Same private key with same MLDSA - these are true duplicates (one can be deleted)
         const conflicts: DuplicationConflict[] = [];
-        privateKeyHashMap.forEach((wallets, hash) => {
-            console.log(`[DuplicationDetection] Hash ${hash.substring(0, 16)}: ${wallets.length} wallets`);
-            if (wallets.length > 1) {
-                conflicts.push({
-                    type: 'WALLET_DUPLICATE',
-                    conflictId: `wallet_${hash.substring(0, 16)}`,
-                    description: 'DUPLICATED WALLET DETECTED!',
-                    wallets
-                });
+        privateKeyHashMap.forEach((mldsaMap, privateKeyHash) => {
+            // Get all unique MLDSA keys for this private key
+            const mldsaKeys = Array.from(mldsaMap.keys());
+            const allWallets = Array.from(mldsaMap.values()).flat();
+
+            console.log(`[DuplicationDetection] PrivateKey ${privateKeyHash.substring(0, 16)}: ${allWallets.length} wallets, ${mldsaKeys.length} unique MLDSA keys`);
+
+            if (allWallets.length > 1) {
+                // There are duplicates
+                if (mldsaKeys.length === 1) {
+                    // All duplicates have the SAME MLDSA (or all no_mldsa)
+                    // This is a "true duplicate" - just redundant copies
+                    conflicts.push({
+                        type: 'WALLET_DUPLICATE',
+                        conflictId: `wallet_same_${privateKeyHash.substring(0, 16)}`,
+                        description: 'IDENTICAL WALLET COPIES - Can safely delete duplicates',
+                        wallets: allWallets
+                    });
+                } else {
+                    // Different MLDSA keys on same private key - this is the main conflict
+                    conflicts.push({
+                        type: 'WALLET_DUPLICATE',
+                        conflictId: `wallet_diff_${privateKeyHash.substring(0, 16)}`,
+                        description: 'SAME WALLET WITH DIFFERENT MLDSA KEYS - Must choose correct one',
+                        wallets: allWallets
+                    });
+                }
             }
         });
 
@@ -112,25 +159,36 @@ class DuplicationDetectionService extends EventEmitter {
     }
 
     /**
-     * Detect same MLDSA private key on multiple wallets
+     * Detect same MLDSA private key on DIFFERENT Bitcoin wallets
+     * This is problematic - same MLDSA should not be on different addresses
+     * Excludes wallets that are true duplicates (same private key)
      */
     async detectMldsaDuplicates(): Promise<DuplicationConflict[]> {
         const keyrings = keyringService.keyrings;
         const addressTypes = keyringService.addressTypes;
-        const mldsaHashMap = new Map<string, DuplicateWalletInfo[]>();
+        // Map: mldsaHash -> { privateKeyHash -> wallets[] }
+        const mldsaHashMap = new Map<string, Map<string, DuplicateWalletInfo[]>>();
 
         for (let i = 0; i < keyrings.length; i++) {
             const keyring = keyrings[i];
             const addressType = addressTypes[i];
             let mldsaHash: string | undefined;
+            let privateKeyHash: string | undefined;
 
-            if (keyring instanceof SimpleKeyring && keyring.hasQuantumKey()) {
-                try {
-                    mldsaHash = keyring.getQuantumPublicKeyHash()?.toLowerCase();
-                } catch {
-                    // Quantum key not available
+            if (keyring instanceof SimpleKeyring) {
+                const serialized = keyring.serialize() as SimpleKeyringSerializedOptions;
+                privateKeyHash = this.hashKey(serialized.privateKey);
+                if (keyring.hasQuantumKey()) {
+                    try {
+                        mldsaHash = keyring.getQuantumPublicKeyHash()?.toLowerCase();
+                    } catch {
+                        // Quantum key not available
+                    }
                 }
             } else if (keyring instanceof HdKeyring) {
+                const serialized = keyring.serialize() as HdKeyringSerializedOptions;
+                const mnemonicKey = (serialized.mnemonic || '') + '|' + (serialized.passphrase || '');
+                privateKeyHash = this.hashKey(mnemonicKey);
                 const accounts = keyring.getAccounts();
                 if (accounts[0]) {
                     try {
@@ -144,27 +202,36 @@ class DuplicationDetectionService extends EventEmitter {
                 }
             }
 
-            if (mldsaHash && (keyring instanceof SimpleKeyring || keyring instanceof HdKeyring)) {
+            if (mldsaHash && privateKeyHash && (keyring instanceof SimpleKeyring || keyring instanceof HdKeyring)) {
                 const info = await this.getWalletInfo(i, keyring, addressType);
 
                 if (!mldsaHashMap.has(mldsaHash)) {
-                    mldsaHashMap.set(mldsaHash, []);
+                    mldsaHashMap.set(mldsaHash, new Map());
                 }
-                mldsaHashMap.get(mldsaHash)!.push(info);
+                const privateKeyMap = mldsaHashMap.get(mldsaHash)!;
+                if (!privateKeyMap.has(privateKeyHash)) {
+                    privateKeyMap.set(privateKeyHash, []);
+                }
+                privateKeyMap.get(privateKeyHash)!.push(info);
             }
         }
 
-        // Filter for duplicates (more than 1 wallet with same MLDSA)
+        // Only report as MLDSA conflict if same MLDSA is on DIFFERENT private keys
         const conflicts: DuplicationConflict[] = [];
-        mldsaHashMap.forEach((wallets, hash) => {
-            if (wallets.length > 1) {
+        mldsaHashMap.forEach((privateKeyMap, mldsaHash) => {
+            const privateKeyHashes = Array.from(privateKeyMap.keys());
+
+            // Only a conflict if same MLDSA on wallets with DIFFERENT private keys
+            if (privateKeyHashes.length > 1) {
+                const allWallets = Array.from(privateKeyMap.values()).flat();
                 conflicts.push({
                     type: 'MLDSA_DUPLICATE',
-                    conflictId: `mldsa_${hash.substring(0, 16)}`,
-                    description: 'DUPLICATED MLDSA WALLET FOUND',
-                    wallets
+                    conflictId: `mldsa_${mldsaHash.substring(0, 16)}`,
+                    description: 'SAME MLDSA KEY ON DIFFERENT BITCOIN WALLETS - Invalid configuration',
+                    wallets: allWallets
                 });
             }
+            // If same MLDSA on same private key, it's handled by detectWalletDuplicates
         });
 
         return conflicts;
@@ -289,32 +356,43 @@ class DuplicationDetectionService extends EventEmitter {
         let mldsaPublicKeyHash: string | undefined;
         let mldsaPrivateKeyExists = false;
         let onChainLinkedMldsaHash: string | undefined;
-        let isOnChainMatch = true;
+        let isOnChainMatch = false; // Only true if MLDSA exists AND matches on-chain
 
-        // Get address
+        // Parse address type
+        const parsedAddressType = (typeof addressType === 'string' ? parseInt(addressType, 10) : addressType) as unknown as AddressTypes;
+        const networkType = preference.store.networkType;
+
+        // Derive Bitcoin address from pubkey using proper method
+        try {
+            address = publicKeyToAddressWithNetworkType(
+                pubkey,
+                parsedAddressType,
+                networkTypeToOPNet(networkType)
+            );
+        } catch {
+            // Address derivation failed, will be empty
+        }
+
+        // Get MLDSA info
         if (keyring instanceof HdKeyring) {
             try {
                 const wallet = keyring.getWallet(pubkey);
-                address = wallet?.address?.toHex()?.replace('0x', '') || '';
                 if (wallet?.mldsaKeypair) {
+                    // MLDSA public key hash is from the Address object
                     mldsaPublicKeyHash = wallet.address.toHex().replace('0x', '').toLowerCase();
                     mldsaPrivateKeyExists = true;
                 }
             } catch {
-                // Address derivation failed
+                // MLDSA retrieval failed
             }
         } else if (keyring instanceof SimpleKeyring) {
             try {
-                // SimpleKeyring.getAddress takes addressType as AddressTypes
-                const parsedAddressType =
-                    typeof addressType === 'string' ? parseInt(addressType, 10) : addressType;
-                address = keyring.getAddress(parsedAddressType as unknown as AddressTypes);
                 if (keyring.hasQuantumKey()) {
                     mldsaPublicKeyHash = keyring.getQuantumPublicKeyHash()?.toLowerCase();
                     mldsaPrivateKeyExists = true;
                 }
             } catch {
-                // Address or quantum key retrieval failed
+                // Quantum key retrieval failed
             }
         }
 
@@ -326,10 +404,15 @@ class DuplicationDetectionService extends EventEmitter {
                 onChainLinkedMldsaHash = (info as { mldsaHashedPublicKey?: string }).mldsaHashedPublicKey;
                 if (onChainLinkedMldsaHash && mldsaPublicKeyHash) {
                     isOnChainMatch = onChainLinkedMldsaHash.toLowerCase() === mldsaPublicKeyHash.toLowerCase();
+                    console.log(`[DuplicationDetection] On-chain check for ${pubkey.substring(0, 16)}...: onChain=${onChainLinkedMldsaHash?.substring(0, 16)}, local=${mldsaPublicKeyHash?.substring(0, 16)}, match=${isOnChainMatch}`);
+                } else {
+                    console.log(`[DuplicationDetection] No on-chain MLDSA for ${pubkey.substring(0, 16)}... (onChain=${onChainLinkedMldsaHash}, local=${mldsaPublicKeyHash})`);
                 }
+            } else {
+                console.log(`[DuplicationDetection] No info or error for pubkey ${pubkey.substring(0, 16)}...:`, info);
             }
-        } catch {
-            // On-chain verification failed, assume no linkage
+        } catch (e) {
+            console.error(`[DuplicationDetection] On-chain verification failed for ${pubkey.substring(0, 16)}...:`, e);
         }
 
         // Get wallet name from preferences

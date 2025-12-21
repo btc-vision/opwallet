@@ -9,6 +9,7 @@ import {
 import { useState, useEffect } from 'react';
 
 import {
+    DuplicateWalletInfo,
     DuplicationConflict,
     DuplicationDetectionResult,
     DuplicationResolution
@@ -325,96 +326,237 @@ export default function DuplicationResolutionScreen() {
         </Column>
     );
 
-    const renderConflictCard = (conflict: DuplicationConflict, selection: ConflictSelection | undefined) => (
-        <Card
-            key={conflict.conflictId}
-            style={{
-                marginBottom: '12px',
-                borderColor: conflict.type === 'WALLET_DUPLICATE' ? `${colors.error}40` : `${colors.warning}40`
-            }}>
-            <Column gap="md">
-                <Row itemsCenter gap="sm">
-                    <WarningOutlined
-                        style={{
-                            color: conflict.type === 'WALLET_DUPLICATE' ? colors.error : colors.warning,
-                            fontSize: 16
-                        }}
-                    />
-                    <Text
-                        text={conflict.description}
-                        preset="bold"
-                        size="sm"
-                        color={conflict.type === 'WALLET_DUPLICATE' ? 'error' : 'warning'}
-                    />
-                </Row>
+    // Get user-friendly conflict description
+    const getConflictExplanation = (conflict: DuplicationConflict) => {
+        if (conflict.type === 'WALLET_DUPLICATE') {
+            // Check if this is identical copies (same MLDSA) or different MLDSA
+            const isIdenticalCopies = conflict.conflictId.startsWith('wallet_same_');
+            const hasAnyMldsa = conflict.wallets.some(w => w.mldsaPrivateKeyExists);
+            const noneHaveMldsa = !hasAnyMldsa;
 
-                <Text text="Select the correct wallet:" preset="sub" size="xs" />
+            if (isIdenticalCopies) {
+                if (noneHaveMldsa) {
+                    // True duplicates with no MLDSA
+                    return {
+                        title: 'Identical Wallet Copies (No MLDSA)',
+                        subtitle: 'These are exact copies of the same wallet. None have MLDSA keys yet.',
+                        recommendation: 'Keep one wallet and delete the rest. Then migrate the kept one to get an MLDSA key.'
+                    };
+                } else {
+                    // True duplicates with same MLDSA
+                    return {
+                        title: 'Identical Wallet Copies',
+                        subtitle: 'These are exact copies of the same wallet with the same MLDSA key.',
+                        recommendation: 'Keep one wallet and safely delete the duplicates. They are identical.'
+                    };
+                }
+            } else {
+                // Different MLDSA keys on same Bitcoin wallet
+                const hasAnyOnChain = conflict.wallets.some(w => w.isOnChainMatch);
+                if (hasAnyOnChain) {
+                    return {
+                        title: 'Same Wallet - Different MLDSA Keys (On-chain Found)',
+                        subtitle: 'Same Bitcoin key was migrated multiple times with different MLDSA keys. One is verified on-chain.',
+                        recommendation: 'Select the ON-CHAIN VERIFIED wallet. The others have orphaned MLDSA keys.'
+                    };
+                } else {
+                    return {
+                        title: 'Same Wallet - Different MLDSA Keys',
+                        subtitle: 'Same Bitcoin key was migrated multiple times with different MLDSA keys.',
+                        recommendation: 'Select the wallet with the MLDSA key you linked on-chain. If unsure, check your transaction history.'
+                    };
+                }
+            }
+        } else {
+            // MLDSA_DUPLICATE - same MLDSA key on DIFFERENT Bitcoin wallets
+            return {
+                title: 'Same MLDSA on Different Wallets',
+                subtitle: 'The same MLDSA key is assigned to different Bitcoin addresses. This is an invalid configuration.',
+                recommendation: 'This should not happen. Select the correct Bitcoin wallet for this MLDSA key.'
+            };
+        }
+    };
 
-                {conflict.wallets.map((walletInfo, idx) => (
+    // Get MLDSA status badge
+    const getMldsaBadge = (walletInfo: DuplicateWalletInfo) => {
+        if (!walletInfo.mldsaPrivateKeyExists) {
+            return {
+                text: 'No MLDSA',
+                color: colors.error,
+                bgColor: `${colors.error}15`,
+                borderColor: `${colors.error}40`
+            };
+        }
+        if (walletInfo.isOnChainMatch) {
+            return {
+                text: 'On-chain Verified',
+                color: colors.success,
+                bgColor: `${colors.success}15`,
+                borderColor: `${colors.success}40`
+            };
+        }
+        return {
+            text: 'Has MLDSA',
+            color: colors.main,
+            bgColor: `${colors.main}15`,
+            borderColor: `${colors.main}40`
+        };
+    };
+
+    const renderConflictCard = (conflict: DuplicationConflict, selection: ConflictSelection | undefined) => {
+        const explanation = getConflictExplanation(conflict);
+        const isWalletDupe = conflict.type === 'WALLET_DUPLICATE';
+
+        return (
+            <Card
+                key={conflict.conflictId}
+                style={{
+                    marginBottom: '12px',
+                    borderColor: isWalletDupe ? `${colors.error}40` : `${colors.warning}40`
+                }}>
+                <Column gap="md">
+                    {/* Conflict Header */}
                     <div
-                        key={walletInfo.keyringKey}
-                        onClick={() => handleConflictSelection(conflict.conflictId, walletInfo.keyringIndex)}
                         style={{
-                            padding: '12px',
+                            padding: '10px',
                             borderRadius: '8px',
-                            border: `2px solid ${selection?.selectedWalletIndex === walletInfo.keyringIndex ? colors.main : colors.containerBorder}`,
-                            background:
-                                selection?.selectedWalletIndex === walletInfo.keyringIndex
-                                    ? `${colors.main}10`
-                                    : colors.containerBgFaded,
-                            cursor: 'pointer',
-                            transition: 'all 0.15s'
+                            background: isWalletDupe ? `${colors.error}10` : `${colors.warning}10`,
+                            border: `1px solid ${isWalletDupe ? colors.error : colors.warning}30`
                         }}>
-                        <Row justifyBetween itemsCenter>
-                            <Column gap="xs">
-                                <Row itemsCenter gap="sm">
-                                    <Text text={walletInfo.alianName || `Wallet ${idx + 1}`} preset="bold" size="sm" />
-                                    {walletInfo.isOnChainMatch && (
-                                        <div
-                                            style={{
-                                                padding: '2px 6px',
-                                                borderRadius: '4px',
-                                                background: `${colors.purple}20`,
-                                                border: `1px solid ${colors.purple}40`
-                                            }}>
-                                            <Text text="On-chain verified" size="xxs" style={{ color: colors.purple }} />
-                                        </div>
-                                    )}
-                                </Row>
-                                <Text
-                                    text={`${walletInfo.address.substring(0, 10)}...${walletInfo.address.substring(walletInfo.address.length - 6)}`}
-                                    preset="sub"
-                                    size="xs"
-                                    style={{ fontFamily: 'monospace' }}
-                                />
-                            </Column>
-                            <div
+                        <Row itemsCenter gap="sm" style={{ marginBottom: '4px' }}>
+                            <WarningOutlined
                                 style={{
-                                    width: '20px',
-                                    height: '20px',
-                                    borderRadius: '50%',
-                                    border: `2px solid ${selection?.selectedWalletIndex === walletInfo.keyringIndex ? colors.main : colors.containerBorder}`,
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center'
+                                    color: isWalletDupe ? colors.error : colors.warning,
+                                    fontSize: 14
+                                }}
+                            />
+                            <Text
+                                text={explanation.title}
+                                preset="bold"
+                                size="sm"
+                                color={isWalletDupe ? 'error' : 'warning'}
+                            />
+                        </Row>
+                        <Text text={explanation.subtitle} preset="sub" size="xs" style={{ marginBottom: '6px' }} />
+                        <Text
+                            text={`💡 ${explanation.recommendation}`}
+                            size="xs"
+                            style={{ color: colors.text, fontStyle: 'italic' }}
+                        />
+                    </div>
+
+                    <Text text="Select which wallet to keep:" preset="sub" size="xs" />
+
+                    {/* Wallet Options */}
+                    {conflict.wallets.map((walletInfo, idx) => {
+                        const badge = getMldsaBadge(walletInfo);
+                        const isSelected = selection?.selectedWalletIndex === walletInfo.keyringIndex;
+                        const keyringTypeLabel = walletInfo.keyringType === 'HD Key Tree' ? 'HD Wallet' : 'WIF Import';
+
+                        return (
+                            <div
+                                key={walletInfo.keyringKey}
+                                onClick={() => handleConflictSelection(conflict.conflictId, walletInfo.keyringIndex)}
+                                style={{
+                                    padding: '12px',
+                                    borderRadius: '8px',
+                                    border: `2px solid ${isSelected ? colors.main : colors.containerBorder}`,
+                                    background: isSelected ? `${colors.main}10` : colors.containerBgFaded,
+                                    cursor: 'pointer',
+                                    transition: 'all 0.15s'
                                 }}>
-                                {selection?.selectedWalletIndex === walletInfo.keyringIndex && (
+                                <Row justifyBetween itemsCenter>
+                                    <Column gap="xs" style={{ flex: 1, minWidth: 0 }}>
+                                        {/* Wallet Name & Type */}
+                                        <Row itemsCenter gap="sm" style={{ flexWrap: 'wrap' }}>
+                                            <Text
+                                                text={walletInfo.alianName || `Wallet ${idx + 1}`}
+                                                preset="bold"
+                                                size="sm"
+                                            />
+                                            <div
+                                                style={{
+                                                    padding: '1px 5px',
+                                                    borderRadius: '3px',
+                                                    background: colors.containerBorder,
+                                                    fontSize: '9px',
+                                                    color: colors.textFaded
+                                                }}>
+                                                {keyringTypeLabel}
+                                            </div>
+                                        </Row>
+
+                                        {/* Bitcoin Address */}
+                                        <div style={{ marginTop: '2px' }}>
+                                            <Text text="Bitcoin:" size="xxs" style={{ color: colors.textFaded }} />
+                                            <Text
+                                                text={walletInfo.address || 'Unknown address'}
+                                                preset="sub"
+                                                size="xs"
+                                                style={{
+                                                    fontFamily: 'monospace',
+                                                    wordBreak: 'break-all',
+                                                    fontSize: '10px'
+                                                }}
+                                            />
+                                        </div>
+
+                                        {/* MLDSA Status Badge */}
+                                        <Row itemsCenter gap="sm" style={{ marginTop: '4px' }}>
+                                            <div
+                                                style={{
+                                                    padding: '2px 6px',
+                                                    borderRadius: '4px',
+                                                    background: badge.bgColor,
+                                                    border: `1px solid ${badge.borderColor}`,
+                                                    fontSize: '10px',
+                                                    fontWeight: 600,
+                                                    color: badge.color
+                                                }}>
+                                                {badge.text}
+                                            </div>
+                                            {!walletInfo.mldsaPrivateKeyExists && (
+                                                <Text
+                                                    text="(Needs migration)"
+                                                    size="xxs"
+                                                    style={{ color: colors.error, fontStyle: 'italic' }}
+                                                />
+                                            )}
+                                        </Row>
+                                    </Column>
+
+                                    {/* Radio Button */}
                                     <div
                                         style={{
-                                            width: '10px',
-                                            height: '10px',
+                                            width: '20px',
+                                            height: '20px',
                                             borderRadius: '50%',
-                                            background: colors.main
-                                        }}
-                                    />
-                                )}
+                                            border: `2px solid ${isSelected ? colors.main : colors.containerBorder}`,
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            flexShrink: 0,
+                                            marginLeft: '8px'
+                                        }}>
+                                        {isSelected && (
+                                            <div
+                                                style={{
+                                                    width: '10px',
+                                                    height: '10px',
+                                                    borderRadius: '50%',
+                                                    background: colors.main
+                                                }}
+                                            />
+                                        )}
+                                    </div>
+                                </Row>
                             </div>
-                        </Row>
-                    </div>
-                ))}
-            </Column>
-        </Card>
-    );
+                        );
+                    })}
+                </Column>
+            </Card>
+        );
+    };
 
     const renderResolveStep = () => {
         if (!detection) return null;
