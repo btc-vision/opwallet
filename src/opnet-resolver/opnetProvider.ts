@@ -28,47 +28,8 @@ class OpnetResolverProvider extends EventEmitter {
         return true;
     }
 
-    private async _initialize(): Promise<void> {
-        try {
-            const state = await this._request({ method: 'getProviderState' });
-
-            if (state && typeof state === 'object') {
-                const typedState = state as {
-                    network?: string;
-                    accounts?: string[];
-                    isUnlocked?: boolean;
-                };
-
-                if (typedState.accounts && typedState.accounts.length > 0) {
-                    this._selectedAddress = typedState.accounts[0];
-                    this._isConnected = true;
-                }
-                if (typedState.network) {
-                    this._network = typedState.network;
-                }
-            }
-
-            this.emit('connect', {});
-            this.emit('_initialized');
-        } catch (error) {
-            // Silently handle - provider may not be fully ready
-            this.emit('_initialized');
-        }
-    }
-
-    private async _request(data: RequestParams): Promise<unknown> {
-        return browser.runtime.sendMessage({
-            type: data.method,
-            params: data.params ? [data.params] : []
-        });
-    }
-
-    // =========================================================================
-    // Account Methods
-    // =========================================================================
-
     async requestAccounts(): Promise<string[]> {
-        const accounts = await this._request({ method: 'requestAccounts' }) as string[];
+        const accounts = (await this._request({ method: 'requestAccounts' })) as string[];
         if (accounts?.length > 0) {
             this._selectedAddress = accounts[0];
             this._isConnected = true;
@@ -80,15 +41,15 @@ class OpnetResolverProvider extends EventEmitter {
         return this._request({ method: 'getAccounts' }) as Promise<string[]>;
     }
 
+    // =========================================================================
+    // Account Methods
+    // =========================================================================
+
     async disconnect(): Promise<void> {
         await this._request({ method: 'disconnect' });
         this._isConnected = false;
         this._selectedAddress = null;
     }
-
-    // =========================================================================
-    // Network Methods
-    // =========================================================================
 
     async getNetwork(): Promise<string> {
         return this._request({ method: 'getNetwork' }) as Promise<string>;
@@ -98,6 +59,10 @@ class OpnetResolverProvider extends EventEmitter {
         return this._request({ method: 'switchNetwork', params: { network } }) as Promise<void>;
     }
 
+    // =========================================================================
+    // Network Methods
+    // =========================================================================
+
     async getChain(): Promise<string> {
         return this._request({ method: 'getChain' }) as Promise<string>;
     }
@@ -105,10 +70,6 @@ class OpnetResolverProvider extends EventEmitter {
     async switchChain(chain: string): Promise<void> {
         return this._request({ method: 'switchChain', params: { chain } }) as Promise<void>;
     }
-
-    // =========================================================================
-    // Key Methods
-    // =========================================================================
 
     async getPublicKey(): Promise<string> {
         return this._request({ method: 'getPublicKey' }) as Promise<string>;
@@ -119,7 +80,7 @@ class OpnetResolverProvider extends EventEmitter {
     }
 
     // =========================================================================
-    // Balance & UTXOs
+    // Key Methods
     // =========================================================================
 
     async getBalance(): Promise<{ confirmed: number; unconfirmed: number; total: number }> {
@@ -135,7 +96,7 @@ class OpnetResolverProvider extends EventEmitter {
     }
 
     // =========================================================================
-    // Signing Methods
+    // Balance & UTXOs
     // =========================================================================
 
     async signMessage(message: string, type?: string): Promise<string> {
@@ -151,6 +112,10 @@ class OpnetResolverProvider extends EventEmitter {
             params: { data, type }
         }) as Promise<string>;
     }
+
+    // =========================================================================
+    // Signing Methods
+    // =========================================================================
 
     async signMLDSAMessage(message: string): Promise<{
         signature: string;
@@ -193,10 +158,6 @@ class OpnetResolverProvider extends EventEmitter {
         }) as Promise<boolean>;
     }
 
-    // =========================================================================
-    // PSBT Methods
-    // =========================================================================
-
     async signPsbt(psbtHex: string, options?: unknown): Promise<string> {
         return this._request({
             method: 'signPsbt',
@@ -211,16 +172,16 @@ class OpnetResolverProvider extends EventEmitter {
         }) as Promise<string[]>;
     }
 
+    // =========================================================================
+    // PSBT Methods
+    // =========================================================================
+
     async pushPsbt(psbtHex: string): Promise<string> {
         return this._request({
             method: 'pushPsbt',
             params: { psbtHex }
         }) as Promise<string>;
     }
-
-    // =========================================================================
-    // Transaction Methods
-    // =========================================================================
 
     async sendBitcoin(
         toAddress: string,
@@ -249,7 +210,7 @@ class OpnetResolverProvider extends EventEmitter {
     }
 
     // =========================================================================
-    // OPNet/Web3 Methods
+    // Transaction Methods
     // =========================================================================
 
     async signInteraction(interactionParameters: unknown): Promise<unknown> {
@@ -265,6 +226,10 @@ class OpnetResolverProvider extends EventEmitter {
             params: interactionParameters
         });
     }
+
+    // =========================================================================
+    // OPNet/Web3 Methods
+    // =========================================================================
 
     async deployContract(params: unknown): Promise<unknown> {
         return this._request({
@@ -287,26 +252,62 @@ class OpnetResolverProvider extends EventEmitter {
         }) as Promise<unknown[]>;
     }
 
+    async getVersion(): Promise<string> {
+        return this._request({ method: 'getVersion' }) as Promise<string>;
+    }
+
+    private async _initialize(): Promise<void> {
+        try {
+            const state = await this._request({ method: 'getProviderState' });
+
+            if (state && typeof state === 'object') {
+                const typedState = state as {
+                    network?: string;
+                    accounts?: string[];
+                    isUnlocked?: boolean;
+                };
+
+                if (typedState.accounts && typedState.accounts.length > 0) {
+                    this._selectedAddress = typedState.accounts[0];
+                    this._isConnected = true;
+                }
+                if (typedState.network) {
+                    this._network = typedState.network;
+                }
+            }
+
+            this.emit('connect', {});
+            this.emit('_initialized');
+        } catch (error) {
+            // Silently handle - provider may not be fully ready
+            this.emit('_initialized');
+        }
+    }
+
     // =========================================================================
     // Utility
     // =========================================================================
 
-    async getVersion(): Promise<string> {
-        return this._request({ method: 'getVersion' }) as Promise<string>;
+    private async _request(data: RequestParams): Promise<unknown> {
+        return browser.runtime.sendMessage({
+            type: data.method,
+            params: data.params ? [data.params] : []
+        });
     }
 }
 
-// Create and expose the provider
-const provider = new OpnetResolverProvider();
+if (window) {
+    // Create and expose the provider
+    const provider = new OpnetResolverProvider();
 
-// Expose on window (type assertion to avoid conflict with @btc-vision/transaction types)
-Object.defineProperty(window, 'opnet', {
-    value: provider,
-    writable: false,
-    configurable: false
-});
+    // Expose on window (type assertion to avoid conflict with @btc-vision/transaction types)
+    Object.defineProperty(window, 'opnet', {
+        value: provider,
+        writable: false,
+        configurable: false
+    });
 
-// Dispatch initialization event
-window.dispatchEvent(new Event('opnet#initialized'));
+    window.dispatchEvent(new Event('opnet#initialized'));
+}
 
 export { OpnetResolverProvider };

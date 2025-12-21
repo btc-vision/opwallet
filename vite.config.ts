@@ -177,6 +177,29 @@ function copyAssetsPlugin(): PluginOption {
     };
 }
 
+// Service worker polyfill plugin
+// Injects window/document polyfills at the start of chunks that need them
+function serviceWorkerPolyfillPlugin(): PluginOption {
+    // Minimal polyfill that only activates in service worker context
+    const polyfill = `(function(){if(typeof window==="undefined"){var n=function(){};globalThis.window=Object.assign({},globalThis,{dispatchEvent:n,addEventListener:n,removeEventListener:n});globalThis.document={createElement:function(){return{relList:{supports:function(){return false}}}},querySelector:function(){return null},querySelectorAll:function(){return[]},getElementsByTagName:function(){return[]},head:{appendChild:n}}}})();`;
+
+    return {
+        name: 'service-worker-polyfill',
+        generateBundle(options, bundle) {
+            for (const fileName of Object.keys(bundle)) {
+                const chunk = bundle[fileName];
+                if (chunk.type === 'chunk' && fileName.endsWith('.js')) {
+                    // Only inject into chunks that have window/document references
+                    if (chunk.code.includes('window.') || chunk.code.includes('document.') ||
+                        chunk.code.includes('__vitePreload')) {
+                        chunk.code = polyfill + chunk.code;
+                    }
+                }
+            }
+        }
+    };
+}
+
 // Package creation plugin
 function packagePlugin(): PluginOption {
     return {
@@ -309,10 +332,15 @@ export default defineConfig(({ mode }) => {
                             if (id.includes('ecpair') || id.includes('tiny-secp256k1')) return 'bitcoin-utils';
                             if (id.includes('bitcore-lib')) return 'bitcore';
 
-                            // UI libraries - react and react-dom MUST be in same chunk
-                            if (id.includes('react-dom') || id.includes('react/')) return 'react';
-                            if (id.includes('/react.') || id.match(/node_modules\/react\//)) return 'react';
-                            if (id.includes('antd') || id.includes('@ant-design')) return 'antd';
+                            // UI libraries - react, react-dom, scheduler, and antd MUST be in same chunk
+                            // to ensure proper initialization order
+                            if (id.includes('node_modules/react-dom') ||
+                                id.includes('node_modules/react/') ||
+                                id.includes('node_modules/scheduler') ||
+                                id.includes('antd') ||
+                                id.includes('@ant-design') ||
+                                id.includes('rc-') ||
+                                id.includes('@rc-component')) return 'react-ui';
 
                             // Other large deps
                             if (id.includes('ethers')) return 'ethers';
@@ -340,7 +368,9 @@ export default defineConfig(({ mode }) => {
                 },
                 // Use native crypto where available
                 overrides: {
-                    crypto: 'crypto-browserify'
+                    crypto: 'crypto-browserify',
+                    // Use our ESM events shim instead of CJS polyfill
+                    events: resolve(__dirname, 'src/shims/events-browser.js')
                 }
             }),
 
@@ -355,9 +385,9 @@ export default defineConfig(({ mode }) => {
             // TypeScript paths
             tsconfigPaths(),
 
-            // WASM support
+            // WASM support - using custom loader that avoids top-level await
             wasm(),
-            topLevelAwait(),
+            // topLevelAwait disabled - causes Message to be undefined
             tailwindcss(),
 
             // ESLint
@@ -384,6 +414,7 @@ export default defineConfig(({ mode }) => {
             // Custom plugins
             manifestPlugin(),
             copyAssetsPlugin(),
+            serviceWorkerPolyfillPlugin(),
             packagePlugin()
         ].filter(Boolean) as PluginOption[],
 
@@ -392,6 +423,11 @@ export default defineConfig(({ mode }) => {
                 {
                     find: '@',
                     replacement: resolve(__dirname, './src')
+                },
+                // ESM-compatible events shim to avoid CJS bundling issues
+                {
+                    find: 'events',
+                    replacement: resolve(__dirname, 'src/shims/events-browser.js')
                 },
                 // Dedupe noble/scure packages to single version
                 {
@@ -423,7 +459,8 @@ export default defineConfig(({ mode }) => {
                 '@scure/base',
                 'buffer',
                 'react',
-                'react-dom'
+                'react-dom',
+                'scheduler'
             ]
         },
 
@@ -500,10 +537,10 @@ export default defineConfig(({ mode }) => {
             include: [
                 'react',
                 'react-dom',
+                'scheduler',
                 'dayjs',
                 'buffer',
                 'process',
-                'events',
                 'stream-browserify',
                 'bitcore-lib',
                 'bip-schnorr'

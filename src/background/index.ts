@@ -8,7 +8,6 @@ import 'reflect-metadata';
 import { SessionEvent, SessionEventPayload } from '@/shared/interfaces/SessionEvent';
 import { customNetworksManager } from '@/shared/utils/CustomNetworksManager';
 import { initEccLib } from '@btc-vision/bitcoin';
-import * as ecc from 'tiny-secp256k1';
 import { Runtime } from 'webextension-polyfill';
 import { providerController, walletController } from './controller';
 import contactBookService from './service/contactBook';
@@ -22,13 +21,23 @@ import { isWalletControllerMethod } from './utils/controller';
 import { storage } from './webapi';
 import browser, { browserRuntimeOnConnect, browserRuntimeOnInstalled } from './webapi/browser';
 
-initEccLib(ecc);
+// Lazy-load tiny-secp256k1 to avoid top-level await in service worker
+let eccInitialized = false;
+async function ensureEccLib(): Promise<void> {
+    if (!eccInitialized) {
+        const ecc = await import('tiny-secp256k1');
+        initEccLib(ecc);
+        eccInitialized = true;
+    }
+}
 
 const { PortMessage } = Message;
 
 let appStoreLoaded = false;
 
 async function restoreAppState() {
+    await ensureEccLib();
+
     const keyringState = await storage.get<StoredData>('keyringState');
     keyringService.loadStore(keyringState ?? { booted: '', vault: '' });
     keyringService.store.subscribe((value) => storage.set('keyringState', value));
@@ -223,7 +232,7 @@ if (MANIFEST_VERSION === 'mv3') {
 const setupBtcDomainInterception = () => {
     // Listen for navigation to .btc domains
     chrome.webNavigation.onBeforeNavigate.addListener(
-        (details) => {
+        async (details) => {
             // Only intercept main frame navigations
             if (details.frameId !== 0) return;
 
@@ -239,16 +248,14 @@ const setupBtcDomainInterception = () => {
                     );
 
                     // Redirect to resolver
-                    chrome.tabs.update(details.tabId, { url: resolverUrl });
+                    await chrome.tabs.update(details.tabId, { url: resolverUrl });
                 }
             } catch {
                 // Invalid URL, ignore
             }
         },
         {
-            url: [
-                { hostSuffix: '.btc' }
-            ]
+            url: [{ hostSuffix: '.btc' }]
         }
     );
 };
@@ -299,10 +306,12 @@ const opnetMessageHandler = (
 
         handleMessage()
             .then((result) => sendResponse(result))
-            .catch((error) => sendResponse({ error: (error as Error).message }));
+            .catch((error: unknown) => sendResponse({ error: (error as Error).message }));
 
         return true; // Keep the message channel open for async response
     }
     return undefined;
 };
-browser.runtime.onMessage.addListener(opnetMessageHandler as Parameters<typeof browser.runtime.onMessage.addListener>[0]);
+browser.runtime.onMessage.addListener(
+    opnetMessageHandler as Parameters<typeof browser.runtime.onMessage.addListener>[0]
+);
