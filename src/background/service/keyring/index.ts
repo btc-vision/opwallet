@@ -1081,6 +1081,100 @@ class KeyringService extends EventEmitter {
     };
 
     /**
+     * Move MLDSA key from one wallet to another (for SimpleKeyring only)
+     * Used when correct MLDSA is on wrong wallet instance during duplication resolution
+     */
+    moveQuantumKey = async (fromKeyringIndex: number, toKeyringIndex: number): Promise<void> => {
+        const fromKeyring = this.keyrings[fromKeyringIndex];
+        const toKeyring = this.keyrings[toKeyringIndex];
+
+        if (!(fromKeyring instanceof SimpleKeyring) || !(toKeyring instanceof SimpleKeyring)) {
+            throw new Error('MLDSA key movement only supported between Simple Key Pair wallets');
+        }
+
+        // Export quantum key from source
+        const serialized = fromKeyring.serialize() as SimpleKeyringSerializedOptions;
+        const quantumPrivateKey = serialized.quantumPrivateKey;
+
+        if (!quantumPrivateKey) {
+            throw new Error('Source wallet has no quantum key to move');
+        }
+
+        // Clear from source by recreating without quantum key
+        const newFromKeyring = new SimpleKeyring({
+            privateKey: serialized.privateKey,
+            quantumPrivateKey: undefined,
+            network: serialized.network,
+            securityLevel: serialized.securityLevel || MLDSASecurityLevel.LEVEL2
+        });
+        this.keyrings[fromKeyringIndex] = newFromKeyring;
+
+        // Import to destination
+        toKeyring.importQuantumKey(quantumPrivateKey);
+
+        await this.persistAllKeyrings();
+        this._updateMemStoreKeyrings();
+        this.fullUpdate();
+    };
+
+    /**
+     * Replace MLDSA key on a wallet with a new one
+     * Used when local MLDSA doesn't match on-chain during duplication resolution
+     */
+    replaceQuantumKey = async (keyringIndex: number, newQuantumPrivateKey: string): Promise<void> => {
+        const keyring = this.keyrings[keyringIndex];
+
+        if (!(keyring instanceof SimpleKeyring)) {
+            throw new Error('MLDSA key replacement only supported for Simple Key Pair wallets');
+        }
+
+        // Get existing key hashes to check for duplicates (excluding this keyring)
+        const accounts = keyring.getAccounts();
+        const excludePubkey = accounts[0];
+        const existingHashes = this.getAllQuantumKeyHashes(excludePubkey);
+
+        // Create a temp keyring to get the hash of the new key
+        const serialized = keyring.serialize() as SimpleKeyringSerializedOptions;
+        const tempKeyring = new SimpleKeyring({
+            privateKey: serialized.privateKey,
+            quantumPrivateKey: newQuantumPrivateKey,
+            network: serialized.network,
+            securityLevel: serialized.securityLevel || MLDSASecurityLevel.LEVEL2
+        });
+
+        const newHash = tempKeyring.getQuantumPublicKeyHash();
+        if (newHash && existingHashes.includes(newHash.toLowerCase())) {
+            throw new Error(
+                'This quantum key is already associated with another account. Each account must have a unique quantum key.'
+            );
+        }
+
+        // Replace the keyring with the new one
+        this.keyrings[keyringIndex] = tempKeyring;
+
+        await this.persistAllKeyrings();
+        this._updateMemStoreKeyrings();
+        this.fullUpdate();
+    };
+
+    /**
+     * Remove a keyring by index
+     * Used during duplication resolution to remove duplicate wallets
+     */
+    removeKeyringByIndex = async (keyringIndex: number): Promise<void> => {
+        if (keyringIndex < 0 || keyringIndex >= this.keyrings.length) {
+            throw new Error('Invalid keyring index');
+        }
+
+        this.keyrings.splice(keyringIndex, 1);
+        this.addressTypes.splice(keyringIndex, 1);
+
+        await this.persistAllKeyrings();
+        this._updateMemStoreKeyrings();
+        this.fullUpdate();
+    };
+
+    /**
      * Check if an account needs quantum migration
      * Note: In wallet-sdk 2.0, SimpleKeyring always generates a quantum key on creation
      * This method checks if for some reason the quantum key is missing

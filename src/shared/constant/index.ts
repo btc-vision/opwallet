@@ -51,6 +51,10 @@ export const KEYRING_TYPES: Record<
     }
 };
 
+// Duplication backup storage
+export const DUPLICATION_BACKUP_STORAGE_KEY = 'duplicationBackupVault';
+export const DUPLICATION_BACKUP_VERSION = '1.0.0';
+
 export const IS_CHROME = /Chrome\//i.test(navigator.userAgent);
 
 export const IS_LINUX = /linux/i.test(navigator.userAgent);

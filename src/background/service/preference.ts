@@ -2,6 +2,7 @@ import { AddressFlagType, CHAINS, ChainType, CustomNetwork, DEFAULT_LOCKTIME_ID,
 import eventBus from '@/shared/eventBus';
 import { SessionEvent } from '@/shared/interfaces/SessionEvent';
 import { Account, AddressTypes, AppSummary, NetworkType, storageToAddressTypes, TxHistoryItem } from '@/shared/types';
+import { DuplicationState } from '@/shared/types/Duplication';
 import { compareVersions } from 'compare-versions';
 import cloneDeep from 'lodash/cloneDeep';
 import browser from '../webapi/browser';
@@ -51,6 +52,7 @@ export interface PreferenceStore {
     useSidePanel: boolean;
     trackedDomains: Record<string, TrackedDomain[]>; // keyed by address
     mldsaBackupDismissed: Record<string, boolean>; // keyed by wallet pubkey
+    duplicationState: DuplicationState; // tracks duplication resolution progress
 }
 
 const SUPPORT_LOCALES = ['en'];
@@ -90,7 +92,13 @@ const DEFAULTS = {
         notificationWindowMode: 'popup',
         useSidePanel: false,
         trackedDomains: {},
-        mldsaBackupDismissed: {}
+        mldsaBackupDismissed: {},
+        duplicationState: {
+            isResolved: false,
+            backupCreated: false,
+            backupDownloaded: false,
+            conflictsResolved: []
+        }
     } as PreferenceStore
 };
 
@@ -577,6 +585,104 @@ class PreferenceService {
         this.store.mldsaBackupDismissed[pubkey] = dismissed;
         await this.persist();
     };
+
+    // ==================== DUPLICATION STATE MANAGEMENT ====================
+
+    /**
+     * Get current duplication resolution state
+     */
+    getDuplicationState = (): DuplicationState => {
+        return (
+            this.store.duplicationState || {
+                isResolved: false,
+                backupCreated: false,
+                backupDownloaded: false,
+                conflictsResolved: []
+            }
+        );
+    };
+
+    /**
+     * Set whether internal backup was created
+     */
+    setDuplicationBackupCreated = async (created: boolean): Promise<void> => {
+        if (!this.store.duplicationState) {
+            this.store.duplicationState = {
+                isResolved: false,
+                backupCreated: false,
+                backupDownloaded: false,
+                conflictsResolved: []
+            };
+        }
+        this.store.duplicationState.backupCreated = created;
+        await this.persist();
+    };
+
+    /**
+     * Set whether user downloaded the backup file
+     */
+    setDuplicationBackupDownloaded = async (downloaded: boolean): Promise<void> => {
+        if (!this.store.duplicationState) {
+            this.store.duplicationState = {
+                isResolved: false,
+                backupCreated: false,
+                backupDownloaded: false,
+                conflictsResolved: []
+            };
+        }
+        this.store.duplicationState.backupDownloaded = downloaded;
+        await this.persist();
+    };
+
+    /**
+     * Mark a conflict as resolved
+     */
+    markConflictResolved = async (conflictId: string): Promise<void> => {
+        if (!this.store.duplicationState) {
+            this.store.duplicationState = {
+                isResolved: false,
+                backupCreated: false,
+                backupDownloaded: false,
+                conflictsResolved: []
+            };
+        }
+        if (!this.store.duplicationState.conflictsResolved.includes(conflictId)) {
+            this.store.duplicationState.conflictsResolved.push(conflictId);
+        }
+        await this.persist();
+    };
+
+    /**
+     * Mark all duplication issues as resolved
+     */
+    setDuplicationResolved = async (resolved: boolean): Promise<void> => {
+        if (!this.store.duplicationState) {
+            this.store.duplicationState = {
+                isResolved: false,
+                backupCreated: false,
+                backupDownloaded: false,
+                conflictsResolved: []
+            };
+        }
+        this.store.duplicationState.isResolved = resolved;
+        this.store.duplicationState.lastDetectionTime = Date.now();
+        await this.persist();
+    };
+
+    /**
+     * Reset duplication state (for re-checking or testing)
+     */
+    resetDuplicationState = async (): Promise<void> => {
+        this.store.duplicationState = {
+            isResolved: false,
+            backupCreated: false,
+            backupDownloaded: false,
+            conflictsResolved: []
+        };
+        await this.persist();
+    };
+
+    // ==================== END DUPLICATION STATE ====================
 
     private persist = async () => {
         await browser.storage.local.set({ preference: this.store });

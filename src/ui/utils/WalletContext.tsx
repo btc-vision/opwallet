@@ -4,6 +4,12 @@ import { PreSignedTransactionData, SerializedPreSignedInteractionData } from '@/
 import { ConnectedSite } from '@/background/service/permission';
 import { AddressFlagType, ChainId, ChainType, CustomNetwork } from '@/shared/constant';
 import {
+    ConflictResolutionChoice,
+    DuplicationDetectionResult,
+    DuplicationState,
+    OnChainLinkageInfo
+} from '@/shared/types/Duplication';
+import {
     Account,
     AddressSummary,
     AddressTypes,
@@ -356,6 +362,18 @@ export interface WalletController {
     >;
     addTrackedDomain(domainName: string): Promise<void>;
     removeTrackedDomain(domainName: string): Promise<void>;
+
+    // Duplication detection and resolution
+    checkForDuplicates(): Promise<DuplicationDetectionResult>;
+    getDuplicationState(): Promise<DuplicationState>;
+    createDuplicationBackup(password: string): Promise<boolean>;
+    exportDuplicationBackup(password: string): Promise<{ content: string; filename: string }>;
+    hasDuplicationBackup(): Promise<boolean>;
+    verifyAllOnChainLinkage(): Promise<Map<string, OnChainLinkageInfo>>;
+    resolveDuplicationConflict(choice: ConflictResolutionChoice): Promise<void>;
+    removeDuplicateWallet(keyringIndex: number): Promise<void>;
+    setDuplicationResolved(): Promise<void>;
+    resetDuplicationState(): Promise<void>;
 }
 
 const WalletContext = createContext<{

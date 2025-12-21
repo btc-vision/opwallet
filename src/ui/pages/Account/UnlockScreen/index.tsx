@@ -1,8 +1,10 @@
 import React, { useEffect, useState } from 'react';
 
+import { DuplicationDetectionResult } from '@/shared/types/Duplication';
 import { Column, Content, Layout, Row } from '@/ui/components';
 import { useTools } from '@/ui/components/ActionComponent';
 import { Button } from '@/ui/components/Button';
+import { DuplicationAlertModal } from '@/ui/components/DuplicationAlertModal';
 import { Input } from '@/ui/components/Input';
 import { Logo } from '@/ui/components/Logo';
 import { Text } from '@/ui/components/Text';
@@ -16,14 +18,33 @@ export default function UnlockScreen() {
     const navigate = useNavigate();
     const [password, setPassword] = useState('');
     const [disabled, setDisabled] = useState(true);
+    const [duplicationDetection, setDuplicationDetection] = useState<DuplicationDetectionResult | null>(null);
+    const [showDuplicationAlert, setShowDuplicationAlert] = useState(false);
     const UIType = getUiType();
     const isInNotification = UIType.isNotification;
     const unlock = useUnlockCallback();
     const tools = useTools();
+
     const btnClick = async () => {
-        // run(password);
         try {
             await unlock(password);
+
+            // Check for duplicate wallets after unlock
+            try {
+                const detection = await wallet.checkForDuplicates();
+                if (detection.hasDuplicates) {
+                    const state = await wallet.getDuplicationState();
+                    if (!state.isResolved) {
+                        setDuplicationDetection(detection);
+                        setShowDuplicationAlert(true);
+                        return; // Don't navigate away - show modal
+                    }
+                }
+            } catch (e) {
+                console.error('Failed to check for duplicates:', e);
+                // Continue with normal flow if detection fails
+            }
+
             if (!isInNotification) {
                 const hasVault = await wallet.hasVault();
                 if (!hasVault) {
@@ -37,6 +58,11 @@ export default function UnlockScreen() {
         } catch (e) {
             tools.toastError(`Wrong password entered, please try again.`);
         }
+    };
+
+    const handleDuplicationResolve = () => {
+        setShowDuplicationAlert(false);
+        navigate(RouteTypes.DuplicationResolutionScreen);
     };
 
     const handleOnKeyUp = async (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -73,6 +99,11 @@ export default function UnlockScreen() {
                     </Column>
                 </Column>
             </Content>
+
+            {/* Duplication Alert Modal */}
+            {duplicationDetection && showDuplicationAlert && (
+                <DuplicationAlertModal detection={duplicationDetection} onResolve={handleDuplicationResolve} />
+            )}
         </Layout>
     );
 }

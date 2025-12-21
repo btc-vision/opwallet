@@ -40,6 +40,7 @@ import ExportPrivateKeyScreen from './Settings/ExportPrivateKeyScreen';
 import NetworkTypeScreen from './Settings/NetworkTypeScreen';
 import OpnetBrowserScreen from './Settings/OpnetBrowserScreen';
 import BtcDomainScreen from './Domain/BtcDomainScreen';
+import DuplicationResolutionScreen from './Settings/DuplicationResolutionScreen';
 import QuantumMigrationScreen from './Settings/QuantumMigrationScreen';
 import UpgradeNoticeScreen from './Settings/UpgradeNoticeScreen';
 import ReceiveScreen from './Wallet/ReceiveScreen';
@@ -100,6 +101,7 @@ export enum RouteTypes {
     NFTSendScreen = 'NFTSendScreen',
     ImportTokenScreen = 'ImportTokenScreen',
     QuantumMigrationScreen = 'QuantumMigrationScreen',
+    DuplicationResolutionScreen = 'DuplicationResolutionScreen',
     HistoryScreen = 'HistoryScreen',
     TransactionDetailScreen = 'TransactionDetailScreen',
     OpnetBrowserScreen = 'OpnetBrowserScreen',
@@ -281,6 +283,10 @@ export const routes: Routes = {
     QuantumMigrationScreen: {
         path: '/settings/quantum-migration',
         element: <QuantumMigrationScreen />
+    },
+    DuplicationResolutionScreen: {
+        path: '/settings/duplication-resolution',
+        element: <DuplicationResolutionScreen />
     },
     HistoryScreen: {
         path: '/history',

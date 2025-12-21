@@ -4,6 +4,8 @@ import { BTC_NAME_RESOLVER_ABI } from '@/shared/web3/abi/BTC_NAME_RESOLVER_ABI';
 import { IBtcNameResolverContract } from '@/shared/web3/interfaces/IBtcNameResolverContract';
 
 import contactBookService from '@/background/service/contactBook';
+import duplicationBackupService from '@/background/service/duplicationBackup';
+import duplicationDetectionService from '@/background/service/duplicationDetection';
 import keyringService, { DisplayedKeyring, EmptyKeyring, Keyring, SavedVault } from '@/background/service/keyring';
 import notificationService, {
     ParsedTransaction,
@@ -59,6 +61,13 @@ import {
     WalletConfig,
     WalletKeyring
 } from '@/shared/types';
+import {
+    ConflictResolutionChoice,
+    DuplicationDetectionResult,
+    DuplicationResolution,
+    DuplicationState,
+    OnChainLinkageInfo
+} from '@/shared/types/Duplication';
 import { getChainInfo } from '@/shared/utils';
 import Web3API, { getBitcoinLibJSNetwork } from '@/shared/web3/Web3API';
 import {
@@ -2641,6 +2650,136 @@ export class WalletController {
             throw new WalletControllerError(`Failed to generate quantum key: ${String(err)}`);
         }
     };
+
+    // ==================== DUPLICATION DETECTION AND RESOLUTION ====================
+
+    /**
+     * Check for duplicate wallets and MLDSA keys
+     * Should be called after every unlock
+     */
+    public checkForDuplicates = async (): Promise<DuplicationDetectionResult> => {
+        return duplicationDetectionService.detectDuplicates();
+    };
+
+    /**
+     * Get current duplication resolution state
+     */
+    public getDuplicationState = (): DuplicationState => {
+        return preferenceService.getDuplicationState();
+    };
+
+    /**
+     * Verify password and create backup before resolution
+     * REQUIRED first step before any resolution actions
+     */
+    public createDuplicationBackup = async (password: string): Promise<boolean> => {
+        const isValid = await this.verifyPassword(password);
+        if (!isValid) {
+            throw new WalletControllerError('Invalid password');
+        }
+
+        const detection = await this.checkForDuplicates();
+        await duplicationBackupService.createBackup(password, [
+            ...detection.walletDuplicates,
+            ...detection.mldsaDuplicates
+        ]);
+
+        await preferenceService.setDuplicationBackupCreated(true);
+        return true;
+    };
+
+    /**
+     * Export backup as downloadable file
+     * Returns file content and filename
+     */
+    public exportDuplicationBackup = async (
+        password: string
+    ): Promise<{ content: string; filename: string }> => {
+        const isValid = await this.verifyPassword(password);
+        if (!isValid) {
+            throw new WalletControllerError('Invalid password');
+        }
+
+        const result = await duplicationBackupService.exportBackupToFile(password);
+        await preferenceService.setDuplicationBackupDownloaded(true);
+        return result;
+    };
+
+    /**
+     * Check if duplication backup exists
+     */
+    public hasDuplicationBackup = async (): Promise<boolean> => {
+        return duplicationBackupService.hasBackup();
+    };
+
+    /**
+     * Verify on-chain MLDSA linkage for all wallets
+     */
+    public verifyAllOnChainLinkage = async (): Promise<Map<string, OnChainLinkageInfo>> => {
+        return duplicationDetectionService.verifyOnChainLinkage();
+    };
+
+    /**
+     * Resolve a duplication conflict
+     */
+    public resolveDuplicationConflict = async (choice: ConflictResolutionChoice): Promise<void> => {
+        const { conflictId, resolution, correctWalletIndex, targetWalletIndex, newQuantumPrivateKey } = choice;
+
+        try {
+            switch (resolution) {
+                case DuplicationResolution.KEEP_SELECTED:
+                    // For wallet duplicates: we don't delete wallets, just mark as resolved
+                    // The user chose which wallet is "correct" - we track this
+                    break;
+
+                case DuplicationResolution.MOVE_MLDSA:
+                    if (targetWalletIndex === undefined) {
+                        throw new WalletControllerError('Target wallet index required for MOVE_MLDSA');
+                    }
+                    await keyringService.moveQuantumKey(correctWalletIndex, targetWalletIndex);
+                    break;
+
+                case DuplicationResolution.REPLACE_MLDSA:
+                    if (!newQuantumPrivateKey) {
+                        throw new WalletControllerError('New quantum private key required for REPLACE_MLDSA');
+                    }
+                    await keyringService.replaceQuantumKey(correctWalletIndex, newQuantumPrivateKey);
+                    break;
+            }
+
+            await preferenceService.markConflictResolved(conflictId);
+        } catch (err) {
+            throw new WalletControllerError(`Failed to resolve conflict: ${String(err)}`);
+        }
+    };
+
+    /**
+     * Remove a duplicate wallet by keyring index
+     * Used during duplication resolution
+     */
+    public removeDuplicateWallet = async (keyringIndex: number): Promise<void> => {
+        try {
+            await keyringService.removeKeyringByIndex(keyringIndex);
+        } catch (err) {
+            throw new WalletControllerError(`Failed to remove wallet: ${String(err)}`);
+        }
+    };
+
+    /**
+     * Mark all duplication conflicts as resolved
+     */
+    public setDuplicationResolved = async (): Promise<void> => {
+        await preferenceService.setDuplicationResolved(true);
+    };
+
+    /**
+     * Reset duplication resolution state (for testing or re-checking)
+     */
+    public resetDuplicationState = async (): Promise<void> => {
+        await preferenceService.resetDuplicationState();
+    };
+
+    // ==================== END DUPLICATION DETECTION ====================
 
     /**
      * Export both classical and quantum private keys for the current account.
