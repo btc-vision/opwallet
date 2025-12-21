@@ -348,7 +348,7 @@ class DuplicationDetectionService extends EventEmitter {
     private async getWalletInfo(
         keyringIndex: number,
         keyring: HdKeyring | SimpleKeyring,
-        addressType: string
+        addressType: AddressTypes
     ): Promise<DuplicateWalletInfo> {
         const accounts = keyring.getAccounts();
         const pubkey = accounts[0] || '';
@@ -358,18 +358,20 @@ class DuplicationDetectionService extends EventEmitter {
         let onChainLinkedMldsaHash: string | undefined;
         let isOnChainMatch = false; // Only true if MLDSA exists AND matches on-chain
 
-        // Parse address type
-        const parsedAddressType = (typeof addressType === 'string' ? parseInt(addressType, 10) : addressType) as unknown as AddressTypes;
         const networkType = preference.store.networkType;
+
+        console.log(`[DuplicationDetection] getWalletInfo: keyringIndex=${keyringIndex}, pubkey=${pubkey?.substring(0, 16)}..., addressType=${addressType}, networkType=${networkType}`);
 
         // Derive Bitcoin address from pubkey using proper method
         try {
             address = publicKeyToAddressWithNetworkType(
                 pubkey,
-                parsedAddressType,
+                addressType,
                 networkTypeToOPNet(networkType)
             );
-        } catch {
+            console.log(`[DuplicationDetection] Derived address: ${address}`);
+        } catch (e) {
+            console.error(`[DuplicationDetection] Address derivation failed:`, e);
             // Address derivation failed, will be empty
         }
 
