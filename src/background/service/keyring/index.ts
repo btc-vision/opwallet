@@ -1081,6 +1081,33 @@ class KeyringService extends EventEmitter {
     };
 
     /**
+     * Clear MLDSA key from a wallet (for SimpleKeyring only)
+     * Used for MLDSA duplicate resolution - removes MLDSA but keeps the wallet
+     */
+    clearQuantumKeyByIndex = async (keyringIndex: number): Promise<void> => {
+        const keyring = this.keyrings[keyringIndex];
+
+        if (!(keyring instanceof SimpleKeyring)) {
+            throw new Error('MLDSA key clearing only supported for Simple Key Pair wallets');
+        }
+
+        const serialized = keyring.serialize() as SimpleKeyringSerializedOptions;
+
+        // Recreate keyring without quantum key
+        const newKeyring = new SimpleKeyring({
+            privateKey: serialized.privateKey,
+            quantumPrivateKey: undefined,
+            network: serialized.network,
+            securityLevel: serialized.securityLevel || MLDSASecurityLevel.LEVEL2
+        });
+        this.keyrings[keyringIndex] = newKeyring;
+
+        await this.persistAllKeyrings();
+        this._updateMemStoreKeyrings();
+        this.fullUpdate();
+    };
+
+    /**
      * Move MLDSA key from one wallet to another (for SimpleKeyring only)
      * Used when correct MLDSA is on wrong wallet instance during duplication resolution
      */

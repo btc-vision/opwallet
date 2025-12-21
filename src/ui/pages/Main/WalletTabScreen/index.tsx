@@ -209,7 +209,14 @@ export default function WalletTabScreen() {
                     const state = await wallet.getDuplicationState();
                     console.log('[WalletTabScreen] Duplication state:', state);
 
-                    if (!state.isResolved) {
+                    // If there are still conflicts but state says resolved, reset it
+                    // This can happen if resolution didn't fully work or new conflicts appeared
+                    if (state.isResolved && detection.totalConflicts > 0) {
+                        console.log('[WalletTabScreen] Conflicts remain after resolution, resetting state');
+                        await wallet.resetDuplicationState();
+                    }
+
+                    if (!state.isResolved || detection.totalConflicts > 0) {
                         console.log('[WalletTabScreen] Showing duplication alert modal');
                         setDuplicationDetection(detection);
                         setShowDuplicationAlert(true);

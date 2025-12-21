@@ -302,21 +302,34 @@ export default function DuplicationResolutionScreen() {
                     continue;
                 }
 
-                // Get indices of wallets to delete (all except the selected one)
+                // Get indices of other wallets (all except the selected one)
                 const allIndices = conflict.wallets.map((w) => w.keyringIndex);
-                const walletsToDelete = allIndices.filter((idx) => idx !== selection.selectedWalletIndex);
+                const otherIndices = allIndices.filter((idx) => idx !== selection.selectedWalletIndex);
 
-                console.log('[Resolution] Conflict:', selection.conflictId);
+                console.log('[Resolution] Conflict:', selection.conflictId, 'Type:', conflict.type);
                 console.log('[Resolution] All wallet indices:', allIndices);
                 console.log('[Resolution] Selected to keep:', selection.selectedWalletIndex);
-                console.log('[Resolution] Wallets to delete:', walletsToDelete);
 
-                await wallet.resolveDuplicationConflict({
-                    conflictId: selection.conflictId,
-                    resolution: DuplicationResolution.KEEP_SELECTED,
-                    correctWalletIndex: selection.selectedWalletIndex,
-                    walletsToDelete
-                });
+                if (conflict.type === 'WALLET_DUPLICATE') {
+                    // Same Bitcoin key - delete duplicate wallets
+                    console.log('[Resolution] Wallets to delete:', otherIndices);
+                    await wallet.resolveDuplicationConflict({
+                        conflictId: selection.conflictId,
+                        resolution: DuplicationResolution.KEEP_SELECTED,
+                        correctWalletIndex: selection.selectedWalletIndex,
+                        walletsToDelete: otherIndices
+                    });
+                } else {
+                    // MLDSA_DUPLICATE - Different Bitcoin keys, same MLDSA
+                    // Keep wallets but clear MLDSA from non-selected ones
+                    console.log('[Resolution] Wallets to clear MLDSA from:', otherIndices);
+                    await wallet.resolveDuplicationConflict({
+                        conflictId: selection.conflictId,
+                        resolution: DuplicationResolution.KEEP_MLDSA_ON_SELECTED,
+                        correctWalletIndex: selection.selectedWalletIndex,
+                        walletsToClearMldsa: otherIndices
+                    });
+                }
             }
 
             await wallet.setDuplicationResolved();
@@ -738,6 +751,40 @@ export default function DuplicationResolutionScreen() {
                                                 }}
                                             />
                                         </div>
+
+                                        {/* MLDSA Hash */}
+                                        {walletInfo.mldsaPublicKeyHash && (
+                                            <div style={{ marginTop: '2px' }}>
+                                                <Text text="MLDSA:" size="xxs" style={{ color: colors.textFaded }} />
+                                                <Text
+                                                    text={`0x${walletInfo.mldsaPublicKeyHash.slice(0, 8)}...${walletInfo.mldsaPublicKeyHash.slice(-6)}`}
+                                                    preset="sub"
+                                                    size="xs"
+                                                    style={{
+                                                        fontFamily: 'monospace',
+                                                        fontSize: '10px',
+                                                        color: walletInfo.isOnChainMatch ? colors.success : colors.textFaded
+                                                    }}
+                                                />
+                                            </div>
+                                        )}
+
+                                        {/* On-chain linked MLDSA (if different from local) */}
+                                        {walletInfo.onChainLinkedMldsaHash && !walletInfo.isOnChainMatch && (
+                                            <div style={{ marginTop: '2px' }}>
+                                                <Text text="On-chain expects:" size="xxs" style={{ color: colors.warning }} />
+                                                <Text
+                                                    text={`0x${walletInfo.onChainLinkedMldsaHash.replace('0x', '').slice(0, 8)}...${walletInfo.onChainLinkedMldsaHash.replace('0x', '').slice(-6)}`}
+                                                    preset="sub"
+                                                    size="xs"
+                                                    style={{
+                                                        fontFamily: 'monospace',
+                                                        fontSize: '10px',
+                                                        color: colors.warning
+                                                    }}
+                                                />
+                                            </div>
+                                        )}
 
                                         {/* MLDSA Status Badge */}
                                         <Row itemsCenter gap="sm" style={{ marginTop: '4px' }}>

@@ -104,7 +104,6 @@ import {
     SimpleKeyring,
     toNetwork
 } from '@btc-vision/wallet-sdk';
-import { getMLDSAConfig } from '@btc-vision/bip32';
 
 import {
     GatewayConfig,
@@ -2733,12 +2732,12 @@ export class WalletController {
      * Resolve a duplication conflict
      */
     public resolveDuplicationConflict = async (choice: ConflictResolutionChoice): Promise<void> => {
-        const { conflictId, resolution, correctWalletIndex, walletsToDelete, targetWalletIndex, newQuantumPrivateKey } = choice;
+        const { conflictId, resolution, correctWalletIndex, walletsToDelete, walletsToClearMldsa, targetWalletIndex, newQuantumPrivateKey } = choice;
 
         try {
             switch (resolution) {
                 case DuplicationResolution.KEEP_SELECTED:
-                    // Delete all wallets except the selected one
+                    // Delete all wallets except the selected one (for WALLET_DUPLICATE)
                     if (walletsToDelete && walletsToDelete.length > 0) {
                         // Sort in descending order to avoid index shifting issues
                         const sortedIndices = [...walletsToDelete].sort((a, b) => b - a);
@@ -2749,11 +2748,27 @@ export class WalletController {
                     }
                     break;
 
+                case DuplicationResolution.KEEP_MLDSA_ON_SELECTED:
+                    // Clear MLDSA from other wallets but keep the wallets (for MLDSA_DUPLICATE)
+                    if (walletsToClearMldsa && walletsToClearMldsa.length > 0) {
+                        for (const index of walletsToClearMldsa) {
+                            try {
+                                await keyringService.clearQuantumKeyByIndex(index);
+                                console.log(`[DuplicationResolution] Cleared MLDSA from keyring ${index}`);
+                            } catch (e) {
+                                console.warn(`[DuplicationResolution] Failed to clear MLDSA from keyring ${index}:`, e);
+                            }
+                        }
+                        console.log(`[DuplicationResolution] Cleared MLDSA from ${walletsToClearMldsa.length} wallets, kept MLDSA on keyring ${correctWalletIndex}`);
+                    }
+                    break;
+
                 case DuplicationResolution.MOVE_MLDSA:
                     if (targetWalletIndex === undefined) {
                         throw new WalletControllerError('Target wallet index required for MOVE_MLDSA');
                     }
-                    await keyringService.moveQuantumKey(correctWalletIndex, targetWalletIndex);
+                    await keyringService.moveQuantumKey(targetWalletIndex, correctWalletIndex);
+                    console.log(`[DuplicationResolution] Moved MLDSA from keyring ${targetWalletIndex} to ${correctWalletIndex}`);
                     break;
 
                 case DuplicationResolution.REPLACE_MLDSA:
@@ -2876,28 +2891,41 @@ export class WalletController {
             }
 
             // Generate random valid test Bitcoin private keys (WIF format)
+            // Generate enough for all scenarios (need ~15+ keys)
             const testPrivateKeys: string[] = [];
-            for (let i = 0; i < 8; i++) {
+            for (let i = 0; i < 20; i++) {
                 const randomBytes = new Uint8Array(32);
                 crypto.getRandomValues(randomBytes);
                 const randomKeyPair = EcKeyPair.fromPrivateKey(Buffer.from(randomBytes), currentNetwork);
                 testPrivateKeys.push(randomKeyPair.toWIF());
             }
 
-            // Generate random MLDSA private keys (for creating MLDSA duplicates)
-            const mldsaConfig = getMLDSAConfig(MLDSASecurityLevel.LEVEL2, currentNetwork);
-            const mldsaPrivateKeySize = mldsaConfig.privateKeySize; // bytes
-            const chaincodeSize = 32; // bytes
+            // Helper to generate a real MLDSA key by creating a temp keyring
+            const generateRealMldsaKey = async (): Promise<string> => {
+                // Create a temporary SimpleKeyring with a random WIF
+                const tempBytes = new Uint8Array(32);
+                crypto.getRandomValues(tempBytes);
+                const tempKeyPair = EcKeyPair.fromPrivateKey(Buffer.from(tempBytes), currentNetwork);
+                const tempWif = tempKeyPair.toWIF();
 
-            const generateRandomMldsaKey = (): string => {
-                // Generate random MLDSA private key + chaincode
-                const mldsaBytes = new Uint8Array(mldsaPrivateKeySize + chaincodeSize);
-                crypto.getRandomValues(mldsaBytes);
-                return Buffer.from(mldsaBytes).toString('hex');
+                const tempKeyring = new SimpleKeyring({
+                    privateKey: tempWif,
+                    network: currentNetwork
+                });
+
+                // Generate a fresh quantum key
+                tempKeyring.generateFreshQuantumKey();
+
+                // Serialize to get the quantumPrivateKey
+                const serialized = tempKeyring.serialize() as SimpleKeyringSerializedOptions;
+                return serialized.quantumPrivateKey!;
             };
 
-            // Generate 3 random MLDSA keys for test scenarios
-            const testMldsaKeys = [generateRandomMldsaKey(), generateRandomMldsaKey(), generateRandomMldsaKey()];
+            // Generate 3 real MLDSA keys for test scenarios
+            const testMldsaKeys: string[] = [];
+            for (let i = 0; i < 3; i++) {
+                testMldsaKeys.push(await generateRealMldsaKey());
+            }
 
             // ============================================================
             // SCENARIO 1: IDENTICAL WALLET COPIES (same WIF, no MLDSA)
@@ -2960,22 +2988,26 @@ export class WalletController {
             }
 
             // ============================================================
-            // SCENARIO 4: Use existing wallet's MLDSA on a NEW WIF (if exists)
+            // SCENARIO 4: Use EACH existing wallet's MLDSA on NEW WIFs
+            // This ensures we catch on-chain linked wallets
             // ============================================================
             const walletsWithMldsa = existingSimpleKeyrings.filter(k => k.serialized.quantumPrivateKey);
-            if (walletsWithMldsa.length > 0) {
-                const mldsaSource = walletsWithMldsa[0];
+            let testKeyIdx = 3;
+            for (let i = 0; i < walletsWithMldsa.length && testKeyIdx < testPrivateKeys.length; i++) {
+                const mldsaSource = walletsWithMldsa[i];
+                const walletName = mldsaSource.keyring.getAccounts()[0]?.slice(0, 8) || `wallet${i}`;
 
                 await keyringService.forceAddKeyringForTest(
                     KEYRING_TYPE.SimpleKeyring,
                     {
-                        privateKey: testPrivateKeys[3],
+                        privateKey: testPrivateKeys[testKeyIdx],
                         network: currentNetwork,
                         quantumPrivateKey: mldsaSource.serialized.quantumPrivateKey
                     },
                     AddressTypes.P2TR
                 );
-                created.push(`Stolen MLDSA: new WIF with existing wallet's MLDSA`);
+                created.push(`Stolen MLDSA from ${walletName}: new WIF with existing wallet #${i}'s MLDSA`);
+                testKeyIdx++;
             }
 
             // ============================================================
@@ -3001,11 +3033,13 @@ export class WalletController {
 
             // ============================================================
             // SCENARIO 6: Orphan wallets with NO MLDSA (need migration)
+            // Use keys from the end of the array to avoid conflicts
             // ============================================================
             for (let i = 0; i < 2; i++) {
+                const keyIdx = testPrivateKeys.length - 1 - i;
                 await keyringService.forceAddKeyringForTest(
                     KEYRING_TYPE.SimpleKeyring,
-                    { privateKey: testPrivateKeys[5 + i], network: currentNetwork },
+                    { privateKey: testPrivateKeys[keyIdx], network: currentNetwork },
                     AddressTypes.P2TR
                 );
                 created.push(`Orphan WIF #${i + 1}: unique WIF, no MLDSA (needs migration)`);

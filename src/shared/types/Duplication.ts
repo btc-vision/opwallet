@@ -140,8 +140,10 @@ export interface DuplicationState {
  * Resolution action types
  */
 export enum DuplicationResolution {
-    /** Keep the selected wallet, delete duplicates */
+    /** Keep the selected wallet, delete duplicates (for WALLET_DUPLICATE) */
     KEEP_SELECTED = 'keep_selected',
+    /** Keep MLDSA on selected wallet, clear from others (for MLDSA_DUPLICATE) */
+    KEEP_MLDSA_ON_SELECTED = 'keep_mldsa_on_selected',
     /** Move MLDSA key from one wallet to another */
     MOVE_MLDSA = 'move_mldsa',
     /** Replace MLDSA key with correct on-chain linked key */
@@ -160,6 +162,8 @@ export interface ConflictResolutionChoice {
     correctWalletIndex: number;
     /** For KEEP_SELECTED: indices of wallets to delete (all except correctWalletIndex) */
     walletsToDelete?: number[];
+    /** For KEEP_MLDSA_ON_SELECTED: indices of wallets to clear MLDSA from */
+    walletsToClearMldsa?: number[];
     /** For MOVE_MLDSA: target wallet to move the key to */
     targetWalletIndex?: number;
     /** For REPLACE_MLDSA: the new quantum private key to use */
