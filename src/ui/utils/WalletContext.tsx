@@ -379,6 +379,10 @@ export interface WalletController {
         password: string
     ): Promise<{ version: string; walletCount: number; createdAt: number }>;
     restoreFromDuplicationBackup(password: string): Promise<{ restored: number; errors: string[] }>;
+
+    // [DEV/TEST] Conflict testing methods
+    createTestConflicts(): Promise<{ created: string[]; message: string }>;
+    clearTestConflicts(): Promise<void>;
 }
 
 const WalletContext = createContext<{

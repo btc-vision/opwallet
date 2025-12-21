@@ -49,6 +49,15 @@ interface ConflictSelection {
     selectedWalletIndex: number;
 }
 
+interface RestorableKeypair {
+    /** Wallet with correct Bitcoin key that needs MLDSA */
+    targetWallet: DuplicateWalletInfo;
+    /** Wallet with the MLDSA key that needs to be moved */
+    sourceWallet: DuplicateWalletInfo;
+    /** The on-chain MLDSA hash they should match */
+    onChainHash: string;
+}
+
 export default function DuplicationResolutionScreen() {
     const wallet = useWallet();
     const navigate = useNavigate();
@@ -63,6 +72,39 @@ export default function DuplicationResolutionScreen() {
     const [backupDownloaded, setBackupDownloaded] = useState(false);
     const [conflictSelections, setConflictSelections] = useState<ConflictSelection[]>([]);
     const [confirmAcknowledged, setConfirmAcknowledged] = useState(false);
+    const [restoringConflictId, setRestoringConflictId] = useState<string | null>(null);
+
+    /**
+     * Find if a conflict has a restorable keypair combination:
+     * - One wallet has correct Bitcoin key (linked on-chain to MLDSA hash X)
+     * - Another wallet has MLDSA with hash X (but wrong Bitcoin key)
+     * We can restore by moving the MLDSA from source to target
+     */
+    const findRestorableKeypair = (conflict: DuplicationConflict): RestorableKeypair | null => {
+        // Look for a wallet that has on-chain linkage but doesn't have the matching MLDSA locally
+        for (const targetWallet of conflict.wallets) {
+            if (!targetWallet.onChainLinkedMldsaHash) continue;
+            if (targetWallet.isOnChainMatch) continue; // Already has correct combo
+
+            const onChainHash = targetWallet.onChainLinkedMldsaHash.replace('0x', '').toLowerCase();
+
+            // Find another wallet that has the MLDSA matching this on-chain hash
+            for (const sourceWallet of conflict.wallets) {
+                if (sourceWallet.keyringIndex === targetWallet.keyringIndex) continue;
+                if (!sourceWallet.mldsaPublicKeyHash) continue;
+
+                const sourceMldsaHash = sourceWallet.mldsaPublicKeyHash.replace('0x', '').toLowerCase();
+                if (sourceMldsaHash === onChainHash) {
+                    return {
+                        targetWallet,
+                        sourceWallet,
+                        onChainHash
+                    };
+                }
+            }
+        }
+        return null;
+    };
 
     // Load detection results once on mount
     useEffect(() => {
@@ -74,13 +116,24 @@ export default function DuplicationResolutionScreen() {
 
                 setDetection(result);
 
-                // Initialize selections
+                // Initialize selections - pre-select wallets that match on-chain
                 const allConflicts = [...result.walletDuplicates, ...result.mldsaDuplicates];
                 setConflictSelections(
-                    allConflicts.map((conflict) => ({
-                        conflictId: conflict.conflictId,
-                        selectedWalletIndex: -1 // No selection yet
-                    }))
+                    allConflicts.map((conflict) => {
+                        // Find a wallet that matches on-chain (isOnChainMatch)
+                        const onChainMatchWallet = conflict.wallets.find(w => w.isOnChainMatch);
+                        if (onChainMatchWallet) {
+                            return {
+                                conflictId: conflict.conflictId,
+                                selectedWalletIndex: onChainMatchWallet.keyringIndex
+                            };
+                        }
+                        // No on-chain match, leave unselected
+                        return {
+                            conflictId: conflict.conflictId,
+                            selectedWalletIndex: -1
+                        };
+                    })
                 );
             } catch (e) {
                 console.error('Failed to load detection:', e);
@@ -147,11 +200,77 @@ export default function DuplicationResolutionScreen() {
         );
     };
 
+    /**
+     * Restore matching keypair by moving MLDSA from source wallet to target wallet
+     */
+    const handleRestoreKeypair = async (conflictId: string, restorable: RestorableKeypair) => {
+        setRestoringConflictId(conflictId);
+        try {
+            // Move MLDSA from source to target
+            await wallet.resolveDuplicationConflict({
+                conflictId,
+                resolution: DuplicationResolution.MOVE_MLDSA,
+                correctWalletIndex: restorable.targetWallet.keyringIndex,
+                targetWalletIndex: restorable.sourceWallet.keyringIndex // source keyring with MLDSA
+            });
+
+            tools.toastSuccess(
+                `MLDSA key moved to ${restorable.targetWallet.alianName || restorable.targetWallet.address?.slice(0, 12) + '...'}`
+            );
+
+            // Reload accounts and detection
+            await reloadAccounts();
+            const result = await wallet.checkForDuplicates();
+            setDetection(result);
+
+            // Update selections for remaining conflicts
+            const allConflicts = [...result.walletDuplicates, ...result.mldsaDuplicates];
+            setConflictSelections(
+                allConflicts.map((conflict) => {
+                    const onChainMatchWallet = conflict.wallets.find(w => w.isOnChainMatch);
+                    return {
+                        conflictId: conflict.conflictId,
+                        selectedWalletIndex: onChainMatchWallet ? onChainMatchWallet.keyringIndex : -1
+                    };
+                })
+            );
+        } catch (e) {
+            console.error('Failed to restore keypair:', e);
+            tools.toastError(`Failed to restore keypair: ${e instanceof Error ? e.message : String(e)}`);
+        } finally {
+            setRestoringConflictId(null);
+        }
+    };
+
     const areAllConflictsResolved = () => {
-        return conflictSelections.every((sel) => sel.selectedWalletIndex >= 0);
+        if (!detection) return false;
+        const allConflicts = [...detection.walletDuplicates, ...detection.mldsaDuplicates];
+
+        return conflictSelections.every((sel) => {
+            // Find the conflict for this selection
+            const conflict = allConflicts.find(c => c.conflictId === sel.conflictId);
+            if (!conflict) return true; // Conflict was resolved/removed
+
+            // If conflict has restorable keypair, it's handled by the restore button
+            const restorable = findRestorableKeypair(conflict);
+            if (restorable) return true; // Skip - user should click restore button
+
+            // Otherwise, need a selection
+            return sel.selectedWalletIndex >= 0;
+        });
     };
 
     const handleResolveContinue = () => {
+        if (!detection) return;
+
+        // Check if there are any restorable conflicts pending
+        const allConflicts = [...detection.walletDuplicates, ...detection.mldsaDuplicates];
+        const pendingRestorables = allConflicts.filter(c => findRestorableKeypair(c) !== null);
+        if (pendingRestorables.length > 0) {
+            tools.toastError('Please click "Restore Matching Keypair" for conflicts that can be auto-restored');
+            return;
+        }
+
         if (!areAllConflictsResolved()) {
             tools.toastError('Please select the correct wallet for each conflict');
             return;
@@ -379,40 +498,75 @@ export default function DuplicationResolutionScreen() {
                     return {
                         title: 'Identical Wallet Copies (No MLDSA)',
                         subtitle: 'These are exact copies of the same wallet. None have MLDSA keys yet.',
-                        recommendation: 'Keep one wallet and delete the rest. Then migrate the kept one to get an MLDSA key.'
+                        recommendation: 'Keep one wallet and delete the rest. Then migrate the kept one to get an MLDSA key.',
+                        restorable: null
                     };
                 } else {
                     // True duplicates with same MLDSA
                     return {
                         title: 'Identical Wallet Copies',
                         subtitle: 'These are exact copies of the same wallet with the same MLDSA key.',
-                        recommendation: 'Keep one wallet and safely delete the duplicates. They are identical.'
+                        recommendation: 'Keep one wallet and safely delete the duplicates. They are identical.',
+                        restorable: null
                     };
                 }
             } else {
                 // Different MLDSA keys on same Bitcoin wallet
                 const hasAnyOnChain = conflict.wallets.some(w => w.isOnChainMatch);
+                const restorable = findRestorableKeypair(conflict);
+
                 if (hasAnyOnChain) {
                     return {
                         title: 'Same Wallet - Different MLDSA Keys (On-chain Found)',
                         subtitle: 'Same Bitcoin key was migrated multiple times with different MLDSA keys. One is verified on-chain.',
-                        recommendation: 'Select the ON-CHAIN VERIFIED wallet. The others have orphaned MLDSA keys.'
+                        recommendation: 'Select the ON-CHAIN VERIFIED wallet. The others have orphaned MLDSA keys.',
+                        restorable: null
+                    };
+                } else if (restorable) {
+                    return {
+                        title: '🔧 Restorable Keypair Found',
+                        subtitle: `The correct MLDSA key exists on another wallet. Click "Restore Matching Keypair" to move it.`,
+                        recommendation: `Move MLDSA from "${restorable.sourceWallet.alianName || 'source'}" to "${restorable.targetWallet.alianName || restorable.targetWallet.address?.slice(0, 12) + '...'}" to match on-chain linkage.`,
+                        restorable
                     };
                 } else {
                     return {
                         title: 'Same Wallet - Different MLDSA Keys',
                         subtitle: 'Same Bitcoin key was migrated multiple times with different MLDSA keys.',
-                        recommendation: 'Select the wallet with the MLDSA key you linked on-chain. If unsure, check your transaction history.'
+                        recommendation: 'Select the wallet with the MLDSA key you linked on-chain. If unsure, check your transaction history.',
+                        restorable: null
                     };
                 }
             }
         } else {
             // MLDSA_DUPLICATE - same MLDSA key on DIFFERENT Bitcoin wallets
-            return {
-                title: 'Same MLDSA on Different Wallets',
-                subtitle: 'The same MLDSA key is assigned to different Bitcoin addresses. This is an invalid configuration.',
-                recommendation: 'This should not happen. Select the correct Bitcoin wallet for this MLDSA key.'
-            };
+            const hasAnyOnChain = conflict.wallets.some(w => w.isOnChainMatch);
+            const onChainWallet = conflict.wallets.find(w => w.isOnChainMatch);
+            const restorable = findRestorableKeypair(conflict);
+
+            if (hasAnyOnChain && onChainWallet) {
+                return {
+                    title: 'Same MLDSA on Different Wallets (On-chain Found)',
+                    subtitle: `The same MLDSA key is on multiple Bitcoin wallets. One wallet (${onChainWallet.alianName || onChainWallet.address?.slice(0, 12) + '...'}) is verified on-chain.`,
+                    recommendation: 'Keep the ON-CHAIN VERIFIED wallet. The others incorrectly share this MLDSA key.',
+                    restorable: null
+                };
+            } else if (restorable) {
+                // Can restore - correct Bitcoin key exists AND correct MLDSA exists, just on wrong wallet
+                return {
+                    title: '🔧 Restorable Keypair Found',
+                    subtitle: `The correct Bitcoin wallet and MLDSA key exist, but on different wallets. Click "Restore Matching Keypair" to fix.`,
+                    recommendation: `Move MLDSA from "${restorable.sourceWallet.alianName || 'Wallet'}" to "${restorable.targetWallet.alianName || restorable.targetWallet.address?.slice(0, 12) + '...'}" to match on-chain linkage.`,
+                    restorable
+                };
+            } else {
+                return {
+                    title: 'Same MLDSA on Different Wallets',
+                    subtitle: 'The same MLDSA key is assigned to different Bitcoin addresses. No on-chain linkage found.',
+                    recommendation: '⚠️ WALLET NOT LINKED ON CHAIN - Select which Bitcoin wallet should own this MLDSA key. Check your transaction history if unsure.',
+                    restorable: null
+                };
+            }
         }
     };
 
@@ -428,17 +582,27 @@ export default function DuplicationResolutionScreen() {
         }
         if (walletInfo.isOnChainMatch) {
             return {
-                text: 'On-chain Verified',
+                text: '✓ On-chain Verified',
                 color: colors.success,
                 bgColor: `${colors.success}15`,
                 borderColor: `${colors.success}40`
             };
         }
+        // Has MLDSA but not verified on-chain
+        if (walletInfo.onChainLinkedMldsaHash) {
+            // There's an on-chain hash but it doesn't match this wallet's MLDSA
+            return {
+                text: 'MLDSA (Not Linked)',
+                color: colors.warning,
+                bgColor: `${colors.warning}15`,
+                borderColor: `${colors.warning}40`
+            };
+        }
         return {
-            text: 'Has MLDSA',
-            color: colors.main,
-            bgColor: `${colors.main}15`,
-            borderColor: `${colors.main}40`
+            text: 'MLDSA (No Chain Link)',
+            color: colors.textFaded,
+            bgColor: `${colors.containerBgFaded}`,
+            borderColor: `${colors.containerBorder}`
         };
     };
 
@@ -482,12 +646,47 @@ export default function DuplicationResolutionScreen() {
                             size="xs"
                             style={{ color: colors.text, fontStyle: 'italic' }}
                         />
+
+                        {/* Restore Button - shown when keypair can be automatically restored */}
+                        {explanation.restorable && (
+                            <button
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleRestoreKeypair(conflict.conflictId, explanation.restorable!);
+                                }}
+                                disabled={restoringConflictId === conflict.conflictId}
+                                style={{
+                                    marginTop: '10px',
+                                    padding: '10px 16px',
+                                    borderRadius: '8px',
+                                    border: `2px solid ${colors.success}`,
+                                    background: `${colors.success}20`,
+                                    color: colors.success,
+                                    fontWeight: 600,
+                                    fontSize: '13px',
+                                    cursor: restoringConflictId === conflict.conflictId ? 'wait' : 'pointer',
+                                    width: '100%',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    gap: '8px',
+                                    opacity: restoringConflictId === conflict.conflictId ? 0.7 : 1
+                                }}>
+                                {restoringConflictId === conflict.conflictId ? (
+                                    '⏳ Restoring...'
+                                ) : (
+                                    <>🔧 Restore Matching Keypair</>
+                                )}
+                            </button>
+                        )}
                     </div>
 
-                    <Text text="Select which wallet to keep:" preset="sub" size="xs" />
+                    {!explanation.restorable && (
+                        <Text text="Select which wallet to keep:" preset="sub" size="xs" />
+                    )}
 
-                    {/* Wallet Options */}
-                    {conflict.wallets.map((walletInfo, idx) => {
+                    {/* Wallet Options - hide when restorable (only show restore button) */}
+                    {!explanation.restorable && conflict.wallets.map((walletInfo, idx) => {
                         const badge = getMldsaBadge(walletInfo);
                         const isSelected = selection?.selectedWalletIndex === walletInfo.keyringIndex;
                         const keyringTypeLabel = walletInfo.keyringType === 'HD Key Tree' ? 'HD Wallet' : 'WIF Import';

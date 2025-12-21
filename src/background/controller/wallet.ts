@@ -6,7 +6,14 @@ import { IBtcNameResolverContract } from '@/shared/web3/interfaces/IBtcNameResol
 import contactBookService from '@/background/service/contactBook';
 import duplicationBackupService from '@/background/service/duplicationBackup';
 import duplicationDetectionService from '@/background/service/duplicationDetection';
-import keyringService, { DisplayedKeyring, EmptyKeyring, Keyring, SavedVault } from '@/background/service/keyring';
+import keyringService, {
+    DisplayedKeyring,
+    EmptyKeyring,
+    HdKeyringSerializedOptions,
+    Keyring,
+    SavedVault,
+    SimpleKeyringSerializedOptions
+} from '@/background/service/keyring';
 import notificationService, {
     ParsedTransaction,
     ParsedTxOutput,
@@ -90,11 +97,14 @@ import {
     Wallet
 } from '@btc-vision/transaction';
 import {
+    HdKeyring,
     publicKeyToAddressWithNetworkType,
     scriptPubKeyToAddress,
     signBip322MessageWithNetworkType,
+    SimpleKeyring,
     toNetwork
 } from '@btc-vision/wallet-sdk';
+import { getMLDSAConfig } from '@btc-vision/bip32';
 
 import {
     GatewayConfig,
@@ -2723,13 +2733,20 @@ export class WalletController {
      * Resolve a duplication conflict
      */
     public resolveDuplicationConflict = async (choice: ConflictResolutionChoice): Promise<void> => {
-        const { conflictId, resolution, correctWalletIndex, targetWalletIndex, newQuantumPrivateKey } = choice;
+        const { conflictId, resolution, correctWalletIndex, walletsToDelete, targetWalletIndex, newQuantumPrivateKey } = choice;
 
         try {
             switch (resolution) {
                 case DuplicationResolution.KEEP_SELECTED:
-                    // For wallet duplicates: we don't delete wallets, just mark as resolved
-                    // The user chose which wallet is "correct" - we track this
+                    // Delete all wallets except the selected one
+                    if (walletsToDelete && walletsToDelete.length > 0) {
+                        // Sort in descending order to avoid index shifting issues
+                        const sortedIndices = [...walletsToDelete].sort((a, b) => b - a);
+                        for (const index of sortedIndices) {
+                            await keyringService.removeKeyring(index);
+                        }
+                        console.log(`[DuplicationResolution] Removed ${sortedIndices.length} duplicate wallets, kept keyring ${correctWalletIndex}`);
+                    }
                     break;
 
                 case DuplicationResolution.MOVE_MLDSA:
@@ -2777,6 +2794,251 @@ export class WalletController {
      */
     public resetDuplicationState = async (): Promise<void> => {
         await preferenceService.resetDuplicationState();
+    };
+
+    /**
+     * Import backup from file content
+     */
+    public importDuplicationBackup = async (
+        fileContent: string,
+        password: string
+    ): Promise<{ version: string; walletCount: number; createdAt: number }> => {
+        const isValid = await this.verifyPassword(password);
+        if (!isValid) {
+            throw new WalletControllerError('Invalid password');
+        }
+
+        const backup = await duplicationBackupService.importBackupFromFile(fileContent, password);
+        return {
+            version: backup.version,
+            walletCount: backup.keyrings.length,
+            createdAt: backup.createdAt
+        };
+    };
+
+    /**
+     * Restore wallets from backup
+     * WARNING: This will clear existing keyrings!
+     */
+    public restoreFromDuplicationBackup = async (
+        password: string
+    ): Promise<{ restored: number; errors: string[] }> => {
+        const isValid = await this.verifyPassword(password);
+        if (!isValid) {
+            throw new WalletControllerError('Invalid password');
+        }
+
+        return await duplicationBackupService.restoreFromBackup(password);
+    };
+
+    /**
+     * [DEV/TEST ONLY] Create test conflict scenarios
+     * This creates duplicate wallets to test the resolution flow
+     * Uses forceAddKeyringForTest to bypass duplicate checks
+     * WARNING: Disabled in production builds
+     */
+    public createTestConflicts = async (): Promise<{
+        created: string[];
+        message: string;
+    }> => {
+        // SECURITY: Block this method in production
+        if (process.env.NODE_ENV === 'production') {
+            throw new WalletControllerError('Test methods are not available in production builds');
+        }
+
+        const created: string[] = [];
+
+        try {
+            // Reset any existing duplication state
+            await preferenceService.resetDuplicationState();
+
+            const currentNetwork = getBitcoinLibJSNetwork(this.getNetworkType(), this.getChainType());
+            const keyrings = keyringService.keyrings;
+
+            // Collect existing wallets info
+            const existingSimpleKeyrings: { keyring: SimpleKeyring; serialized: SimpleKeyringSerializedOptions }[] = [];
+            const existingHdKeyrings: { keyring: HdKeyring; serialized: HdKeyringSerializedOptions }[] = [];
+
+            for (const keyring of keyrings) {
+                if (keyring.type === KEYRING_TYPE.SimpleKeyring) {
+                    const sk = keyring as SimpleKeyring;
+                    existingSimpleKeyrings.push({
+                        keyring: sk,
+                        serialized: sk.serialize() as SimpleKeyringSerializedOptions
+                    });
+                } else if (keyring.type === KEYRING_TYPE.HdKeyring) {
+                    const hk = keyring as HdKeyring;
+                    existingHdKeyrings.push({
+                        keyring: hk,
+                        serialized: hk.serialize() as HdKeyringSerializedOptions
+                    });
+                }
+            }
+
+            // Generate random valid test Bitcoin private keys (WIF format)
+            const testPrivateKeys: string[] = [];
+            for (let i = 0; i < 8; i++) {
+                const randomBytes = new Uint8Array(32);
+                crypto.getRandomValues(randomBytes);
+                const randomKeyPair = EcKeyPair.fromPrivateKey(Buffer.from(randomBytes), currentNetwork);
+                testPrivateKeys.push(randomKeyPair.toWIF());
+            }
+
+            // Generate random MLDSA private keys (for creating MLDSA duplicates)
+            const mldsaConfig = getMLDSAConfig(MLDSASecurityLevel.LEVEL2, currentNetwork);
+            const mldsaPrivateKeySize = mldsaConfig.privateKeySize; // bytes
+            const chaincodeSize = 32; // bytes
+
+            const generateRandomMldsaKey = (): string => {
+                // Generate random MLDSA private key + chaincode
+                const mldsaBytes = new Uint8Array(mldsaPrivateKeySize + chaincodeSize);
+                crypto.getRandomValues(mldsaBytes);
+                return Buffer.from(mldsaBytes).toString('hex');
+            };
+
+            // Generate 3 random MLDSA keys for test scenarios
+            const testMldsaKeys = [generateRandomMldsaKey(), generateRandomMldsaKey(), generateRandomMldsaKey()];
+
+            // ============================================================
+            // SCENARIO 1: IDENTICAL WALLET COPIES (same WIF, no MLDSA)
+            // User imported same WIF multiple times without migration
+            // ============================================================
+            if (existingSimpleKeyrings.length > 0) {
+                const base = existingSimpleKeyrings[0];
+                const network = base.serialized.network || currentNetwork;
+
+                // Create 2 copies with NO MLDSA (needs migration)
+                for (let i = 0; i < 2; i++) {
+                    await keyringService.forceAddKeyringForTest(
+                        KEYRING_TYPE.SimpleKeyring,
+                        { privateKey: base.serialized.privateKey, network },
+                        AddressTypes.P2TR
+                    );
+                    created.push(`Identical Copy #${i + 1}: same WIF as wallet 0, no MLDSA`);
+                }
+            }
+
+            // ============================================================
+            // SCENARIO 2: WALLET DUPLICATES WITH DIFFERENT MLDSA
+            // Same WIF but different MLDSA keys (simulates multiple migrations)
+            // ============================================================
+            if (existingSimpleKeyrings.length > 0) {
+                const base = existingSimpleKeyrings[0];
+                const network = base.serialized.network || currentNetwork;
+
+                // Create copies of the same WIF with DIFFERENT generated MLDSA keys
+                for (let i = 0; i < 2; i++) {
+                    await keyringService.forceAddKeyringForTest(
+                        KEYRING_TYPE.SimpleKeyring,
+                        {
+                            privateKey: base.serialized.privateKey,
+                            network,
+                            quantumPrivateKey: testMldsaKeys[i]
+                        },
+                        AddressTypes.P2TR
+                    );
+                    created.push(`WIF Dupe w/ MLDSA #${i + 1}: same WIF as wallet 0, unique MLDSA`);
+                }
+            }
+
+            // ============================================================
+            // SCENARIO 3: MLDSA DUPLICATES (different WIFs, same MLDSA)
+            // Same MLDSA key incorrectly assigned to different Bitcoin wallets
+            // ============================================================
+            const sharedMldsaKey = testMldsaKeys[2]; // Use third generated MLDSA
+            for (let i = 0; i < 3; i++) {
+                await keyringService.forceAddKeyringForTest(
+                    KEYRING_TYPE.SimpleKeyring,
+                    {
+                        privateKey: testPrivateKeys[i],
+                        network: currentNetwork,
+                        quantumPrivateKey: sharedMldsaKey
+                    },
+                    AddressTypes.P2TR
+                );
+                created.push(`MLDSA Dupe #${i + 1}: unique WIF, SHARED MLDSA key`);
+            }
+
+            // ============================================================
+            // SCENARIO 4: Use existing wallet's MLDSA on a NEW WIF (if exists)
+            // ============================================================
+            const walletsWithMldsa = existingSimpleKeyrings.filter(k => k.serialized.quantumPrivateKey);
+            if (walletsWithMldsa.length > 0) {
+                const mldsaSource = walletsWithMldsa[0];
+
+                await keyringService.forceAddKeyringForTest(
+                    KEYRING_TYPE.SimpleKeyring,
+                    {
+                        privateKey: testPrivateKeys[3],
+                        network: currentNetwork,
+                        quantumPrivateKey: mldsaSource.serialized.quantumPrivateKey
+                    },
+                    AddressTypes.P2TR
+                );
+                created.push(`Stolen MLDSA: new WIF with existing wallet's MLDSA`);
+            }
+
+            // ============================================================
+            // SCENARIO 5: HD WALLET DUPLICATES (same mnemonic imported multiple times)
+            // ============================================================
+            if (existingHdKeyrings.length > 0) {
+                const baseHd = existingHdKeyrings[0];
+
+                for (let i = 0; i < 2; i++) {
+                    await keyringService.forceAddKeyringForTest(
+                        KEYRING_TYPE.HdKeyring,
+                        {
+                            mnemonic: baseHd.serialized.mnemonic,
+                            passphrase: baseHd.serialized.passphrase || '',
+                            activeIndexes: [0],
+                            network: currentNetwork
+                        },
+                        AddressTypes.P2TR
+                    );
+                    created.push(`HD Wallet Dupe #${i + 1}: same mnemonic`);
+                }
+            }
+
+            // ============================================================
+            // SCENARIO 6: Orphan wallets with NO MLDSA (need migration)
+            // ============================================================
+            for (let i = 0; i < 2; i++) {
+                await keyringService.forceAddKeyringForTest(
+                    KEYRING_TYPE.SimpleKeyring,
+                    { privateKey: testPrivateKeys[5 + i], network: currentNetwork },
+                    AddressTypes.P2TR
+                );
+                created.push(`Orphan WIF #${i + 1}: unique WIF, no MLDSA (needs migration)`);
+            }
+
+            keyringService.fullUpdate();
+
+            return {
+                created,
+                message: `Created ${created.length} test scenarios. Lock and unlock to trigger detection.`
+            };
+        } catch (e) {
+            throw new WalletControllerError(
+                `Failed to create test conflicts: ${e instanceof Error ? e.message : String(e)}`
+            );
+        }
+    };
+
+    /**
+     * [DEV/TEST ONLY] Clear test data and reset state
+     * WARNING: Disabled in production builds
+     */
+    public clearTestConflicts = async (): Promise<void> => {
+        // SECURITY: Block this method in production
+        if (process.env.NODE_ENV === 'production') {
+            throw new WalletControllerError('Test methods are not available in production builds');
+        }
+
+        // Reset duplication state
+        await preferenceService.resetDuplicationState();
+
+        // Clear backup
+        await duplicationBackupService.clearBackup();
     };
 
     // ==================== END DUPLICATION DETECTION ====================

@@ -1175,6 +1175,40 @@ class KeyringService extends EventEmitter {
     };
 
     /**
+     * [DEV/TEST ONLY] Force add a keyring bypassing duplicate checks
+     * WARNING: This method is disabled in production builds
+     */
+    forceAddKeyringForTest = async (
+        type: string,
+        opts: SimpleKeyringSerializedOptions | HdKeyringSerializedOptions,
+        addressType: AddressTypes
+    ): Promise<Keyring> => {
+        // SECURITY: Block this method in production
+        if (process.env.NODE_ENV === 'production') {
+            throw new Error('Test methods are not available in production builds');
+        }
+
+        let keyring: Keyring;
+
+        if (type === KEYRING_TYPE.SimpleKeyring) {
+            keyring = new SimpleKeyring(opts as SimpleKeyringSerializedOptions);
+        } else if (type === KEYRING_TYPE.HdKeyring) {
+            keyring = new HdKeyring(opts as HdKeyringSerializedOptions);
+        } else {
+            throw new Error(`Unknown keyring type: ${type}`);
+        }
+
+        this.keyrings.push(keyring);
+        this.addressTypes.push(addressType);
+
+        await this.persistAllKeyrings();
+        this._updateMemStoreKeyrings();
+        this.fullUpdate();
+
+        return keyring;
+    };
+
+    /**
      * Check if an account needs quantum migration
      * Note: In wallet-sdk 2.0, SimpleKeyring always generates a quantum key on creation
      * This method checks if for some reason the quantum key is missing
