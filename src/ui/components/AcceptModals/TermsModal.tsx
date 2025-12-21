@@ -153,7 +153,7 @@ export function TermsOfServiceModal({
             alignItems: 'center',
             justifyContent: 'center',
             padding: 10,
-            zIndex: 9999,
+            zIndex: 99999, // Must be higher than DuplicationAlertModal (10000)
         };
 
         // Chrome extension popup width-friendly

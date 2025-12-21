@@ -8,11 +8,9 @@ const colors = {
     text: '#dbdbdb',
     textFaded: 'rgba(219, 219, 219, 0.7)',
     buttonBg: '#434343',
-    buttonHoverBg: 'rgba(85, 85, 85, 0.3)',
     containerBg: '#434343',
     containerBgFaded: '#292929',
     containerBorder: '#303030',
-    success: '#4ade80',
     error: '#ef4444',
     warning: '#fbbf24'
 };
@@ -28,7 +26,7 @@ export const DuplicationAlertModal = ({ detection, onResolve }: DuplicationAlert
 
     return (
         <>
-            {/* Backdrop - Cannot be clicked to dismiss */}
+            {/* Backdrop */}
             <div
                 style={{
                     position: 'fixed',
@@ -36,14 +34,12 @@ export const DuplicationAlertModal = ({ detection, onResolve }: DuplicationAlert
                     left: 0,
                     right: 0,
                     bottom: 0,
-                    background: 'rgba(0, 0, 0, 0.9)',
-                    backdropFilter: 'blur(6px)',
-                    zIndex: 999,
-                    animation: 'fadeIn 0.2s ease'
+                    background: 'rgba(0, 0, 0, 0.85)',
+                    zIndex: 9999
                 }}
             />
 
-            {/* Modal */}
+            {/* Modal - Compact for extension popup */}
             <div
                 style={{
                     position: 'fixed',
@@ -51,112 +47,100 @@ export const DuplicationAlertModal = ({ detection, onResolve }: DuplicationAlert
                     left: '50%',
                     transform: 'translate(-50%, -50%)',
                     background: colors.containerBg,
-                    borderRadius: '16px',
-                    width: '90%',
-                    maxWidth: '360px',
+                    borderRadius: '12px',
+                    width: 'calc(100% - 32px)',
+                    maxWidth: '320px',
+                    maxHeight: 'calc(100vh - 80px)',
                     border: `2px solid ${colors.error}`,
-                    boxShadow: `0 10px 40px rgba(0, 0, 0, 0.5), 0 0 30px ${colors.error}30`,
-                    zIndex: 1000,
-                    animation: 'slideUp 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
+                    boxShadow: `0 8px 32px rgba(0, 0, 0, 0.5)`,
+                    zIndex: 10000,
+                    overflow: 'hidden',
+                    display: 'flex',
+                    flexDirection: 'column'
                 }}>
-                {/* Header with error gradient */}
+                {/* Header */}
                 <div
                     style={{
-                        padding: '24px 20px 0',
+                        padding: '16px 16px 12px',
                         background: `linear-gradient(135deg, ${colors.error}20 0%, transparent 100%)`,
-                        borderRadius: '14px 14px 0 0'
+                        textAlign: 'center',
+                        flexShrink: 0
                     }}>
-                    {/* Critical Icon */}
-                    <div
+                    <ExclamationCircleOutlined
                         style={{
-                            width: '64px',
-                            height: '64px',
-                            borderRadius: '16px',
-                            background: `linear-gradient(135deg, ${colors.error}30 0%, ${colors.error}15 100%)`,
-                            border: `1px solid ${colors.error}50`,
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            margin: '0 auto 16px',
-                            position: 'relative'
-                        }}>
-                        <ExclamationCircleOutlined
-                            style={{
-                                fontSize: 32,
-                                color: colors.error
-                            }}
-                        />
-                    </div>
-
-                    {/* Title */}
+                            fontSize: 36,
+                            color: colors.error,
+                            marginBottom: 8
+                        }}
+                    />
                     <h3
                         style={{
-                            fontSize: '18px',
+                            fontSize: '15px',
                             fontWeight: 700,
                             color: colors.error,
-                            textAlign: 'center',
-                            margin: '0 0 8px 0',
-                            fontFamily: 'Inter-Regular, serif',
+                            margin: '0 0 4px 0',
                             textTransform: 'uppercase',
                             letterSpacing: '0.5px'
                         }}>
                         Critical Issue Detected
                     </h3>
-
                     <p
                         style={{
-                            fontSize: '13px',
+                            fontSize: '11px',
                             color: colors.textFaded,
-                            textAlign: 'center',
-                            margin: '0 0 20px 0',
-                            lineHeight: '1.5'
+                            margin: 0,
+                            lineHeight: '1.4'
                         }}>
-                        Your wallet has conflicts that must be resolved before continuing.
+                        Conflicts must be resolved before continuing.
                     </p>
                 </div>
 
-                {/* Content */}
-                <div style={{ padding: '0 20px 20px' }}>
+                {/* Content - Scrollable if needed */}
+                <div
+                    style={{
+                        padding: '12px 16px 16px',
+                        overflowY: 'auto',
+                        flex: 1
+                    }}>
                     {/* Wallet Duplicates Alert */}
                     {hasWalletDupes && (
                         <div
                             style={{
                                 display: 'flex',
                                 alignItems: 'flex-start',
-                                gap: '12px',
-                                padding: '14px',
+                                gap: '10px',
+                                padding: '10px',
                                 background: `${colors.error}15`,
                                 border: `1px solid ${colors.error}40`,
-                                borderRadius: '12px',
-                                marginBottom: hasMldsaDupes ? '12px' : '16px'
+                                borderRadius: '8px',
+                                marginBottom: hasMldsaDupes ? '8px' : '12px'
                             }}>
                             <WarningOutlined
                                 style={{
                                     color: colors.error,
-                                    fontSize: '18px',
+                                    fontSize: '14px',
                                     flexShrink: 0,
-                                    marginTop: '2px'
+                                    marginTop: '1px'
                                 }}
                             />
                             <div>
                                 <div
                                     style={{
-                                        fontSize: '14px',
+                                        fontSize: '12px',
                                         fontWeight: 700,
                                         color: colors.error,
-                                        marginBottom: '4px'
+                                        marginBottom: '2px'
                                     }}>
-                                    DUPLICATED WALLET DETECTED!
+                                    DUPLICATED WALLET
                                 </div>
                                 <div
                                     style={{
-                                        fontSize: '12px',
+                                        fontSize: '11px',
                                         color: colors.textFaded,
-                                        lineHeight: '1.4'
+                                        lineHeight: '1.3'
                                     }}>
-                                    {detection.walletDuplicates.length} wallet
-                                    {detection.walletDuplicates.length > 1 ? 's have' : ' has'} been imported multiple
-                                    times with different MLDSA keys.
+                                    {detection.walletDuplicates.length} conflict
+                                    {detection.walletDuplicates.length > 1 ? 's' : ''} - same key, different MLDSA
                                 </div>
                             </div>
                         </div>
@@ -168,120 +152,77 @@ export const DuplicationAlertModal = ({ detection, onResolve }: DuplicationAlert
                             style={{
                                 display: 'flex',
                                 alignItems: 'flex-start',
-                                gap: '12px',
-                                padding: '14px',
+                                gap: '10px',
+                                padding: '10px',
                                 background: `${colors.warning}15`,
                                 border: `1px solid ${colors.warning}40`,
-                                borderRadius: '12px',
-                                marginBottom: '16px'
+                                borderRadius: '8px',
+                                marginBottom: '12px'
                             }}>
                             <WarningOutlined
                                 style={{
                                     color: colors.warning,
-                                    fontSize: '18px',
+                                    fontSize: '14px',
                                     flexShrink: 0,
-                                    marginTop: '2px'
+                                    marginTop: '1px'
                                 }}
                             />
                             <div>
                                 <div
                                     style={{
-                                        fontSize: '14px',
+                                        fontSize: '12px',
                                         fontWeight: 700,
                                         color: colors.warning,
-                                        marginBottom: '4px'
+                                        marginBottom: '2px'
                                     }}>
-                                    DUPLICATED MLDSA WALLET FOUND
+                                    DUPLICATED MLDSA
                                 </div>
                                 <div
                                     style={{
-                                        fontSize: '12px',
+                                        fontSize: '11px',
                                         color: colors.textFaded,
-                                        lineHeight: '1.4'
+                                        lineHeight: '1.3'
                                     }}>
-                                    {detection.mldsaDuplicates.length} MLDSA key
-                                    {detection.mldsaDuplicates.length > 1 ? 's are' : ' is'} assigned to multiple
-                                    wallets.
+                                    {detection.mldsaDuplicates.length} conflict
+                                    {detection.mldsaDuplicates.length > 1 ? 's' : ''} - same MLDSA on multiple wallets
                                 </div>
                             </div>
                         </div>
                     )}
 
-                    {/* Explanation */}
-                    <div
+                    {/* Brief explanation */}
+                    <p
                         style={{
-                            background: colors.containerBgFaded,
-                            borderRadius: '10px',
-                            padding: '12px',
-                            marginBottom: '20px',
-                            border: `1px solid ${colors.containerBorder}`
+                            fontSize: '11px',
+                            color: colors.textFaded,
+                            margin: '0 0 12px 0',
+                            lineHeight: '1.4',
+                            textAlign: 'center'
                         }}>
-                        <p
-                            style={{
-                                fontSize: '12px',
-                                color: colors.textFaded,
-                                margin: 0,
-                                lineHeight: '1.5',
-                                textAlign: 'center'
-                            }}>
-                            You must resolve these conflicts to continue using your wallet. Only{' '}
-                            <strong style={{ color: colors.text }}>one</strong> MLDSA key per Bitcoin address can be
-                            valid on-chain.
-                        </p>
-                    </div>
+                        Only <strong style={{ color: colors.text }}>one</strong> MLDSA key per Bitcoin address is valid
+                        on-chain.
+                    </p>
 
                     {/* Resolve Button */}
                     <button
                         style={{
                             width: '100%',
-                            padding: '14px',
+                            padding: '12px',
                             background: colors.error,
                             border: 'none',
-                            borderRadius: '12px',
+                            borderRadius: '8px',
                             color: '#fff',
-                            fontSize: '15px',
+                            fontSize: '13px',
                             fontWeight: 700,
                             cursor: 'pointer',
-                            transition: 'all 0.15s',
-                            fontFamily: 'Inter-Regular, serif',
                             textTransform: 'uppercase',
                             letterSpacing: '0.5px'
                         }}
-                        onClick={onResolve}
-                        onMouseEnter={(e) => {
-                            e.currentTarget.style.transform = 'translateY(-2px)';
-                            e.currentTarget.style.boxShadow = `0 6px 20px ${colors.error}50`;
-                        }}
-                        onMouseLeave={(e) => {
-                            e.currentTarget.style.transform = 'translateY(0)';
-                            e.currentTarget.style.boxShadow = 'none';
-                        }}>
-                        Resolve Now (Required)
+                        onClick={onResolve}>
+                        Resolve Now
                     </button>
                 </div>
             </div>
-
-            <style>{`
-                @keyframes fadeIn {
-                    from {
-                        opacity: 0;
-                    }
-                    to {
-                        opacity: 1;
-                    }
-                }
-
-                @keyframes slideUp {
-                    from {
-                        opacity: 0;
-                        transform: translate(-50%, calc(-50% + 20px));
-                    }
-                    to {
-                        opacity: 1;
-                        transform: translate(-50%, -50%);
-                    }
-                }
-            `}</style>
         </>
     );
 };

@@ -9,6 +9,7 @@ import * as encryptor from '@btc-vision/passworder';
 import { HdKeyring, SimpleKeyring } from '@btc-vision/wallet-sdk';
 
 import { DUPLICATION_BACKUP_STORAGE_KEY, DUPLICATION_BACKUP_VERSION, KEYRING_TYPE } from '@/shared/constant';
+import { AddressTypes } from '@/shared/types';
 import {
     BackupAccountData,
     BackupKeyringData,
@@ -44,7 +45,8 @@ class DuplicationBackupService {
      * Get stored backup (decrypted)
      */
     async getBackup(password: string): Promise<DuplicationBackup | null> {
-        const stored = await browserStorageLocalGet(DUPLICATION_BACKUP_STORAGE_KEY);
+        const result = await browserStorageLocalGet(DUPLICATION_BACKUP_STORAGE_KEY);
+        const stored = result?.[DUPLICATION_BACKUP_STORAGE_KEY];
         if (!stored || typeof stored !== 'string') {
             return null;
         }
@@ -61,7 +63,8 @@ class DuplicationBackupService {
      * Check if backup exists
      */
     async hasBackup(): Promise<boolean> {
-        const stored = await browserStorageLocalGet(DUPLICATION_BACKUP_STORAGE_KEY);
+        const result = await browserStorageLocalGet(DUPLICATION_BACKUP_STORAGE_KEY);
+        const stored = result?.[DUPLICATION_BACKUP_STORAGE_KEY];
         return !!stored;
     }
 
@@ -70,7 +73,8 @@ class DuplicationBackupService {
      * Returns the encrypted backup string that can be saved to a file
      */
     async exportBackupToFile(password: string): Promise<{ content: string; filename: string }> {
-        const stored = await browserStorageLocalGet(DUPLICATION_BACKUP_STORAGE_KEY);
+        const result = await browserStorageLocalGet(DUPLICATION_BACKUP_STORAGE_KEY);
+        const stored = result?.[DUPLICATION_BACKUP_STORAGE_KEY];
         if (!stored || typeof stored !== 'string') {
             throw new Error('No backup found. Create backup first.');
         }
@@ -226,6 +230,89 @@ class DuplicationBackupService {
             createdAt: backup.createdAt,
             conflicts: backup.conflicts
         };
+    }
+
+    /**
+     * Import backup from file content
+     * Parses the exported file format and stores it
+     */
+    async importBackupFromFile(fileContent: string, password: string): Promise<DuplicationBackup> {
+        try {
+            const parsed = JSON.parse(fileContent);
+
+            if (parsed.type !== 'opwallet-duplication-backup') {
+                throw new Error('Invalid backup file format');
+            }
+
+            if (!parsed.encrypted) {
+                throw new Error('Backup file is missing encrypted data');
+            }
+
+            // Verify password by attempting to decrypt
+            const decrypted = (await encryptor.decrypt(password, parsed.encrypted)) as string;
+            const backup = JSON.parse(decrypted) as DuplicationBackup;
+
+            // Store the encrypted backup
+            await browserStorageLocalSet({ [DUPLICATION_BACKUP_STORAGE_KEY]: parsed.encrypted });
+
+            return backup;
+        } catch (e) {
+            if (e instanceof Error && e.message.includes('Invalid backup file')) {
+                throw e;
+            }
+            throw new Error('Failed to import backup. Check file format and password.');
+        }
+    }
+
+    /**
+     * Restore wallets from backup
+     * WARNING: This will clear existing keyrings and restore from backup
+     */
+    async restoreFromBackup(password: string): Promise<{
+        restored: number;
+        errors: string[];
+    }> {
+        const backup = await this.getBackup(password);
+        if (!backup) {
+            throw new Error('No backup found or invalid password');
+        }
+
+        const errors: string[] = [];
+        let restored = 0;
+
+        // Clear existing keyrings first
+        await keyringService.clearKeyrings();
+
+        for (const keyringData of backup.keyrings) {
+            try {
+                const addressType = parseInt(keyringData.addressType, 10) as unknown as AddressTypes;
+
+                if (keyringData.keyringType === KEYRING_TYPE.HdKeyring && keyringData.mnemonic) {
+                    // Restore HD wallet
+                    await keyringService.createKeyringWithMnemonics(
+                        keyringData.mnemonic,
+                        '', // hdPath (ignored in wallet-sdk 2.0)
+                        keyringData.passphrase || '',
+                        addressType,
+                        keyringData.activeIndexes?.length || 1
+                    );
+                    restored++;
+                } else if (keyringData.keyringType === KEYRING_TYPE.SimpleKeyring && keyringData.privateKey) {
+                    // Restore Simple wallet with quantum key if available
+                    await keyringService.importPrivateKey(
+                        keyringData.privateKey,
+                        addressType,
+                        undefined, // network defaults to mainnet
+                        keyringData.quantumPrivateKey
+                    );
+                    restored++;
+                }
+            } catch (e) {
+                errors.push(`Failed to restore keyring ${keyringData.keyringIndex}: ${e instanceof Error ? e.message : String(e)}`);
+            }
+        }
+
+        return { restored, errors };
     }
 }
 

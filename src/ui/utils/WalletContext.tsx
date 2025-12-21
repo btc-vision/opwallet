@@ -374,6 +374,11 @@ export interface WalletController {
     removeDuplicateWallet(keyringIndex: number): Promise<void>;
     setDuplicationResolved(): Promise<void>;
     resetDuplicationState(): Promise<void>;
+    importDuplicationBackup(
+        fileContent: string,
+        password: string
+    ): Promise<{ version: string; walletCount: number; createdAt: number }>;
+    restoreFromDuplicationBackup(password: string): Promise<{ restored: number; errors: string[] }>;
 }
 
 const WalletContext = createContext<{

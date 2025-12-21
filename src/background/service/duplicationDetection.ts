@@ -29,16 +29,26 @@ class DuplicationDetectionService extends EventEmitter {
      * Detects both wallet duplicates and MLDSA duplicates
      */
     async detectDuplicates(): Promise<DuplicationDetectionResult> {
+        console.log('[DuplicationDetection] Starting duplicate detection...');
         const walletDuplicates = await this.detectWalletDuplicates();
         const mldsaDuplicates = await this.detectMldsaDuplicates();
 
-        return {
+        const result = {
             hasDuplicates: walletDuplicates.length > 0 || mldsaDuplicates.length > 0,
             walletDuplicates,
             mldsaDuplicates,
             totalConflicts: walletDuplicates.length + mldsaDuplicates.length,
             detectedAt: Date.now()
         };
+
+        console.log('[DuplicationDetection] Result:', JSON.stringify({
+            hasDuplicates: result.hasDuplicates,
+            walletDuplicateCount: walletDuplicates.length,
+            mldsaDuplicateCount: mldsaDuplicates.length,
+            totalConflicts: result.totalConflicts
+        }));
+
+        return result;
     }
 
     /**
@@ -49,9 +59,13 @@ class DuplicationDetectionService extends EventEmitter {
         const addressTypes = keyringService.addressTypes;
         const privateKeyHashMap = new Map<string, DuplicateWalletInfo[]>();
 
+        console.log('[DuplicationDetection] Checking', keyrings.length, 'keyrings for duplicates');
+
         for (let i = 0; i < keyrings.length; i++) {
             const keyring = keyrings[i];
             const addressType = addressTypes[i];
+
+            console.log(`[DuplicationDetection] Keyring ${i}: type=${keyring.type}, instanceof SimpleKeyring=${keyring instanceof SimpleKeyring}, instanceof HdKeyring=${keyring instanceof HdKeyring}`);
 
             if (keyring instanceof SimpleKeyring) {
                 // Get the private key and hash it
@@ -82,6 +96,7 @@ class DuplicationDetectionService extends EventEmitter {
         // Filter for duplicates (more than 1 wallet with same hash)
         const conflicts: DuplicationConflict[] = [];
         privateKeyHashMap.forEach((wallets, hash) => {
+            console.log(`[DuplicationDetection] Hash ${hash.substring(0, 16)}: ${wallets.length} wallets`);
             if (wallets.length > 1) {
                 conflicts.push({
                     type: 'WALLET_DUPLICATE',
@@ -92,6 +107,7 @@ class DuplicationDetectionService extends EventEmitter {
             }
         });
 
+        console.log('[DuplicationDetection] Found', conflicts.length, 'wallet duplicate conflicts');
         return conflicts;
     }
 
