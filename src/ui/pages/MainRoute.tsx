@@ -1,7 +1,12 @@
 import { ReactElement, useCallback, useEffect, useMemo, useRef } from 'react';
-import { HashRouter, Route, Routes, useNavigate as useNavigateOrigin } from 'react-router-dom';
+import { HashRouter, Route, Routes } from 'react-router-dom';
 
 import TxCreateScreen from '@/ui/pages/Wallet/TxCreateScreen';
+import { RouteTypes, routePaths } from './routeTypes';
+
+// Re-export for backward compatibility
+export { RouteTypes, useNavigate } from './routeTypes';
+export type { UseNavigate } from './routeTypes';
 
 import { Content, OPNetLoader } from '../components';
 import { accountActions } from '../state/accounts/reducer';
@@ -58,56 +63,6 @@ import ImportTokenScreen from '@/ui/pages/Wallet/ImportOP20Screen';
 import HistoryScreen from '@/ui/pages/History/HistoryScreen';
 import TransactionDetailScreen from '@/ui/pages/History/TransactionDetailScreen';
 
-export enum RouteTypes {
-    BoostScreen = 'BoostScreen',
-    WelcomeScreen = 'WelcomeScreen',
-    MainScreen = 'MainScreen',
-    AppTabScrren = 'AppTabScrren',
-    SettingsTabScreen = 'SettingsTabScreen',
-    CreateHDWalletScreen = 'CreateHDWalletScreen',
-    CreateAccountScreen = 'CreateAccountScreen',
-    CreatePasswordScreen = 'CreatePasswordScreen',
-    UnlockScreen = 'UnlockScreen',
-    SwitchAccountScreen = 'SwitchAccountScreen',
-    ReceiveScreen = 'ReceiveScreen',
-    TxConfirmScreen = 'TxConfirmScreen',
-    TxOpnetConfirmScreen = 'TxOpnetConfirmScreen',
-    TxSuccessScreen = 'TxSuccessScreen',
-    TxFailScreen = 'TxFailScreen',
-    NetworkTypeScreen = 'NetworkTypeScreen',
-    ChangePasswordScreen = 'ChangePasswordScreen',
-    ExportMnemonicsScreen = 'ExportMnemonicsScreen',
-    ExportPrivateKeyScreen = 'ExportPrivateKeyScreen',
-    AdvancedScreen = 'AdvancedScreen',
-    ApprovalScreen = 'ApprovalScreen',
-    ConnectedSitesScreen = 'ConnectedSitesScreen',
-    SwitchKeyringScreen = 'SwitchKeyringScreen',
-    AddKeyringScreen = 'AddKeyringScreen',
-    EditWalletNameScreen = 'EditWalletNameScreen',
-    CreateSimpleWalletScreen = 'CreateSimpleWalletScreen',
-    CreateKeystoneWalletScreen = 'CreateKeystoneWalletScreen',
-    UpgradeNoticeScreen = 'UpgradeNoticeScreen',
-    AddressTypeScreen = 'AddressTypeScreen',
-    EditAccountNameScreen = 'EditAccountNameScreen',
-    UnavailableUtxoScreen = 'UnavailableUtxoScreen',
-    OpNetTokenScreen = 'OpNetTokenScreen',
-    SendOpNetScreen = 'SendOpNetScreen',
-    TxCreateScreen = 'TxCreateScreen',
-    DeployContract = 'DeployContract',
-    Mint = 'Mint',
-    ImportSelectionScreen = 'ImportSelectionScreen',
-    ImportNFTScreen = 'ImportNFTScreen',
-    NFTTabScreen = 'NFTTabScreen',
-    NFTSendScreen = 'NFTSendScreen',
-    ImportTokenScreen = 'ImportTokenScreen',
-    QuantumMigrationScreen = 'QuantumMigrationScreen',
-    DuplicationResolutionScreen = 'DuplicationResolutionScreen',
-    HistoryScreen = 'HistoryScreen',
-    TransactionDetailScreen = 'TransactionDetailScreen',
-    OpnetBrowserScreen = 'OpnetBrowserScreen',
-    BtcDomainScreen = 'BtcDomainScreen'
-}
-
 type Routes = {
     [key in RouteTypes]: {
         path: string;
@@ -116,210 +71,195 @@ type Routes = {
 };
 
 export const routes: Routes = {
-    BoostScreen: {
-        path: '/',
+    [RouteTypes.BoostScreen]: {
+        path: routePaths[RouteTypes.BoostScreen],
         element: <BoostScreen />
     },
-    WelcomeScreen: {
-        path: '/welcome',
+    [RouteTypes.WelcomeScreen]: {
+        path: routePaths[RouteTypes.WelcomeScreen],
         element: <WelcomeScreen />
     },
-    MainScreen: {
-        path: '/main',
+    [RouteTypes.MainScreen]: {
+        path: routePaths[RouteTypes.MainScreen],
         element: <WalletTabScreen />
     },
-    AppTabScrren: {
-        path: '/app',
+    [RouteTypes.AppTabScrren]: {
+        path: routePaths[RouteTypes.AppTabScrren],
         element: <AppTabScrren />
     },
-    SettingsTabScreen: {
-        path: '/settings',
+    [RouteTypes.SettingsTabScreen]: {
+        path: routePaths[RouteTypes.SettingsTabScreen],
         element: <SettingsTabScreen />
     },
-    CreateHDWalletScreen: {
-        path: '/account/create-hd-wallet',
+    [RouteTypes.CreateHDWalletScreen]: {
+        path: routePaths[RouteTypes.CreateHDWalletScreen],
         element: <CreateHDWalletScreen />
     },
-    TxCreateScreen: {
-        path: '/wallet/tx/create',
+    [RouteTypes.TxCreateScreen]: {
+        path: routePaths[RouteTypes.TxCreateScreen],
         element: <TxCreateScreen />
     },
-    CreateAccountScreen: {
-        path: '/account/create',
+    [RouteTypes.CreateAccountScreen]: {
+        path: routePaths[RouteTypes.CreateAccountScreen],
         element: <CreateAccountScreen />
     },
-    CreatePasswordScreen: {
-        path: '/account/create-password',
+    [RouteTypes.CreatePasswordScreen]: {
+        path: routePaths[RouteTypes.CreatePasswordScreen],
         element: <CreatePasswordScreen />
     },
-    UnlockScreen: {
-        path: '/account/unlock',
+    [RouteTypes.UnlockScreen]: {
+        path: routePaths[RouteTypes.UnlockScreen],
         element: <UnlockScreen />
     },
-    SwitchAccountScreen: {
-        path: '/account/switch-account',
+    [RouteTypes.SwitchAccountScreen]: {
+        path: routePaths[RouteTypes.SwitchAccountScreen],
         element: <SwitchAccountScreen />
     },
-    ReceiveScreen: {
-        path: '/wallet/receive',
+    [RouteTypes.ReceiveScreen]: {
+        path: routePaths[RouteTypes.ReceiveScreen],
         element: <ReceiveScreen />
     },
-    TxConfirmScreen: {
-        path: '/wallet/tx/confirm',
+    [RouteTypes.TxConfirmScreen]: {
+        path: routePaths[RouteTypes.TxConfirmScreen],
         element: <TxConfirmScreen />
     },
-    TxOpnetConfirmScreen: {
-        path: '/wallet/tx/confirm-opnet',
+    [RouteTypes.TxOpnetConfirmScreen]: {
+        path: routePaths[RouteTypes.TxOpnetConfirmScreen],
         element: <TxOpnetConfirmScreen />
     },
-    TxSuccessScreen: {
-        path: '/wallet/tx/success',
+    [RouteTypes.TxSuccessScreen]: {
+        path: routePaths[RouteTypes.TxSuccessScreen],
         element: <TxSuccessScreen />
     },
-    TxFailScreen: {
-        path: '/wallet/tx/fail',
+    [RouteTypes.TxFailScreen]: {
+        path: routePaths[RouteTypes.TxFailScreen],
         element: <TxFailScreen />
     },
-    NetworkTypeScreen: {
-        path: '/settings/network-type',
+    [RouteTypes.NetworkTypeScreen]: {
+        path: routePaths[RouteTypes.NetworkTypeScreen],
         element: <NetworkTypeScreen />
     },
-    ChangePasswordScreen: {
-        path: '/settings/password',
+    [RouteTypes.ChangePasswordScreen]: {
+        path: routePaths[RouteTypes.ChangePasswordScreen],
         element: <ChangePasswordScreen />
     },
-    ExportMnemonicsScreen: {
-        path: '/settings/export-mnemonics',
+    [RouteTypes.ExportMnemonicsScreen]: {
+        path: routePaths[RouteTypes.ExportMnemonicsScreen],
         element: <ExportMnemonicsScreen />
     },
-    ExportPrivateKeyScreen: {
-        path: '/settings/export-privatekey',
+    [RouteTypes.ExportPrivateKeyScreen]: {
+        path: routePaths[RouteTypes.ExportPrivateKeyScreen],
         element: <ExportPrivateKeyScreen />
     },
-    AdvancedScreen: {
-        path: '/settings/advanced',
+    [RouteTypes.AdvancedScreen]: {
+        path: routePaths[RouteTypes.AdvancedScreen],
         element: <AdvancedScreen />
     },
-    ApprovalScreen: {
-        path: '/approval',
+    [RouteTypes.ApprovalScreen]: {
+        path: routePaths[RouteTypes.ApprovalScreen],
         element: <ApprovalScreen />
     },
-    ConnectedSitesScreen: {
-        path: '/connected-sites',
+    [RouteTypes.ConnectedSitesScreen]: {
+        path: routePaths[RouteTypes.ConnectedSitesScreen],
         element: <ConnectedSitesScreen />
     },
-    SwitchKeyringScreen: {
-        path: '/account/switch-keyring',
+    [RouteTypes.SwitchKeyringScreen]: {
+        path: routePaths[RouteTypes.SwitchKeyringScreen],
         element: <SwitchKeyringScreen />
     },
-    AddKeyringScreen: {
-        path: '/account/add-keyring',
+    [RouteTypes.AddKeyringScreen]: {
+        path: routePaths[RouteTypes.AddKeyringScreen],
         element: <AddKeyringScreen />
     },
-    EditWalletNameScreen: {
-        path: '/settings/edit-wallet-name',
+    [RouteTypes.EditWalletNameScreen]: {
+        path: routePaths[RouteTypes.EditWalletNameScreen],
         element: <EditWalletNameScreen />
     },
-    CreateSimpleWalletScreen: {
-        path: '/account/create-simple-wallet',
+    [RouteTypes.CreateSimpleWalletScreen]: {
+        path: routePaths[RouteTypes.CreateSimpleWalletScreen],
         element: <CreateSimpleWalletScreen />
     },
-    CreateKeystoneWalletScreen: {
-        path: '/account/create-keystone-wallet',
+    [RouteTypes.CreateKeystoneWalletScreen]: {
+        path: routePaths[RouteTypes.CreateKeystoneWalletScreen],
         element: <CreateKeystoneWalletScreen />
     },
-    UpgradeNoticeScreen: {
-        path: '/settings/upgrade-notice',
+    [RouteTypes.UpgradeNoticeScreen]: {
+        path: routePaths[RouteTypes.UpgradeNoticeScreen],
         element: <UpgradeNoticeScreen />
     },
-    AddressTypeScreen: {
-        path: '/settings/address-type',
+    [RouteTypes.AddressTypeScreen]: {
+        path: routePaths[RouteTypes.AddressTypeScreen],
         element: <AddressTypeScreen />
     },
-    EditAccountNameScreen: {
-        path: '/settings/edit-account-name',
+    [RouteTypes.EditAccountNameScreen]: {
+        path: routePaths[RouteTypes.EditAccountNameScreen],
         element: <EditAccountNameScreen />
     },
-    UnavailableUtxoScreen: {
-        path: '/wallet/unavailable-utxo',
+    [RouteTypes.UnavailableUtxoScreen]: {
+        path: routePaths[RouteTypes.UnavailableUtxoScreen],
         element: <UnavailableUtxoScreen />
     },
-    OpNetTokenScreen: {
-        path: '/opnet/token',
+    [RouteTypes.OpNetTokenScreen]: {
+        path: routePaths[RouteTypes.OpNetTokenScreen],
         element: <OpNetTokenScreen />
     },
-    SendOpNetScreen: {
-        path: '/opnet/send-opnet',
+    [RouteTypes.SendOpNetScreen]: {
+        path: routePaths[RouteTypes.SendOpNetScreen],
         element: <SendOpNetScreen />
     },
-    DeployContract: {
-        path: '/opnet/deploy-contract',
+    [RouteTypes.DeployContract]: {
+        path: routePaths[RouteTypes.DeployContract],
         element: <DeployContract />
     },
-    Mint: {
-        path: '/opnet/mint',
+    [RouteTypes.Mint]: {
+        path: routePaths[RouteTypes.Mint],
         element: <Mint />
     },
-    ImportSelectionScreen: {
-        path: '/import-selection',
+    [RouteTypes.ImportSelectionScreen]: {
+        path: routePaths[RouteTypes.ImportSelectionScreen],
         element: <ImportSelectionScreen />
     },
-    ImportNFTScreen: {
-        path: '/import-nft',
+    [RouteTypes.ImportNFTScreen]: {
+        path: routePaths[RouteTypes.ImportNFTScreen],
         element: <ImportNFTScreen />
     },
-    NFTTabScreen: {
-        path: '/nft',
+    [RouteTypes.NFTTabScreen]: {
+        path: routePaths[RouteTypes.NFTTabScreen],
         element: <NFTTabScreen />
     },
-    NFTSendScreen: {
-        path: '/nft-send',
+    [RouteTypes.NFTSendScreen]: {
+        path: routePaths[RouteTypes.NFTSendScreen],
         element: <NFTSendScreen />
     },
-    ImportTokenScreen: {
-        path: '/import-token',
+    [RouteTypes.ImportTokenScreen]: {
+        path: routePaths[RouteTypes.ImportTokenScreen],
         element: <ImportTokenScreen />
     },
-    QuantumMigrationScreen: {
-        path: '/settings/quantum-migration',
+    [RouteTypes.QuantumMigrationScreen]: {
+        path: routePaths[RouteTypes.QuantumMigrationScreen],
         element: <QuantumMigrationScreen />
     },
-    DuplicationResolutionScreen: {
-        path: '/settings/duplication-resolution',
+    [RouteTypes.DuplicationResolutionScreen]: {
+        path: routePaths[RouteTypes.DuplicationResolutionScreen],
         element: <DuplicationResolutionScreen />
     },
-    HistoryScreen: {
-        path: '/history',
+    [RouteTypes.HistoryScreen]: {
+        path: routePaths[RouteTypes.HistoryScreen],
         element: <HistoryScreen />
     },
-    TransactionDetailScreen: {
-        path: '/history/transaction',
+    [RouteTypes.TransactionDetailScreen]: {
+        path: routePaths[RouteTypes.TransactionDetailScreen],
         element: <TransactionDetailScreen />
     },
-    OpnetBrowserScreen: {
-        path: '/settings/opnet-browser',
+    [RouteTypes.OpnetBrowserScreen]: {
+        path: routePaths[RouteTypes.OpnetBrowserScreen],
         element: <OpnetBrowserScreen />
     },
-    BtcDomainScreen: {
-        path: '/domain',
+    [RouteTypes.BtcDomainScreen]: {
+        path: routePaths[RouteTypes.BtcDomainScreen],
         element: <BtcDomainScreen />
     }
 };
-
-// TODO (typing): Check again but it looks like that we need to have a map between
-// RouteTypes and their data while calling navigate function
-export type UseNavigate<T extends RouteTypes> = (routKey: T, state?: unknown) => void;
-
-export function useNavigate<T extends RouteTypes>(): UseNavigate<T> {
-    const navigate = useNavigateOrigin();
-
-    return useCallback(
-        (routKey: T, state?: unknown) => {
-            navigate(routes[routKey].path, { state });
-        },
-        [navigate]
-    ) as UseNavigate<T>;
-}
 
 const Main = () => {
     const wallet = useWallet();

@@ -1,0 +1,115 @@
+import { useCallback } from 'react';
+import { useNavigate as useNavigateOrigin } from 'react-router-dom';
+
+export enum RouteTypes {
+    BoostScreen = 'BoostScreen',
+    WelcomeScreen = 'WelcomeScreen',
+    MainScreen = 'MainScreen',
+    AppTabScrren = 'AppTabScrren',
+    SettingsTabScreen = 'SettingsTabScreen',
+    CreateHDWalletScreen = 'CreateHDWalletScreen',
+    CreateAccountScreen = 'CreateAccountScreen',
+    CreatePasswordScreen = 'CreatePasswordScreen',
+    UnlockScreen = 'UnlockScreen',
+    SwitchAccountScreen = 'SwitchAccountScreen',
+    ReceiveScreen = 'ReceiveScreen',
+    TxConfirmScreen = 'TxConfirmScreen',
+    TxOpnetConfirmScreen = 'TxOpnetConfirmScreen',
+    TxSuccessScreen = 'TxSuccessScreen',
+    TxFailScreen = 'TxFailScreen',
+    NetworkTypeScreen = 'NetworkTypeScreen',
+    ChangePasswordScreen = 'ChangePasswordScreen',
+    ExportMnemonicsScreen = 'ExportMnemonicsScreen',
+    ExportPrivateKeyScreen = 'ExportPrivateKeyScreen',
+    AdvancedScreen = 'AdvancedScreen',
+    ApprovalScreen = 'ApprovalScreen',
+    ConnectedSitesScreen = 'ConnectedSitesScreen',
+    SwitchKeyringScreen = 'SwitchKeyringScreen',
+    AddKeyringScreen = 'AddKeyringScreen',
+    EditWalletNameScreen = 'EditWalletNameScreen',
+    CreateSimpleWalletScreen = 'CreateSimpleWalletScreen',
+    CreateKeystoneWalletScreen = 'CreateKeystoneWalletScreen',
+    UpgradeNoticeScreen = 'UpgradeNoticeScreen',
+    AddressTypeScreen = 'AddressTypeScreen',
+    EditAccountNameScreen = 'EditAccountNameScreen',
+    UnavailableUtxoScreen = 'UnavailableUtxoScreen',
+    OpNetTokenScreen = 'OpNetTokenScreen',
+    SendOpNetScreen = 'SendOpNetScreen',
+    TxCreateScreen = 'TxCreateScreen',
+    DeployContract = 'DeployContract',
+    Mint = 'Mint',
+    ImportSelectionScreen = 'ImportSelectionScreen',
+    ImportNFTScreen = 'ImportNFTScreen',
+    NFTTabScreen = 'NFTTabScreen',
+    NFTSendScreen = 'NFTSendScreen',
+    ImportTokenScreen = 'ImportTokenScreen',
+    QuantumMigrationScreen = 'QuantumMigrationScreen',
+    DuplicationResolutionScreen = 'DuplicationResolutionScreen',
+    HistoryScreen = 'HistoryScreen',
+    TransactionDetailScreen = 'TransactionDetailScreen',
+    OpnetBrowserScreen = 'OpnetBrowserScreen',
+    BtcDomainScreen = 'BtcDomainScreen'
+}
+
+export const routePaths: Record<RouteTypes, string> = {
+    [RouteTypes.BoostScreen]: '/',
+    [RouteTypes.WelcomeScreen]: '/welcome',
+    [RouteTypes.MainScreen]: '/main',
+    [RouteTypes.AppTabScrren]: '/app',
+    [RouteTypes.SettingsTabScreen]: '/settings',
+    [RouteTypes.CreateHDWalletScreen]: '/account/create-hd-wallet',
+    [RouteTypes.CreateAccountScreen]: '/account/create',
+    [RouteTypes.CreatePasswordScreen]: '/account/create-password',
+    [RouteTypes.UnlockScreen]: '/account/unlock',
+    [RouteTypes.SwitchAccountScreen]: '/account/switch-account',
+    [RouteTypes.ReceiveScreen]: '/wallet/receive',
+    [RouteTypes.TxConfirmScreen]: '/wallet/tx/confirm',
+    [RouteTypes.TxOpnetConfirmScreen]: '/wallet/tx/confirm-opnet',
+    [RouteTypes.TxSuccessScreen]: '/wallet/tx/success',
+    [RouteTypes.TxFailScreen]: '/wallet/tx/fail',
+    [RouteTypes.NetworkTypeScreen]: '/settings/network-type',
+    [RouteTypes.ChangePasswordScreen]: '/settings/password',
+    [RouteTypes.ExportMnemonicsScreen]: '/settings/export-mnemonics',
+    [RouteTypes.ExportPrivateKeyScreen]: '/settings/export-privatekey',
+    [RouteTypes.AdvancedScreen]: '/settings/advanced',
+    [RouteTypes.ApprovalScreen]: '/approval',
+    [RouteTypes.ConnectedSitesScreen]: '/connected-sites',
+    [RouteTypes.SwitchKeyringScreen]: '/account/switch-keyring',
+    [RouteTypes.AddKeyringScreen]: '/account/add-keyring',
+    [RouteTypes.EditWalletNameScreen]: '/settings/edit-wallet-name',
+    [RouteTypes.CreateSimpleWalletScreen]: '/account/create-simple-wallet',
+    [RouteTypes.CreateKeystoneWalletScreen]: '/account/create-keystone-wallet',
+    [RouteTypes.UpgradeNoticeScreen]: '/settings/upgrade-notice',
+    [RouteTypes.AddressTypeScreen]: '/settings/address-type',
+    [RouteTypes.EditAccountNameScreen]: '/settings/edit-account-name',
+    [RouteTypes.UnavailableUtxoScreen]: '/wallet/unavailable-utxo',
+    [RouteTypes.OpNetTokenScreen]: '/opnet/token',
+    [RouteTypes.SendOpNetScreen]: '/opnet/send-opnet',
+    [RouteTypes.TxCreateScreen]: '/wallet/tx/create',
+    [RouteTypes.DeployContract]: '/opnet/deploy-contract',
+    [RouteTypes.Mint]: '/opnet/mint',
+    [RouteTypes.ImportSelectionScreen]: '/import-selection',
+    [RouteTypes.ImportNFTScreen]: '/import-nft',
+    [RouteTypes.NFTTabScreen]: '/nft',
+    [RouteTypes.NFTSendScreen]: '/nft-send',
+    [RouteTypes.ImportTokenScreen]: '/import-token',
+    [RouteTypes.QuantumMigrationScreen]: '/settings/quantum-migration',
+    [RouteTypes.DuplicationResolutionScreen]: '/settings/duplication-resolution',
+    [RouteTypes.HistoryScreen]: '/history',
+    [RouteTypes.TransactionDetailScreen]: '/history/transaction',
+    [RouteTypes.OpnetBrowserScreen]: '/settings/opnet-browser',
+    [RouteTypes.BtcDomainScreen]: '/domain'
+};
+
+export type UseNavigate<T extends RouteTypes> = (routKey: T, state?: unknown) => void;
+
+export function useNavigate<T extends RouteTypes>(): UseNavigate<T> {
+    const navigate = useNavigateOrigin();
+
+    return useCallback(
+        (routKey: T, state?: unknown) => {
+            navigate(routePaths[routKey], { state });
+        },
+        [navigate]
+    ) as UseNavigate<T>;
+}

@@ -284,11 +284,37 @@ export default defineConfig(({ mode }) => {
                         if (id.includes('crypto-browserify')) {
                             return 'crypto-polyfill';
                         } else if (id.includes('node_modules')) {
-                            // Split vendor code
-                            //if (id.includes('react') || id.includes('react-dom')) return 'react';
-                            if (id.includes('antd')) return 'antd';
-                            //if (id.includes('@btc-vision')) return 'btc';
-                            //return 'vendor';
+                            // Noble crypto libraries - shared across packages
+                            if (id.includes('@noble/curves')) return 'noble-curves';
+                            if (id.includes('@noble/hashes')) return 'noble-hashes';
+                            if (id.includes('@scure/')) return 'scure';
+
+                            // @btc-vision packages - split individually
+                            if (id.includes('@btc-vision/transaction')) return 'btc-transaction';
+                            if (id.includes('@btc-vision/bitcoin')) return 'btc-bitcoin';
+                            if (id.includes('@btc-vision/bip32')) return 'btc-bip32';
+                            if (id.includes('@btc-vision/post-quantum')) return 'btc-post-quantum';
+                            if (id.includes('@btc-vision/wallet-sdk')) return 'btc-wallet-sdk';
+                            if (id.includes('@btc-vision/logger')) return 'btc-logger';
+                            if (id.includes('@btc-vision/passworder')) return 'btc-passworder';
+
+                            // opnet library
+                            if (id.includes('node_modules/opnet')) return 'opnet';
+
+                            // Bitcoin utilities
+                            if (id.includes('bip39')) return 'bip39';
+                            if (id.includes('ecpair') || id.includes('tiny-secp256k1')) return 'bitcoin-utils';
+                            if (id.includes('bitcore-lib')) return 'bitcore';
+
+                            // UI libraries
+                            if (id.includes('antd') || id.includes('@ant-design')) return 'antd';
+                            if (id.includes('react-dom')) return 'react-dom';
+                            if (id.includes('react')) return 'react';
+
+                            // Other large deps
+                            if (id.includes('ethers')) return 'ethers';
+                            if (id.includes('protobufjs') || id.includes('@protobufjs')) return 'protobuf';
+                            if (id.includes('lodash')) return 'lodash';
                         }
                     }
                 }
@@ -360,10 +386,19 @@ export default defineConfig(({ mode }) => {
                     find: '@',
                     replacement: resolve(__dirname, './src')
                 },
-                /*{
-                    find: /^@btc-vision\/wallet-sdk$/,
-                    replacement: resolve(__dirname, 'node_modules/@btc-vision/wallet-sdk/lib/index.js')
-                },*/
+                // Dedupe noble/scure packages to single version
+                {
+                    find: '@noble/curves',
+                    replacement: resolve(__dirname, 'node_modules/@noble/curves')
+                },
+                {
+                    find: '@noble/hashes',
+                    replacement: resolve(__dirname, 'node_modules/@noble/hashes')
+                },
+                {
+                    find: '@scure/base',
+                    replacement: resolve(__dirname, 'node_modules/@scure/base')
+                },
                 {
                     find: /^@btc-vision\/wallet-sdk\/(.*)/,
                     replacement: resolve(__dirname, 'node_modules/@btc-vision/wallet-sdk/$1')
@@ -378,7 +413,15 @@ export default defineConfig(({ mode }) => {
                 }
             ],
             extensions: ['.ts', '.tsx', '.js', '.jsx', '.json'],
-            mainFields: ['module', 'main', 'browser']
+            mainFields: ['module', 'main', 'browser'],
+            dedupe: [
+                '@noble/curves',
+                '@noble/hashes',
+                '@scure/base',
+                'buffer',
+                'react',
+                'react-dom'
+            ]
         },
 
         define: {

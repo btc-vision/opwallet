@@ -1,6 +1,5 @@
 /// Updated KeyringService for wallet-sdk 2.0 with MLDSA/quantum support
 import * as bip39 from 'bip39';
-import * as oldEncryptor from 'browser-passworder';
 import { EventEmitter } from 'events';
 import log from 'loglevel';
 
@@ -384,22 +383,13 @@ class KeyringService extends EventEmitter {
     };
 
     submitPassword = async (password: string): Promise<MemStoreState> => {
-        const oldMethod = await this.verifyPassword(password);
+        await this.verifyPassword(password);
         this.password = password;
 
         try {
-            this.keyrings = await this.unlockKeyrings(password, oldMethod);
+            this.keyrings = await this.unlockKeyrings(password);
         } catch (e) {
-            if (oldMethod) {
-                try {
-                    await this.boot(password);
-                    this.keyrings = await this.unlockKeyrings(password, false);
-                } catch (e) {
-                    console.log('unlock failed (new)', e);
-                }
-            } else {
-                console.log('unlock failed', e);
-            }
+            console.log('unlock failed', e);
         } finally {
             this.setUnlocked();
         }
@@ -408,25 +398,10 @@ class KeyringService extends EventEmitter {
     };
 
     changePassword = async (oldPassword: string, newPassword: string) => {
-        const oldMethod = await this.verifyPassword(oldPassword);
+        await this.verifyPassword(oldPassword);
         this.password = oldPassword;
 
-        try {
-            this.keyrings = await this.unlockKeyrings(oldPassword, oldMethod);
-        } catch (e) {
-            if (oldMethod) {
-                try {
-                    await this.boot(oldPassword);
-                    this.keyrings = await this.unlockKeyrings(oldPassword, false);
-                } catch (e) {
-                    console.log('unlock failed (new)', e);
-                    throw e;
-                }
-            } else {
-                console.log('unlock failed', e);
-                throw e;
-            }
-        }
+        this.keyrings = await this.unlockKeyrings(oldPassword);
 
         this.password = newPassword;
 
@@ -445,19 +420,16 @@ class KeyringService extends EventEmitter {
         this.fullUpdate();
     };
 
-    verifyPassword = async (password: string): Promise<boolean> => {
+    verifyPassword = async (password: string): Promise<void> => {
         const encryptedBooted = this.store.getState().booted;
         if (!encryptedBooted) {
             throw new Error(i18n.t('Cannot unlock without a previous vault'));
         }
 
-        if (encryptedBooted.includes('keyMetadata')) {
-            const resp = (await this.encryptor.decrypt(password, encryptedBooted)) as string;
-            return resp == 'true';
+        const resp = (await this.encryptor.decrypt(password, encryptedBooted)) as string;
+        if (resp !== 'true') {
+            throw new Error(i18n.t('Incorrect password'));
         }
-
-        const isValid = await oldEncryptor.decrypt(password, encryptedBooted);
-        return isValid == 'true';
     };
 
     /**
@@ -693,7 +665,7 @@ class KeyringService extends EventEmitter {
         return true;
     };
 
-    unlockKeyrings = async (password: string, oldMethod: boolean): Promise<(Keyring | EmptyKeyring)[]> => {
+    unlockKeyrings = async (password: string): Promise<(Keyring | EmptyKeyring)[]> => {
         const encryptedVault = this.store.getState().vault;
         if (!encryptedVault) {
             throw new Error(i18n.t('Cannot unlock without a previous vault'));
@@ -701,9 +673,7 @@ class KeyringService extends EventEmitter {
 
         this.clearKeyrings();
 
-        const vault = oldMethod
-            ? ((await oldEncryptor.decrypt(password, encryptedVault)) as SavedVault[])
-            : ((await this.encryptor.decrypt(password, encryptedVault)) as SavedVault[]);
+        const vault = (await this.encryptor.decrypt(password, encryptedVault)) as SavedVault[];
 
         const failedKeyrings: { index: number; error: unknown; data: SavedVault }[] = [];
 
@@ -730,10 +700,6 @@ class KeyringService extends EventEmitter {
         }
 
         this._updateMemStoreKeyrings();
-
-        if (oldMethod) {
-            await this.persistAllKeyrings();
-        }
 
         return this.keyrings;
     };

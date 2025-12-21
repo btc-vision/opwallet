@@ -270,9 +270,15 @@ export class WalletController {
 
     /**
      * Verify a given password against the vault.
+     * Returns true if password is correct, false otherwise.
      */
-    public verifyPassword = (password: string): Promise<boolean> => {
-        return keyringService.verifyPassword(password);
+    public verifyPassword = async (password: string): Promise<boolean> => {
+        try {
+            await keyringService.verifyPassword(password);
+            return true;
+        } catch {
+            return false;
+        }
     };
 
     /**
