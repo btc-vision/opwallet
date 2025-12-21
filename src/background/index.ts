@@ -1,7 +1,7 @@
 import { EVENTS, MANIFEST_VERSION } from '@/shared/constant';
 import eventBus from '@/shared/eventBus';
 import { ProviderControllerRequest, RequestParams } from '@/shared/types/Request.js';
-import { openExtensionInTab } from '@/ui/features/browser/tabs';
+import { openExtensionInTab } from '@/shared/utils/browser-tabs';
 import 'reflect-metadata';
 
 import * as ecc from 'tiny-secp256k1';

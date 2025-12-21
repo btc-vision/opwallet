@@ -11,7 +11,8 @@ const version = packageJson.version.split('-beta')[0];
 
 // Service worker polyfill - injected at the start of the bundle
 function serviceWorkerPolyfillPlugin() {
-    const polyfill = `(function(){if(typeof window==="undefined"){var n=function(){};globalThis.window=Object.assign({},globalThis,{dispatchEvent:n,addEventListener:n,removeEventListener:n});globalThis.document={createElement:function(){return{relList:{supports:function(){return false}}}},querySelector:function(){return null},querySelectorAll:function(){return[]},getElementsByTagName:function(){return[]},head:{appendChild:n}}}})();`;
+    // Set __IS_SERVICE_WORKER__ flag FIRST, then polyfill window/document
+    const polyfill = `globalThis.__IS_SERVICE_WORKER__=true;(function(){if(typeof window==="undefined"){var n=function(){};globalThis.window=Object.assign({},globalThis,{dispatchEvent:n,addEventListener:n,removeEventListener:n});globalThis.document={createElement:function(){return{relList:{supports:function(){return false}}}},querySelector:function(){return null},querySelectorAll:function(){return[]},getElementsByTagName:function(){return[]},head:{appendChild:n}}}if(typeof URL!=="undefined"&&typeof URL.createObjectURL==="undefined"){URL.createObjectURL=function(blob){console.warn("[SW] URL.createObjectURL not available in service workers");return"blob:sw-stub"};URL.revokeObjectURL=function(){}}})();`;
 
     return {
         name: 'service-worker-polyfill',
