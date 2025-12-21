@@ -190,8 +190,11 @@ function serviceWorkerPolyfillPlugin(): PluginOption {
                 const chunk = bundle[fileName];
                 if (chunk.type === 'chunk' && fileName.endsWith('.js')) {
                     // Only inject into chunks that have window/document references
-                    if (chunk.code.includes('window.') || chunk.code.includes('document.') ||
-                        chunk.code.includes('__vitePreload')) {
+                    if (
+                        chunk.code.includes('window.') ||
+                        chunk.code.includes('document.') ||
+                        chunk.code.includes('__vitePreload')
+                    ) {
                         chunk.code = polyfill + chunk.code;
                     }
                 }
@@ -334,13 +337,16 @@ export default defineConfig(({ mode }) => {
 
                             // UI libraries - react, react-dom, scheduler, and antd MUST be in same chunk
                             // to ensure proper initialization order
-                            if (id.includes('node_modules/react-dom') ||
+                            if (
+                                id.includes('node_modules/react-dom') ||
                                 id.includes('node_modules/react/') ||
                                 id.includes('node_modules/scheduler') ||
                                 id.includes('antd') ||
                                 id.includes('@ant-design') ||
                                 id.includes('rc-') ||
-                                id.includes('@rc-component')) return 'react-ui';
+                                id.includes('@rc-component')
+                            )
+                                return 'react-ui';
 
                             // Other large deps
                             if (id.includes('ethers')) return 'ethers';
@@ -385,8 +391,11 @@ export default defineConfig(({ mode }) => {
             // TypeScript paths
             tsconfigPaths(),
 
-            // WASM support - using custom loader that avoids top-level await
+            // WASM support
             wasm(),
+
+            topLevelAwait(),
+
             // topLevelAwait disabled - causes Message to be undefined
             tailwindcss(),
 
@@ -453,15 +462,7 @@ export default defineConfig(({ mode }) => {
             ],
             extensions: ['.ts', '.tsx', '.js', '.jsx', '.json'],
             mainFields: ['module', 'main', 'browser'],
-            dedupe: [
-                '@noble/curves',
-                '@noble/hashes',
-                '@scure/base',
-                'buffer',
-                'react',
-                'react-dom',
-                'scheduler'
-            ]
+            dedupe: ['@noble/curves', '@noble/hashes', '@scure/base', 'buffer', 'react', 'react-dom', 'scheduler']
         },
 
         define: {

@@ -1,13 +1,12 @@
 import { EVENTS, MANIFEST_VERSION } from '@/shared/constant';
 import eventBus from '@/shared/eventBus';
 import { ProviderControllerRequest, RequestParams } from '@/shared/types/Request.js';
-import { Message } from '@/shared/utils';
 import { openExtensionInTab } from '@/ui/features/browser/tabs';
 import 'reflect-metadata';
 
+import * as ecc from 'tiny-secp256k1';
 import { SessionEvent, SessionEventPayload } from '@/shared/interfaces/SessionEvent';
 import { customNetworksManager } from '@/shared/utils/CustomNetworksManager';
-import { initEccLib } from '@btc-vision/bitcoin';
 import { Runtime } from 'webextension-polyfill';
 import { providerController, walletController } from './controller';
 import contactBookService from './service/contactBook';
@@ -20,23 +19,23 @@ import sessionService from './service/session';
 import { isWalletControllerMethod } from './utils/controller';
 import { storage } from './webapi';
 import browser, { browserRuntimeOnConnect, browserRuntimeOnInstalled } from './webapi/browser';
+import { initEccLib } from '@btc-vision/bitcoin';
+import PortMessage from '@/shared/utils/message/portMessage.js';
 
 // Lazy-load tiny-secp256k1 to avoid top-level await in service worker
 let eccInitialized = false;
-async function ensureEccLib(): Promise<void> {
+
+function ensureEccLib(): void {
     if (!eccInitialized) {
-        const ecc = await import('tiny-secp256k1');
-        initEccLib(ecc);
+        initEccLib(ecc); // ecc is already imported, just not initialized
         eccInitialized = true;
     }
 }
 
-const { PortMessage } = Message;
-
 let appStoreLoaded = false;
 
 async function restoreAppState() {
-    await ensureEccLib();
+    ensureEccLib();
 
     const keyringState = await storage.get<StoredData>('keyringState');
     keyringService.loadStore(keyringState ?? { booted: '', vault: '' });
