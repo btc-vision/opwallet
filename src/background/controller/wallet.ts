@@ -51,7 +51,6 @@ import {
     Account,
     AddressRecentHistory,
     AddressSummary,
-    AddressTypes,
     AddressUserToSignInput,
     AppSummary,
     BitcoinBalance,
@@ -79,6 +78,7 @@ import { getChainInfo } from '@/shared/utils';
 import Web3API, { getBitcoinLibJSNetwork } from '@/shared/web3/Web3API';
 import {
     Address,
+    AddressTypes,
     CancelledTransaction,
     DeploymentResult,
     EcKeyPair,

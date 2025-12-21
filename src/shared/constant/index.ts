@@ -1,4 +1,5 @@
-import { AddressTypes, NetworkType, RestoreWalletType } from '../types';
+import { NetworkType, RestoreWalletType } from '../types';
+import { AddressTypes } from '@btc-vision/transaction';
 
 export enum CHAINS_ENUM {
     BTC = 'BTC'

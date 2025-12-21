@@ -5,7 +5,8 @@ import { EventEmitter } from 'events';
 import log from 'loglevel';
 
 import { KEYRING_TYPE } from '@/shared/constant';
-import { AddressTypes, isLegacyAddressType, legacyToAddressTypes, storageToAddressTypes } from '@/shared/types';
+import { isLegacyAddressType, legacyToAddressTypes, storageToAddressTypes } from '@/shared/types';
+import { AddressTypes } from '@btc-vision/transaction';
 import { Network, networks, Psbt } from '@btc-vision/bitcoin';
 import * as encryptor from '@btc-vision/passworder';
 import { MLDSASecurityLevel, QuantumBIP32Interface } from '@btc-vision/transaction';

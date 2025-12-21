@@ -1,10 +1,11 @@
 import { AddressFlagType, CHAINS, ChainType, CustomNetwork, DEFAULT_LOCKTIME_ID, EVENTS } from '@/shared/constant';
 import eventBus from '@/shared/eventBus';
 import { SessionEvent } from '@/shared/interfaces/SessionEvent';
-import { Account, AddressTypes, AppSummary, NetworkType, storageToAddressTypes, TxHistoryItem } from '@/shared/types';
+import { Account, AppSummary, NetworkType, storageToAddressTypes, TxHistoryItem } from '@/shared/types';
+import { AddressTypes } from '@btc-vision/transaction';
 import { DuplicationState } from '@/shared/types/Duplication';
 import { compareVersions } from 'compare-versions';
-import cloneDeep from 'lodash/cloneDeep';
+import { cloneDeep } from 'lodash-es';
 import browser from '../webapi/browser';
 import { i18n, sessionService } from './index';
 

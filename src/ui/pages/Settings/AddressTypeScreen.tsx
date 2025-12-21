@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 
-import { AddressAssets, AddressTypes } from '@/shared/types';
+import { AddressAssets } from '@/shared/types';
+import { AddressTypes } from '@btc-vision/transaction';
 import { Column, Content, Header, Layout, OPNetLoader, Text } from '@/ui/components';
 import { useTools } from '@/ui/components/ActionComponent';
 import { useCurrentAccount, useReloadAccounts } from '@/ui/state/accounts/hooks';

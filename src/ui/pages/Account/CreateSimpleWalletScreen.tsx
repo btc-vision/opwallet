@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { ADDRESS_TYPES } from '@/shared/constant';
-import { AddressAssets, AddressTypes } from '@/shared/types';
+import { AddressAssets } from '@/shared/types';
+import { AddressTypes } from '@btc-vision/transaction';
 import Web3API, { getBitcoinLibJSNetwork } from '@/shared/web3/Web3API';
 import { Column, Content, Header, Layout, OPNetLoader, Text } from '@/ui/components';
 import { useTools } from '@/ui/components/ActionComponent';

@@ -1,4 +1,3 @@
-import { ApprovalType } from '@/shared/types/Approval';
 import Connect from './Connect';
 import SignData from './SignData';
 import SignDeployment from './SignDeployment';
@@ -21,14 +20,15 @@ export {
     CancelTransaction
 };
 
+// Use string literals to avoid circular dependency with ApprovalType enum
 export const ApprovalComponents = {
-    [ApprovalType.Connect]: Connect,
-    [ApprovalType.SignData]: SignData,
-    [ApprovalType.SignInteraction]: SignInteraction,
-    [ApprovalType.CancelTransaction]: CancelTransaction,
-    [ApprovalType.SignPsbt]: SignPsbt,
-    [ApprovalType.SignText]: SignText,
-    [ApprovalType.SwitchChain]: SwitchChain,
-    [ApprovalType.SwitchNetwork]: SwitchNetwork,
-    [ApprovalType.SignDeployment]: SignDeployment
+    'Connect': Connect,
+    'SignData': SignData,
+    'SignInteraction': SignInteraction,
+    'CancelTransaction': CancelTransaction,
+    'SignPsbt': SignPsbt,
+    'SignText': SignText,
+    'SwitchChain': SwitchChain,
+    'SwitchNetwork': SwitchNetwork,
+    'SignDeployment': SignDeployment
 } as const;

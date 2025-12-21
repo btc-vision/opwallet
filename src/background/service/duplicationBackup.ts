@@ -9,7 +9,7 @@ import * as encryptor from '@btc-vision/passworder';
 import { HdKeyring, SimpleKeyring } from '@btc-vision/wallet-sdk';
 
 import { DUPLICATION_BACKUP_STORAGE_KEY, DUPLICATION_BACKUP_VERSION, KEYRING_TYPE } from '@/shared/constant';
-import { AddressTypes } from '@/shared/types';
+import { AddressTypes } from '@btc-vision/transaction';
 import {
     BackupAccountData,
     BackupKeyringData,

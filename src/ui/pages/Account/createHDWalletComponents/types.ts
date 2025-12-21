@@ -1,4 +1,5 @@
-import { AddressType, RestoreWalletType } from '@/shared/types';
+import { RestoreWalletType } from '@/shared/types';
+import { AddressTypes } from '@btc-vision/transaction';
 
 export enum TabType {
     STEP1 = 'STEP1',
@@ -15,7 +16,7 @@ export interface ContextData {
     mnemonics: string;
     hdPath: string;
     passphrase: string;
-    addressType: AddressType;
+    addressType: AddressTypes;
     step1Completed: boolean;
     tabType: TabType;
     restoreWalletType: RestoreWalletType;
@@ -30,7 +31,7 @@ export interface UpdateContextDataParams {
     mnemonics?: string;
     hdPath?: string;
     passphrase?: string;
-    addressType?: AddressType;
+    addressType?: AddressTypes;
     step1Completed?: boolean;
     tabType?: TabType;
     restoreWalletType?: RestoreWalletType;

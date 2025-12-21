@@ -8,7 +8,8 @@
 import { EventEmitter } from 'events';
 
 import { KEYRING_TYPE } from '@/shared/constant';
-import { AddressTypes, networkTypeToOPNet } from '@/shared/types';
+import { networkTypeToOPNet } from '@/shared/types';
+import { AddressTypes } from '@btc-vision/transaction';
 import {
     DuplicationConflict,
     DuplicationDetectionResult,

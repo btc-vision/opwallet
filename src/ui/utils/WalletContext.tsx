@@ -12,7 +12,6 @@ import {
 import {
     Account,
     AddressSummary,
-    AddressTypes,
     AppSummary,
     BitcoinBalance,
     DecodedPsbt,
@@ -36,7 +35,7 @@ import {
 } from '@/shared/types/OpnetProtocol';
 import { TransactionHistoryFilter, TransactionHistoryItem } from '@/shared/types/TransactionHistory';
 import { Psbt } from '@btc-vision/bitcoin';
-import { InteractionParametersWithoutSigner } from '@btc-vision/transaction';
+import { AddressTypes, InteractionParametersWithoutSigner } from '@btc-vision/transaction';
 import { createContext, ReactNode, useContext } from 'react';
 
 export interface WalletController {

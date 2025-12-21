@@ -1,9 +1,4 @@
-// Re-export AddressTypes from @btc-vision/transaction as the canonical address type
-export { AddressTypes, OPNetNetwork } from '@btc-vision/transaction';
 import { AddressTypes, OPNetNetwork } from '@btc-vision/transaction';
-
-// Type alias for AddressType - use AddressTypes everywhere
-export type AddressType = AddressTypes;
 
 // Legacy enum for backward compatibility with existing storage
 // This maps old numeric values to new string values for migration
