@@ -72,7 +72,7 @@ import {
 import { BTC_NAME_RESOLVER_ABI } from '@/shared/web3/abi/BTC_NAME_RESOLVER_ABI';
 import { IBtcNameResolverContract } from '@/shared/web3/interfaces/IBtcNameResolverContract';
 import { Dispatch, SetStateAction, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { RouteTypes, useNavigate } from '../MainRoute';
+import { RouteTypes, useNavigate } from '../routeTypes';
 
 BigNumber.config({ EXPONENTIAL_AT: 256 });
 

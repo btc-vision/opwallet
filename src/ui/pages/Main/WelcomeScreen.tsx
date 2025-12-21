@@ -3,7 +3,7 @@ import React, { useEffect, useState } from 'react';
 import { Button, Column, Content, Layout, Logo, Row, Text } from '@/ui/components';
 import { useWallet } from '@/ui/utils';
 
-import { RouteTypes, useNavigate } from '../MainRoute';
+import { RouteTypes, useNavigate } from '../routeTypes';
 import { ConnectHardwareModal } from './ConnectHardwareModal';
 import { TermsOfServiceModal, TOS_ACCEPTED_KEY } from '@/ui/components/AcceptModals/TermsModal';
 

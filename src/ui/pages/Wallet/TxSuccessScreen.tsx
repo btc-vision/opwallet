@@ -1,6 +1,6 @@
 import Web3API from '@/shared/web3/Web3API';
 import { Column, Content, Header, Layout } from '@/ui/components';
-import { RouteTypes, useNavigate } from '@/ui/pages/MainRoute';
+import { RouteTypes, useNavigate } from '@/ui/pages/routeTypes';
 import { useAddressExplorerUrl, useTxExplorerUrl } from '@/ui/state/settings/hooks';
 import { useLocationState } from '@/ui/utils';
 import {

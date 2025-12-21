@@ -17,7 +17,7 @@ import { ScanOutlined } from '@ant-design/icons';
 import { AddressTypes } from '@btc-vision/transaction';
 
 import { isWalletError } from '@/shared/utils/errors';
-import { RouteTypes, useNavigate } from '../MainRoute';
+import { RouteTypes, useNavigate } from '../routeTypes';
 
 interface ContextData {
     ur: {

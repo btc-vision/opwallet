@@ -16,7 +16,7 @@ import {
 } from '@/ui/pages/Account/createHDWalletComponents/types';
 
 import { useLocationState } from '@/ui/utils';
-import { RouteTypes, useNavigate } from '../MainRoute';
+import { RouteTypes, useNavigate } from '../routeTypes';
 
 const colors = {
     main: '#f37413',

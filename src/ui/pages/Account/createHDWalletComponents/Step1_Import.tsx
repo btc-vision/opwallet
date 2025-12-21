@@ -15,7 +15,7 @@ import {
     UpdateContextDataParams,
     WordsType
 } from '@/ui/pages/Account/createHDWalletComponents/types';
-import { RouteTypes, useNavigate } from '@/ui/pages/MainRoute';
+import { RouteTypes, useNavigate } from '@/ui/pages/routeTypes';
 import { useCreateAccountCallback } from '@/ui/state/global/hooks';
 
 const WORDS_12_ITEM = {

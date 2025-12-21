@@ -7,7 +7,7 @@ import { useWallet, useWalletRequest } from '@/ui/utils';
 import { getPasswordStrengthWord, MIN_PASSWORD_LENGTH } from '@/ui/utils/password-utils';
 
 import { WalletError } from '@/shared/types/Error';
-import { RouteTypes, useNavigate } from '../MainRoute';
+import { RouteTypes, useNavigate } from '../routeTypes';
 
 interface LocationState {
     isNewAccount?: boolean;

@@ -5,7 +5,7 @@ import { useCurrentAccount } from '@/ui/state/accounts/hooks';
 import { useResetUiTxCreateScreen } from '@/ui/state/ui/hooks';
 import { useWallet } from '@/ui/utils';
 import { useCallback } from 'react';
-import { RouteTypes, useNavigate } from '../../../MainRoute';
+import { RouteTypes, useNavigate } from '../../../routeTypes';
 
 /**
  * Type of account for UTXO consolidation

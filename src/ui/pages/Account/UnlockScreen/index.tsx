@@ -9,7 +9,7 @@ import { Text } from '@/ui/components/Text';
 import { useUnlockCallback } from '@/ui/state/global/hooks';
 import { getUiType, useWallet } from '@/ui/utils';
 
-import { RouteTypes, useNavigate } from '../../MainRoute';
+import { RouteTypes, useNavigate } from '../../routeTypes';
 
 export default function UnlockScreen() {
     const wallet = useWallet();

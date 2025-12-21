@@ -17,7 +17,7 @@ import {
     ToolOutlined
 } from '@ant-design/icons';
 import React, { useEffect, useState } from 'react';
-import { RouteTypes, useNavigate } from '../MainRoute';
+import { RouteTypes, useNavigate } from '../routeTypes';
 
 const colors = {
     main: '#f37413',

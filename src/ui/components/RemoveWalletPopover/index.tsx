@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 
 import { WalletKeyring } from '@/shared/types';
-import { RouteTypes, useNavigate } from '@/ui/pages/MainRoute';
+import { RouteTypes, useNavigate } from '@/ui/pages/routeTypes';
 import { accountActions } from '@/ui/state/accounts/reducer';
 import { useAppDispatch } from '@/ui/state/hooks';
 import { keyringsActions } from '@/ui/state/keyrings/reducer';

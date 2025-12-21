@@ -22,7 +22,7 @@ import { getMLDSAConfig, QuantumBIP32Factory } from '@btc-vision/bip32';
 import { crypto as bitcoinCrypto, networks } from '@btc-vision/bitcoin';
 import { ethers } from 'ethers';
 
-import { RouteTypes, useNavigate } from '../MainRoute';
+import { RouteTypes, useNavigate } from '../routeTypes';
 
 // Get the expected MLDSA key size for LEVEL2
 const MLDSA_CONFIG = getMLDSAConfig(MLDSASecurityLevel.LEVEL2, networks.bitcoin);

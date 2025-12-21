@@ -56,7 +56,7 @@ import {
 import { Address } from '@btc-vision/transaction';
 import { Tooltip } from 'antd';
 import ActionButton from '../../../components/ActionButton/index';
-import { RouteTypes, useNavigate } from '../../MainRoute';
+import { RouteTypes, useNavigate } from '../../routeTypes';
 import { SwitchChainModal } from '../../Settings/network/SwitchChainModal';
 import { OPNetList } from './OPNetList';
 import { useConsolidation } from './hooks';

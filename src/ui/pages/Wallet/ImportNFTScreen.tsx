@@ -2,7 +2,7 @@ import Web3API from '@/shared/web3/Web3API';
 import { Column, Content, Header, Input, Layout, OPNetLoader } from '@/ui/components';
 import { AsyncImage } from '@/ui/components/AsyncImage';
 import { useTools } from '@/ui/components/ActionComponent';
-import { RouteTypes, useNavigate } from '@/ui/pages/MainRoute';
+import { RouteTypes, useNavigate } from '@/ui/pages/routeTypes';
 import { useCurrentAccount } from '@/ui/state/accounts/hooks';
 import { useChainType } from '@/ui/state/settings/hooks';
 import { PictureOutlined } from '@ant-design/icons';

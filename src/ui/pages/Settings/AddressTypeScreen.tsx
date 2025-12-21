@@ -12,7 +12,7 @@ import { CheckCircleFilled, CheckOutlined, CopyOutlined, InfoCircleOutlined, Wal
 import { getBitcoinLibJSNetwork } from '@/shared/web3/Web3API';
 import { useBTCUnit } from '@/ui/state/settings/hooks';
 import { Address } from '@btc-vision/transaction';
-import { RouteTypes, useNavigate } from '../MainRoute';
+import { RouteTypes, useNavigate } from '../routeTypes';
 
 const colors = {
     main: '#f37413',

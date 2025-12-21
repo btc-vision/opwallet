@@ -6,7 +6,7 @@ import { useSetCurrentAccountCallback } from '@/ui/state/accounts/hooks';
 import { useCurrentKeyring } from '@/ui/state/keyrings/hooks';
 import { useWallet } from '@/ui/utils';
 
-import { RouteTypes, useNavigate } from '../MainRoute';
+import { RouteTypes, useNavigate } from '../routeTypes';
 
 export default function CreateAccountScreen() {
     const navigate = useNavigate();

@@ -3,7 +3,7 @@ import { useLocation } from 'react-router-dom';
 import { Column, Content, Header, Layout } from '@/ui/components';
 import { AsyncImage } from '@/ui/components/AsyncImage';
 import { FeeRateBar } from '@/ui/components/FeeRateBar';
-import { RouteTypes, useNavigate } from '@/ui/pages/MainRoute';
+import { RouteTypes, useNavigate } from '@/ui/pages/routeTypes';
 import { useCurrentAccount } from '@/ui/state/accounts/hooks';
 import { useWallet } from '@/ui/utils';
 import Web3API from '@/shared/web3/Web3API';

@@ -18,7 +18,7 @@ import {
     ThunderboltOutlined
 } from '@ant-design/icons';
 import { Address } from '@btc-vision/transaction';
-import { RouteTypes, useNavigate } from '../MainRoute';
+import { RouteTypes, useNavigate } from '../routeTypes';
 
 const colors = {
     main: '#f37413',

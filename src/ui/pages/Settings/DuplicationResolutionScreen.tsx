@@ -16,7 +16,7 @@ import {
 } from '@/shared/types/Duplication';
 import { Button, Card, Column, Content, Header, Input, Layout, Row, Text } from '@/ui/components';
 import { useTools } from '@/ui/components/ActionComponent';
-import { RouteTypes, useNavigate } from '@/ui/pages/MainRoute';
+import { RouteTypes, useNavigate } from '@/ui/pages/routeTypes';
 import { useReloadAccounts } from '@/ui/state/accounts/hooks';
 import { useWallet } from '@/ui/utils';
 

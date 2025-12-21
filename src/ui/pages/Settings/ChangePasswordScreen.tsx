@@ -7,7 +7,7 @@ import { useWallet } from '@/ui/utils';
 import { getPasswordStrengthWord, MIN_PASSWORD_LENGTH } from '@/ui/utils/password-utils';
 
 import { isWalletError } from '@/shared/utils/errors';
-import { RouteTypes, useNavigate } from '../MainRoute';
+import { RouteTypes, useNavigate } from '../routeTypes';
 
 export default function ChangePasswordScreen() {
     const { t } = useTranslation();

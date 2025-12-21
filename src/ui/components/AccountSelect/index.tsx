@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { RouteTypes, useNavigate } from '@/ui/pages/MainRoute';
+import { RouteTypes, useNavigate } from '@/ui/pages/routeTypes';
 import { useCurrentAccount } from '@/ui/state/accounts/hooks';
 import { copyToClipboard, shortAddress, useWallet } from '@/ui/utils';
 import { CopyOutlined, WarningOutlined } from '@ant-design/icons';
