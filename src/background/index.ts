@@ -20,7 +20,8 @@ import { isWalletControllerMethod } from './utils/controller';
 import { storage } from './webapi';
 import browser, { browserRuntimeOnConnect, browserRuntimeOnInstalled } from './webapi/browser';
 import { initEccLib } from '@btc-vision/bitcoin';
-import PortMessage from '@/shared/utils/message/portMessage.js';
+// Import PortMessage directly to avoid circular dependency issues with events shim
+import PortMessage from '@/shared/utils/message/portMessage';
 
 // Lazy-load tiny-secp256k1 to avoid top-level await in service worker
 let eccInitialized = false;

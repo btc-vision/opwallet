@@ -2,12 +2,13 @@ import { nanoid } from 'nanoid';
 
 import { SendMessagePayload } from '@/shared/types/Message';
 import { RequestParams } from '@/shared/types/Request.js';
+// Import message classes directly to avoid circular dependency issues with events shim
+import BroadcastChannelMessage from '@/shared/utils/message/broadcastChannelMessage';
+import PortMessage from '@/shared/utils/message/portMessage';
 import browser from 'webextension-polyfill';
 
 // Import search redirect for .btc domain detection on search pages
 import './btcSearchRedirect';
-import PortMessage from '@/shared/utils/message/portMessage.js';
-import BroadcastChannelMessage from '@/shared/utils/message/broadcastChannelMessage.js';
 
 function injectScript() {
     try {
@@ -49,6 +50,7 @@ function injectScript() {
             });
         });
 
+        // Set up communication channels
         const pm = new PortMessage().connect();
         const bcm = new BroadcastChannelMessage(channelName).listen((data: RequestParams) => {
             return pm.request(data);
@@ -148,10 +150,17 @@ function isIframe(): boolean {
 function isIpfsGatewayIframe(): boolean {
     if (!isIframe()) return false;
 
-    const ipfsGateways = ['ipfs.opnet.org', 'ipfs.io', 'dweb.link', 'gateway.pinata.cloud'];
+    const ipfsGateways = [
+        'ipfs.opnet.org',
+        'ipfs.io',
+        'dweb.link',
+        'gateway.pinata.cloud'
+    ];
 
     const hostname = window.location.hostname;
-    return ipfsGateways.some((gateway) => hostname === gateway || hostname.endsWith('.' + gateway));
+    return ipfsGateways.some(gateway =>
+        hostname === gateway || hostname.endsWith('.' + gateway)
+    );
 }
 
 /**

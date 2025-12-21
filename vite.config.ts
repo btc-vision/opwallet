@@ -7,7 +7,7 @@ import { defineConfig, type PluginOption } from 'vite';
 import checker from 'vite-plugin-checker';
 import eslint from 'vite-plugin-eslint2';
 import { nodePolyfills } from 'vite-plugin-node-polyfills';
-import topLevelAwait from 'vite-plugin-top-level-await';
+// topLevelAwait removed - wraps chunks in async IIFEs breaking synchronous exports
 import wasm from 'vite-plugin-wasm';
 import tsconfigPaths from 'vite-tsconfig-paths';
 
@@ -283,7 +283,7 @@ export default defineConfig(({ mode }) => {
             rollupOptions: {
                 cache: true,
                 input: {
-                    background: resolve(__dirname, 'src/background/index.ts'),
+                    // background is built separately with vite.config.background.ts
                     pageProvider: resolve(__dirname, 'src/content-script/pageProvider/index.ts'),
                     ui: resolve(__dirname, 'src/ui/index.tsx'),
                     'opnet-resolver': resolve(__dirname, 'src/opnet-resolver/index.ts')
@@ -394,9 +394,9 @@ export default defineConfig(({ mode }) => {
             // WASM support
             wasm(),
 
-            topLevelAwait(),
+            // topLevelAwait removed - it wraps chunks in async IIFEs which breaks
+            // synchronous exports like PortMessage (they become undefined until async completes)
 
-            // topLevelAwait disabled - causes Message to be undefined
             tailwindcss(),
 
             // ESLint
@@ -551,7 +551,7 @@ export default defineConfig(({ mode }) => {
 
         worker: {
             format: 'es',
-            plugins: () => [wasm(), topLevelAwait()]
+            plugins: () => [wasm()]
         },
 
         esbuild: {
