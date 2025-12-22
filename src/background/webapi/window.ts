@@ -43,6 +43,24 @@ const create = async ({ url, ...rest }: WindowProps): Promise<number | undefined
     // Get user preference for notification window mode
     const windowMode = preferenceService.getNotificationWindowMode();
 
+    // Handle side panel mode
+    if (windowMode === 'sidepanel' && chrome.sidePanel && typeof url === 'string') {
+        try {
+            // Set the side panel path and open it
+            await chrome.sidePanel.setOptions({ path: url, enabled: true });
+            // Get the current window to open side panel in
+            const currentWindow = await chrome.windows.getCurrent();
+            if (currentWindow.id) {
+                await chrome.sidePanel.open({ windowId: currentWindow.id });
+            }
+            // Return a special ID to indicate side panel was used
+            return -1;
+        } catch (e) {
+            console.warn('Failed to open side panel, falling back to popup:', e);
+            // Fall through to popup mode
+        }
+    }
+
     // Determine if we should use fullscreen
     let useFullscreen = false;
     if (windowMode === 'fullscreen') {

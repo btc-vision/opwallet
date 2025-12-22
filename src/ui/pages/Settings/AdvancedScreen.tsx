@@ -25,10 +25,11 @@ import {
     WarningOutlined
 } from '@ant-design/icons';
 
-type NotificationWindowMode = 'auto' | 'popup' | 'fullscreen';
+type NotificationWindowMode = 'auto' | 'popup' | 'fullscreen' | 'sidepanel';
 
 const NOTIFICATION_WINDOW_MODES: { id: NotificationWindowMode; label: string; description: string }[] = [
     { id: 'popup', label: 'Popup Window', description: 'Always open as a small popup (recommended)' },
+    { id: 'sidepanel', label: 'Side Panel', description: 'Open in browser side panel (Chrome/Edge)' },
     { id: 'fullscreen', label: 'Fullscreen', description: 'Always open in fullscreen mode' },
     { id: 'auto', label: 'Auto', description: 'Match browser window state (fullscreen if browser is fullscreen)' }
 ];
