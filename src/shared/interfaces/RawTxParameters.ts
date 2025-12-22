@@ -46,7 +46,10 @@ export enum Action {
     SendNFT = 'SendNFT',
     MintNFT = 'MintNFT',
     RegisterDomain = 'registerDomain',
-    PublishDomain = 'publishDomain'
+    PublishDomain = 'publishDomain',
+    InitiateDomainTransfer = 'initiateDomainTransfer',
+    AcceptDomainTransfer = 'acceptDomainTransfer',
+    CancelDomainTransfer = 'cancelDomainTransfer'
 }
 
 export interface BaseRawTxInfo<T extends Action> {
@@ -136,6 +139,19 @@ export interface PublishDomainParameters extends BaseRawTxInfo<Action.PublishDom
     readonly cid: string;
 }
 
+export interface InitiateDomainTransferParameters extends BaseRawTxInfo<Action.InitiateDomainTransfer> {
+    readonly domainName: string;
+    readonly newOwner: string; // The recipient's address (p2tr or other valid address)
+}
+
+export interface AcceptDomainTransferParameters extends BaseRawTxInfo<Action.AcceptDomainTransfer> {
+    readonly domainName: string;
+}
+
+export interface CancelDomainTransferParameters extends BaseRawTxInfo<Action.CancelDomainTransfer> {
+    readonly domainName: string;
+}
+
 export type RawTxInfo =
     | TransferParameters
     | AirdropParameters
@@ -145,4 +161,7 @@ export type RawTxInfo =
     | SendNFTParameters
     | MintNFTParameters
     | RegisterDomainParameters
-    | PublishDomainParameters;
+    | PublishDomainParameters
+    | InitiateDomainTransferParameters
+    | AcceptDomainTransferParameters
+    | CancelDomainTransferParameters;

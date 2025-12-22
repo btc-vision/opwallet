@@ -361,6 +361,7 @@ export interface WalletController {
     >;
     addTrackedDomain(domainName: string): Promise<void>;
     removeTrackedDomain(domainName: string): Promise<void>;
+    getPendingDomainTransfer(domainName: string): Promise<{ newOwner: string | null; initiatedAt: bigint }>;
 
     // Duplication detection and resolution
     checkForDuplicates(): Promise<DuplicationDetectionResult>;

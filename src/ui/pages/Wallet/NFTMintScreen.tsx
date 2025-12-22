@@ -61,6 +61,7 @@ export default function NFTMintScreen() {
     const [loadingMintInfo, setLoadingMintInfo] = useState(true);
     const [error, setError] = useState('');
     const [maxMintable, setMaxMintable] = useState(1);
+    const [btcPrice, setBtcPrice] = useState<number>(0);
 
     // Initialize Web3API
     useEffect(() => {
@@ -68,6 +69,15 @@ export default function NFTMintScreen() {
             const chain = await wallet.getChainType();
             await Web3API.setNetwork(chain);
         })();
+    }, [wallet]);
+
+    // Fetch BTC price for USD estimation
+    useEffect(() => {
+        wallet.getBtcPrice().then((price) => {
+            if (price > 0) setBtcPrice(price);
+        }).catch(() => {
+            // Silently fail
+        });
     }, [wallet]);
 
     // Load mint information
@@ -417,6 +427,11 @@ export default function NFTMintScreen() {
                                     <div style={{ fontSize: '16px', fontWeight: 600, color: colors.main }}>
                                         {mintInfo ? formatPrice(mintInfo.price * BigInt(quantity)) : '---'}
                                     </div>
+                                    {mintInfo && btcPrice > 0 && (
+                                        <div style={{ fontSize: '11px', color: colors.textFaded, marginTop: '2px' }}>
+                                            ≈ ${(Number(mintInfo.price * BigInt(quantity)) / 1e8 * btcPrice).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USD
+                                        </div>
+                                    )}
                                 </div>
                             </div>
 

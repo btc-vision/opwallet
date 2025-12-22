@@ -710,8 +710,6 @@ class KeyringService extends EventEmitter {
 
         const vault = (await this.encryptor.decrypt(password, encryptedVault)) as SavedVault[];
 
-        console.log('[unlockKeyrings] Vault contains', vault.length, 'keyrings');
-
         const failedKeyrings: { index: number; error: unknown; data: SavedVault }[] = [];
         const corruptedKeyrings: {
             index: number;
@@ -723,7 +721,6 @@ class KeyringService extends EventEmitter {
 
         for (let i = 0; i < vault.length; i++) {
             const key = vault[i];
-            console.log(`[unlockKeyrings] Restoring keyring[${i}]: type=${key.type}`);
             try {
                 const { keyring, addressType } = this._restoreKeyring(key);
                 if (keyring.type === KEYRING_TYPE.Empty) {
@@ -803,9 +800,7 @@ ${hasSalvageableData ? `║  Salvageable Fields: ${salvageableFields.join(', ').
 
             // Auto-remove corrupted keyrings that have NO salvageable data
             if (removableCount > 0) {
-                console.log('[unlockKeyrings] Auto-removing corrupted keyrings with no salvageable data...');
-                const removed = await this.removeCorruptedKeyrings();
-                console.log(`[unlockKeyrings] Removed ${removed} corrupted keyring(s) from vault`);
+                await this.removeCorruptedKeyrings();
             }
 
             // Emit event for keyrings WITH salvageable data so UI can warn user
@@ -814,9 +809,6 @@ ${hasSalvageableData ? `║  Salvageable Fields: ${salvageableFields.join(', ').
                 this.emit('corruptedKeyrings', salvageableKeyrings);
             }
         }
-
-        console.log('[unlockKeyrings] Final keyrings count:', this.keyrings.length,
-            'Corrupted count:', this.keyrings.filter(k => k.type === KEYRING_TYPE.Empty).length);
 
         this._updateMemStoreKeyrings();
 

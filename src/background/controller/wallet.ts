@@ -2237,7 +2237,6 @@ export class WalletController {
                 const existingName = await preferenceService.getKeyringAlianName(key, '');
                 if (!existingName) {
                     await preferenceService.setKeyringAlianName(key, legacyName);
-                    console.log(`[displayedKeyringToWalletKeyring] Migrated keyring name from ${legacyKey} to ${key}: "${legacyName}"`);
                 }
             }
         }
@@ -3460,6 +3459,18 @@ export class WalletController {
                 const consolidatableUnspentUTXOs = unspentUTXOs.slice(0, consolidationLimit);
                 const consolidationUnspentAmount = consolidatableUnspentUTXOs.reduce((sum, u) => sum + u.value, 0n);
 
+                // Calculate USD value
+                let usdValue = '0.00';
+                try {
+                    const btcPrice = await opnetApi.getBtcPrice();
+                    if (btcPrice > 0) {
+                        const btcAmount = Number(totalAll) / 100000000;
+                        usdValue = (btcAmount * btcPrice).toFixed(2);
+                    }
+                } catch {
+                    // Silently fail - USD value will remain 0.00
+                }
+
                 const result = {
                     btc_total_amount: BitcoinUtils.formatUnits(totalAll, 8),
                     btc_confirm_amount: BitcoinUtils.formatUnits(totalUnspent, 8),
@@ -3492,7 +3503,7 @@ export class WalletController {
                     consolidation_p2wda_unspent_amount: '0',
                     consolidation_p2wda_unspent_count: 0,
 
-                    usd_value: '0.00',
+                    usd_value: usdValue,
 
                     all_utxos_count: allUTXOs.length,
                     unspent_utxos_count: unspentUTXOs.length,
@@ -3612,6 +3623,19 @@ export class WalletController {
                 consolidationCsv1UnlockedAmount +
                 consolidationP2wdaUnspentAmount;
 
+            // Calculate USD value
+            let usdValue = '0.00';
+            try {
+                const btcPrice = await opnetApi.getBtcPrice();
+                if (btcPrice > 0) {
+                    // Convert satoshis to BTC and multiply by price
+                    const btcAmount = Number(totalAll) / 100000000;
+                    usdValue = (btcAmount * btcPrice).toFixed(2);
+                }
+            } catch {
+                // Silently fail - USD value will remain 0.00
+            }
+
             // Convert all BigInt values to formatted strings using BitcoinUtils
             const result = {
                 btc_total_amount: BitcoinUtils.formatUnits(totalAll, 8),
@@ -3645,7 +3669,7 @@ export class WalletController {
                 consolidation_p2wda_unspent_amount: BitcoinUtils.formatUnits(consolidationP2wdaUnspentAmount, 8),
                 consolidation_p2wda_unspent_count: consolidatableP2wdaUnspentUTXOs.length,
 
-                usd_value: '0.00',
+                usd_value: usdValue,
 
                 all_utxos_count: allUTXOsCount,
                 unspent_utxos_count: unspentUTXOsCount,
@@ -3911,9 +3935,6 @@ export class WalletController {
             this.balanceCache.delete(key);
         });
 
-        if (expiredKeys.length > 0) {
-            console.log(`Cleaned up ${expiredKeys.length} expired balance cache entries`);
-        }
     };
 
     /**
@@ -4270,6 +4291,54 @@ export class WalletController {
 
         const normalizedDomain = domainName.toLowerCase().replace(/\.btc$/, '');
         await preferenceService.removeTrackedDomain(account.address, normalizedDomain);
+    };
+
+    /**
+     * Get pending domain transfer info
+     */
+    public getPendingDomainTransfer = async (
+        domainName: string
+    ): Promise<{
+        newOwner: string | null;
+        initiatedAt: bigint;
+    }> => {
+        const normalizedDomain = domainName.toLowerCase().replace(/\.btc$/, '');
+
+        const resolverAddress = Web3API.btcResolverAddressP2OP;
+        if (!resolverAddress) {
+            throw new WalletControllerError('BtcNameResolver contract not configured for this network');
+        }
+
+        const resolverContract = getContract<IBtcNameResolverContract>(
+            resolverAddress,
+            BTC_NAME_RESOLVER_ABI,
+            Web3API.provider,
+            Web3API.network
+        );
+
+        // Get pending transfer info
+        const pendingResult = await resolverContract.getPendingTransfer(normalizedDomain);
+
+        let newOwner: string | null = null;
+        if (pendingResult.properties.pendingOwner && !pendingResult.properties.pendingOwner.isDead()) {
+            try {
+                const publicOwner = await Web3API.provider.getPublicKeyInfo(
+                    pendingResult.properties.pendingOwner.toHex(),
+                    false
+                );
+                if (publicOwner) {
+                    newOwner = publicOwner.p2tr(Web3API.network);
+                }
+            } catch {
+                // Fallback to just using the hash if we can't resolve the address
+                newOwner = pendingResult.properties.pendingOwner.toHex();
+            }
+        }
+
+        return {
+            newOwner,
+            initiatedAt: pendingResult.properties.initiatedAt
+        };
     };
 }
 

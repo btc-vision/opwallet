@@ -202,29 +202,24 @@ export default function WalletTabScreen() {
             await wallet.setDuplicateCheckDone();
 
             try {
-                console.log('[WalletTabScreen] Checking for duplicates...');
                 const detection = await wallet.checkForDuplicates();
-                console.log('[WalletTabScreen] Detection result:', detection.hasDuplicates, 'conflicts:', detection.totalConflicts);
 
                 if (detection.hasDuplicates) {
                     const state = await wallet.getDuplicationState();
-                    console.log('[WalletTabScreen] Duplication state:', state);
 
                     // If there are still conflicts but state says resolved, reset it
                     // This can happen if resolution didn't fully work or new conflicts appeared
                     if (state.isResolved && detection.totalConflicts > 0) {
-                        console.log('[WalletTabScreen] Conflicts remain after resolution, resetting state');
                         await wallet.resetDuplicationState();
                     }
 
                     if (!state.isResolved || detection.totalConflicts > 0) {
-                        console.log('[WalletTabScreen] Showing duplication alert modal');
                         setDuplicationDetection(detection);
                         setShowDuplicationAlert(true);
                     }
                 }
-            } catch (e) {
-                console.error('[WalletTabScreen] Failed to check for duplicates:', e);
+            } catch {
+                // Failed to check for duplicates
             }
         };
 

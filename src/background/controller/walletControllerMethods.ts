@@ -91,6 +91,7 @@ export const WALLET_CONTROLLER_METHODS = [
     'getOpnetCacheStats',
     'getOpnetGateways',
     'getOPNetWallet',
+    'getPendingDomainTransfer',
     'getPreMnemonics',
     'getPreSignedDataForPreview',
     'getPreSignedTxData',

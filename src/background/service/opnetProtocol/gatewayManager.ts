@@ -163,10 +163,12 @@ class GatewayManager {
         return this.gateways.map((g) => ({
             config: g,
             health: this.healthStatus.get(g.url) ?? {
-                isOnline: false,
+                url: g.url,
+                isHealthy: false,
                 latency: Infinity,
-                lastCheck: 0,
-                failureCount: 0
+                lastChecked: 0,
+                failureCount: 0,
+                successCount: 0
             }
         }));
     }

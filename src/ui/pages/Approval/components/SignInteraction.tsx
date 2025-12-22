@@ -59,6 +59,7 @@ export default function SignInteraction(props: Props) {
     const [userAddresses, setUserAddresses] = useState<Set<string>>(new Set());
     const [isTxFlowExpanded, setIsTxFlowExpanded] = useState(false);
     const [timeRemaining, setTimeRemaining] = useState(APPROVAL_TIMEOUT_SECONDS);
+    const [btcPrice, setBtcPrice] = useState<number>(0);
     const hasTimedOut = useRef(false);
 
     // Auto-timeout after 2 minutes
@@ -86,6 +87,15 @@ export default function SignInteraction(props: Props) {
 
         return () => clearInterval(timer);
     }, [timeRemaining, handleTimeout]);
+
+    // Fetch BTC price for USD estimation
+    useEffect(() => {
+        wallet.getBtcPrice().then((price) => {
+            if (price > 0) setBtcPrice(price);
+        }).catch(() => {
+            // Silently fail - USD will just not be shown
+        });
+    }, [wallet]);
 
     // Fetch all user addresses for change detection
     // Includes: main address, all CSV variants, p2wda, p2tr, p2wpkh (segwit), p2pkh (legacy), p2shp2wpkh (nested segwit)
@@ -579,6 +589,11 @@ export default function SignInteraction(props: Props) {
                         </div>
                         <div style={{ fontSize: '20px', fontWeight: 700, color: colors.main }}>
                             {(outputAnalysis.totalCost / 1e8).toFixed(8).replace(/\.?0+$/, '')} {unitBtc}
+                            {btcPrice > 0 && (
+                                <span style={{ fontSize: '12px', color: colors.textFaded, marginLeft: '8px', fontWeight: 500 }}>
+                                    (${((outputAnalysis.totalCost / 1e8) * btcPrice).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USD)
+                                </span>
+                            )}
                         </div>
                     </div>
 

@@ -52,7 +52,7 @@ export function OutputValueBar({
         // }
         onChange(val);
         setCurrentValue(val);
-    }, [optionIndex, inputVal]);
+    }, [optionIndex, inputVal, defaultValue, onChange, options]);
 
     useEffect(() => {
         if (minValue && currentValue < minValue) {

@@ -147,8 +147,6 @@ export default function TxCreateScreen() {
 
                 const balances: AddressBalance[] = [];
 
-                console.log('currentBalance', currentBalance);
-
                 // Always add current address
                 balances.push({
                     type: SourceType.CURRENT,
