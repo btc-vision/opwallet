@@ -50,7 +50,7 @@ export interface PreferenceStore {
     addressFlags: Record<string, number>;
     autoLockTimeId: number;
     customNetworks: Record<string, CustomNetwork>;
-    notificationWindowMode: 'auto' | 'popup' | 'fullscreen' | 'sidepanel';
+    notificationWindowMode: 'auto' | 'popup' | 'fullscreen';
     useSidePanel: boolean;
     trackedDomains: Record<string, TrackedDomain[]>; // keyed by address
     mldsaBackupDismissed: Record<string, boolean>; // keyed by wallet pubkey
@@ -242,11 +242,11 @@ class PreferenceService {
         return this.popupOpen;
     };
 
-    getNotificationWindowMode = (): 'auto' | 'popup' | 'fullscreen' | 'sidepanel' => {
+    getNotificationWindowMode = (): 'auto' | 'popup' | 'fullscreen' => {
         return this.store.notificationWindowMode || 'popup';
     };
 
-    setNotificationWindowMode = async (mode: 'auto' | 'popup' | 'fullscreen' | 'sidepanel') => {
+    setNotificationWindowMode = async (mode: 'auto' | 'popup' | 'fullscreen') => {
         this.store.notificationWindowMode = mode;
         await this.persist();
     };

@@ -296,9 +296,9 @@ export interface WalletController {
 
     setLastActiveTime(): Promise<void>;
 
-    getNotificationWindowMode(): Promise<'auto' | 'popup' | 'fullscreen' | 'sidepanel'>;
+    getNotificationWindowMode(): Promise<'auto' | 'popup' | 'fullscreen'>;
 
-    setNotificationWindowMode(mode: 'auto' | 'popup' | 'fullscreen' | 'sidepanel'): Promise<void>;
+    setNotificationWindowMode(mode: 'auto' | 'popup' | 'fullscreen'): Promise<void>;
 
     getUseSidePanel(): Promise<boolean>;
 

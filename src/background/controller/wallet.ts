@@ -3304,11 +3304,11 @@ export class WalletController {
         this._resetTimeout();
     };
 
-    public getNotificationWindowMode = (): 'auto' | 'popup' | 'fullscreen' | 'sidepanel' => {
+    public getNotificationWindowMode = (): 'auto' | 'popup' | 'fullscreen' => {
         return preferenceService.getNotificationWindowMode();
     };
 
-    public setNotificationWindowMode = async (mode: 'auto' | 'popup' | 'fullscreen' | 'sidepanel'): Promise<void> => {
+    public setNotificationWindowMode = async (mode: 'auto' | 'popup' | 'fullscreen'): Promise<void> => {
         await preferenceService.setNotificationWindowMode(mode);
     };
 
