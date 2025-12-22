@@ -268,7 +268,7 @@ export default function HistoryScreen() {
     const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
     const loadHistory = useCallback(
-        async (showLoader = true) => {
+        async (showLoader) => {
             if (showLoader) {
                 setLoading(true);
             }

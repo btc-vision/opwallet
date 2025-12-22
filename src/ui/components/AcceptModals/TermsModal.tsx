@@ -118,7 +118,7 @@ export function TermsOfServiceModal({
                 checkReadStatus();
             });
         });
-        // eslint-disable-next-line react-hooks/exhaustive-deps
+         
     }, [activeDoc, open]);
 
     const onScroll = () => {

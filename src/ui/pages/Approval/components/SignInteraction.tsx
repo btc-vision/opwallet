@@ -9,13 +9,15 @@ import { DecodedCalldata } from '@/ui/pages/OpNet/decoded/DecodedCalldata';
 import { useBTCUnit } from '@/ui/state/settings/hooks';
 import { useApproval } from '@/ui/utils/hooks';
 import { useWallet } from '@/ui/utils/WalletContext';
-import { CodeOutlined, DownOutlined, EditOutlined, RightOutlined, ThunderboltOutlined, WarningOutlined } from '@ant-design/icons';
+import { ClockCircleOutlined, CodeOutlined, DownOutlined, EditOutlined, RightOutlined, ThunderboltOutlined, WarningOutlined } from '@ant-design/icons';
 import { Address } from '@btc-vision/transaction';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Decoded } from '../../OpNet/decoded/DecodedTypes';
 import { InteractionHeader } from './Headers/InteractionHeader';
 import { ChangeFeeRate } from './SignInteraction/ChangeFeeRate';
 import { ChangePriorityFee } from './SignInteraction/ChangePriorityFee';
+
+const APPROVAL_TIMEOUT_SECONDS = 120; // 2 minutes
 
 const colors = {
     main: '#f37413',
@@ -56,6 +58,34 @@ export default function SignInteraction(props: Props) {
     const [isLoading, setIsLoading] = useState(true);
     const [userAddresses, setUserAddresses] = useState<Set<string>>(new Set());
     const [isTxFlowExpanded, setIsTxFlowExpanded] = useState(false);
+    const [timeRemaining, setTimeRemaining] = useState(APPROVAL_TIMEOUT_SECONDS);
+    const hasTimedOut = useRef(false);
+
+    // Auto-timeout after 2 minutes
+    const handleTimeout = useCallback(async () => {
+        if (hasTimedOut.current) return;
+        hasTimedOut.current = true;
+        await rejectApproval('Request timed out. Please try again.');
+    }, [rejectApproval]);
+
+    useEffect(() => {
+        if (timeRemaining <= 0) {
+            handleTimeout();
+            return;
+        }
+
+        const timer = setInterval(() => {
+            setTimeRemaining((prev) => {
+                if (prev <= 1) {
+                    clearInterval(timer);
+                    return 0;
+                }
+                return prev - 1;
+            });
+        }, 1000);
+
+        return () => clearInterval(timer);
+    }, [timeRemaining, handleTimeout]);
 
     // Fetch all user addresses for change detection
     // Includes: main address, all CSV variants, p2wda, p2tr, p2wpkh (segwit), p2pkh (legacy), p2shp2wpkh (nested segwit)
@@ -295,7 +325,39 @@ export default function SignInteraction(props: Props) {
                 />
             )}
 
-            <Content style={{ padding: '12px', overflowY: 'auto' }}>
+            <Content style={{ padding: '12px', overflowY: 'auto', position: 'relative' }}>
+                {/* Timeout Counter - Top Right */}
+                <div
+                    style={{
+                        position: 'absolute',
+                        top: '8px',
+                        right: '12px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '4px',
+                        padding: '4px 8px',
+                        background: timeRemaining <= 30 ? '#ef444420' : colors.containerBgFaded,
+                        border: `1px solid ${timeRemaining <= 30 ? '#ef4444' : colors.containerBorder}`,
+                        borderRadius: '6px',
+                        zIndex: 10
+                    }}>
+                    <ClockCircleOutlined
+                        style={{
+                            fontSize: 12,
+                            color: timeRemaining <= 30 ? '#ef4444' : colors.textFaded
+                        }}
+                    />
+                    <span
+                        style={{
+                            fontSize: '12px',
+                            fontWeight: 600,
+                            fontFamily: 'monospace',
+                            color: timeRemaining <= 30 ? '#ef4444' : colors.text
+                        }}>
+                        {Math.floor(timeRemaining / 60)}:{(timeRemaining % 60).toString().padStart(2, '0')}
+                    </span>
+                </div>
+
                 {/* Contract Header */}
                 <InteractionHeader contract={to} contractInfo={contractInfo} />
 

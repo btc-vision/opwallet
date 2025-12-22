@@ -64,6 +64,8 @@ export const WALLET_CONTROLLER_METHODS = [
     'getCurrentKeyring',
     'getCurrentSite',
     'getDuplicationState',
+    'setDuplicateCheckDone',
+    'shouldSkipDuplicateCheck',
     'getEditingAccount',
     'getEditingKeyring',
     'getExternalLinkAck',

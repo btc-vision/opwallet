@@ -684,6 +684,32 @@ class PreferenceService {
         await this.persist();
     };
 
+    /**
+     * Check if duplicate check should be skipped (already done recently)
+     * Returns true if check was done within the threshold
+     */
+    shouldSkipDuplicateCheck = (thresholdMs: number = 30000): boolean => {
+        const state = this.getDuplicationState();
+        if (!state.lastCheckTime) return false;
+        return Date.now() - state.lastCheckTime < thresholdMs;
+    };
+
+    /**
+     * Mark duplicate check as done for this session
+     */
+    setDuplicateCheckDone = async (): Promise<void> => {
+        if (!this.store.duplicationState) {
+            this.store.duplicationState = {
+                isResolved: false,
+                backupCreated: false,
+                backupDownloaded: false,
+                conflictsResolved: []
+            };
+        }
+        this.store.duplicationState.lastCheckTime = Date.now();
+        await this.persist();
+    };
+
     // ==================== END DUPLICATION STATE ====================
 
     private persist = async () => {

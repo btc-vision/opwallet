@@ -100,7 +100,7 @@ class TransactionStatusPoller {
             try {
                 await this.checkTransactionStatus(chainType, pubkey, transaction);
             } catch (error) {
-                console.error(`[TransactionStatusPoller] Error checking tx ${transaction.txid}:`, error);
+                console.warn(`[TransactionStatusPoller] Error checking tx ${transaction.txid}:`, error);
                 // Just increment the attempt counter
                 await transactionHistoryService.updateTransactionStatus(
                     chainType,

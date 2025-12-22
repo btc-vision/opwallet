@@ -439,7 +439,7 @@ function Step2({
 
     useEffect(() => {
         void run();
-        // eslint-disable-next-line react-hooks/exhaustive-deps
+         
     }, [contextData.wif]);
 
     useEffect(() => {
@@ -672,7 +672,7 @@ function Step3({
         };
 
         void checkOnChainKey();
-        // eslint-disable-next-line react-hooks/exhaustive-deps
+         
     }, [contextData.wif, contextData.addressType]);
 
     const validateQuantumKey = (key: string): boolean => {

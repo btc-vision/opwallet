@@ -580,6 +580,41 @@ class KeyringService extends EventEmitter {
         this.fullUpdate();
     };
 
+    /**
+     * Remove all corrupted/empty keyrings that have no salvageable data.
+     * Returns the number of keyrings removed.
+     */
+    removeCorruptedKeyrings = async (): Promise<number> => {
+        const indicesToRemove: number[] = [];
+
+        for (let i = this.keyrings.length - 1; i >= 0; i--) {
+            const keyring = this.keyrings[i];
+            if (keyring.type === KEYRING_TYPE.Empty) {
+                // This keyring is corrupted - safe to remove since no keys
+                indicesToRemove.push(i);
+            }
+        }
+
+        if (indicesToRemove.length === 0) {
+            return 0;
+        }
+
+        console.log(`[removeCorruptedKeyrings] Removing ${indicesToRemove.length} corrupted keyring(s) at indices:`, indicesToRemove);
+
+        // Remove from end to start to preserve indices
+        for (const index of indicesToRemove) {
+            this.keyrings.splice(index, 1);
+            this.addressTypes.splice(index, 1);
+        }
+
+        await this.persistAllKeyrings();
+        this._updateMemStoreKeyrings();
+        this.fullUpdate();
+
+        console.log(`[removeCorruptedKeyrings] Successfully removed ${indicesToRemove.length} corrupted keyring(s)`);
+        return indicesToRemove.length;
+    };
+
     signTransaction = (keyring: Keyring | EmptyKeyring, psbt: Psbt, inputs: ToSignInput[]) => {
         if (keyring instanceof HdKeyring || keyring instanceof SimpleKeyring) {
             return keyring.signTransaction(psbt, inputs);
@@ -675,12 +710,65 @@ class KeyringService extends EventEmitter {
 
         const vault = (await this.encryptor.decrypt(password, encryptedVault)) as SavedVault[];
 
+        console.log('[unlockKeyrings] Vault contains', vault.length, 'keyrings');
+
         const failedKeyrings: { index: number; error: unknown; data: SavedVault }[] = [];
+        const corruptedKeyrings: {
+            index: number;
+            originalType: string;
+            reason: string;
+            hasSalvageableData: boolean;
+            salvageableFields: string[];
+        }[] = [];
 
         for (let i = 0; i < vault.length; i++) {
             const key = vault[i];
+            console.log(`[unlockKeyrings] Restoring keyring[${i}]: type=${key.type}`);
             try {
                 const { keyring, addressType } = this._restoreKeyring(key);
+                if (keyring.type === KEYRING_TYPE.Empty) {
+                    // Check if there's any salvageable data in the original vault entry
+                    const data = key.data as Record<string, unknown> | undefined;
+                    const salvageableFields: string[] = [];
+
+                    if (data) {
+                        if (data.privateKey) salvageableFields.push('privateKey');
+                        if (data.mnemonic) salvageableFields.push('mnemonic');
+                        if (data.hdPath) salvageableFields.push('hdPath');
+                        if (data.quantumPrivateKey) salvageableFields.push('quantumPrivateKey');
+                        if (data.xfp) salvageableFields.push('xfp (Keystone fingerprint)');
+                    }
+
+                    const hasSalvageableData = salvageableFields.length > 0;
+                    const reason = key.type === KEYRING_TYPE.KeystoneKeyring
+                        ? 'Keystone hardware wallet no longer supported'
+                        : key.type === KEYRING_TYPE.Empty
+                            ? 'Wallet data was corrupted or deleted'
+                            : `Unknown keyring type: ${key.type}`;
+
+                    corruptedKeyrings.push({
+                        index: i,
+                        originalType: key.type,
+                        reason,
+                        hasSalvageableData,
+                        salvageableFields
+                    });
+
+                    console.error(`
+╔══════════════════════════════════════════════════════════════════╗
+║  ⚠️  CORRUPTED WALLET DETECTED AT INDEX ${i.toString().padStart(2, ' ')}                       ║
+╠══════════════════════════════════════════════════════════════════╣
+║  Original Type: ${key.type.padEnd(47, ' ')}║
+║  Reason: ${reason.substring(0, 54).padEnd(54, ' ')}║
+║  Has Salvageable Data: ${hasSalvageableData ? 'YES' : 'NO '}                                   ║
+${hasSalvageableData ? `║  Salvageable Fields: ${salvageableFields.join(', ').substring(0, 42).padEnd(42, ' ')}║\n` : ''}║  Vault Data Keys: ${Object.keys(key.data || {}).join(', ').substring(0, 44).padEnd(44, ' ')}║
+╚══════════════════════════════════════════════════════════════════╝`);
+
+                    if (hasSalvageableData) {
+                        console.warn('[unlockKeyrings] Salvageable data found! The wallet may be recoverable.');
+                        console.warn('[unlockKeyrings] Raw vault data for recovery:', JSON.stringify(key, null, 2));
+                    }
+                }
                 this.keyrings.push(keyring);
                 this.addressTypes.push(addressType);
             } catch (e) {
@@ -698,6 +786,37 @@ class KeyringService extends EventEmitter {
                 failedKeyrings
             );
         }
+
+        // Handle corrupted keyrings
+        if (corruptedKeyrings.length > 0) {
+            const salvageableCount = corruptedKeyrings.filter(k => k.hasSalvageableData).length;
+            const removableCount = corruptedKeyrings.length - salvageableCount;
+
+            console.error(`
+╔══════════════════════════════════════════════════════════════════╗
+║  ⚠️  ${corruptedKeyrings.length} CORRUPTED WALLET(S) FOUND IN VAULT                        ║
+║  These wallets have missing or invalid data and cannot be used.  ║
+╠══════════════════════════════════════════════════════════════════╣
+║  With salvageable data: ${salvageableCount} (will NOT be removed)                  ║
+║  Without salvageable data: ${removableCount} (will be auto-removed)               ║
+╚══════════════════════════════════════════════════════════════════╝`);
+
+            // Auto-remove corrupted keyrings that have NO salvageable data
+            if (removableCount > 0) {
+                console.log('[unlockKeyrings] Auto-removing corrupted keyrings with no salvageable data...');
+                const removed = await this.removeCorruptedKeyrings();
+                console.log(`[unlockKeyrings] Removed ${removed} corrupted keyring(s) from vault`);
+            }
+
+            // Emit event for keyrings WITH salvageable data so UI can warn user
+            const salvageableKeyrings = corruptedKeyrings.filter(k => k.hasSalvageableData);
+            if (salvageableKeyrings.length > 0) {
+                this.emit('corruptedKeyrings', salvageableKeyrings);
+            }
+        }
+
+        console.log('[unlockKeyrings] Final keyrings count:', this.keyrings.length,
+            'Corrupted count:', this.keyrings.filter(k => k.type === KEYRING_TYPE.Empty).length);
 
         this._updateMemStoreKeyrings();
 

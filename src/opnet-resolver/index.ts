@@ -262,7 +262,7 @@ function renderContent(content: ResolvedContent, path: string): void {
 
 // Set up message listener for navigation from iframe
 function setupMessageListener(): void {
-    window.addEventListener('message', (event) => {
+    window.addEventListener('message', (event: MessageEvent<{ type?: string; url?: string }>) => {
         // Only accept messages from our content iframe
         const isFromIframe = event.source === contentFrame?.contentWindow;
         if (!isFromIframe) {

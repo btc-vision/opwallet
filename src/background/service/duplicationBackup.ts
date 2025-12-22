@@ -25,7 +25,7 @@ class DuplicationBackupService {
      * Must be called before any resolution actions
      */
     async createBackup(password: string, conflicts: DuplicationConflict[]): Promise<DuplicationBackup> {
-        const keyrings = await this.serializeAllKeyrings();
+        const keyrings = this.serializeAllKeyrings();
 
         const backup: DuplicationBackup = {
             version: DUPLICATION_BACKUP_VERSION,
@@ -111,7 +111,7 @@ class DuplicationBackupService {
      * Serialize all keyrings for backup
      * Includes all sensitive data (mnemonics, private keys, quantum keys)
      */
-    private async serializeAllKeyrings(): Promise<BackupKeyringData[]> {
+    private serializeAllKeyrings(): BackupKeyringData[] {
         const keyrings = keyringService.keyrings;
         const addressTypes = keyringService.addressTypes;
         const result: BackupKeyringData[] = [];
@@ -148,7 +148,7 @@ class DuplicationBackupService {
                 result.push({
                     keyringIndex: i,
                     keyringType: KEYRING_TYPE.HdKeyring,
-                    addressType: String(addressType),
+                    addressType: addressType.toString(),
                     mnemonic: serialized.mnemonic,
                     passphrase: serialized.passphrase,
                     hdPath: undefined, // HD path is derived from addressType in wallet-sdk 2.0
@@ -193,7 +193,7 @@ class DuplicationBackupService {
                 result.push({
                     keyringIndex: i,
                     keyringType: KEYRING_TYPE.SimpleKeyring,
-                    addressType: String(addressType),
+                    addressType: addressType.toString(),
                     privateKey: serialized.privateKey,
                     quantumPrivateKey,
                     accounts: accountsData
@@ -238,7 +238,7 @@ class DuplicationBackupService {
      */
     async importBackupFromFile(fileContent: string, password: string): Promise<DuplicationBackup> {
         try {
-            const parsed = JSON.parse(fileContent);
+            const parsed = JSON.parse(fileContent) as { type?: string; encrypted?: string };
 
             if (parsed.type !== 'opwallet-duplication-backup') {
                 throw new Error('Invalid backup file format');
@@ -281,7 +281,7 @@ class DuplicationBackupService {
         let restored = 0;
 
         // Clear existing keyrings first
-        await keyringService.clearKeyrings();
+        keyringService.clearKeyrings();
 
         for (const keyringData of backup.keyrings) {
             try {

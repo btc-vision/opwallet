@@ -182,7 +182,7 @@ export const AddressInput = (props: InputProps) => {
                 domain: parseAddress ? inputVal : ''
             });
         }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
+         
     }, [validAddress, parseAddress, inputVal]);
 
     if (!addressInputData || !onAddressInputChange) {
