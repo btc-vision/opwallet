@@ -13,7 +13,7 @@ import {
     IDeploymentParametersWithoutSigner,
     InteractionParametersWithoutSigner,
     InteractionResponse,
-    Unisat,
+    OPWallet,
     UTXO,
     WindowWithWallets
 } from '@btc-vision/transaction';
@@ -540,7 +540,7 @@ export class OpnetProvider extends EventEmitter {
 const provider = new OpnetProvider();
 (window as WindowWithWallets).opnet = new Proxy(provider, {
     deleteProperty: () => true
-}) as unknown as Unisat;
+}) as unknown as OPWallet;
 
 Object.defineProperty(window, 'opnet', {
     value: new Proxy(provider, {
