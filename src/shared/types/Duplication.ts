@@ -128,6 +128,8 @@ export interface DuplicationState {
     isResolved: boolean;
     /** When duplicates were last detected */
     lastDetectionTime?: number;
+    /** When the duplicate check was last performed (prevents repeated checks in same session) */
+    lastCheckTime?: number;
     /** Whether internal backup was created */
     backupCreated: boolean;
     /** Whether user downloaded the backup file */

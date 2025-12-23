@@ -1,4 +1,4 @@
-import { CSSProperties, memo, type RefObject, useMemo } from 'react';
+import { CSSProperties, memo, type RefObject } from 'react';
 
 export interface IframeProps {
     preview: string;
@@ -7,20 +7,18 @@ export interface IframeProps {
 }
 
 const Iframe = ({ preview, style, ref }: IframeProps) => {
-    return useMemo(
-        () => (
-            <iframe
-                onClick={(e) => e.preventDefault()}
-                ref={ref}
-                style={Object.assign({}, { pointerEvents: 'none', overflow: 'hidden' }, style)} // prevent events in iframe
-                src={preview}
-                sandbox="allow-scripts"
-                loading="lazy"></iframe>
-        ),
-        [preview]
+    return (
+        <iframe
+            onClick={(e) => e.preventDefault()}
+            ref={ref}
+            style={Object.assign({}, { pointerEvents: 'none', overflow: 'hidden' }, style)}
+            src={preview}
+            sandbox="allow-scripts"
+            loading="lazy"
+        />
     );
 };
 
 export default memo(Iframe, (p, n) => {
-    return p.preview === n.preview;
+    return p.preview === n.preview && p.style === n.style;
 });

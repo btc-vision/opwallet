@@ -14,17 +14,17 @@ export function BTCDomainModal({
     onAccept: () => void;
     onClose?: () => void;
 }) {
-    const [accepted, setAccepted] = useState(false);
+    // Lazy init from localStorage
+    const [accepted, setAccepted] = useState(() => {
+        if (typeof window === 'undefined') return false;
+        return window.localStorage.getItem(TOS_DOMAIN_ACCEPTED_KEY) === '1';
+    });
     const [canInteract, setCanInteract] = useState(false);
 
     const scrollRef = useRef<HTMLDivElement | null>(null);
 
     useEffect(() => {
         if (!open) return;
-        if (typeof window === 'undefined') return;
-
-        const prevAccepted = window.localStorage.getItem(TOS_DOMAIN_ACCEPTED_KEY) === '1';
-        setAccepted(prevAccepted);
 
         // force scroll-to-bottom gating each time it opens
         setCanInteract(false);
@@ -413,15 +413,15 @@ export function BTCDomainModal({
                             broadcast by you or on your behalf. OPNET does not act as an intermediary, registrar, custodian, or agent in the domain
                             registration process. When you register a .btc domain, you interact directly with the Bitcoin network by broadcasting a valid
                             Bitcoin transaction containing the registration data. OPNET has no role in processing, validating, confirming, or executing
-                            your registration transaction. The Bitcoin network's miners validate and confirm your transaction according to Bitcoin's
+                            your registration transaction. The Bitcoin network&apos;s miners validate and confirm your transaction according to Bitcoin&apos;s
                             consensus rules. Once your registration transaction is confirmed on the Bitcoin Blockchain, your domain registration becomes
-                            part of Bitcoin's immutable public ledger.
+                            part of Bitcoin&apos;s immutable public ledger.
                         </p>
 
                         <h3 style={styles.h3}>2.2 OPNet Consensus Layer</h3>
                         <p style={styles.baseText}>
                             OPNet operates as a consensus layer that reads, interprets, and validates Bitcoin transactions containing .btc domain data
-                            according to the OPNet protocol rules. OPNet does not modify, process, or intermediate Bitcoin transactions. OPNet's consensus
+                            according to the OPNet protocol rules. OPNet does not modify, process, or intermediate Bitcoin transactions. OPNet&apos;s consensus
                             layer observes the Bitcoin Blockchain and derives state from valid transactions. The OPNet protocol is trustless and
                             permissionless, meaning that any party may run an OPNet node to independently verify the state of all .btc domains. OPNET the
                             company does not control the OPNet protocol and cannot unilaterally alter protocol rules or domain ownership records.
@@ -450,9 +450,9 @@ export function BTCDomainModal({
                             You acknowledge and understand that transactions on OPNet may partially revert. Because OPNet operates as a consensus layer
                             atop Bitcoin rather than as an independent blockchain, when a transaction contains both Bitcoin value transfers and OPNet smart
                             contract execution, the OPNet execution component may fail or revert while the underlying Bitcoin transfer remains valid and
-                            irreversible. Bitcoin transactions achieve finality through Bitcoin's proof-of-work consensus independently of OPNet's
+                            irreversible. Bitcoin transactions achieve finality through Bitcoin&apos;s proof-of-work consensus independently of OPNet&apos;s
                             consensus layer. If an OPNet execution fails, any Bitcoin transferred in that transaction cannot be recovered through OPNet
-                            mechanisms because the Bitcoin transfer was valid under Bitcoin's consensus rules. You accept this partial reversion behaviour
+                            mechanisms because the Bitcoin transfer was valid under Bitcoin&apos;s consensus rules. You accept this partial reversion behaviour
                             as an inherent characteristic of the system.
                         </p>
 

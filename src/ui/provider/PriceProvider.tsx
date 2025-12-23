@@ -48,7 +48,7 @@ export function PriceProvider({ children }: { children: ReactNode }) {
                 setIsLoadingBtcPrice(false);
                 isRequestingBtcPrice = false;
             });
-    }, []);
+    }, [wallet]);
 
     useEffect(() => {
         refreshBtcPrice();

@@ -1,10 +1,19 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { NETWORK_TYPES } from '@/shared/constant';
-import { Action, Features, RegisterDomainParameters, PublishDomainParameters } from '@/shared/interfaces/RawTxParameters';
+import {
+    Action,
+    AcceptDomainTransferParameters,
+    CancelDomainTransferParameters,
+    Features,
+    InitiateDomainTransferParameters,
+    PublishDomainParameters,
+    RegisterDomainParameters
+} from '@/shared/interfaces/RawTxParameters';
 import { NetworkType } from '@/shared/types';
 import { Content, Header, Layout } from '@/ui/components';
 import { useTools } from '@/ui/components/ActionComponent';
+import { FeeRateBar } from '@/ui/components/FeeRateBar';
 import { useAccountAddress } from '@/ui/state/accounts/hooks';
 import { useChain } from '@/ui/state/settings/hooks';
 import { copyToClipboard, useWallet } from '@/ui/utils';
@@ -21,7 +30,10 @@ import {
     PlusOutlined,
     ReloadOutlined,
     SearchOutlined,
-    UploadOutlined
+    SendOutlined,
+    SwapOutlined,
+    UploadOutlined,
+    WarningOutlined
 } from '@ant-design/icons';
 import { RouteTypes, useNavigate } from '../routeTypes';
 
@@ -42,7 +54,7 @@ const colors = {
     info: '#3b82f6'
 };
 
-type Tab = 'mydomains' | 'register' | 'publish';
+type Tab = 'mydomains' | 'register' | 'publish' | 'transfer';
 
 interface TrackedDomainInfo {
     name: string;
@@ -59,14 +71,18 @@ interface DomainInfo {
     treasuryAddress: string;
 }
 
+interface PendingTransferInfo {
+    domainName: string;
+    newOwner: string;
+    isOutgoing: boolean; // true if current user is transferring away, false if receiving
+}
+
 export default function BtcDomainScreen() {
     const navigate = useNavigate();
     const tools = useTools();
     const wallet = useWallet();
     const chain = useChain();
     const userAddress = useAccountAddress();
-    const defaultFeeRate = 5; // Default fee rate in sat/vB
-
     const [activeTab, setActiveTab] = useState<Tab>('mydomains');
 
     // My Domains state
@@ -93,6 +109,18 @@ export default function BtcDomainScreen() {
     // CLI instructions state
     const [showCliInstructions, setShowCliInstructions] = useState(false);
 
+    // Transfer state
+    const [transferDomainInput, setTransferDomainInput] = useState('');
+    const [transferDomainInfo, setTransferDomainInfo] = useState<DomainInfo | null>(null);
+    const [isCheckingTransferDomain, setIsCheckingTransferDomain] = useState(false);
+    const [recipientAddress, setRecipientAddress] = useState('');
+    const [pendingTransfers, setPendingTransfers] = useState<PendingTransferInfo[]>([]);
+    const [isLoadingPendingTransfers, setIsLoadingPendingTransfers] = useState(false);
+    const [acceptDomainInput, setAcceptDomainInput] = useState('');
+    const [acceptDomainPendingInfo, setAcceptDomainPendingInfo] = useState<PendingTransferInfo | null>(null);
+    const [isCheckingAcceptDomain, setIsCheckingAcceptDomain] = useState(false);
+    const [transferFeeRate, setTransferFeeRate] = useState(5);
+
     // Get network flag for CLI commands (empty for mainnet, -n <network> for others)
     const networkFlag = useMemo(() => {
         if (chain.networkType === NetworkType.MAINNET) return '';
@@ -112,9 +140,9 @@ export default function BtcDomainScreen() {
         }
     }, [wallet]);
 
-    // Load domains on mount and when tab changes
+    // Load domains on mount and when tab changes (also needed for transfer tab)
     useEffect(() => {
-        if (activeTab === 'mydomains') {
+        if (activeTab === 'mydomains' || activeTab === 'transfer') {
             loadMyDomains();
         }
     }, [activeTab, loadMyDomains]);
@@ -129,8 +157,9 @@ export default function BtcDomainScreen() {
             setAddDomainInput('');
             await loadMyDomains();
             tools.toastSuccess('Domain added!');
-        } catch (err: any) {
-            tools.toastError(err.message || 'Failed to add domain');
+        } catch (err: unknown) {
+            const message = err instanceof Error ? err.message : 'Failed to add domain';
+            tools.toastError(message);
         } finally {
             setIsAddingDomain(false);
         }
@@ -142,7 +171,7 @@ export default function BtcDomainScreen() {
             await wallet.removeTrackedDomain(domainName);
             await loadMyDomains();
             tools.toastSuccess('Domain removed');
-        } catch (err) {
+        } catch {
             tools.toastError('Failed to remove domain');
         }
     }, [wallet, loadMyDomains, tools]);
@@ -221,6 +250,165 @@ export default function BtcDomainScreen() {
         }
     }, [publishDomain, wallet, userAddress, tools]);
 
+    // Check domain ownership for transfer
+    const checkTransferDomain = useCallback(async () => {
+        const normalized = normalizeDomain(transferDomainInput);
+        const error = validateDomainName(normalized);
+        if (error) {
+            tools.toastError(error);
+            return;
+        }
+
+        setIsCheckingTransferDomain(true);
+        setTransferDomainInfo(null);
+
+        try {
+            const info = await wallet.getBtcDomainInfo(normalized);
+            setTransferDomainInfo({
+                exists: info.exists,
+                owner: info.owner,
+                isOwner: info.owner?.toLowerCase() === userAddress.toLowerCase(),
+                price: info.price,
+                treasuryAddress: info.treasuryAddress
+            });
+        } catch (err) {
+            console.error('Failed to check domain:', err);
+            tools.toastError('Failed to check domain');
+        } finally {
+            setIsCheckingTransferDomain(false);
+        }
+    }, [transferDomainInput, wallet, userAddress, tools]);
+
+    // Check pending transfer for accept
+    const checkPendingTransfer = useCallback(async () => {
+        const normalized = normalizeDomain(acceptDomainInput);
+        const error = validateDomainName(normalized);
+        if (error) {
+            tools.toastError(error);
+            return;
+        }
+
+        setIsCheckingAcceptDomain(true);
+        setAcceptDomainPendingInfo(null);
+
+        try {
+            const pendingInfo = await wallet.getPendingDomainTransfer(normalized);
+            if (pendingInfo && pendingInfo.newOwner) {
+                const isForMe = pendingInfo.newOwner.toLowerCase() === userAddress.toLowerCase();
+                setAcceptDomainPendingInfo({
+                    domainName: normalized,
+                    newOwner: pendingInfo.newOwner,
+                    isOutgoing: !isForMe
+                });
+            } else {
+                tools.toastError('No pending transfer found for this domain');
+            }
+        } catch (err) {
+            console.error('Failed to check pending transfer:', err);
+            tools.toastError('Failed to check pending transfer');
+        } finally {
+            setIsCheckingAcceptDomain(false);
+        }
+    }, [acceptDomainInput, wallet, userAddress, tools]);
+
+    // Load pending transfers for owned domains
+    const loadPendingTransfers = useCallback(async () => {
+        setIsLoadingPendingTransfers(true);
+        try {
+            const transfers: PendingTransferInfo[] = [];
+            // Check owned domains for outgoing transfers
+            for (const domain of myDomains) {
+                if (domain.isOwner) {
+                    try {
+                        const pendingInfo = await wallet.getPendingDomainTransfer(domain.name);
+                        if (pendingInfo && pendingInfo.newOwner) {
+                            transfers.push({
+                                domainName: domain.name,
+                                newOwner: pendingInfo.newOwner,
+                                isOutgoing: true
+                            });
+                        }
+                    } catch {
+                        // No pending transfer for this domain
+                    }
+                }
+            }
+            setPendingTransfers(transfers);
+        } catch (err) {
+            console.error('Failed to load pending transfers:', err);
+        } finally {
+            setIsLoadingPendingTransfers(false);
+        }
+    }, [myDomains, wallet]);
+
+    // Load pending transfers when switching to transfer tab
+    useEffect(() => {
+        if (activeTab === 'transfer' && myDomains.length > 0) {
+            loadPendingTransfers();
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [activeTab, myDomains.length]);
+
+    // Handle initiate transfer - navigate to TxOpnetConfirmScreen
+    const handleInitiateTransfer = useCallback(() => {
+        if (!transferDomainInfo?.isOwner || !recipientAddress.trim()) return;
+
+        const normalizedDomain = normalizeDomain(transferDomainInput);
+        const rawTxInfo: InitiateDomainTransferParameters = {
+            header: `Transfer ${normalizedDomain}.btc`,
+            features: {
+                [Features.rbf]: true,
+                [Features.taproot]: true
+            },
+            tokens: [],
+            feeRate: transferFeeRate,
+            priorityFee: 0n,
+            action: Action.InitiateDomainTransfer,
+            domainName: normalizedDomain,
+            newOwner: recipientAddress.trim()
+        };
+
+        navigate(RouteTypes.TxOpnetConfirmScreen, { rawTxInfo });
+    }, [transferDomainInfo, transferDomainInput, recipientAddress, transferFeeRate, navigate]);
+
+    // Handle accept transfer - navigate to TxOpnetConfirmScreen
+    const handleAcceptTransfer = useCallback((domainName: string) => {
+        const normalizedDomain = normalizeDomain(domainName);
+        const rawTxInfo: AcceptDomainTransferParameters = {
+            header: `Accept ${normalizedDomain}.btc`,
+            features: {
+                [Features.rbf]: true,
+                [Features.taproot]: true
+            },
+            tokens: [],
+            feeRate: transferFeeRate,
+            priorityFee: 0n,
+            action: Action.AcceptDomainTransfer,
+            domainName: normalizedDomain
+        };
+
+        navigate(RouteTypes.TxOpnetConfirmScreen, { rawTxInfo });
+    }, [transferFeeRate, navigate]);
+
+    // Handle cancel transfer - navigate to TxOpnetConfirmScreen
+    const handleCancelTransfer = useCallback((domainName: string) => {
+        const normalizedDomain = normalizeDomain(domainName);
+        const rawTxInfo: CancelDomainTransferParameters = {
+            header: `Cancel Transfer ${normalizedDomain}.btc`,
+            features: {
+                [Features.rbf]: true,
+                [Features.taproot]: true
+            },
+            tokens: [],
+            feeRate: transferFeeRate,
+            priorityFee: 0n,
+            action: Action.CancelDomainTransfer,
+            domainName: normalizedDomain
+        };
+
+        navigate(RouteTypes.TxOpnetConfirmScreen, { rawTxInfo });
+    }, [transferFeeRate, navigate]);
+
     // Handle file selection
     const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -284,7 +472,7 @@ export default function BtcDomainScreen() {
                 [Features.taproot]: true
             },
             tokens: [],
-            feeRate: feeRate || defaultFeeRate,
+            feeRate: feeRate,
             priorityFee: 0n,
             action: Action.RegisterDomain,
             domainName: normalizedDomain,
@@ -307,7 +495,7 @@ export default function BtcDomainScreen() {
                 [Features.taproot]: true
             },
             tokens: [],
-            feeRate: publishFeeRate || defaultFeeRate,
+            feeRate: publishFeeRate,
             priorityFee: 0n,
             action: Action.PublishDomain,
             domainName: normalizedDomain,
@@ -379,6 +567,22 @@ export default function BtcDomainScreen() {
                             transition: 'all 0.2s'
                         }}>
                         Publish
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('transfer')}
+                        style={{
+                            flex: 1,
+                            padding: '8px 4px',
+                            border: 'none',
+                            borderRadius: '8px',
+                            cursor: 'pointer',
+                            fontSize: '11px',
+                            fontWeight: 600,
+                            background: activeTab === 'transfer' ? colors.main : 'transparent',
+                            color: activeTab === 'transfer' ? '#000' : colors.textFaded,
+                            transition: 'all 0.2s'
+                        }}>
+                        Transfer
                     </button>
                 </div>
 
@@ -517,6 +721,31 @@ export default function BtcDomainScreen() {
                                                 {domain.isOwner ? 'Verified owner' : 'Not owned'}
                                             </div>
                                         </div>
+                                        {domain.isOwner && (
+                                            <button
+                                                onClick={() => {
+                                                    setTransferDomainInput(domain.name);
+                                                    setTransferDomainInfo({
+                                                        exists: true,
+                                                        owner: userAddress,
+                                                        isOwner: true,
+                                                        price: 0n,
+                                                        treasuryAddress: ''
+                                                    });
+                                                    setActiveTab('transfer');
+                                                }}
+                                                title="Transfer domain"
+                                                style={{
+                                                    background: `${colors.main}15`,
+                                                    border: 'none',
+                                                    cursor: 'pointer',
+                                                    padding: '8px',
+                                                    borderRadius: '6px',
+                                                    color: colors.main
+                                                }}>
+                                                <SwapOutlined />
+                                            </button>
+                                        )}
                                         <button
                                             onClick={() => handleRemoveDomain(domain.name)}
                                             style={{
@@ -647,6 +876,11 @@ export default function BtcDomainScreen() {
                                             <span style={{ color: colors.main, fontWeight: 700, fontSize: '16px' }}>
                                                 {formatBtc(domainInfo.price)} BTC
                                             </span>
+                                        </div>
+
+                                        {/* Fee Rate Selector */}
+                                        <div style={{ marginBottom: '12px' }}>
+                                            <FeeRateBar onChange={(val) => setFeeRate(val)} />
                                         </div>
 
                                         {/* Register Button */}
@@ -798,7 +1032,7 @@ export default function BtcDomainScreen() {
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                                         <CloseCircleOutlined style={{ fontSize: 20, color: colors.error }} />
                                         <span style={{ color: colors.error, fontWeight: 600 }}>
-                                            You don't own this domain
+                                            You don&apos;t own this domain
                                         </span>
                                     </div>
                                 ) : (
@@ -932,6 +1166,13 @@ export default function BtcDomainScreen() {
                                     </div>
                                 )}
 
+                                {/* Fee Rate Selector */}
+                                {uploadedCid && (
+                                    <div style={{ marginBottom: '12px' }}>
+                                        <FeeRateBar onChange={(val) => setPublishFeeRate(val)} />
+                                    </div>
+                                )}
+
                                 {/* Publish Button */}
                                 {uploadedCid && (
                                     <button
@@ -1004,6 +1245,366 @@ export default function BtcDomainScreen() {
                             <CloudUploadOutlined style={{ color: colors.warning, marginRight: '8px' }} />
                             <strong>Single-file publishing only.</strong> For multi-file websites with assets,
                             use the CLI: <code style={{ color: colors.main }}>npx @btc-vision/cli deploy</code>
+                        </div>
+                    </div>
+                )}
+
+                {/* Transfer Tab */}
+                {activeTab === 'transfer' && (
+                    <div>
+                        {/* Loading Pending Transfers */}
+                        {isLoadingPendingTransfers && (
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px', gap: '8px' }}>
+                                <LoadingOutlined style={{ color: colors.main }} />
+                                <span style={{ color: colors.textFaded, fontSize: '12px' }}>Loading pending transfers...</span>
+                            </div>
+                        )}
+
+                        {/* Pending Outgoing Transfers */}
+                        {!isLoadingPendingTransfers && pendingTransfers.length > 0 && (
+                            <div style={{ marginBottom: '20px' }}>
+                                <div style={{ fontSize: '12px', color: colors.warning, marginBottom: '8px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                    <WarningOutlined /> Pending Outgoing Transfers
+                                </div>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                    {pendingTransfers.map((transfer) => (
+                                        <div
+                                            key={transfer.domainName}
+                                            style={{
+                                                background: `${colors.warning}15`,
+                                                border: `1px solid ${colors.warning}30`,
+                                                borderRadius: '10px',
+                                                padding: '12px'
+                                            }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                                                <div style={{ fontWeight: 600, color: colors.text }}>
+                                                    {transfer.domainName}.btc
+                                                </div>
+                                                <span style={{ fontSize: '10px', padding: '2px 8px', background: colors.warning, color: '#000', borderRadius: '4px', fontWeight: 600 }}>
+                                                    PENDING
+                                                </span>
+                                            </div>
+                                            <div style={{ fontSize: '10px', color: colors.textFaded, marginBottom: '8px' }}>
+                                                To: {transfer.newOwner.slice(0, 12)}...{transfer.newOwner.slice(-8)}
+                                            </div>
+                                            <button
+                                                onClick={() => handleCancelTransfer(transfer.domainName)}
+                                                style={{
+                                                    width: '100%',
+                                                    padding: '8px',
+                                                    background: colors.error,
+                                                    border: 'none',
+                                                    borderRadius: '6px',
+                                                    cursor: 'pointer',
+                                                    fontSize: '12px',
+                                                    fontWeight: 600,
+                                                    color: '#fff',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'center',
+                                                    gap: '6px'
+                                                }}>
+                                                <CloseCircleOutlined /> Cancel Transfer
+                                            </button>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Initiate Transfer Section */}
+                        <div style={{ marginBottom: '20px' }}>
+                            <div style={{ fontSize: '12px', color: colors.textFaded, marginBottom: '8px', fontWeight: 600 }}>
+                                Send Domain to Someone
+                            </div>
+
+                            {/* Domain Input */}
+                            <div style={{ marginBottom: '12px' }}>
+                                <div style={{ fontSize: '11px', color: colors.textFaded, marginBottom: '6px' }}>
+                                    Domain to Transfer
+                                </div>
+                                <div style={{ display: 'flex', gap: '8px' }}>
+                                    <div
+                                        style={{
+                                            flex: 1,
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            background: colors.inputBg,
+                                            borderRadius: '8px',
+                                            border: `1px solid ${colors.containerBorder}`,
+                                            padding: '0 12px'
+                                        }}>
+                                        <input
+                                            type="text"
+                                            value={transferDomainInput}
+                                            onChange={(e) => {
+                                                setTransferDomainInput(e.target.value);
+                                                setTransferDomainInfo(null);
+                                            }}
+                                            onKeyDown={(e) => e.key === 'Enter' && checkTransferDomain()}
+                                            placeholder="yourdomain"
+                                            style={{
+                                                flex: 1,
+                                                background: 'transparent',
+                                                border: 'none',
+                                                outline: 'none',
+                                                color: colors.text,
+                                                fontSize: '14px',
+                                                padding: '10px 0'
+                                            }}
+                                        />
+                                        <span style={{ color: colors.main, fontWeight: 600 }}>.btc</span>
+                                    </div>
+                                    <button
+                                        onClick={checkTransferDomain}
+                                        disabled={isCheckingTransferDomain || !transferDomainInput.trim()}
+                                        style={{
+                                            padding: '10px 14px',
+                                            background: colors.main,
+                                            border: 'none',
+                                            borderRadius: '8px',
+                                            cursor: isCheckingTransferDomain || !transferDomainInput.trim() ? 'not-allowed' : 'pointer',
+                                            opacity: isCheckingTransferDomain || !transferDomainInput.trim() ? 0.5 : 1
+                                        }}>
+                                        {isCheckingTransferDomain ? (
+                                            <LoadingOutlined style={{ color: '#000' }} />
+                                        ) : (
+                                            <SearchOutlined style={{ color: '#000' }} />
+                                        )}
+                                    </button>
+                                </div>
+                            </div>
+
+                            {/* Domain Verification Result */}
+                            {transferDomainInfo && (
+                                <div
+                                    style={{
+                                        background: colors.containerBgFaded,
+                                        borderRadius: '10px',
+                                        padding: '12px',
+                                        marginBottom: '12px',
+                                        border: `1px solid ${transferDomainInfo.isOwner ? colors.success : colors.error}30`
+                                    }}>
+                                    {!transferDomainInfo.exists ? (
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                            <CloseCircleOutlined style={{ fontSize: 16, color: colors.error }} />
+                                            <span style={{ color: colors.error, fontWeight: 600, fontSize: '13px' }}>
+                                                Domain not registered
+                                            </span>
+                                        </div>
+                                    ) : !transferDomainInfo.isOwner ? (
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                            <CloseCircleOutlined style={{ fontSize: 16, color: colors.error }} />
+                                            <span style={{ color: colors.error, fontWeight: 600, fontSize: '13px' }}>
+                                                You don&apos;t own this domain
+                                            </span>
+                                        </div>
+                                    ) : (
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                            <CheckCircleOutlined style={{ fontSize: 16, color: colors.success }} />
+                                            <span style={{ color: colors.success, fontWeight: 600, fontSize: '13px' }}>
+                                                Domain verified - you can transfer it!
+                                            </span>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
+                            {/* Recipient Address (only if domain verified) */}
+                            {transferDomainInfo?.isOwner && (
+                                <>
+                                    <div style={{ marginBottom: '12px' }}>
+                                        <div style={{ fontSize: '11px', color: colors.textFaded, marginBottom: '6px' }}>
+                                            Recipient Address
+                                        </div>
+                                        <input
+                                            type="text"
+                                            value={recipientAddress}
+                                            onChange={(e) => setRecipientAddress(e.target.value)}
+                                            placeholder="bc1p... or tb1p..."
+                                            style={{
+                                                width: '100%',
+                                                background: colors.inputBg,
+                                                borderRadius: '8px',
+                                                border: `1px solid ${colors.containerBorder}`,
+                                                padding: '12px',
+                                                color: colors.text,
+                                                fontSize: '13px',
+                                                outline: 'none',
+                                                boxSizing: 'border-box'
+                                            }}
+                                        />
+                                    </div>
+
+                                    {/* Fee Rate Selector */}
+                                    <div style={{ marginBottom: '12px' }}>
+                                        <FeeRateBar onChange={(val) => setTransferFeeRate(val)} />
+                                    </div>
+
+                                    {/* Transfer Button */}
+                                    <button
+                                        onClick={handleInitiateTransfer}
+                                        disabled={!recipientAddress.trim()}
+                                        style={{
+                                            width: '100%',
+                                            padding: '14px',
+                                            background: recipientAddress.trim() ? colors.main : colors.buttonBg,
+                                            border: 'none',
+                                            borderRadius: '8px',
+                                            cursor: recipientAddress.trim() ? 'pointer' : 'not-allowed',
+                                            fontSize: '14px',
+                                            fontWeight: 600,
+                                            color: recipientAddress.trim() ? '#000' : colors.textFaded,
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            gap: '8px'
+                                        }}>
+                                        <SendOutlined /> Initiate Transfer
+                                    </button>
+                                </>
+                            )}
+                        </div>
+
+                        {/* Divider */}
+                        <div style={{ height: '1px', background: colors.containerBorder, margin: '20px 0' }} />
+
+                        {/* Accept Transfer Section */}
+                        <div>
+                            <div style={{ fontSize: '12px', color: colors.textFaded, marginBottom: '8px', fontWeight: 600 }}>
+                                Accept Incoming Transfer
+                            </div>
+
+                            {/* Domain Input for Accept */}
+                            <div style={{ marginBottom: '12px' }}>
+                                <div style={{ fontSize: '11px', color: colors.textFaded, marginBottom: '6px' }}>
+                                    Domain to Accept
+                                </div>
+                                <div style={{ display: 'flex', gap: '8px' }}>
+                                    <div
+                                        style={{
+                                            flex: 1,
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            background: colors.inputBg,
+                                            borderRadius: '8px',
+                                            border: `1px solid ${colors.containerBorder}`,
+                                            padding: '0 12px'
+                                        }}>
+                                        <input
+                                            type="text"
+                                            value={acceptDomainInput}
+                                            onChange={(e) => {
+                                                setAcceptDomainInput(e.target.value);
+                                                setAcceptDomainPendingInfo(null);
+                                            }}
+                                            onKeyDown={(e) => e.key === 'Enter' && checkPendingTransfer()}
+                                            placeholder="domain-to-accept"
+                                            style={{
+                                                flex: 1,
+                                                background: 'transparent',
+                                                border: 'none',
+                                                outline: 'none',
+                                                color: colors.text,
+                                                fontSize: '14px',
+                                                padding: '10px 0'
+                                            }}
+                                        />
+                                        <span style={{ color: colors.main, fontWeight: 600 }}>.btc</span>
+                                    </div>
+                                    <button
+                                        onClick={checkPendingTransfer}
+                                        disabled={isCheckingAcceptDomain || !acceptDomainInput.trim()}
+                                        style={{
+                                            padding: '10px 14px',
+                                            background: colors.main,
+                                            border: 'none',
+                                            borderRadius: '8px',
+                                            cursor: isCheckingAcceptDomain || !acceptDomainInput.trim() ? 'not-allowed' : 'pointer',
+                                            opacity: isCheckingAcceptDomain || !acceptDomainInput.trim() ? 0.5 : 1
+                                        }}>
+                                        {isCheckingAcceptDomain ? (
+                                            <LoadingOutlined style={{ color: '#000' }} />
+                                        ) : (
+                                            <SearchOutlined style={{ color: '#000' }} />
+                                        )}
+                                    </button>
+                                </div>
+                            </div>
+
+                            {/* Pending Transfer Info */}
+                            {acceptDomainPendingInfo && (
+                                <div
+                                    style={{
+                                        background: colors.containerBgFaded,
+                                        borderRadius: '10px',
+                                        padding: '12px',
+                                        marginBottom: '12px',
+                                        border: `1px solid ${acceptDomainPendingInfo.isOutgoing ? colors.warning : colors.success}30`
+                                    }}>
+                                    {acceptDomainPendingInfo.isOutgoing ? (
+                                        <div>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                                                <WarningOutlined style={{ fontSize: 16, color: colors.warning }} />
+                                                <span style={{ color: colors.warning, fontWeight: 600, fontSize: '13px' }}>
+                                                    This transfer is not for you
+                                                </span>
+                                            </div>
+                                            <div style={{ fontSize: '11px', color: colors.textFaded }}>
+                                                Recipient: {acceptDomainPendingInfo.newOwner.slice(0, 12)}...{acceptDomainPendingInfo.newOwner.slice(-8)}
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <div>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                                                <CheckCircleOutlined style={{ fontSize: 16, color: colors.success }} />
+                                                <span style={{ color: colors.success, fontWeight: 600, fontSize: '13px' }}>
+                                                    Transfer found for you!
+                                                </span>
+                                            </div>
+                                            <div style={{ fontSize: '11px', color: colors.textFaded, marginBottom: '12px' }}>
+                                                {acceptDomainPendingInfo.domainName}.btc is being transferred to you
+                                            </div>
+                                            <button
+                                                onClick={() => handleAcceptTransfer(acceptDomainPendingInfo.domainName)}
+                                                style={{
+                                                    width: '100%',
+                                                    padding: '12px',
+                                                    background: colors.success,
+                                                    border: 'none',
+                                                    borderRadius: '8px',
+                                                    cursor: 'pointer',
+                                                    fontSize: '14px',
+                                                    fontWeight: 600,
+                                                    color: '#000',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'center',
+                                                    gap: '8px'
+                                                }}>
+                                                <CheckCircleOutlined /> Accept Transfer
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Info Box */}
+                        <div
+                            style={{
+                                background: `${colors.info}10`,
+                                border: `1px solid ${colors.info}30`,
+                                borderRadius: '10px',
+                                padding: '12px',
+                                fontSize: '11px',
+                                color: colors.textFaded,
+                                lineHeight: 1.5,
+                                marginTop: '20px'
+                            }}>
+                            <SwapOutlined style={{ color: colors.info, marginRight: '8px' }} />
+                            Domain transfers require two steps: the current owner initiates the transfer,
+                            then the recipient must accept it. The owner can cancel before acceptance.
                         </div>
                     </div>
                 )}

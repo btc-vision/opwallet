@@ -213,7 +213,7 @@ export default function TransactionDetailScreen() {
     const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
     const loadTransaction = useCallback(
-        async (showLoader = true) => {
+        async (showLoader: boolean) => {
             if (showLoader) {
                 setLoading(true);
             }

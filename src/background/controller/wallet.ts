@@ -240,6 +240,57 @@ export class WalletController {
     private readonly CACHE_DURATION = 8000;
     private cacheCleanupTimer: NodeJS.Timeout | null = null;
 
+    // Keyring cache - invalidated when keyrings are mutated
+    private walletKeyringsCache: WalletKeyring[] | null = null;
+    private keyringsCacheNetworkType: NetworkType | null = null;
+
+    /**
+     * Invalidate the keyring cache. Call this after any keyring mutation.
+     */
+    public invalidateKeyringCache = (): void => {
+        this.walletKeyringsCache = null;
+        this.keyringsCacheNetworkType = null;
+    };
+
+    /**
+     * Update a keyring's alias name in the cache without full invalidation.
+     */
+    private updateKeyringNameInCache = (keyringKey: string, newName: string): void => {
+        if (!this.walletKeyringsCache) return;
+        const keyring = this.walletKeyringsCache.find((k) => k.key === keyringKey);
+        if (keyring) {
+            keyring.alianName = newName;
+        }
+    };
+
+    /**
+     * Update an account's alias name in the cache without full invalidation.
+     */
+    private updateAccountNameInCache = (accountKey: string, newName: string): void => {
+        if (!this.walletKeyringsCache) return;
+        for (const keyring of this.walletKeyringsCache) {
+            const account = keyring.accounts.find((a) => a.key === accountKey);
+            if (account) {
+                account.alianName = newName;
+                break;
+            }
+        }
+    };
+
+    /**
+     * Update an account's flag in the cache without full invalidation.
+     */
+    private updateAccountFlagInCache = (address: string, flag: number): void => {
+        if (!this.walletKeyringsCache) return;
+        for (const keyring of this.walletKeyringsCache) {
+            const account = keyring.accounts.find((a) => a.address === address);
+            if (account) {
+                account.flag = flag;
+                break;
+            }
+        }
+    };
+
     /**
      * Unlock the keyring vault with a password.
      * @throws WalletControllerError if unlocking fails
@@ -247,6 +298,9 @@ export class WalletController {
     public boot = async (password: string): Promise<void> => {
         try {
             await keyringService.boot(password);
+
+            // Invalidate cache since keyrings are loaded fresh from vault
+            this.invalidateKeyringCache();
         } catch (err) {
             throw new WalletControllerError(`Failed to boot keyringService: ${String(err)}`, {
                 passwordProvided: !!password
@@ -334,6 +388,10 @@ export class WalletController {
             const alianNameInited = preferenceService.getInitAlianNameStatus();
             const alianNames = contactBookService.listAlias();
             await keyringService.submitPassword(password);
+
+            // Invalidate cache since keyrings are loaded fresh
+            this.invalidateKeyringCache();
+
             sessionService.broadcastEvent(SessionEvent.unlock);
 
             if (!alianNameInited && alianNames.length === 0) {
@@ -374,8 +432,9 @@ export class WalletController {
                 params: {}
             });
 
-            // Clear cache and stop cleanup timer
+            // Clear caches and stop cleanup timer
             this._clearBalanceCache();
+            this.invalidateKeyringCache();
 
             // Stop transaction status polling
             transactionStatusPoller.stop();
@@ -502,11 +561,11 @@ export class WalletController {
      * Fetch address history (recent transactions).
      * @throws WalletControllerError
      */
-    public getAddressHistory = async (_params: {
+    public getAddressHistory = (_params: {
         address: string;
         start: number;
         limit: number;
-    }): Promise<AddressRecentHistory> => {
+    }): AddressRecentHistory => {
         // TODO: Implement address history via OPNet indexer when available
         return {
             start: 0,
@@ -549,6 +608,9 @@ export class WalletController {
 
     public clearKeyrings = (): void => {
         keyringService.clearKeyrings();
+
+        // Invalidate cache since all keyrings are cleared
+        this.invalidateKeyringCache();
     };
 
     /**
@@ -797,6 +859,9 @@ export class WalletController {
             });
         }
 
+        // Invalidate cache since new keyring was added
+        this.invalidateKeyringCache();
+
         const pubkeys = originKeyring.getAccounts();
         if (alianName) this.updateAlianName(pubkeys[0], alianName);
 
@@ -848,6 +913,9 @@ export class WalletController {
                 network
             );
             keyringService.removePreMnemonics();
+
+            // Invalidate cache since new keyring was added
+            this.invalidateKeyringCache();
 
             const displayedKeyring = keyringService.displayForKeyring(
                 originKeyring,
@@ -924,6 +992,10 @@ export class WalletController {
     public removeKeyring = async (keyring: WalletKeyring): Promise<WalletKeyring | undefined> => {
         try {
             await keyringService.removeKeyring(keyring.index);
+
+            // Invalidate cache before fetching updated keyrings
+            this.invalidateKeyringCache();
+
             const keyrings = await this.getKeyrings();
             const nextKeyring = keyrings[keyrings.length - 1];
             if (nextKeyring?.accounts[0]) {
@@ -952,6 +1024,9 @@ export class WalletController {
             const _keyring = keyringService.keyrings[keyring.index];
             const result = await keyringService.addNewAccount(_keyring);
             if (alianName) this.updateAlianName(result[0], alianName);
+
+            // Invalidate cache since new account was added
+            this.invalidateKeyringCache();
 
             const currentKeyring = await this.getCurrentKeyring();
             if (!currentKeyring) {
@@ -993,6 +1068,9 @@ export class WalletController {
             const currentAccount = await this.getCurrentAccount();
             const currentKeyringIndex = preferenceService.getCurrentKeyringIndex();
             await keyringService.changeAddressType(currentKeyringIndex, addressType);
+
+            // Invalidate cache since address type changed
+            this.invalidateKeyringCache();
 
             const keyring = await this.getCurrentKeyring();
             if (!keyring) throw new WalletControllerError('No current keyring');
@@ -2025,6 +2103,9 @@ export class WalletController {
             const bitcoinNetwork = getBitcoinLibJSNetwork(chain.networkType, chainType);
             await keyringService.updateKeyringsNetwork(bitcoinNetwork);
 
+            // Invalidate cache since network changed (addresses may be different)
+            this.invalidateKeyringCache();
+
             const currentAccount = await this.getCurrentAccount();
             const keyring = await this.getCurrentKeyring();
             if (!keyring) {
@@ -2113,7 +2194,7 @@ export class WalletController {
             if (result.error) {
                 throw new Error(result.error);
             }
-            return result.result ? String(result.result) : '';
+            return result.result ?? '';
         } catch (err) {
             throw new WalletControllerError(`Failed to push transaction: ${String(err)}`, { rawtx });
         }
@@ -2137,9 +2218,28 @@ export class WalletController {
     ): Promise<WalletKeyring> => {
         const networkType = this.getNetworkType();
         const addressType = displayedKeyring.addressType;
-        const key = `keyring_${index}`;
         const type = displayedKeyring.type;
         const accounts: Account[] = [];
+
+        // Use first account pubkey + type as stable key (doesn't change when indices shift)
+        // This handles edge case of same pubkey with different keyring types
+        // Fall back to index-based key for empty keyrings (shouldn't happen)
+        const firstPubkey = displayedKeyring.accounts[0]?.pubkey;
+        const typePrefix = type === KEYRING_TYPE.HdKeyring ? 'hd' : 'sk';
+        const key = firstPubkey ? `keyring_${typePrefix}_${firstPubkey.slice(0, 16)}` : `keyring_${index}`;
+
+        // Migration: check if there's a name stored under the old index-based key
+        const legacyKey = `keyring_${index}`;
+        if (firstPubkey && legacyKey !== key) {
+            const legacyName = await preferenceService.getKeyringAlianName(legacyKey, '');
+            if (legacyName) {
+                // Migrate the name to the new stable key
+                const existingName = await preferenceService.getKeyringAlianName(key, '');
+                if (!existingName) {
+                    await preferenceService.setKeyringAlianName(key, legacyName);
+                }
+            }
+        }
 
         for (let j = 0; j < displayedKeyring.accounts.length; j++) {
             const { pubkey, quantumPublicKey } = displayedKeyring.accounts[j];
@@ -2198,12 +2298,26 @@ export class WalletController {
 
     /**
      * Return all keyrings (non-empty) in a typed array of WalletKeyring.
+     * Uses cache if available and network hasn't changed.
      */
     public getKeyrings = async (): Promise<WalletKeyring[]> => {
+        const currentNetworkType = this.getNetworkType();
+
+        // Return cached keyrings if valid
+        if (
+            this.walletKeyringsCache !== null &&
+            this.keyringsCacheNetworkType === currentNetworkType
+        ) {
+            return this.walletKeyringsCache;
+        }
+
+        // Rebuild cache
         const displayedKeyrings = keyringService.getAllDisplayedKeyrings();
         const keyrings: WalletKeyring[] = [];
 
-        for (const displayedKeyring of displayedKeyrings) {
+        for (let i = 0; i < displayedKeyrings.length; i++) {
+            const displayedKeyring = displayedKeyrings[i];
+
             if (displayedKeyring.type === KEYRING_TYPE.Empty) {
                 continue;
             }
@@ -2211,47 +2325,64 @@ export class WalletController {
             const walletKeyring = await this.displayedKeyringToWalletKeyring(displayedKeyring, displayedKeyring.index);
             keyrings.push(walletKeyring);
         }
+
+        // Store in cache - but ONLY if we have keyrings (don't cache empty results)
+        if (keyrings.length > 0) {
+            this.walletKeyringsCache = keyrings;
+            this.keyringsCacheNetworkType = currentNetworkType;
+        }
+
         return keyrings;
     };
 
     /**
      * Return the currently active keyring, derived from preferences.
+     * Uses cached keyrings when available to avoid expensive re-computation.
      */
     public getCurrentKeyring = async (): Promise<WalletKeyring | null> => {
-        let currentKeyringIndex = preferenceService.getCurrentKeyringIndex();
-        const displayedKeyrings = keyringService.getAllDisplayedKeyrings();
-        if (currentKeyringIndex === undefined) {
-            const currentAccount = await this.getCurrentAccount();
-            for (let i = 0; i < displayedKeyrings.length; i++) {
-                if (displayedKeyrings[i].type !== currentAccount?.type) continue;
-                const found = displayedKeyrings[i].accounts.find((v) => v.pubkey === currentAccount?.pubkey);
-                if (found) {
-                    currentKeyringIndex = i;
-                    break;
+        // Get all keyrings (uses cache if available)
+        const keyrings = await this.getKeyrings();
+        if (keyrings.length === 0) {
+            return null;
+        }
+
+        const storedKeyringIndex = preferenceService.getCurrentKeyringIndex();
+
+        // Find keyring by its stored index (not array position!)
+        // The keyring.index property contains the original index from keyringService
+        let currentKeyring: WalletKeyring | undefined;
+
+        if (storedKeyringIndex !== undefined) {
+            currentKeyring = keyrings.find((k) => k.index === storedKeyringIndex);
+        }
+
+        // If no keyring found by stored index, try to find by current account pubkey
+        if (!currentKeyring) {
+            const currentAccountRaw = preferenceService.getCurrentAccount();
+            if (currentAccountRaw) {
+                for (const keyring of keyrings) {
+                    const found = keyring.accounts.find((v) => v.pubkey === currentAccountRaw.pubkey);
+                    if (found) {
+                        currentKeyring = keyring;
+                        preferenceService.setCurrentKeyringIndex(keyring.index);
+                        break;
+                    }
                 }
-            }
-            if (currentKeyringIndex === undefined) {
-                currentKeyringIndex = 0;
             }
         }
 
-        if (
-            !displayedKeyrings[currentKeyringIndex] ||
-            displayedKeyrings[currentKeyringIndex].type === KEYRING_TYPE.Empty ||
-            !displayedKeyrings[currentKeyringIndex].accounts[0]
-        ) {
-            for (let i = 0; i < displayedKeyrings.length; i++) {
-                if (displayedKeyrings[i].type !== KEYRING_TYPE.Empty) {
-                    currentKeyringIndex = i;
-                    preferenceService.setCurrentKeyringIndex(currentKeyringIndex);
+        // If still no keyring, use the first valid one
+        if (!currentKeyring || !currentKeyring.accounts[0]) {
+            for (const keyring of keyrings) {
+                if (keyring.type !== KEYRING_TYPE.Empty && keyring.accounts[0]) {
+                    currentKeyring = keyring;
+                    preferenceService.setCurrentKeyringIndex(keyring.index);
                     break;
                 }
             }
         }
 
-        const displayedKeyring = displayedKeyrings[currentKeyringIndex];
-        if (!displayedKeyring) return null;
-        return this.displayedKeyringToWalletKeyring(displayedKeyring, currentKeyringIndex);
+        return currentKeyring || null;
     };
 
     /**
@@ -2415,6 +2546,10 @@ export class WalletController {
     public setKeyringAlianName = (keyring: WalletKeyring, name: string): WalletKeyring => {
         preferenceService.setKeyringAlianName(keyring.key, name);
         keyring.alianName = name;
+
+        // Update cache without full invalidation
+        this.updateKeyringNameInCache(keyring.key, name);
+
         return keyring;
     };
 
@@ -2424,6 +2559,10 @@ export class WalletController {
     public setAccountAlianName = (account: Account, name: string): Account => {
         preferenceService.setAccountAlianName(account.key, name);
         account.alianName = name;
+
+        // Update cache without full invalidation
+        this.updateAccountNameInCache(account.key, name);
+
         return account;
     };
 
@@ -2433,6 +2572,10 @@ export class WalletController {
     public addAddressFlag = async (account: Account, flag: AddressFlagType): Promise<Account> => {
         account.flag = await preferenceService.addAddressFlag(account.address, flag);
         opnetApi.setClientAddress(account.address, account.flag);
+
+        // Update cache without full invalidation
+        this.updateAccountFlagInCache(account.address, account.flag);
+
         return account;
     };
 
@@ -2442,11 +2585,15 @@ export class WalletController {
     public removeAddressFlag = async (account: Account, flag: AddressFlagType): Promise<Account> => {
         account.flag = await preferenceService.removeAddressFlag(account.address, flag);
         opnetApi.setClientAddress(account.address, account.flag);
+
+        // Update cache without full invalidation
+        this.updateAccountFlagInCache(account.address, account.flag);
+
         return account;
     };
 
     public getBtcPrice = async (): Promise<number> => {
-        return opnetApi.getBtcPrice();
+        return await opnetApi.getBtcPrice();
     };
 
     /**
@@ -2514,7 +2661,7 @@ export class WalletController {
      * Create a payment URL for buying BTC.
      * TODO: Implement when payment provider is available
      */
-    public createPaymentUrl = async (_address: string, _channel: string): Promise<string> => {
+    public createPaymentUrl = (_address: string, _channel: string): string => {
         return '';
     };
 
@@ -2534,7 +2681,7 @@ export class WalletController {
      * Check if a website is a known scammer.
      * TODO: Implement proper scam detection service
      */
-    public checkWebsite = async (_website: string): Promise<{ isScammer: boolean; warning: string }> => {
+    public checkWebsite = (_website: string): { isScammer: boolean; warning: string } => {
         // Not implemented - always return safe
         return { isScammer: false, warning: '' };
     };
@@ -2570,7 +2717,7 @@ export class WalletController {
         await preferenceService.setMldsaBackupDismissed(pubkey, dismissed);
     };
 
-    public getVersionDetail = async (_version: string): Promise<VersionDetail> => {
+    public getVersionDetail = (_version: string): VersionDetail => {
         // TODO: Implement version checking when endpoint is available
         return {
             version: '',
@@ -2645,6 +2792,9 @@ export class WalletController {
         }
         try {
             await keyringService.setQuantumKey(account.pubkey, quantumPrivateKey);
+
+            // Invalidate cache since quantum key changed (affects quantumPublicKeyHash and quantumKeyStatus)
+            this.invalidateKeyringCache();
         } catch (err) {
             throw new WalletControllerError(`Failed to set quantum key: ${String(err)}`);
         }
@@ -2661,6 +2811,9 @@ export class WalletController {
         }
         try {
             await keyringService.generateQuantumKey(account.pubkey);
+
+            // Invalidate cache since quantum key changed (affects quantumPublicKeyHash and quantumKeyStatus)
+            this.invalidateKeyringCache();
         } catch (err) {
             throw new WalletControllerError(`Failed to generate quantum key: ${String(err)}`);
         }
@@ -2681,6 +2834,20 @@ export class WalletController {
      */
     public getDuplicationState = (): DuplicationState => {
         return preferenceService.getDuplicationState();
+    };
+
+    /**
+     * Check if duplicate check should be skipped (already done recently)
+     */
+    public shouldSkipDuplicateCheck = (thresholdMs?: number): boolean => {
+        return preferenceService.shouldSkipDuplicateCheck(thresholdMs);
+    };
+
+    /**
+     * Mark duplicate check as done for this session
+     */
+    public setDuplicateCheckDone = async (): Promise<void> => {
+        return preferenceService.setDuplicateCheckDone();
     };
 
     /**
@@ -2785,6 +2952,9 @@ export class WalletController {
                     break;
             }
 
+            // Invalidate cache since keyrings may have been removed or modified
+            this.invalidateKeyringCache();
+
             await preferenceService.markConflictResolved(conflictId);
         } catch (err) {
             throw new WalletControllerError(`Failed to resolve conflict: ${String(err)}`);
@@ -2798,6 +2968,9 @@ export class WalletController {
     public removeDuplicateWallet = async (keyringIndex: number): Promise<void> => {
         try {
             await keyringService.removeKeyringByIndex(keyringIndex);
+
+            // Invalidate cache since keyring was removed
+            this.invalidateKeyringCache();
         } catch (err) {
             throw new WalletControllerError(`Failed to remove wallet: ${String(err)}`);
         }
@@ -2849,7 +3022,12 @@ export class WalletController {
             throw new WalletControllerError('Invalid password');
         }
 
-        return await duplicationBackupService.restoreFromBackup(password);
+        const result = await duplicationBackupService.restoreFromBackup(password);
+
+        // Invalidate cache since keyrings were restored
+        this.invalidateKeyringCache();
+
+        return result;
     };
 
     /**
@@ -2907,7 +3085,7 @@ export class WalletController {
             }
 
             // Helper to generate a real MLDSA key by creating a temp keyring
-            const generateRealMldsaKey = async (): Promise<string> => {
+            const generateRealMldsaKey = (): string => {
                 // Create a temporary SimpleKeyring with a random WIF
                 const tempBytes = new Uint8Array(32);
                 crypto.getRandomValues(tempBytes);
@@ -2924,13 +3102,16 @@ export class WalletController {
 
                 // Serialize to get the quantumPrivateKey
                 const serialized = tempKeyring.serialize() as SimpleKeyringSerializedOptions;
-                return serialized.quantumPrivateKey!;
+                if (!serialized.quantumPrivateKey) {
+                    throw new Error('Failed to generate quantum private key');
+                }
+                return serialized.quantumPrivateKey;
             };
 
             // Generate 3 real MLDSA keys for test scenarios
             const testMldsaKeys: string[] = [];
             for (let i = 0; i < 3; i++) {
-                testMldsaKeys.push(await generateRealMldsaKey());
+                testMldsaKeys.push(generateRealMldsaKey());
             }
 
             // ============================================================
@@ -3278,6 +3459,18 @@ export class WalletController {
                 const consolidatableUnspentUTXOs = unspentUTXOs.slice(0, consolidationLimit);
                 const consolidationUnspentAmount = consolidatableUnspentUTXOs.reduce((sum, u) => sum + u.value, 0n);
 
+                // Calculate USD value
+                let usdValue = '0.00';
+                try {
+                    const btcPrice = await opnetApi.getBtcPrice();
+                    if (btcPrice > 0) {
+                        const btcAmount = Number(totalAll) / 100000000;
+                        usdValue = (btcAmount * btcPrice).toFixed(2);
+                    }
+                } catch {
+                    // Silently fail - USD value will remain 0.00
+                }
+
                 const result = {
                     btc_total_amount: BitcoinUtils.formatUnits(totalAll, 8),
                     btc_confirm_amount: BitcoinUtils.formatUnits(totalUnspent, 8),
@@ -3310,7 +3503,7 @@ export class WalletController {
                     consolidation_p2wda_unspent_amount: '0',
                     consolidation_p2wda_unspent_count: 0,
 
-                    usd_value: '0.00',
+                    usd_value: usdValue,
 
                     all_utxos_count: allUTXOs.length,
                     unspent_utxos_count: unspentUTXOs.length,
@@ -3430,6 +3623,19 @@ export class WalletController {
                 consolidationCsv1UnlockedAmount +
                 consolidationP2wdaUnspentAmount;
 
+            // Calculate USD value
+            let usdValue = '0.00';
+            try {
+                const btcPrice = await opnetApi.getBtcPrice();
+                if (btcPrice > 0) {
+                    // Convert satoshis to BTC and multiply by price
+                    const btcAmount = Number(totalAll) / 100000000;
+                    usdValue = (btcAmount * btcPrice).toFixed(2);
+                }
+            } catch {
+                // Silently fail - USD value will remain 0.00
+            }
+
             // Convert all BigInt values to formatted strings using BitcoinUtils
             const result = {
                 btc_total_amount: BitcoinUtils.formatUnits(totalAll, 8),
@@ -3463,7 +3669,7 @@ export class WalletController {
                 consolidation_p2wda_unspent_amount: BitcoinUtils.formatUnits(consolidationP2wdaUnspentAmount, 8),
                 consolidation_p2wda_unspent_count: consolidatableP2wdaUnspentUTXOs.length,
 
-                usd_value: '0.00',
+                usd_value: usdValue,
 
                 all_utxos_count: allUTXOsCount,
                 unspent_utxos_count: unspentUTXOsCount,
@@ -3729,9 +3935,6 @@ export class WalletController {
             this.balanceCache.delete(key);
         });
 
-        if (expiredKeys.length > 0) {
-            console.log(`Cleaned up ${expiredKeys.length} expired balance cache entries`);
-        }
     };
 
     /**
@@ -4002,8 +4205,8 @@ export class WalletController {
             throw new WalletControllerError('Failed to upload to IPFS');
         }
 
-        const result = await response.json();
-        return result.Hash || result.cid;
+        const result = (await response.json()) as { Hash?: string; cid?: string };
+        return result.Hash ?? result.cid ?? '';
     };
 
     /**
@@ -4088,6 +4291,54 @@ export class WalletController {
 
         const normalizedDomain = domainName.toLowerCase().replace(/\.btc$/, '');
         await preferenceService.removeTrackedDomain(account.address, normalizedDomain);
+    };
+
+    /**
+     * Get pending domain transfer info
+     */
+    public getPendingDomainTransfer = async (
+        domainName: string
+    ): Promise<{
+        newOwner: string | null;
+        initiatedAt: bigint;
+    }> => {
+        const normalizedDomain = domainName.toLowerCase().replace(/\.btc$/, '');
+
+        const resolverAddress = Web3API.btcResolverAddressP2OP;
+        if (!resolverAddress) {
+            throw new WalletControllerError('BtcNameResolver contract not configured for this network');
+        }
+
+        const resolverContract = getContract<IBtcNameResolverContract>(
+            resolverAddress,
+            BTC_NAME_RESOLVER_ABI,
+            Web3API.provider,
+            Web3API.network
+        );
+
+        // Get pending transfer info
+        const pendingResult = await resolverContract.getPendingTransfer(normalizedDomain);
+
+        let newOwner: string | null = null;
+        if (pendingResult.properties.pendingOwner && !pendingResult.properties.pendingOwner.isDead()) {
+            try {
+                const publicOwner = await Web3API.provider.getPublicKeyInfo(
+                    pendingResult.properties.pendingOwner.toHex(),
+                    false
+                );
+                if (publicOwner) {
+                    newOwner = publicOwner.p2tr(Web3API.network);
+                }
+            } catch {
+                // Fallback to just using the hash if we can't resolve the address
+                newOwner = pendingResult.properties.pendingOwner.toHex();
+            }
+        }
+
+        return {
+            newOwner,
+            initiatedAt: pendingResult.properties.initiatedAt
+        };
     };
 }
 

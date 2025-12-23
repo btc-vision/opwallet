@@ -102,14 +102,17 @@ class DuplicationDetectionService extends EventEmitter {
             if (privateKeyHash && mldsaHash && (keyring instanceof SimpleKeyring || keyring instanceof HdKeyring)) {
                 const info = await this.getWalletInfo(i, keyring, addressType);
 
-                if (!privateKeyHashMap.has(privateKeyHash)) {
-                    privateKeyHashMap.set(privateKeyHash, new Map());
+                let mldsaMap = privateKeyHashMap.get(privateKeyHash);
+                if (!mldsaMap) {
+                    mldsaMap = new Map();
+                    privateKeyHashMap.set(privateKeyHash, mldsaMap);
                 }
-                const mldsaMap = privateKeyHashMap.get(privateKeyHash)!;
-                if (!mldsaMap.has(mldsaHash)) {
-                    mldsaMap.set(mldsaHash, []);
+                let walletList = mldsaMap.get(mldsaHash);
+                if (!walletList) {
+                    walletList = [];
+                    mldsaMap.set(mldsaHash, walletList);
                 }
-                mldsaMap.get(mldsaHash)!.push(info);
+                walletList.push(info);
             }
         }
 
@@ -195,14 +198,17 @@ class DuplicationDetectionService extends EventEmitter {
             if (mldsaHash && privateKeyHash && (keyring instanceof SimpleKeyring || keyring instanceof HdKeyring)) {
                 const info = await this.getWalletInfo(i, keyring, addressType);
 
-                if (!mldsaHashMap.has(mldsaHash)) {
-                    mldsaHashMap.set(mldsaHash, new Map());
+                let privateKeyMap = mldsaHashMap.get(mldsaHash);
+                if (!privateKeyMap) {
+                    privateKeyMap = new Map();
+                    mldsaHashMap.set(mldsaHash, privateKeyMap);
                 }
-                const privateKeyMap = mldsaHashMap.get(mldsaHash)!;
-                if (!privateKeyMap.has(privateKeyHash)) {
-                    privateKeyMap.set(privateKeyHash, []);
+                let walletList = privateKeyMap.get(privateKeyHash);
+                if (!walletList) {
+                    walletList = [];
+                    privateKeyMap.set(privateKeyHash, walletList);
                 }
-                privateKeyMap.get(privateKeyHash)!.push(info);
+                walletList.push(info);
             }
         }
 

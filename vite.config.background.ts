@@ -11,8 +11,10 @@ const version = packageJson.version.split('-beta')[0];
 
 // Service worker polyfill - injected at the start of the bundle
 function serviceWorkerPolyfillPlugin() {
-    // Set __IS_SERVICE_WORKER__ flag FIRST, then polyfill window/document
-    const polyfill = `globalThis.__IS_SERVICE_WORKER__=true;(function(){if(typeof window==="undefined"){var n=function(){};globalThis.window=Object.assign({},globalThis,{dispatchEvent:n,addEventListener:n,removeEventListener:n});globalThis.document={createElement:function(){return{relList:{supports:function(){return false}}}},querySelector:function(){return null},querySelectorAll:function(){return[]},getElementsByTagName:function(){return[]},head:{appendChild:n}}}if(typeof URL!=="undefined"&&typeof URL.createObjectURL==="undefined"){URL.createObjectURL=function(blob){console.warn("[SW] URL.createObjectURL not available in service workers");return"blob:sw-stub"};URL.revokeObjectURL=function(){}}})();`;
+    // Polyfill for service worker environment:
+    // - window/document stubs for libraries that check for browser environment
+    // - URL.createObjectURL stub (not available in service workers, used by opnet's WorkerCreator)
+    const polyfill = `(function(){if(typeof window==="undefined"){var n=function(){};globalThis.window=Object.assign({},globalThis,{dispatchEvent:n,addEventListener:n,removeEventListener:n});globalThis.document={createElement:function(){return{relList:{supports:function(){return false}}}},querySelector:function(){return null},querySelectorAll:function(){return[]},getElementsByTagName:function(){return[]},head:{appendChild:n}}}if(typeof URL!=="undefined"&&typeof URL.createObjectURL==="undefined"){URL.createObjectURL=function(blob){console.warn("[SW] URL.createObjectURL not available in service workers");return"blob:sw-stub"};URL.revokeObjectURL=function(){}}})();`;
 
     return {
         name: 'service-worker-polyfill',
@@ -73,8 +75,9 @@ export default defineConfig(({ mode }) => {
                     global: true,
                     process: true
                 },
+                // Exclude modules we handle via aliases
+                exclude: ['crypto', 'vm', 'zlib', 'worker_threads', 'fs', 'path', 'os', 'http', 'https', 'net', 'tls', 'dns', 'child_process', 'cluster', 'dgram', 'readline', 'repl', 'tty', 'perf_hooks', 'inspector', 'async_hooks', 'trace_events', 'v8', 'wasi'],
                 overrides: {
-                    crypto: 'crypto-browserify',
                     events: resolve(__dirname, 'src/shims/events-browser.js')
                 }
             }),
@@ -88,14 +91,34 @@ export default defineConfig(({ mode }) => {
             alias: [
                 { find: '@', replacement: resolve(__dirname, './src') },
                 { find: 'events', replacement: resolve(__dirname, 'src/shims/events-browser.js') },
-                { find: '@noble/curves', replacement: resolve(__dirname, 'node_modules/@noble/curves') },
-                { find: '@noble/hashes', replacement: resolve(__dirname, 'node_modules/@noble/hashes') },
-                { find: '@scure/base', replacement: resolve(__dirname, 'node_modules/@scure/base') },
+
+                // Use TypeScript source directly for best tree-shaking and deduplication
+                // These override the browser condition exports to use source instead of pre-bundled
+                // Regex to catch both 'opnet' and 'opnet/...' subpath imports
+                { find: /^opnet$/, replacement: resolve(__dirname, '../opnet/src/index.ts') },
+                { find: /^opnet\/(.*)$/, replacement: resolve(__dirname, '../opnet/src/$1') },
+                { find: '@btc-vision/transaction', replacement: resolve(__dirname, '../transaction/src/index.ts') },
+                { find: '@btc-vision/bitcoin', replacement: resolve(__dirname, '../bitcoin/src/index.ts') },
+                { find: '@btc-vision/bip32', replacement: resolve(__dirname, 'node_modules/@btc-vision/bip32/src/cjs/index.cjs') },
+
+                // Browser shims for Node.js modules (from opnet/transaction packages)
+                { find: 'crypto', replacement: resolve(__dirname, '../opnet/src/crypto/crypto-browser.js') },
+                { find: 'vm', replacement: resolve(__dirname, '../opnet/src/shims/vm-browser.js') },
+                { find: 'zlib', replacement: resolve(__dirname, '../opnet/src/shims/zlib-browser.js') },
+                { find: 'worker_threads', replacement: resolve(__dirname, '../opnet/src/shims/worker_threads-browser.js') },
+                { find: '@protobufjs/inquire', replacement: resolve(__dirname, 'src/shims/inquire-browser.js') },
+                // undici is Node.js HTTP client - use browser fetch shim
+                { find: /^undici(.*)$/, replacement: resolve(__dirname, '../opnet/src/fetch/fetch-browser.js') },
+
+                // Dedupe noble/scure packages - use transaction's version (1.9.7) for compatibility with @bitcoinerlab/secp256k1
+                { find: /^@noble\/curves(.*)$/, replacement: resolve(__dirname, '../transaction/node_modules/@noble/curves') + '$1' },
+                { find: /^@noble\/hashes(.*)$/, replacement: resolve(__dirname, '../transaction/node_modules/@noble/hashes') + '$1' },
+                { find: /^@scure\/base(.*)$/, replacement: resolve(__dirname, '../transaction/node_modules/@scure/base') + '$1' },
                 { find: 'moment', replacement: 'dayjs' }
             ],
             extensions: ['.ts', '.tsx', '.js', '.jsx', '.json'],
-            mainFields: ['module', 'main', 'browser'],
-            dedupe: ['@noble/curves', '@noble/hashes', '@scure/base', 'buffer']
+            mainFields: ['browser', 'module', 'main'],
+            dedupe: ['@noble/curves', '@noble/hashes', '@scure/base', 'buffer', 'valibot', 'bip39', '@btc-vision/bitcoin', '@btc-vision/bip32', '@btc-vision/logger', 'tiny-secp256k1']
         },
 
         define: {

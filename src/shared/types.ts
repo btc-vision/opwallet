@@ -1,4 +1,4 @@
-import { AddressTypes, OPNetNetwork } from '@btc-vision/transaction';
+import { AddressTypes, WalletNetworks } from '@btc-vision/transaction';
 
 // Legacy enum for backward compatibility with existing storage
 // This maps old numeric values to new string values for migration
@@ -34,11 +34,6 @@ export function isLegacyAddressType(value: unknown): value is LegacyAddressType 
     return typeof value === 'number' && value >= 0 && value <= 5;
 }
 
-// Convert string AddressTypes to storage-safe format and back
-export function addressTypesToStorage(addressType: AddressTypes): string {
-    return addressType;
-}
-
 export function storageToAddressTypes(stored: string | number): AddressTypes {
     // Handle legacy numeric types from old storage
     if (typeof stored === 'number') {
@@ -63,29 +58,16 @@ export enum NetworkType {
 }
 
 // Convert between NetworkType and OPNetNetwork
-export function networkTypeToOPNet(networkType: NetworkType): OPNetNetwork {
+export function networkTypeToOPNet(networkType: NetworkType): WalletNetworks {
     switch (networkType) {
         case NetworkType.MAINNET:
-            return OPNetNetwork.Mainnet;
+            return WalletNetworks.mainnet;
         case NetworkType.TESTNET:
-            return OPNetNetwork.Testnet;
+            return WalletNetworks.testnet;
         case NetworkType.REGTEST:
-            return OPNetNetwork.Regtest;
+            return WalletNetworks.regtest;
         default:
-            return OPNetNetwork.Mainnet;
-    }
-}
-
-export function opNetToNetworkType(opNetNetwork: OPNetNetwork): NetworkType {
-    switch (opNetNetwork) {
-        case OPNetNetwork.Mainnet:
-            return NetworkType.MAINNET;
-        case OPNetNetwork.Testnet:
-            return NetworkType.TESTNET;
-        case OPNetNetwork.Regtest:
-            return NetworkType.REGTEST;
-        default:
-            return NetworkType.MAINNET;
+            return WalletNetworks.mainnet;
     }
 }
 

@@ -1,6 +1,6 @@
 import { CHAINS_ENUM, INTERNAL_REQUEST_ORIGIN } from '@/shared/constant';
 import { max } from 'lodash-es';
-import LRUCache from 'lru-cache';
+import { LRUCache } from 'lru-cache';
 import browser from '../webapi/browser';
 
 export interface ConnectedSite {

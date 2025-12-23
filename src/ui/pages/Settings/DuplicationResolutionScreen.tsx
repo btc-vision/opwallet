@@ -144,7 +144,7 @@ export default function DuplicationResolutionScreen() {
         return () => {
             mounted = false;
         };
-        // eslint-disable-next-line react-hooks/exhaustive-deps
+         
     }, []); // Only run once on mount
 
     const handlePasswordVerify = async () => {
@@ -614,8 +614,8 @@ export default function DuplicationResolutionScreen() {
         return {
             text: 'MLDSA (No Chain Link)',
             color: colors.textFaded,
-            bgColor: `${colors.containerBgFaded}`,
-            borderColor: `${colors.containerBorder}`
+            bgColor: colors.containerBgFaded,
+            borderColor: colors.containerBorder
         };
     };
 
@@ -665,7 +665,7 @@ export default function DuplicationResolutionScreen() {
                             <button
                                 onClick={(e) => {
                                     e.stopPropagation();
-                                    handleRestoreKeypair(conflict.conflictId, explanation.restorable!);
+                                    handleRestoreKeypair(conflict.conflictId, explanation.restorable);
                                 }}
                                 disabled={restoringConflictId === conflict.conflictId}
                                 style={{

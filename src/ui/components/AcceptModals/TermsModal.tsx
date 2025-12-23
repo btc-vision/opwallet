@@ -29,24 +29,26 @@ export function TermsOfServiceModal({
     const [tosInteracted, setTosInteracted] = useState(false);
     const [privacyInteracted, setPrivacyInteracted] = useState(false);
 
-    // single checkbox for both docs
-    const [accepted, setAccepted] = useState(false);
+    // single checkbox for both docs - lazy init from localStorage
+    const [accepted, setAccepted] = useState(() => {
+        if (typeof window === 'undefined') return false;
+        return (
+            window.localStorage.getItem(LEGAL_ACCEPTED_KEY) === '1' ||
+            window.localStorage.getItem(TOS_ACCEPTED_KEY) === '1'
+        );
+    });
 
     // During doc switch, ignore scroll checks until after we force scrollTop=0 and layout settles
-    const [switchingDoc, setSwitchingDoc] = useState(false);
+    // Using ref instead of state to avoid triggering re-renders and satisfy React Compiler
+    const switchingDocRef = useRef(false);
 
     const scrollRef = useRef<HTMLDivElement | null>(null);
 
     const bothScrolled = tosScrolledBottom && privacyScrolledBottom;
 
+    // Reset gating states when modal opens
     useEffect(() => {
         if (!open) return;
-        if (typeof window === 'undefined') return;
-
-        const prevAccepted =
-            window.localStorage.getItem(LEGAL_ACCEPTED_KEY) === '1' ||
-            window.localStorage.getItem(TOS_ACCEPTED_KEY) === '1'; // legacy support
-        setAccepted(prevAccepted);
 
         // reset gating every time modal opens
         setTosScrolledBottom(false);
@@ -55,7 +57,7 @@ export function TermsOfServiceModal({
         setPrivacyInteracted(false);
 
         setActiveDoc('tos');
-        setSwitchingDoc(true);
+        switchingDocRef.current = true;
     }, [open]);
 
     const isAtBottom = (el: HTMLDivElement) => {
@@ -96,11 +98,12 @@ export function TermsOfServiceModal({
         if (isAtBottom(el)) markActiveAsRead();
     };
 
-    // Hard reset scroll when switching documents (this prevents “clamped-to-bottom” carry-over)
+    // Hard reset scroll when switching documents (this prevents "clamped-to-bottom" carry-over)
     useLayoutEffect(() => {
         if (!open) return;
 
-        setSwitchingDoc(true);
+        // Mark as switching
+        switchingDocRef.current = true;
 
         // Wait for the doc content to mount/update, then force scrollTop = 0
         requestAnimationFrame(() => {
@@ -111,18 +114,17 @@ export function TermsOfServiceModal({
 
             // Wait one more frame so scrollHeight/clientHeight settle for new content
             requestAnimationFrame(() => {
-                setSwitchingDoc(false);
+                switchingDocRef.current = false;
 
                 // Only auto-check the "noScrollNeeded" case after settle.
-                // (Does NOT allow auto “at bottom” without interaction.)
+                // (Does NOT allow auto "at bottom" without interaction.)
                 checkReadStatus();
             });
         });
-        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [activeDoc, open]);
 
     const onScroll = () => {
-        if (switchingDoc) return;
+        if (switchingDocRef.current) return;
         setInteractedForActiveDoc();
         checkReadStatus();
     };

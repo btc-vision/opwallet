@@ -21,8 +21,6 @@ class TransactionStatusPoller {
             return; // Already running
         }
 
-        console.log('[TransactionStatusPoller] Starting polling service');
-
         // Poll immediately on start
         void this.poll();
 
@@ -37,7 +35,6 @@ class TransactionStatusPoller {
      */
     stop(): void {
         if (this.pollInterval) {
-            console.log('[TransactionStatusPoller] Stopping polling service');
             clearInterval(this.pollInterval);
             this.pollInterval = null;
         }
@@ -80,14 +77,9 @@ class TransactionStatusPoller {
             return;
         }
 
-        console.log(`[TransactionStatusPoller] Checking ${pendingTxs.length} pending transactions`);
-
         for (const { chainType, pubkey, transaction } of pendingTxs) {
             // Skip if we've exceeded max attempts
             if (transaction.statusCheckAttempts >= MAX_STATUS_CHECK_ATTEMPTS) {
-                console.log(
-                    `[TransactionStatusPoller] Max attempts reached for tx ${transaction.txid}, marking as failed`
-                );
                 await transactionHistoryService.updateTransactionStatus(
                     chainType,
                     pubkey,
@@ -100,7 +92,7 @@ class TransactionStatusPoller {
             try {
                 await this.checkTransactionStatus(chainType, pubkey, transaction);
             } catch (error) {
-                console.error(`[TransactionStatusPoller] Error checking tx ${transaction.txid}:`, error);
+                console.warn(`[TransactionStatusPoller] Error checking tx ${transaction.txid}:`, error);
                 // Just increment the attempt counter
                 await transactionHistoryService.updateTransactionStatus(
                     chainType,
@@ -133,8 +125,6 @@ class TransactionStatusPoller {
 
             if (txResult && !('error' in txResult)) {
                 // Transaction found and confirmed
-                console.log(`[TransactionStatusPoller] Transaction ${transaction.txid} confirmed`);
-
                 await transactionHistoryService.updateTransactionStatus(
                     chainType,
                     pubkey,
@@ -147,7 +137,6 @@ class TransactionStatusPoller {
                 // Transaction has an error - might be reverted
                 const errorMsg = String(txResult.error);
                 if (errorMsg.includes('reverted') || errorMsg.includes('failed')) {
-                    console.log(`[TransactionStatusPoller] Transaction ${transaction.txid} failed/reverted`);
                     await transactionHistoryService.updateTransactionStatus(
                         chainType,
                         pubkey,
@@ -233,8 +222,6 @@ class TransactionStatusPoller {
 
             // Record new incoming transactions
             for (const { txid, value } of newUtxos) {
-                console.log(`[TransactionStatusPoller] Detected incoming transaction: ${txid}`);
-
                 await transactionHistoryService.addIncomingTransaction(
                     chainType,
                     pubkey,

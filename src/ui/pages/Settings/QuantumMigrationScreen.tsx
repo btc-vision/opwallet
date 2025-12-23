@@ -96,7 +96,7 @@ export default function QuantumMigrationScreen() {
         };
 
         void checkStatus();
-        // eslint-disable-next-line react-hooks/exhaustive-deps
+         
     }, [address.pubkey]);
 
     const handleImport = async () => {

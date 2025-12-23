@@ -162,7 +162,14 @@ class GatewayManager {
     getAllGateways(): { config: GatewayConfig; health: GatewayHealth }[] {
         return this.gateways.map((g) => ({
             config: g,
-            health: this.healthStatus.get(g.url)!
+            health: this.healthStatus.get(g.url) ?? {
+                url: g.url,
+                isHealthy: false,
+                latency: Infinity,
+                lastChecked: 0,
+                failureCount: 0,
+                successCount: 0
+            }
         }));
     }
 
@@ -280,7 +287,7 @@ class GatewayManager {
                     }
                     throw new Error(`Gateway ${gateway.url} returned ${response.status}`);
                 })
-                .catch((error) => {
+                .catch((error: unknown) => {
                     // Mark gateway as potentially unhealthy (only if not aborted)
                     if (!controller.signal.aborted) {
                         const health = this.healthStatus.get(gateway.url);
@@ -325,8 +332,8 @@ class GatewayManager {
             promises.forEach((promise, index) => {
                 promise
                     .then(resolve) // First success wins
-                    .catch((error) => {
-                        errors[index] = error;
+                    .catch((error: unknown) => {
+                        errors[index] = error instanceof Error ? error : new Error(String(error));
                         pendingCount--;
                         if (pendingCount === 0) {
                             reject(new AggregateError(errors, 'All requests failed'));
