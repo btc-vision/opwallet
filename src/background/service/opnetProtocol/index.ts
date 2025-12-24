@@ -1,9 +1,3 @@
-/**
- * OPNet Protocol Service
- *
- * Main service for handling opnet:// protocol and .btc domain resolution.
- */
-
 import { getContract } from 'opnet';
 
 import browser from '../../webapi/browser';
@@ -751,6 +745,3 @@ class OpnetProtocolService {
 }
 
 export default new OpnetProtocolService();
-
-// Re-export sub-services for direct access if needed
-export { contenthashCacheService, contentCacheService, gatewayManager };

@@ -1,9 +1,3 @@
-/**
- * BtcNameResolver Contract Interface
- *
- * TypeScript interface for interacting with the BtcNameResolver contract.
- */
-
 import { Address } from '@btc-vision/transaction';
 import { CallResult, IOP_NETContract, OPNetEvent } from 'opnet';
 

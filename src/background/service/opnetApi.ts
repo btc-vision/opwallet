@@ -1,7 +1,3 @@
-/**
- * OPNetAPI - Clean API service for wallet.opnet.org endpoints
- */
-
 import { CHAINS_MAP, CHANNEL, ChainType, VERSION } from '@/shared/constant';
 import { WalletConfig } from '@/shared/types';
 import Web3API from '@/shared/web3/Web3API';

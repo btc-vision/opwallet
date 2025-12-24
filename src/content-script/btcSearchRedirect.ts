@@ -1,10 +1,3 @@
-/**
- * BTC Search Redirect
- *
- * Detects when user searches for a .btc domain on Google/Bing
- * and offers to redirect them to the OPNet browser.
- */
-
 import browser from 'webextension-polyfill';
 
 // Only run on search result pages

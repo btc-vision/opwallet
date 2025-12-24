@@ -1,9 +1,3 @@
-/**
- * Contenthash Cache Service
- *
- * Caches domain-to-contenthash resolutions with configurable TTL.
- */
-
 import browser from '../../webapi/browser';
 import eventBus from '@/shared/eventBus';
 import { EVENTS } from '@/shared/constant';

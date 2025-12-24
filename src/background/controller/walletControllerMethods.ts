@@ -106,6 +106,7 @@ export const WALLET_CONTROLLER_METHODS = [
     'getQuantumPublicKeyHash',
     'getRecentConnectedSites',
     'getRotationHistory',
+    'getRotationModeBalance',
     'getRotationModeSummary',
     'getShowSafeNotice',
     'getSite',

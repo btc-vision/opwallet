@@ -1,9 +1,3 @@
-/**
- * OPNet Protocol Handler Type Definitions
- *
- * Types for the opnet:// protocol handler and .btc domain resolution.
- */
-
 import { NetworkType } from '../types';
 
 // =============================================================================

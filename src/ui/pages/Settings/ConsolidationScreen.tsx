@@ -1,8 +1,3 @@
-/**
- * Consolidation Screen
- *
- * Allows users to consolidate funds from hot wallet addresses to cold storage.
- */
 import { useEffect, useState } from 'react';
 import {
     SafetyCertificateOutlined,

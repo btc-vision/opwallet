@@ -1,8 +1,3 @@
-/**
- * Rotation History Screen
- *
- * Shows the full history of rotated addresses with their statuses and balances.
- */
 import { useEffect } from 'react';
 import {
     CheckCircleFilled,

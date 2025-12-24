@@ -398,6 +398,7 @@ export interface WalletController {
     rotateToNextAddress(): Promise<import('@/shared/types/AddressRotation').RotatedAddress>;
     getRotationModeSummary(): Promise<import('@/shared/types/AddressRotation').RotationModeSummary | null>;
     getRotationHistory(): Promise<import('@/shared/types/AddressRotation').RotatedAddress[]>;
+    getRotationModeBalance(): Promise<import('@/shared/types').BitcoinBalance>;
     refreshRotationBalances(): Promise<void>;
     prepareConsolidation(feeRate: number): Promise<import('@/shared/types/AddressRotation').ConsolidationParams>;
     executeConsolidation(feeRate: number): Promise<{ success: boolean; txid?: string; error?: string }>;

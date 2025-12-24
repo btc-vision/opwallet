@@ -25,6 +25,7 @@ import {
 import { accountActions } from '@/ui/state/accounts/reducer';
 import { useAppDispatch } from '@/ui/state/hooks';
 import { useCurrentKeyring } from '@/ui/state/keyrings/hooks';
+import { useRotationEnabled, useCurrentRotationAddress } from '@/ui/state/rotation/hooks';
 import {
     useBTCUnit,
     useChain,
@@ -92,12 +93,16 @@ export default function WalletTabScreen() {
     const navigate = useNavigate();
 
     const untweakedPublicKey = useAccountPublicKey();
-    const bitcoinAddress = useAccountAddress();
+    const baseAddress = useAccountAddress();
+
+    const rotationEnabled = useRotationEnabled();
+    const currentRotationAddress = useCurrentRotationAddress();
+    const bitcoinAddress = rotationEnabled && currentRotationAddress
+        ? currentRotationAddress.address
+        : baseAddress;
 
     const [address, setAddress] = useState<Address | null>(null);
 
-    // untweakedPublicKey.mldsa can be UNDEFINED if the account is not quantum-enabled! we need to handle this gracefully, no error!
-    // Address.fromString requires (mldsaHashedKey, legacyKey) - use pubkey for both if no mldsa
     useEffect(() => {
         if (untweakedPublicKey.mldsa) {
             setAddress(Address.fromString(untweakedPublicKey.mldsa, untweakedPublicKey.pubkey));

@@ -1,8 +1,3 @@
-/**
- * UTXO Management Configuration
- * Business rules for UTXO limits and thresholds
- * These values are shared between backend and frontend
- */
 export const UTXO_CONFIG = {
     /**
      * Maximum number of UTXOs allowed before triggering warnings

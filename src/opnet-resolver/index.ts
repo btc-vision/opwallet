@@ -1,9 +1,3 @@
-/**
- * OPNet Resolver Page Script
- *
- * Handles domain resolution and content rendering for opnet:// URLs.
- */
-
 import browser from 'webextension-polyfill';
 
 // Initialize window.opnet provider

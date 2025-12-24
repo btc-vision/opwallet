@@ -29,29 +29,23 @@ export default function ReceiveScreen() {
     const wallet = useWallet();
     const tools = useTools();
 
-    // Rotation mode hooks
     const rotationEnabled = useRotationEnabled();
     const currentRotationAddress = useCurrentRotationAddress();
     const refreshRotation = useRefreshRotation();
     const { isKeyringRotationMode } = useKeyringRotationMode();
 
-    // Use rotation address when enabled, otherwise use base address
     const address = rotationEnabled && currentRotationAddress
         ? currentRotationAddress.address
         : baseAddress;
 
-    // Determine if we should hide quantum key section (when using keyring rotation mode)
     const hideQuantumSection = isKeyringRotationMode && rotationEnabled;
 
     const [quantumPublicKeyHash, setQuantumPublicKeyHash] = useState<string>('');
     const [loadingQuantum, setLoadingQuantum] = useState(true);
 
     useEffect(() => {
-        // Refresh rotation state when screen loads
-        if (rotationEnabled) {
-            void refreshRotation();
-        }
-    }, [rotationEnabled, refreshRotation]);
+        void refreshRotation();
+    }, [refreshRotation]);
 
     useEffect(() => {
         const fetchQuantumInfo = async () => {
@@ -110,7 +104,6 @@ export default function ReceiveScreen() {
                         <Text preset="regular-bold" text={currentAccount?.alianName} />
                     </Row>
 
-                    {/* Rotation Mode Indicator */}
                     {rotationEnabled && currentRotationAddress && (
                         <div
                             style={{
@@ -177,7 +170,6 @@ export default function ReceiveScreen() {
                         p2wda_total_amount={undefined}
                     />
 
-                    {/* Post-Quantum Public Key Section - Hidden when keyring rotation mode is enabled */}
                     {!hideQuantumSection && (
                     <Card
                         style={{

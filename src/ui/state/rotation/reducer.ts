@@ -1,8 +1,3 @@
-/**
- * Address Rotation Redux Slice
- *
- * Manages UI state for the address rotation privacy feature.
- */
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 
 import { RotatedAddress, RotationModeSummary } from '@/shared/types/AddressRotation';

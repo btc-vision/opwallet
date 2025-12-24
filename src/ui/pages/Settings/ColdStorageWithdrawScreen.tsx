@@ -1,9 +1,3 @@
-/**
- * Cold Storage Withdraw Screen
- *
- * Collects withdrawal parameters and navigates to TxOpnetConfirmScreen
- * for proper transaction building and signing using @btc-vision/transaction.
- */
 import { useEffect, useState } from 'react';
 import {
     SafetyCertificateOutlined,

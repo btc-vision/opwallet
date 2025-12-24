@@ -4452,9 +4452,6 @@ export class WalletController {
         return addressRotationService.deriveNextHotAddress(keyring.index, account.pubkey, network);
     };
 
-    /**
-     * Get rotation mode summary for UI
-     */
     public getRotationModeSummary = async (): Promise<RotationModeSummary | null> => {
         const account = await this.getCurrentAccount();
         if (!account) return null;
@@ -4462,9 +4459,6 @@ export class WalletController {
         return addressRotationService.getRotationSummary(account.pubkey);
     };
 
-    /**
-     * Get full rotation history with balances
-     */
     public getRotationHistory = async (): Promise<RotatedAddress[]> => {
         const account = await this.getCurrentAccount();
         if (!account) return [];
@@ -4472,9 +4466,98 @@ export class WalletController {
         return addressRotationService.getRotationHistory(account.pubkey);
     };
 
-    /**
-     * Refresh all rotation address balances
-     */
+    public getRotationModeBalance = async (): Promise<BitcoinBalance> => {
+        const account = await this.getCurrentAccount();
+        const keyring = await this.getCurrentKeyring();
+
+        if (!account || !keyring) {
+            return this.getEmptyBalance();
+        }
+
+        const rotationEnabled = await addressRotationService.isRotationEnabled(account.pubkey);
+        if (!rotationEnabled) {
+            return this.getEmptyBalance();
+        }
+
+        try {
+            await Web3API.setNetwork(this.getChainType());
+            const network = getBitcoinLibJSNetwork(this.getNetworkType(), this.getChainType());
+
+            const coldAddress = await addressRotationService.getColdWalletAddress(keyring.index, network);
+            const history = await addressRotationService.getRotationHistory(account.pubkey);
+            const hotAddresses = history.map((h) => h.address);
+
+            const allAddresses = [coldAddress, ...hotAddresses];
+
+            const [allUTXOs, unspentUTXOs] = await Promise.all([
+                Web3API.getAllUTXOsForAddresses(allAddresses),
+                Web3API.getUnspentUTXOsForAddresses(allAddresses)
+            ]);
+
+            const totalAll = allUTXOs.reduce((sum, u) => sum + u.value, 0n);
+            const totalUnspent = unspentUTXOs.reduce((sum, u) => sum + u.value, 0n);
+            const pendingAmount = totalAll - totalUnspent;
+
+            let usdValue = '0.00';
+            try {
+                const btcPrice = await opnetApi.getBtcPrice();
+                if (btcPrice > 0) {
+                    const btcAmount = Number(totalAll) / 100000000;
+                    usdValue = (btcAmount * btcPrice).toFixed(2);
+                }
+            } catch {
+                // Silently fail
+            }
+
+            return {
+                btc_total_amount: BitcoinUtils.formatUnits(totalAll, 8),
+                btc_confirm_amount: BitcoinUtils.formatUnits(totalUnspent, 8),
+                btc_pending_amount: BitcoinUtils.formatUnits(pendingAmount, 8),
+
+                csv75_total_amount: '0',
+                csv75_unlocked_amount: '0',
+                csv75_locked_amount: '0',
+                csv2_total_amount: '0',
+                csv2_unlocked_amount: '0',
+                csv2_locked_amount: '0',
+                csv1_total_amount: '0',
+                csv1_unlocked_amount: '0',
+                csv1_locked_amount: '0',
+                p2wda_pending_amount: '0',
+                p2wda_total_amount: '0',
+
+                consolidation_amount: '0',
+                consolidation_unspent_amount: '0',
+                consolidation_unspent_count: 0,
+                consolidation_csv75_unlocked_amount: '0',
+                consolidation_csv75_unlocked_count: 0,
+                consolidation_csv2_unlocked_amount: '0',
+                consolidation_csv2_unlocked_count: 0,
+                consolidation_csv1_unlocked_amount: '0',
+                consolidation_csv1_unlocked_count: 0,
+                consolidation_p2wda_unspent_amount: '0',
+                consolidation_p2wda_unspent_count: 0,
+
+                usd_value: usdValue,
+
+                all_utxos_count: allUTXOs.length,
+                unspent_utxos_count: unspentUTXOs.length,
+                csv75_locked_utxos_count: 0,
+                csv75_unlocked_utxos_count: 0,
+                csv2_locked_utxos_count: 0,
+                csv2_unlocked_utxos_count: 0,
+                csv1_locked_utxos_count: 0,
+                csv1_unlocked_utxos_count: 0,
+                p2wda_utxos_count: 0,
+                unspent_p2wda_utxos_count: 0
+            };
+        } catch (err) {
+            console.error('[getRotationModeBalance] Error:', err);
+            return this.getEmptyBalance();
+        }
+    };
+
+
     public refreshRotationBalances = async (): Promise<void> => {
         const account = await this.getCurrentAccount();
         if (!account) return;

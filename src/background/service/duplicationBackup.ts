@@ -1,10 +1,3 @@
-/**
- * Duplication Backup Service
- *
- * Creates encrypted backups of all wallets before duplication resolution.
- * Stores backups in a separate storage key and provides file export.
- */
-
 import * as encryptor from '@btc-vision/passworder';
 import { HdKeyring, SimpleKeyring } from '@btc-vision/wallet-sdk';
 

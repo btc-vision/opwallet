@@ -1,9 +1,3 @@
-/**
- * Address Rotation Screen
- *
- * Main management page for the address rotation privacy feature.
- * Displays current hot address, cold wallet status, and controls.
- */
 import { useEffect, useState } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 import {

@@ -1,11 +1,4 @@
 /**
- * Address Rotation Mode Constants
- *
- * Defines derivation paths, default settings, and limits for the
- * address rotation privacy feature.
- */
-
-/**
  * Derivation path for hot wallet rotating addresses
  * Uses BIP86 taproot path with change index (1) for rotation addresses
  * Format: m/86'/0'/0'/1/index

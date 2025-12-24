@@ -1,12 +1,4 @@
 /**
- * Address Rotation Mode Types
- *
- * This module defines types for the Bitcoin address rotation privacy feature.
- * Hot wallet addresses rotate automatically when funds are received.
- * Cold wallet address is never revealed to the user.
- */
-
-/**
  * Status of a rotated address
  */
 export enum RotatedAddressStatus {

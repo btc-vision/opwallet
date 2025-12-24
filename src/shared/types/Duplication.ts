@@ -1,11 +1,4 @@
 /**
- * Wallet Duplication Detection and Resolution Types
- *
- * These types support detecting duplicate wallets (same WIF/mnemonic imported multiple times)
- * and duplicate MLDSA keys (same MLDSA key assigned to multiple wallets).
- */
-
-/**
  * Information about a wallet involved in a duplication conflict
  */
 export interface DuplicateWalletInfo {

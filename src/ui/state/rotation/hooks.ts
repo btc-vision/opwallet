@@ -1,8 +1,3 @@
-/**
- * Address Rotation Hooks
- *
- * React hooks for accessing and managing rotation state.
- */
 import { useCallback, useEffect, useState } from 'react';
 
 import { useAppDispatch, useAppSelector } from '../hooks';

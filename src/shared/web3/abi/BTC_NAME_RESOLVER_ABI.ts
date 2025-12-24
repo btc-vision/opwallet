@@ -1,10 +1,3 @@
-/**
- * BtcNameResolver Contract ABI
- *
- * ABI definition for the .btc domain name resolver contract.
- * Used for resolving OPNet domain names to contenthash (IPFS CIDs).
- */
-
 import { ABIDataTypes } from '@btc-vision/transaction';
 import { BitcoinAbiTypes, BitcoinInterfaceAbi } from 'opnet';
 

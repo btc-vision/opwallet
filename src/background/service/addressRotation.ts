@@ -1,10 +1,3 @@
-/**
- * Address Rotation Service
- *
- * Manages the address rotation privacy feature. Provides rotating
- * taproot addresses for receiving funds, with a hidden MLDSA cold
- * wallet for secure storage.
- */
 import { EventEmitter } from 'events';
 
 import { HdKeyring, publicKeyToAddressWithNetworkType } from '@btc-vision/wallet-sdk';
