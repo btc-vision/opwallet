@@ -50,6 +50,7 @@ import {
     AddressMap,
     AddressTypes,
     AddressVerificator,
+    createAddressRotation,
     DeploymentResult,
     IDeploymentParameters,
     IFundingTransactionParameters,
@@ -57,6 +58,7 @@ import {
     UTXO,
     Wallet
 } from '@btc-vision/transaction';
+import { ECPairInterface } from 'ecpair';
 import BigNumber from 'bignumber.js';
 import {
     Airdrop,
@@ -122,6 +124,10 @@ interface CachedBitcoinTransfer {
     // Decoded transaction data
     decodedData: DecodedPreSignedData | null;
     preSignedTxData: PreSignedTransactionData | null;
+    // Flag for cold storage withdrawal (to register change address after broadcast)
+    isColdStorage?: boolean;
+    // Flag for consolidation (to mark addresses as consolidated after broadcast)
+    isConsolidation?: boolean;
 }
 
 export const AIRDROP_ABI: BitcoinInterfaceAbi = [
@@ -716,6 +722,207 @@ export default function TxOpnetConfirmScreen() {
                             undefined,
                             parameters.optimize
                         );
+                    } else if (parameters.sourceType === SourceType.COLD_STORAGE) {
+                        // Cold storage withdrawal - use cold wallet keypair
+                        const coldWalletData = await wallet.getColdStorageWallet();
+                        const [coldWif, coldPubkey, coldMldsaPrivateKey] = coldWalletData;
+                        const coldWallet = Wallet.fromWif(
+                            coldWif,
+                            coldPubkey,
+                            Web3API.network,
+                            MLDSASecurityLevel.LEVEL2,
+                            coldMldsaPrivateKey ? Buffer.from(coldMldsaPrivateKey, 'hex') : undefined
+                        );
+
+                        fromAddress = parameters.from || '';
+                        utxos = await Web3API.getAllUTXOsForAddresses(
+                            [fromAddress],
+                            BitcoinUtils.expandToDecimals(btcInputAmount, 8) + feeMin,
+                            undefined,
+                            parameters.optimize
+                        );
+
+                        // Build and sign with cold wallet
+                        if (!utxos || utxos.length === 0) {
+                            throw new Error('No UTXOs available in cold storage');
+                        }
+
+                        const coldFundingParams: IFundingTransactionParameters = {
+                            amount: BitcoinUtils.expandToDecimals(btcInputAmount, 8),
+                            utxos: utxos,
+                            signer: coldWallet.keypair,
+                            mldsaSigner: coldWallet.mldsaKeypair,
+                            network: Web3API.network,
+                            feeRate: parameters.feeRate,
+                            priorityFee: 0n,
+                            gasSatFee: 0n,
+                            to: parameters.to,
+                            from: fromAddress,
+                            note: parameters.note
+                            // Note: Change goes back to cold wallet (from address).
+                            // User can make additional withdrawals for remaining funds.
+                        };
+
+                        const coldSignedTx = await Web3API.transactionFactory.createBTCTransfer(coldFundingParams);
+
+                        let decodedData: DecodedPreSignedData | null = null;
+                        let preSignedTxData: PreSignedTransactionData | null = null;
+
+                        try {
+                            decodedData = decodeBitcoinTransfer(coldSignedTx.tx, coldSignedTx.inputUtxos, Web3API.network);
+                            preSignedTxData = {
+                                type: 'bitcoin_transfer',
+                                createdAt: Date.now(),
+                                transactions: decodedData.transactions,
+                                totalMiningFee: decodedData.totalMiningFee,
+                                opnetGasFee: 0n,
+                                opnetEpochMinerOutput: null,
+                                rawData: {
+                                    fundingTxHex: null,
+                                    interactionTxHex: null,
+                                    deploymentTxs: null,
+                                    bitcoinTxHex: coldSignedTx.tx,
+                                    nextUTXOs: coldSignedTx.nextUTXOs
+                                }
+                            };
+                        } catch (decodeError) {
+                            console.warn('Failed to decode cold storage transfer:', decodeError);
+                        }
+
+                        setCachedBtcTx({
+                            txHex: coldSignedTx.tx,
+                            utxos: utxos,
+                            nextUtxos: coldSignedTx.nextUTXOs,
+                            createdAt: Date.now(),
+                            decodedData,
+                            preSignedTxData,
+                            isColdStorage: true
+                        });
+
+                        setIsSigning(false);
+                        return;
+                    } else if (parameters.sourceType === SourceType.CONSOLIDATION) {
+                        // Consolidation - gather UTXOs from multiple hot addresses to cold storage
+                        if (!parameters.sourceAddresses || !parameters.sourcePubkeys) {
+                            throw new Error('Consolidation requires source addresses and pubkeys');
+                        }
+
+                        // Fetch all UTXOs from source addresses
+                        utxos = await Web3API.getAllUTXOsForAddresses(
+                            parameters.sourceAddresses,
+                            undefined,
+                            undefined,
+                            true // optimize
+                        );
+
+                        if (!utxos || utxos.length === 0) {
+                            throw new Error('No UTXOs available for consolidation');
+                        }
+
+                        // Calculate total input value
+                        const totalInputValue = utxos.reduce((sum, u) => sum + u.value, 0n);
+
+                        // Get wallet data for all source addresses
+                        const walletDataArray = await wallet.getConsolidationWallets(parameters.sourcePubkeys);
+
+                        // Build signer map and create wallets
+                        const signerPairs: Array<readonly [string, ECPairInterface]> = [];
+                        let primaryWallet: Wallet | null = null;
+
+                        for (let i = 0; i < parameters.sourceAddresses.length; i++) {
+                            const address = parameters.sourceAddresses[i];
+                            const [wif, pubkey, mldsaPrivateKey] = walletDataArray[i];
+
+                            const addrWallet = Wallet.fromWif(
+                                wif,
+                                pubkey,
+                                Web3API.network,
+                                MLDSASecurityLevel.LEVEL2,
+                                mldsaPrivateKey ? Buffer.from(mldsaPrivateKey, 'hex') : undefined
+                            );
+
+                            signerPairs.push([address, addrWallet.keypair] as const);
+
+                            if (!primaryWallet) {
+                                primaryWallet = addrWallet;
+                            }
+                        }
+
+                        if (!primaryWallet) {
+                            throw new Error('No wallets available for consolidation');
+                        }
+
+                        // Create address rotation config
+                        const addressRotation = createAddressRotation(signerPairs);
+
+                        // Estimate fees: ~68 vbytes per P2TR input, ~43 vbytes for output, ~12 overhead
+                        const estimatedVSize = BigInt(12 + utxos.length * 68 + 43);
+                        const estimatedFee = estimatedVSize * BigInt(parameters.feeRate);
+
+                        // Calculate output amount (total - estimated fees with buffer)
+                        // Add 20% buffer to fee estimate to ensure tx succeeds
+                        const feeBuffer = (estimatedFee * 120n) / 100n;
+                        const outputAmount = totalInputValue - feeBuffer;
+
+                        if (outputAmount <= 0n) {
+                            throw new Error('Consolidation amount too small to cover fees');
+                        }
+
+                        // Build consolidation transaction
+                        // Set 'from' to cold storage so any change also goes to cold storage
+                        const consolidationParams: IFundingTransactionParameters = {
+                            amount: outputAmount,
+                            utxos: utxos,
+                            signer: primaryWallet.keypair,
+                            mldsaSigner: primaryWallet.mldsaKeypair,
+                            network: Web3API.network,
+                            feeRate: parameters.feeRate,
+                            priorityFee: 0n,
+                            gasSatFee: 0n,
+                            to: parameters.to,
+                            from: parameters.to, // Change also goes to cold storage
+                            addressRotation: addressRotation
+                        };
+
+                        const consolidationTx = await Web3API.transactionFactory.createBTCTransfer(consolidationParams);
+
+                        // Decode the transaction
+                        let decodedData: DecodedPreSignedData | null = null;
+                        let preSignedTxData: PreSignedTransactionData | null = null;
+
+                        try {
+                            decodedData = decodeBitcoinTransfer(consolidationTx.tx, consolidationTx.inputUtxos, Web3API.network);
+                            preSignedTxData = {
+                                type: 'bitcoin_transfer',
+                                createdAt: Date.now(),
+                                transactions: decodedData.transactions,
+                                totalMiningFee: decodedData.totalMiningFee,
+                                opnetGasFee: 0n,
+                                opnetEpochMinerOutput: null,
+                                rawData: {
+                                    fundingTxHex: null,
+                                    interactionTxHex: null,
+                                    deploymentTxs: null,
+                                    bitcoinTxHex: consolidationTx.tx,
+                                    nextUTXOs: consolidationTx.nextUTXOs
+                                }
+                            };
+                        } catch (decodeError) {
+                            console.warn('Failed to decode consolidation transfer:', decodeError);
+                        }
+
+                        setCachedBtcTx({
+                            txHex: consolidationTx.tx,
+                            utxos: utxos,
+                            nextUtxos: consolidationTx.nextUTXOs,
+                            createdAt: Date.now(),
+                            decodedData,
+                            preSignedTxData,
+                            isConsolidation: true
+                        });
+
+                        setIsSigning(false);
+                        return;
                     }
 
                     if (witnessScript && utxos.length > 0) {
@@ -1020,6 +1227,30 @@ export default function TxOpnetConfirmScreen() {
                 feeRate: parameters.feeRate
             };
             void wallet.recordTransaction(txRecord);
+
+            // Register change address for cold storage withdrawal
+            if (cachedBtcTx.isColdStorage) {
+                try {
+                    await wallet.registerColdStorageChangeAddress();
+                } catch (err) {
+                    console.warn('Failed to register cold storage change address:', err);
+                }
+            }
+
+            // Mark addresses as consolidated after successful consolidation
+            if (cachedBtcTx.isConsolidation && parameters.sourceAddresses) {
+                try {
+                    // Get consolidated amount from the actual transaction output
+                    let consolidatedAmount = '0';
+                    if (cachedBtcTx.decodedData?.transactions?.[0]) {
+                        // Total output value is what was actually sent to cold storage
+                        consolidatedAmount = cachedBtcTx.decodedData.transactions[0].totalOutputValue.toString();
+                    }
+                    await wallet.markAddressesConsolidated(parameters.sourceAddresses, consolidatedAmount);
+                } catch (err) {
+                    console.warn('Failed to mark addresses as consolidated:', err);
+                }
+            }
 
             // Clear cached transaction
             setCachedBtcTx(null);

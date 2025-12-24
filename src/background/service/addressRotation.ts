@@ -30,7 +30,8 @@ import {
     ROTATION_STORAGE_KEY,
     ROTATION_GAP_LIMIT,
     DEFAULT_ROTATION_SETTINGS,
-    MAX_CONSOLIDATION_UTXOS
+    MAX_CONSOLIDATION_UTXOS,
+    COLD_WALLET_INDEX
 } from '@/shared/constant/addressRotation';
 import { KEYRING_TYPE, ChainType } from '@/shared/constant';
 import { networkTypeToOPNet, NetworkType } from '@/shared/types';
@@ -292,16 +293,15 @@ class AddressRotationService extends EventEmitter {
             throw new Error('No mnemonic found');
         }
 
-        // Derive cold wallet using purpose 2 branch
-        // We use a dedicated HdKeyring just for the cold wallet
+        // Derive cold wallet using a high index that won't conflict with rotation addresses
+        // We use index 1000000 (1 million) which is far beyond any realistic rotation count
+        // This ensures cold wallet is completely separate from hot rotation addresses
         const coldKeyring = new HdKeyring({
             mnemonic: serialized.mnemonic,
             passphrase: serialized.passphrase || '',
             network,
             securityLevel: MLDSASecurityLevel.LEVEL2,
-            // Use index 0 at the special "cold" branch
-            // The cold wallet is derived at the change address position with a special index
-            activeIndexes: [0],
+            activeIndexes: [COLD_WALLET_INDEX],
             addressType: AddressTypes.P2TR
         });
 
@@ -318,6 +318,43 @@ class AddressRotationService extends EventEmitter {
 
         // For cold wallet, we use the P2TR (taproot) address
         return wallet.p2tr;
+    };
+
+    /**
+     * Get the next unused rotation address for change outputs
+     * This derives a new address without activating it yet
+     */
+    getNextUnusedRotationAddress = async (
+        keyringIndex: number,
+        accountPubkey: string,
+        network: Network = networks.bitcoin
+    ): Promise<string> => {
+        const keyring = keyringService.keyrings[keyringIndex];
+        if (!keyring || keyring.type !== KEYRING_TYPE.HdKeyring) {
+            throw new Error('Invalid HD keyring');
+        }
+
+        const serialized = keyring.serialize() as HdKeyringSerializedOptions;
+        if (!serialized.mnemonic) {
+            throw new Error('No mnemonic found');
+        }
+
+        const state = this.store.settings[accountPubkey];
+        if (!state?.enabled) {
+            throw new Error('Rotation mode not enabled');
+        }
+
+        // Derive the next unused index
+        const nextIndex = state.maxUsedIndex + 1;
+
+        const newAddress = await this.deriveRotationAddress(
+            serialized.mnemonic,
+            serialized.passphrase || '',
+            nextIndex,
+            network
+        );
+
+        return newAddress.address;
     };
 
     /**
@@ -550,6 +587,35 @@ class AddressRotationService extends EventEmitter {
     };
 
     /**
+     * Get the cold wallet keyring for signing withdrawals
+     * Returns a keyring configured to sign from the cold wallet address
+     */
+    getColdWalletKeyring = async (
+        keyringIndex: number,
+        network: Network = networks.bitcoin
+    ): Promise<HdKeyring> => {
+        const keyring = keyringService.keyrings[keyringIndex];
+        if (!keyring || keyring.type !== KEYRING_TYPE.HdKeyring) {
+            throw new Error('Invalid HD keyring');
+        }
+
+        const serialized = keyring.serialize() as HdKeyringSerializedOptions;
+        if (!serialized.mnemonic) {
+            throw new Error('No mnemonic found');
+        }
+
+        // Cold wallet uses a high index (1 million) that won't conflict with rotation addresses
+        return new HdKeyring({
+            mnemonic: serialized.mnemonic,
+            passphrase: serialized.passphrase || '',
+            network,
+            securityLevel: MLDSASecurityLevel.LEVEL2,
+            activeIndexes: [COLD_WALLET_INDEX],
+            addressType: AddressTypes.P2TR
+        });
+    };
+
+    /**
      * Update rotation state after successful consolidation
      */
     markConsolidated = async (
@@ -729,13 +795,13 @@ class AddressRotationService extends EventEmitter {
         passphrase: string,
         network: Network
     ): Promise<ColdWalletInfo> => {
-        // Create a temporary keyring for cold wallet
+        // Create a temporary keyring for cold wallet using the dedicated high index
         const coldKeyring = new HdKeyring({
             mnemonic,
             passphrase,
             network,
             securityLevel: MLDSASecurityLevel.LEVEL2,
-            activeIndexes: [0],
+            activeIndexes: [COLD_WALLET_INDEX],
             addressType: AddressTypes.P2TR
         });
 

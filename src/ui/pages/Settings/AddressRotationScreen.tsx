@@ -30,7 +30,8 @@ import {
     useEnableRotationMode,
     useDisableRotationMode,
     useRotateToNextAddress,
-    useUpdateRotationSettings
+    useUpdateRotationSettings,
+    useKeyringRotationMode
 } from '@/ui/state/rotation/hooks';
 
 const colors = {
@@ -62,14 +63,36 @@ export default function AddressRotationScreen() {
     const disableRotation = useDisableRotationMode();
     const rotateToNext = useRotateToNextAddress();
     const updateSettings = useUpdateRotationSettings();
+    const { isKeyringRotationMode } = useKeyringRotationMode();
 
     const [copying, setCopying] = useState(false);
+    const [copyingCold, setCopyingCold] = useState(false);
     const [rotating, setRotating] = useState(false);
     const [enabling, setEnabling] = useState(false);
+    const [coldWalletAddress, setColdWalletAddress] = useState<string>('');
+
+    // If keyring rotation mode is enabled, the disable button should not be shown
+    // (rotation mode is permanent for this wallet)
+    const canDisable = !isKeyringRotationMode;
 
     useEffect(() => {
         void refreshRotation();
     }, [refreshRotation]);
+
+    // Fetch cold wallet address when rotation is enabled
+    useEffect(() => {
+        const fetchColdAddress = async () => {
+            if (rotationState.enabled) {
+                try {
+                    const address = await wallet.getColdWalletAddress();
+                    setColdWalletAddress(address);
+                } catch (error) {
+                    console.error('Failed to fetch cold wallet address:', error);
+                }
+            }
+        };
+        void fetchColdAddress();
+    }, [rotationState.enabled, wallet]);
 
     const handleCopyAddress = async () => {
         if (!rotationState.currentAddress) return;
@@ -81,6 +104,19 @@ export default function AddressRotationScreen() {
             tools.toastError('Failed to copy address');
         } finally {
             setTimeout(() => setCopying(false), 1500);
+        }
+    };
+
+    const handleCopyColdAddress = async () => {
+        if (!coldWalletAddress) return;
+        setCopyingCold(true);
+        try {
+            await copyToClipboard(coldWalletAddress);
+            tools.toastSuccess('Cold wallet address copied');
+        } catch {
+            tools.toastError('Failed to copy address');
+        } finally {
+            setTimeout(() => setCopyingCold(false), 1500);
         }
     };
 
@@ -368,7 +404,7 @@ export default function AddressRotationScreen() {
                             borderRadius: '16px',
                             padding: '16px'
                         }}>
-                        <Row style={{ alignItems: 'flex-start', gap: 12 }}>
+                        <Row style={{ alignItems: 'flex-start', gap: 12, marginBottom: 12 }}>
                             <div
                                 style={{
                                     width: 44,
@@ -390,12 +426,55 @@ export default function AddressRotationScreen() {
                                     text={`${satoshisToAmount(Number(BigInt(summary?.coldWalletBalance || '0')))} BTC`}
                                     style={{ fontSize: 18, fontWeight: 600, color: colors.coldBlue }}
                                 />
-                                <Text
-                                    text="Address hidden for security"
-                                    style={{ fontSize: 11, color: colors.textFaded, marginTop: 4 }}
-                                />
                             </Column>
                         </Row>
+
+                        {/* Cold wallet address display */}
+                        {coldWalletAddress && (
+                            <div
+                                onClick={handleCopyColdAddress}
+                                style={{
+                                    background: colors.buttonHoverBg,
+                                    borderRadius: 10,
+                                    padding: '10px 12px',
+                                    cursor: 'pointer',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: 10,
+                                    marginBottom: 12
+                                }}>
+                                <Text
+                                    text={coldWalletAddress}
+                                    style={{
+                                        fontSize: 11,
+                                        fontFamily: 'monospace',
+                                        flex: 1,
+                                        wordBreak: 'break-all',
+                                        color: colors.textFaded
+                                    }}
+                                />
+                                {copyingCold ? (
+                                    <CheckCircleFilled style={{ color: colors.success, fontSize: 14 }} />
+                                ) : (
+                                    <CopyOutlined style={{ color: colors.textFaded, fontSize: 14 }} />
+                                )}
+                            </div>
+                        )}
+
+                        {/* Withdraw button */}
+                        {BigInt(summary?.coldWalletBalance || '0') > 0n && (
+                            <Button
+                                preset="default"
+                                text="Withdraw from Cold Storage"
+                                onClick={() => navigate(RouteTypes.ColdStorageWithdrawScreen)}
+                                style={{
+                                    width: '100%',
+                                    background: `${colors.coldBlue}20`,
+                                    borderColor: `${colors.coldBlue}40`,
+                                    color: colors.coldBlue
+                                }}
+                            />
+                        )}
                     </div>
 
                     {/* Stats Grid */}
@@ -443,18 +522,47 @@ export default function AddressRotationScreen() {
                         />
                     </div>
 
-                    {/* Disable button */}
-                    <Button
-                        preset="default"
-                        text="Disable Rotation Mode"
-                        onClick={handleDisable}
-                        style={{
-                            marginTop: 10,
-                            background: 'transparent',
-                            border: `1px solid ${colors.error}40`,
-                            color: colors.error
-                        }}
-                    />
+                    {/* Disable button - only shown if rotation mode was NOT set at wallet creation */}
+                    {canDisable && (
+                        <Button
+                            preset="default"
+                            text="Disable Rotation Mode"
+                            onClick={handleDisable}
+                            style={{
+                                marginTop: 10,
+                                background: 'transparent',
+                                border: `1px solid ${colors.error}40`,
+                                color: colors.error
+                            }}
+                        />
+                    )}
+
+                    {/* Show permanent mode indicator when keyring rotation mode is enabled */}
+                    {isKeyringRotationMode && (
+                        <div
+                            style={{
+                                marginTop: 16,
+                                padding: '12px 16px',
+                                background: `linear-gradient(135deg, ${colors.success}15 0%, ${colors.success}08 100%)`,
+                                border: `1px solid ${colors.success}40`,
+                                borderRadius: 12,
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 10
+                            }}>
+                            <CheckCircleFilled style={{ color: colors.success, fontSize: 18 }} />
+                            <Column>
+                                <Text
+                                    text="Privacy Mode Active"
+                                    style={{ fontSize: 13, fontWeight: 600, color: colors.success }}
+                                />
+                                <Text
+                                    text="This wallet was created with privacy mode permanently enabled"
+                                    style={{ fontSize: 11, color: colors.textFaded }}
+                                />
+                            </Column>
+                        </div>
+                    )}
                 </Column>
             </Content>
         </Layout>

@@ -12,14 +12,11 @@ import {
 } from '@ant-design/icons';
 
 import { Layout, Header, Content, Column, Row, Button, Text, OPNetLoader } from '@/ui/components';
-import { useTools } from '@/ui/components/ActionComponent';
 import { useWallet, satoshisToAmount } from '@/ui/utils';
-import {
-    useRotationHistory,
-    useRefreshRotation,
-    useRotationSummary
-} from '@/ui/state/rotation/hooks';
+import { useRotationHistory } from '@/ui/state/rotation/hooks';
 import { RotatedAddressStatus, ConsolidationParams } from '@/shared/types/AddressRotation';
+import { RouteTypes, useNavigate } from '@/ui/pages/routeTypes';
+import { Action, SourceType } from '@/shared/interfaces/RawTxParameters';
 
 const colors = {
     main: '#f37413',
@@ -43,16 +40,14 @@ const FEE_RATES = [
 
 export default function ConsolidationScreen() {
     const wallet = useWallet();
-    const tools = useTools();
+    const navigate = useNavigate();
 
-    const summary = useRotationSummary();
     const history = useRotationHistory();
-    const refreshRotation = useRefreshRotation();
 
     const [loading, setLoading] = useState(true);
-    const [consolidating, setConsolidating] = useState(false);
     const [selectedFeeIndex, setSelectedFeeIndex] = useState(1);
     const [params, setParams] = useState<ConsolidationParams | null>(null);
+    const [coldAddress, setColdAddress] = useState('');
 
     const addressesWithBalance = history.filter(
         (a) =>
@@ -70,6 +65,10 @@ export default function ConsolidationScreen() {
             const feeRate = FEE_RATES[selectedFeeIndex].rate;
             const consolidationParams = await wallet.prepareConsolidation(feeRate);
             setParams(consolidationParams);
+
+            // Get cold wallet address for destination
+            const coldAddr = await wallet.getColdWalletAddress();
+            setColdAddress(coldAddr);
         } catch (error) {
             console.error('Failed to prepare consolidation:', error);
             setParams(null);
@@ -78,24 +77,27 @@ export default function ConsolidationScreen() {
         }
     };
 
-    const handleConsolidate = async () => {
-        setConsolidating(true);
-        try {
-            const feeRate = FEE_RATES[selectedFeeIndex].rate;
-            const result = await wallet.executeConsolidation(feeRate);
+    const handleConsolidate = () => {
+        if (!params || !coldAddress) return;
 
-            if (result.success) {
-                tools.toastSuccess('Consolidation successful!');
-                await refreshRotation();
-                window.history.go(-1);
-            } else {
-                tools.toastError(result.error || 'Consolidation failed');
-            }
-        } catch (error) {
-            tools.toastError(String(error));
-        } finally {
-            setConsolidating(false);
-        }
+        // Calculate total input amount in satoshis
+        const totalAmount = Number(BigInt(params.totalAmount));
+
+        // Navigate to TxOpnetConfirmScreen with consolidation parameters
+        navigate(RouteTypes.TxOpnetConfirmScreen, {
+            action: Action.SendBitcoin,
+            header: 'Consolidate to Cold Storage',
+            features: {},
+            tokens: [],
+            feeRate: FEE_RATES[selectedFeeIndex].rate,
+            priorityFee: 0n,
+            to: coldAddress,
+            inputAmount: totalAmount,
+            sourceType: SourceType.CONSOLIDATION,
+            sourceAddresses: params.sourceAddresses,
+            sourcePubkeys: params.sourcePubkeys,
+            optimize: true
+        });
     };
 
     if (loading && !params) {
@@ -309,9 +311,9 @@ export default function ConsolidationScreen() {
                     {/* Consolidate button */}
                     <Button
                         preset="primary"
-                        text={consolidating ? 'Consolidating...' : 'Consolidate to Cold Storage'}
+                        text="Review Consolidation"
                         onClick={handleConsolidate}
-                        disabled={consolidating || !params || BigInt(params.netAmount) <= 0n}
+                        disabled={!params || !coldAddress || BigInt(params.netAmount) <= 0n}
                         style={{ marginTop: 10 }}
                     />
 

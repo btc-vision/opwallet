@@ -56,6 +56,8 @@ export interface WalletController {
 
     isBooted(): Promise<boolean>;
 
+    isKeyringRotationMode(): Promise<boolean>;
+
     getApproval(): Promise<ApprovalData | undefined>;
 
     resolveApproval(
@@ -128,7 +130,8 @@ export interface WalletController {
         hdPath: string,
         passphrase: string,
         addressType: AddressTypes,
-        accountCount: number
+        accountCount: number,
+        rotationModeEnabled?: boolean
     ): Promise<{ address: string; type: string }[]>;
 
     createKeyringWithKeystone(
@@ -399,6 +402,14 @@ export interface WalletController {
     prepareConsolidation(feeRate: number): Promise<import('@/shared/types/AddressRotation').ConsolidationParams>;
     executeConsolidation(feeRate: number): Promise<{ success: boolean; txid?: string; error?: string }>;
     updateRotationSettings(settings: { autoRotate?: boolean; rotationThreshold?: number }): Promise<void>;
+    getColdWalletAddress(): Promise<string>;
+    getNextUnusedRotationAddress(): Promise<string>;
+    getColdStorageWallet(): Promise<[string, string, string]>;
+    registerColdStorageChangeAddress(): Promise<void>;
+    // Consolidation - returns wallet data for each source address: [wif, pubkey, mldsaPrivateKey][]
+    getConsolidationWallets(sourcePubkeys: string[]): Promise<Array<[string, string, string]>>;
+    // Mark addresses as consolidated after successful broadcast
+    markAddressesConsolidated(addresses: string[], consolidatedAmount: string): Promise<void>;
 }
 
 const WalletContext = createContext<{

@@ -8,9 +8,7 @@ import { Button, Column, Icon, Input, Row, Text } from '@/ui/components';
 import { useTools } from '@/ui/components/ActionComponent';
 import { AddressTypeCard2 } from '@/ui/components/AddressTypeCard';
 import { FooterButtonContainer } from '@/ui/components/FooterButtonContainer';
-import { ContextData, UpdateContextDataParams } from '@/ui/pages/Account/createHDWalletComponents/types';
-import { RouteTypes, useNavigate } from '@/ui/pages/routeTypes';
-import { useCreateAccountCallback } from '@/ui/state/global/hooks';
+import { ContextData, TabType, UpdateContextDataParams } from '@/ui/pages/Account/createHDWalletComponents/types';
 import { satoshisToAmount, useWallet } from '@/ui/utils';
 import { LoadingOutlined } from '@ant-design/icons';
 
@@ -84,8 +82,6 @@ export function Step2({
     const [pathError, setPathError] = useState('');
     const [loading, setLoading] = useState(false);
 
-    const createAccount = useCreateAccountCallback();
-    const navigate = useNavigate();
 
     const [pathText, setPathText] = useState(contextData.customHdPath);
 
@@ -224,29 +220,22 @@ export function Step2({
         return !(!error && !pathError);
     }, [error, pathError]);
 
-    const onNext = async () => {
-        try {
-            if (scannedGroups.length > 0) {
-                const option = allHdPathOptions[contextData.addressTypeIndex];
-                const hdPath = contextData.customHdPath || option.hdPath;
-                const selected = scannedGroups[contextData.addressTypeIndex];
-
-                await createAccount(
-                    contextData.mnemonics,
-                    hdPath,
-                    contextData.passphrase,
-                    contextData.addressType,
-                    selected.address_arr.length
-                );
-            } else {
-                const option = hdPathOptions[contextData.addressTypeIndex];
-                const hdPath = contextData.customHdPath || option.hdPath;
-                await createAccount(contextData.mnemonics, hdPath, contextData.passphrase, contextData.addressType, 1);
-            }
-            navigate(RouteTypes.MainScreen);
-        } catch (e) {
-            tools.toastError((e as Error).message);
+    const onNext = () => {
+        // Store the selected hdPath in context for the next step
+        if (scannedGroups.length > 0) {
+            const option = allHdPathOptions[contextData.addressTypeIndex];
+            const hdPath = contextData.customHdPath || option.hdPath;
+            updateContextData({ hdPath });
+        } else {
+            const option = hdPathOptions[contextData.addressTypeIndex];
+            const hdPath = contextData.customHdPath || option.hdPath;
+            updateContextData({ hdPath });
         }
+
+        // Navigate to rotation mode selection step
+        // For create flow: STEP3, for import flow: STEP4
+        const nextStep = contextData.isRestore ? TabType.STEP4 : TabType.STEP3;
+        updateContextData({ tabType: nextStep });
     };
 
     const scanVaultAddress = async () => {

@@ -56,6 +56,14 @@ export const ROTATION_STORAGE_KEY = 'addressRotation';
 export const MAX_CONSOLIDATION_UTXOS = 100;
 
 /**
+ * Cold wallet derivation index
+ * Uses a very high index (1 million) to ensure it never conflicts with
+ * rotation addresses which start at index 0 and increment.
+ * This provides complete separation between hot rotation addresses and cold storage.
+ */
+export const COLD_WALLET_INDEX = 1000000;
+
+/**
  * Minimum confirmations required before auto-rotation triggers
  */
 export const MIN_CONFIRMATIONS_FOR_ROTATION = 0; // Rotate immediately on detection

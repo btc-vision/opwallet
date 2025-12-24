@@ -51,7 +51,8 @@ export enum RouteTypes {
     BtcDomainScreen = 'BtcDomainScreen',
     AddressRotationScreen = 'AddressRotationScreen',
     RotationHistoryScreen = 'RotationHistoryScreen',
-    ConsolidationScreen = 'ConsolidationScreen'
+    ConsolidationScreen = 'ConsolidationScreen',
+    ColdStorageWithdrawScreen = 'ColdStorageWithdrawScreen'
 }
 
 export const routePaths: Record<RouteTypes, string> = {
@@ -104,7 +105,8 @@ export const routePaths: Record<RouteTypes, string> = {
     [RouteTypes.BtcDomainScreen]: '/domain',
     [RouteTypes.AddressRotationScreen]: '/settings/address-rotation',
     [RouteTypes.RotationHistoryScreen]: '/settings/rotation-history',
-    [RouteTypes.ConsolidationScreen]: '/settings/consolidation'
+    [RouteTypes.ConsolidationScreen]: '/settings/consolidation',
+    [RouteTypes.ColdStorageWithdrawScreen]: '/settings/cold-storage-withdraw'
 };
 
 export type UseNavigate<T extends RouteTypes> = (routKey: T, state?: unknown) => void;

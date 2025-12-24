@@ -27,6 +27,7 @@ import {
 } from '@ant-design/icons';
 
 import { RouteTypes, useNavigate } from '../routeTypes';
+import { useKeyringRotationMode } from '@/ui/state/rotation/hooks';
 
 type NotificationWindowMode = 'auto' | 'popup' | 'fullscreen';
 
@@ -53,6 +54,7 @@ const colors = {
 
 function AddressRotationSetting() {
     const navigate = useNavigate();
+    const { isKeyringRotationMode } = useKeyringRotationMode();
 
     return (
         <div
@@ -95,6 +97,9 @@ function AddressRotationSetting() {
                 <div style={{ flex: 1 }}>
                     <div
                         style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '8px',
                             fontSize: '14px',
                             fontWeight: 500,
                             color: colors.text,
@@ -102,6 +107,20 @@ function AddressRotationSetting() {
                             fontFamily: 'Inter-Regular, serif'
                         }}>
                         Address Rotation
+                        {isKeyringRotationMode && (
+                            <span
+                                style={{
+                                    fontSize: '9px',
+                                    fontWeight: 600,
+                                    color: colors.success,
+                                    background: `${colors.success}20`,
+                                    padding: '2px 6px',
+                                    borderRadius: '4px',
+                                    textTransform: 'uppercase'
+                                }}>
+                                Permanent
+                            </span>
+                        )}
                     </div>
                     <div
                         style={{

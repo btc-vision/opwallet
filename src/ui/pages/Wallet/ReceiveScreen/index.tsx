@@ -5,7 +5,7 @@ import { CopyOutlined, InfoCircleOutlined, SafetyOutlined, SwapOutlined, RightOu
 import { AddressBar, Button, Card, Column, Content, Header, Icon, Layout, Row, Text } from '@/ui/components';
 import { useTools } from '@/ui/components/ActionComponent';
 import { useAccountAddress, useCurrentAccount } from '@/ui/state/accounts/hooks';
-import { useRotationEnabled, useCurrentRotationAddress, useRefreshRotation } from '@/ui/state/rotation/hooks';
+import { useRotationEnabled, useCurrentRotationAddress, useRefreshRotation, useKeyringRotationMode } from '@/ui/state/rotation/hooks';
 import { useChain } from '@/ui/state/settings/hooks';
 import { sizes } from '@/ui/theme/spacing';
 import { copyToClipboard, useWallet } from '@/ui/utils';
@@ -33,11 +33,15 @@ export default function ReceiveScreen() {
     const rotationEnabled = useRotationEnabled();
     const currentRotationAddress = useCurrentRotationAddress();
     const refreshRotation = useRefreshRotation();
+    const { isKeyringRotationMode } = useKeyringRotationMode();
 
     // Use rotation address when enabled, otherwise use base address
     const address = rotationEnabled && currentRotationAddress
         ? currentRotationAddress.address
         : baseAddress;
+
+    // Determine if we should hide quantum key section (when using keyring rotation mode)
+    const hideQuantumSection = isKeyringRotationMode && rotationEnabled;
 
     const [quantumPublicKeyHash, setQuantumPublicKeyHash] = useState<string>('');
     const [loadingQuantum, setLoadingQuantum] = useState(true);
@@ -173,7 +177,8 @@ export default function ReceiveScreen() {
                         p2wda_total_amount={undefined}
                     />
 
-                    {/* Post-Quantum Public Key Section */}
+                    {/* Post-Quantum Public Key Section - Hidden when keyring rotation mode is enabled */}
+                    {!hideQuantumSection && (
                     <Card
                         style={{
                             backgroundColor: 'rgba(139, 92, 246, 0.1)',
@@ -243,6 +248,7 @@ export default function ReceiveScreen() {
                             )}
                         </Column>
                     </Card>
+                    )}
                 </Column>
             </Content>
         </Layout>

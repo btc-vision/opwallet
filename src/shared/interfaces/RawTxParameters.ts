@@ -80,7 +80,9 @@ export enum SourceType {
     CSV75 = 'csv75',
     CSV2 = 'csv2',
     CSV1 = 'csv1',
-    P2WDA = 'p2wda'
+    P2WDA = 'p2wda',
+    COLD_STORAGE = 'cold_storage',
+    CONSOLIDATION = 'consolidation'
 }
 
 export interface NFTMetadata {
@@ -115,6 +117,10 @@ export interface SendBitcoinParameters extends BaseRawTxInfo<Action.SendBitcoin>
     readonly sourceType?: SourceType;
     readonly optimize: boolean;
     readonly splitInputsInto?: number; // Number of UTXOs to split into (opposite of consolidation)
+    readonly changeAddress?: string; // Custom change address (used for cold storage withdrawal)
+    // Consolidation-specific fields
+    readonly sourceAddresses?: string[]; // Multiple source addresses for consolidation
+    readonly sourcePubkeys?: string[]; // Pubkeys for each source address (for signer lookup)
 }
 
 export interface DeployContractParameters extends BaseRawTxInfo<Action.DeployContract> {

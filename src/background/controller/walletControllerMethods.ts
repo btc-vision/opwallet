@@ -60,6 +60,7 @@ export const WALLET_CONTROLLER_METHODS = [
     'getColdWalletAddress',
     'getConnectedSite',
     'getCurrentHotAddress',
+    'getNextUnusedRotationAddress',
     'getConnectedSites',
     'getContactByAddress',
     'getContactsByMap',
@@ -120,6 +121,7 @@ export const WALLET_CONTROLLER_METHODS = [
     'importDuplicationBackup',
     'initAlianNames',
     'isBooted',
+    'isKeyringRotationMode',
     'isReady',
     'isRotationModeEnabled',
     'isRotationModeSupported',
@@ -199,7 +201,11 @@ export const WALLET_CONTROLLER_METHODS = [
     'uploadToIpfs',
     'verifyAllOnChainLinkage',
     'verifyMLDSASignature',
-    'verifyPassword'
+    'verifyPassword',
+    'getColdStorageWallet',
+    'registerColdStorageChangeAddress',
+    'getConsolidationWallets',
+    'markAddressesConsolidated'
 ] as const;
 
 export type WalletControllerMethod = (typeof WALLET_CONTROLLER_METHODS)[number];

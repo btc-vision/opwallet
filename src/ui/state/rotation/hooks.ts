@@ -3,7 +3,7 @@
  *
  * React hooks for accessing and managing rotation state.
  */
-import { useCallback } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 import { useAppDispatch, useAppSelector } from '../hooks';
 import { rotationActions } from './reducer';
@@ -19,6 +19,33 @@ export const useRotationState = (): AppState['rotation'] => {
 
 export const useRotationEnabled = (): boolean => {
     return useAppSelector((state) => state.rotation.enabled);
+};
+
+/**
+ * Check if the current keyring was created with rotation mode (permanent choice).
+ * This is set at wallet creation time and cannot be changed.
+ */
+export const useKeyringRotationMode = () => {
+    const wallet = useWallet();
+    const [isKeyringRotationMode, setIsKeyringRotationMode] = useState(false);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const checkKeyringRotationMode = async () => {
+            try {
+                const result = await wallet.isKeyringRotationMode();
+                setIsKeyringRotationMode(result);
+            } catch (error) {
+                console.error('[useKeyringRotationMode] Error:', error);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        void checkKeyringRotationMode();
+    }, [wallet]);
+
+    return { isKeyringRotationMode, loading };
 };
 
 export const useRotationSupported = (): boolean => {
