@@ -385,6 +385,20 @@ export interface WalletController {
     // [DEV/TEST] Conflict testing methods
     createTestConflicts(): Promise<{ created: string[]; message: string }>;
     clearTestConflicts(): Promise<void>;
+
+    // Address Rotation Methods
+    isRotationModeSupported(): Promise<boolean>;
+    isRotationModeEnabled(): Promise<boolean>;
+    enableRotationMode(): Promise<import('@/shared/types/AddressRotation').AddressRotationState>;
+    disableRotationMode(): Promise<void>;
+    getCurrentHotAddress(): Promise<import('@/shared/types/AddressRotation').RotatedAddress | null>;
+    rotateToNextAddress(): Promise<import('@/shared/types/AddressRotation').RotatedAddress>;
+    getRotationModeSummary(): Promise<import('@/shared/types/AddressRotation').RotationModeSummary | null>;
+    getRotationHistory(): Promise<import('@/shared/types/AddressRotation').RotatedAddress[]>;
+    refreshRotationBalances(): Promise<void>;
+    prepareConsolidation(feeRate: number): Promise<import('@/shared/types/AddressRotation').ConsolidationParams>;
+    executeConsolidation(feeRate: number): Promise<{ success: boolean; txid?: string; error?: string }>;
+    updateRotationSettings(settings: { autoRotate?: boolean; rotationThreshold?: number }): Promise<void>;
 }
 
 const WalletContext = createContext<{

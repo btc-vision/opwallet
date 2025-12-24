@@ -1,10 +1,11 @@
 import { QRCodeSVG } from 'qrcode.react';
 import { useEffect, useState } from 'react';
-import { CopyOutlined, InfoCircleOutlined, SafetyOutlined } from '@ant-design/icons';
+import { CopyOutlined, InfoCircleOutlined, SafetyOutlined, SwapOutlined, RightOutlined } from '@ant-design/icons';
 
 import { AddressBar, Button, Card, Column, Content, Header, Icon, Layout, Row, Text } from '@/ui/components';
 import { useTools } from '@/ui/components/ActionComponent';
 import { useAccountAddress, useCurrentAccount } from '@/ui/state/accounts/hooks';
+import { useRotationEnabled, useCurrentRotationAddress, useRefreshRotation } from '@/ui/state/rotation/hooks';
 import { useChain } from '@/ui/state/settings/hooks';
 import { sizes } from '@/ui/theme/spacing';
 import { copyToClipboard, useWallet } from '@/ui/utils';
@@ -12,16 +13,41 @@ import { RouteTypes, useNavigate } from '@/ui/pages/routeTypes';
 
 import './index.less';
 
+const colors = {
+    main: '#f37413',
+    text: '#dbdbdb',
+    textFaded: 'rgba(219, 219, 219, 0.7)',
+    containerBgFaded: '#292929',
+    success: '#4ade80'
+};
+
 export default function ReceiveScreen() {
     const navigate = useNavigate();
     const currentAccount = useCurrentAccount();
-    const address = useAccountAddress();
+    const baseAddress = useAccountAddress();
     const chain = useChain();
     const wallet = useWallet();
     const tools = useTools();
 
+    // Rotation mode hooks
+    const rotationEnabled = useRotationEnabled();
+    const currentRotationAddress = useCurrentRotationAddress();
+    const refreshRotation = useRefreshRotation();
+
+    // Use rotation address when enabled, otherwise use base address
+    const address = rotationEnabled && currentRotationAddress
+        ? currentRotationAddress.address
+        : baseAddress;
+
     const [quantumPublicKeyHash, setQuantumPublicKeyHash] = useState<string>('');
     const [loadingQuantum, setLoadingQuantum] = useState(true);
+
+    useEffect(() => {
+        // Refresh rotation state when screen loads
+        if (rotationEnabled) {
+            void refreshRotation();
+        }
+    }, [rotationEnabled, refreshRotation]);
 
     useEffect(() => {
         const fetchQuantumInfo = async () => {
@@ -79,6 +105,60 @@ export default function ReceiveScreen() {
                         <Icon icon="user" />
                         <Text preset="regular-bold" text={currentAccount?.alianName} />
                     </Row>
+
+                    {/* Rotation Mode Indicator */}
+                    {rotationEnabled && currentRotationAddress && (
+                        <div
+                            style={{
+                                background: `linear-gradient(135deg, ${colors.main}15 0%, ${colors.main}08 100%)`,
+                                border: `1px solid ${colors.main}40`,
+                                borderRadius: '12px',
+                                padding: '12px 16px',
+                                marginTop: '8px'
+                            }}>
+                            <Row style={{ justifyContent: 'space-between', alignItems: 'center' }}>
+                                <Row style={{ gap: 8, alignItems: 'center' }}>
+                                    <SwapOutlined style={{ color: colors.main, fontSize: 16 }} />
+                                    <Column style={{ gap: 2 }}>
+                                        <Text
+                                            text="One-Time Address"
+                                            style={{ fontSize: 12, fontWeight: 600, color: colors.main }}
+                                        />
+                                        <Text
+                                            text={`Rotation #${currentRotationAddress.derivationIndex + 1}`}
+                                            style={{ fontSize: 10, color: colors.textFaded }}
+                                        />
+                                    </Column>
+                                </Row>
+                                <div
+                                    onClick={() => navigate(RouteTypes.AddressRotationScreen)}
+                                    style={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: 4,
+                                        cursor: 'pointer',
+                                        padding: '4px 8px',
+                                        borderRadius: 6,
+                                        background: 'rgba(255,255,255,0.05)'
+                                    }}>
+                                    <Text
+                                        text="Manage"
+                                        style={{ fontSize: 11, color: colors.textFaded }}
+                                    />
+                                    <RightOutlined style={{ fontSize: 10, color: colors.textFaded }} />
+                                </div>
+                            </Row>
+                            <Text
+                                text="This address is for one-time use. A new address will be generated after receiving funds."
+                                style={{
+                                    fontSize: 10,
+                                    color: colors.textFaded,
+                                    marginTop: 8,
+                                    lineHeight: 1.4
+                                }}
+                            />
+                        </div>
+                    )}
 
                     <AddressBar
                         csv75_total_amount={undefined}

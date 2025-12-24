@@ -9,6 +9,7 @@ import { SessionEvent, SessionEventPayload } from '@/shared/interfaces/SessionEv
 import { customNetworksManager } from '@/shared/utils/CustomNetworksManager';
 import { Runtime } from 'webextension-polyfill';
 import { providerController, walletController } from './controller';
+import addressRotationService from './service/addressRotation';
 import contactBookService from './service/contactBook';
 import keyringService, { StoredData } from './service/keyring';
 import opnetApi from './service/opnetApi';
@@ -54,6 +55,9 @@ async function restoreAppState() {
 
     // Initialize OPNet protocol service
     await opnetProtocolService.init();
+
+    // Initialize address rotation service
+    await addressRotationService.init();
 
     chrome.storage.onChanged.addListener(async (changes, areaName) => {
         if (areaName === 'local' && changes['custom_networks']) {

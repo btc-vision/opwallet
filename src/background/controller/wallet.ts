@@ -3,6 +3,7 @@ import { BitcoinUtils, BroadcastedTransaction, getContract, UTXOs } from 'opnet'
 import { BTC_NAME_RESOLVER_ABI } from '@/shared/web3/abi/BTC_NAME_RESOLVER_ABI';
 import { IBtcNameResolverContract } from '@/shared/web3/interfaces/IBtcNameResolverContract';
 
+import addressRotationService from '@/background/service/addressRotation';
 import contactBookService from '@/background/service/contactBook';
 import duplicationBackupService from '@/background/service/duplicationBackup';
 import duplicationDetectionService from '@/background/service/duplicationDetection';
@@ -74,6 +75,14 @@ import {
     DuplicationState,
     OnChainLinkageInfo
 } from '@/shared/types/Duplication';
+import {
+    AddressRotationState,
+    ConsolidationParams,
+    ConsolidationResult,
+    RotatedAddress,
+    RotationModeSummary,
+    RotationModeUpdateSettings
+} from '@/shared/types/AddressRotation';
 import { getChainInfo } from '@/shared/utils';
 import Web3API, { getBitcoinLibJSNetwork } from '@/shared/web3/Web3API';
 import {
@@ -121,6 +130,7 @@ import {
     PsbtOutputExtended,
     PsbtOutputExtendedAddress,
     PsbtOutputExtendedScript,
+    tapTweakHash,
     toXOnly,
     Transaction
 } from '@btc-vision/bitcoin';
@@ -4339,6 +4349,313 @@ export class WalletController {
             newOwner,
             initiatedAt: pendingResult.properties.initiatedAt
         };
+    };
+
+    // ==================== ADDRESS ROTATION MODE ====================
+
+    /**
+     * Check if rotation mode is supported for current keyring (HD wallets only)
+     */
+    public isRotationModeSupported = async (): Promise<boolean> => {
+        const keyring = await this.getCurrentKeyring();
+        return keyring?.type === KEYRING_TYPE.HdKeyring;
+    };
+
+    /**
+     * Check if rotation mode is enabled for current account
+     */
+    public isRotationModeEnabled = async (): Promise<boolean> => {
+        const account = await this.getCurrentAccount();
+        if (!account) return false;
+        return addressRotationService.isRotationEnabled(account.pubkey);
+    };
+
+    /**
+     * Enable rotation mode for current account
+     */
+    public enableRotationMode = async (): Promise<AddressRotationState> => {
+        const account = await this.getCurrentAccount();
+        const keyring = await this.getCurrentKeyring();
+
+        if (!account || !keyring) {
+            throw new WalletControllerError('No current account or keyring');
+        }
+
+        if (keyring.type !== KEYRING_TYPE.HdKeyring) {
+            throw new WalletControllerError('Rotation mode only supported for HD wallets');
+        }
+
+        const network = getBitcoinLibJSNetwork(this.getNetworkType(), this.getChainType());
+        return addressRotationService.enableRotationMode(keyring.index, account.pubkey, network);
+    };
+
+    /**
+     * Disable rotation mode for current account
+     */
+    public disableRotationMode = async (): Promise<void> => {
+        const account = await this.getCurrentAccount();
+        if (!account) throw new WalletControllerError('No current account');
+
+        await addressRotationService.disableRotationMode(account.pubkey);
+    };
+
+    /**
+     * Get current hot wallet address for receiving
+     */
+    public getCurrentHotAddress = async (): Promise<RotatedAddress | null> => {
+        const account = await this.getCurrentAccount();
+        if (!account) return null;
+
+        return addressRotationService.getCurrentHotAddress(account.pubkey);
+    };
+
+    /**
+     * Manually rotate to next address
+     */
+    public rotateToNextAddress = async (): Promise<RotatedAddress> => {
+        const account = await this.getCurrentAccount();
+        const keyring = await this.getCurrentKeyring();
+
+        if (!account || !keyring) {
+            throw new WalletControllerError('No current account or keyring');
+        }
+
+        const network = getBitcoinLibJSNetwork(this.getNetworkType(), this.getChainType());
+        return addressRotationService.deriveNextHotAddress(keyring.index, account.pubkey, network);
+    };
+
+    /**
+     * Get rotation mode summary for UI
+     */
+    public getRotationModeSummary = async (): Promise<RotationModeSummary | null> => {
+        const account = await this.getCurrentAccount();
+        if (!account) return null;
+
+        return addressRotationService.getRotationSummary(account.pubkey);
+    };
+
+    /**
+     * Get full rotation history with balances
+     */
+    public getRotationHistory = async (): Promise<RotatedAddress[]> => {
+        const account = await this.getCurrentAccount();
+        if (!account) return [];
+
+        return addressRotationService.getRotationHistory(account.pubkey);
+    };
+
+    /**
+     * Refresh all rotation address balances
+     */
+    public refreshRotationBalances = async (): Promise<void> => {
+        const account = await this.getCurrentAccount();
+        if (!account) return;
+
+        await addressRotationService.refreshAddressBalances(account.pubkey, this.getChainType());
+    };
+
+    /**
+     * Prepare consolidation transaction (gather UTXOs from hot addresses to cold)
+     */
+    public prepareConsolidation = async (feeRate: number): Promise<ConsolidationParams> => {
+        const account = await this.getCurrentAccount();
+        const keyring = await this.getCurrentKeyring();
+
+        if (!account || !keyring) {
+            throw new WalletControllerError('No current account or keyring');
+        }
+
+        return addressRotationService.prepareConsolidation(keyring.index, account.pubkey, feeRate);
+    };
+
+    /**
+     * Execute consolidation to cold storage
+     */
+    public executeConsolidation = async (feeRate: number): Promise<ConsolidationResult> => {
+        const account = await this.getCurrentAccount();
+        const keyring = await this.getCurrentKeyring();
+
+        if (!account || !keyring) {
+            throw new WalletControllerError('No current account or keyring');
+        }
+
+        try {
+            // Get the bitcoin network
+            const network = getBitcoinLibJSNetwork(this.getNetworkType(), this.getChainType());
+
+            // Get addresses with balance for consolidation
+            const sourceAddresses = addressRotationService.getAddressesForConsolidation(account.pubkey);
+            if (sourceAddresses.length === 0) {
+                throw new WalletControllerError('No funds to consolidate');
+            }
+
+            // Get cold wallet address
+            const coldAddress = await addressRotationService.getColdWalletAddress(keyring.index, network);
+
+            // Fetch UTXOs from all source addresses
+            const addressList = sourceAddresses.map((a) => a.address);
+            await Web3API.setNetwork(this.getChainType());
+            const allUtxos = await Web3API.getAllUTXOsForAddresses(addressList);
+
+            if (allUtxos.length === 0) {
+                throw new WalletControllerError('No UTXOs found to consolidate');
+            }
+
+            // Calculate total input value
+            const totalInputValue = allUtxos.reduce((sum, u) => sum + u.value, 0n);
+
+            // Estimate fee: ~68 vbytes per P2TR input, ~43 vbytes for output, ~12 vbytes overhead
+            const estimatedVSize = 12 + allUtxos.length * 68 + 43;
+            const estimatedFee = BigInt(Math.ceil(estimatedVSize * feeRate));
+
+            // Check if there's enough to cover fees
+            if (totalInputValue <= estimatedFee) {
+                throw new WalletControllerError('Insufficient funds to cover transaction fees');
+            }
+
+            const outputValue = totalInputValue - estimatedFee;
+
+            // Build PSBT
+            const psbt = new Psbt({ network });
+
+            // Create a map of address -> pubkey for signing
+            const addressToPubkey = new Map<string, string>();
+            for (const addr of sourceAddresses) {
+                addressToPubkey.set(addr.address, addr.pubkey);
+            }
+
+            // Add inputs
+            const toSignInputs: ToSignInput[] = [];
+            for (let i = 0; i < allUtxos.length; i++) {
+                const utxo = allUtxos[i];
+                const address = utxo.scriptPubKey?.address || '';
+                const pubkey = addressToPubkey.get(address);
+
+                if (!pubkey) {
+                    throw new WalletControllerError(`No pubkey found for address ${address}`);
+                }
+
+                // For P2TR, we need the internal key (x-only pubkey)
+                const pubkeyBuffer = Buffer.from(pubkey, 'hex');
+                const internalKey = toXOnly(pubkeyBuffer);
+
+                psbt.addInput({
+                    hash: utxo.transactionId,
+                    index: utxo.outputIndex,
+                    witnessUtxo: {
+                        script: Buffer.from(utxo.scriptPubKey.hex, 'hex'),
+                        value: Number(utxo.value)
+                    },
+                    tapInternalKey: internalKey
+                });
+
+                toSignInputs.push({
+                    index: i,
+                    publicKey: pubkey
+                });
+            }
+
+            // Add output to cold wallet
+            psbt.addOutput({
+                address: coldAddress,
+                value: Number(outputValue)
+            });
+
+            // Get the consolidation keyring to sign
+            const consolidationKeyring = await addressRotationService.getConsolidationKeyring(
+                keyring.index,
+                account.pubkey,
+                network
+            );
+
+            // Sign all inputs
+            for (const input of toSignInputs) {
+                const wallet = consolidationKeyring.getWallet(input.publicKey);
+                if (!wallet) {
+                    throw new WalletControllerError(`Failed to get wallet for pubkey ${input.publicKey}`);
+                }
+
+                // Sign the input using the tweaked keypair for P2TR
+                const xOnlyPubkey = toXOnly(Buffer.from(input.publicKey, 'hex'));
+                const tweakedKeypair = wallet.keypair.tweak(
+                    tapTweakHash(xOnlyPubkey, undefined)
+                );
+                psbt.signInput(input.index, {
+                    publicKey: Buffer.from(input.publicKey, 'hex'),
+                    sign: (hash: Buffer) => {
+                        return tweakedKeypair.signSchnorr(hash);
+                    }
+                });
+            }
+
+            // Finalize all inputs
+            for (let i = 0; i < allUtxos.length; i++) {
+                psbt.finalizeInput(i);
+            }
+
+            // Extract and broadcast the transaction
+            const tx = psbt.extractTransaction();
+            const txHex = tx.toHex();
+            const txid = await this.pushTx(txHex);
+
+            // Mark addresses as consolidated
+            const consolidatedAmount = outputValue.toString();
+            await addressRotationService.markConsolidated(
+                account.pubkey,
+                addressList,
+                consolidatedAmount
+            );
+
+            return {
+                success: true,
+                txid,
+                consolidatedAmount,
+                fee: estimatedFee.toString(),
+                sourceAddressCount: sourceAddresses.length
+            };
+        } catch (error) {
+            return {
+                success: false,
+                error: String(error),
+                consolidatedAmount: '0',
+                fee: '0',
+                sourceAddressCount: 0
+            };
+        }
+    };
+
+    /**
+     * Update rotation mode settings
+     */
+    public updateRotationSettings = async (settings: RotationModeUpdateSettings): Promise<void> => {
+        const account = await this.getCurrentAccount();
+        if (!account) throw new WalletControllerError('No current account');
+
+        const state = addressRotationService.getRotationState(account.pubkey);
+        if (!state) throw new WalletControllerError('Rotation mode not enabled');
+
+        const updates: Partial<AddressRotationState> = {};
+        if (settings.autoRotate !== undefined) {
+            updates.autoRotate = settings.autoRotate;
+        }
+        if (settings.rotationThreshold !== undefined) {
+            updates.rotationThreshold = settings.rotationThreshold;
+        }
+
+        await addressRotationService.updateRotationState(account.pubkey, updates);
+    };
+
+    /**
+     * Get the cold wallet address (INTERNAL - for consolidation only)
+     */
+    public getColdWalletAddress = async (): Promise<string> => {
+        const keyring = await this.getCurrentKeyring();
+        if (!keyring) {
+            throw new WalletControllerError('No current keyring');
+        }
+
+        const network = getBitcoinLibJSNetwork(this.getNetworkType(), this.getChainType());
+        return addressRotationService.getColdWalletAddress(keyring.index, network);
     };
 }
 

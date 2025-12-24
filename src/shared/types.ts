@@ -1,4 +1,12 @@
+// Re-export AddressTypes and WalletNetworks from @btc-vision/transaction as the canonical types
+export { AddressTypes, WalletNetworks } from '@btc-vision/transaction';
 import { AddressTypes, WalletNetworks } from '@btc-vision/transaction';
+
+// Alias for backward compatibility - OPNetNetwork is now WalletNetworks
+export { WalletNetworks as OPNetNetwork } from '@btc-vision/transaction';
+
+// Type alias for AddressType - use AddressTypes everywhere
+export type AddressType = AddressTypes;
 
 // Legacy enum for backward compatibility with existing storage
 // This maps old numeric values to new string values for migration
@@ -34,6 +42,11 @@ export function isLegacyAddressType(value: unknown): value is LegacyAddressType 
     return typeof value === 'number' && value >= 0 && value <= 5;
 }
 
+// Convert string AddressTypes to storage-safe format and back
+export function addressTypesToStorage(addressType: AddressTypes): string {
+    return addressType;
+}
+
 export function storageToAddressTypes(stored: string | number): AddressTypes {
     // Handle legacy numeric types from old storage
     if (typeof stored === 'number') {
@@ -57,7 +70,7 @@ export enum NetworkType {
     REGTEST = 2
 }
 
-// Convert between NetworkType and OPNetNetwork
+// Convert between NetworkType and WalletNetworks (OPNetNetwork is an alias)
 export function networkTypeToOPNet(networkType: NetworkType): WalletNetworks {
     switch (networkType) {
         case NetworkType.MAINNET:
@@ -68,6 +81,19 @@ export function networkTypeToOPNet(networkType: NetworkType): WalletNetworks {
             return WalletNetworks.regtest;
         default:
             return WalletNetworks.mainnet;
+    }
+}
+
+export function opNetToNetworkType(opNetNetwork: WalletNetworks): NetworkType {
+    switch (opNetNetwork) {
+        case WalletNetworks.mainnet:
+            return NetworkType.MAINNET;
+        case WalletNetworks.testnet:
+            return NetworkType.TESTNET;
+        case WalletNetworks.regtest:
+            return NetworkType.REGTEST;
+        default:
+            return NetworkType.MAINNET;
     }
 }
 
