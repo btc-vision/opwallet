@@ -35,6 +35,7 @@ function ensureEccLib(): void {
 }
 
 let appStoreLoaded = false;
+let appStoreLoadPromise: Promise<void> | null = null;
 
 async function restoreAppState() {
     ensureEccLib();
@@ -77,13 +78,18 @@ async function restoreAppState() {
     appStoreLoaded = true;
 }
 
-void restoreAppState();
+appStoreLoadPromise = restoreAppState();
 
 // for page provider
 browserRuntimeOnConnect((port: Runtime.Port) => {
     if (port.name === 'popup' || port.name === 'notification' || port.name === 'tab') {
         const pm = new PortMessage(port);
-        pm.listen((data: RequestParams) => {
+        pm.listen(async (data: RequestParams) => {
+            // Wait for app store to be initialized before processing any requests
+            if (!appStoreLoaded && appStoreLoadPromise) {
+                await appStoreLoadPromise;
+            }
+
             if (data?.type) {
                 switch (data.type) {
                     case 'broadcast':
@@ -151,8 +157,9 @@ browserRuntimeOnConnect((port: Runtime.Port) => {
     }
 
     pm.listen(async (data) => {
-        if (!appStoreLoaded) {
-            // todo
+        // Wait for app store to be initialized before processing any requests
+        if (!appStoreLoaded && appStoreLoadPromise) {
+            await appStoreLoadPromise;
         }
 
         const sessionId = port.sender?.tab?.id;

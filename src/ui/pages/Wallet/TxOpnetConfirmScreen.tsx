@@ -980,12 +980,10 @@ export default function TxOpnetConfirmScreen() {
 
                         // Build consolidation transaction
                         // For consolidation, we send ALL funds minus fees to the cold wallet
-                        // We don't set 'from' because:
-                        // 1. We don't want a change output (sending exact amount)
-                        // 2. Setting 'from' to cold address causes script mismatch errors
-                        //    since the library expects 'from' to match the signer's derivable addresses
+                        // 'from' must be set to an address matching the signer (first source address)
+                        // Any small change will go back to this address (though we calculate to minimize change)
                         const consolidationParams: IFundingTransactionParameters = {
-                            amount: outputAmount, // This must be bigint - exact amount, no change
+                            amount: outputAmount, // This must be bigint - calculated to minimize change
                             utxos: utxos,
                             signer: primaryWallet.keypair,
                             mldsaSigner: primaryWallet.mldsaKeypair,
@@ -994,8 +992,8 @@ export default function TxOpnetConfirmScreen() {
                             priorityFee: 0n,
                             gasSatFee: 0n,
                             to: parameters.to,
+                            from: parameters.sourceAddresses[0], // Must match signer (primaryWallet)
                             addressRotation: addressRotation
-                            // Note: 'from' is intentionally omitted - no change output needed
                         };
 
                         const consolidationTx = await Web3API.transactionFactory.createBTCTransfer(consolidationParams);

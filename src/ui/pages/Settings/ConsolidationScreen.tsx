@@ -10,7 +10,7 @@ import { Layout, Header, Content, Column, Row, Button, Text, OPNetLoader } from 
 import { FeeRateBar } from '@/ui/components/FeeRateBar';
 import { useWallet, satoshisToAmount } from '@/ui/utils';
 import { useRotationHistory } from '@/ui/state/rotation/hooks';
-import { RotatedAddressStatus, ConsolidationParams } from '@/shared/types/AddressRotation';
+import { RotatedAddressStatus } from '@/shared/types/AddressRotation';
 import { RouteTypes, useNavigate } from '@/ui/pages/routeTypes';
 import { Action, SendBitcoinParameters, SourceType } from '@/shared/interfaces/RawTxParameters';
 
@@ -36,41 +36,54 @@ export default function ConsolidationScreen() {
 
     const [loading, setLoading] = useState(true);
     const [feeRate, setFeeRate] = useState(5);
-    const [params, setParams] = useState<ConsolidationParams | null>(null);
     const [coldAddress, setColdAddress] = useState('');
+    const [sourcePubkeys, setSourcePubkeys] = useState<string[]>([]);
 
+    // Get addresses with balance that can be consolidated
     const addressesWithBalance = history.filter(
         (a) =>
             (a.status === RotatedAddressStatus.RECEIVED || a.status === RotatedAddressStatus.ACTIVE) &&
             BigInt(a.currentBalance) > 0n
     );
 
-    const loadConsolidationParams = useCallback(async () => {
+    // Calculate total balance from addresses
+    const totalBalance = addressesWithBalance.reduce(
+        (sum, a) => sum + BigInt(a.currentBalance),
+        0n
+    );
+
+    // Count total UTXOs
+    const totalUtxos = addressesWithBalance.reduce(
+        (sum, a) => sum + (a.utxoCount || 1),
+        0
+    );
+
+    const loadData = useCallback(async () => {
         setLoading(true);
         try {
-            const consolidationParams = await wallet.prepareConsolidation(feeRate);
-            setParams(consolidationParams);
-
             // Get cold wallet address for destination
             const coldAddr = await wallet.getColdWalletAddress();
             setColdAddress(coldAddr);
+
+            // Get pubkeys for source addresses
+            const pubkeys = addressesWithBalance.map(a => a.pubkey);
+            setSourcePubkeys(pubkeys);
         } catch (error) {
-            console.error('Failed to prepare consolidation:', error);
-            setParams(null);
+            console.error('Failed to load consolidation data:', error);
         } finally {
             setLoading(false);
         }
-    }, [wallet, feeRate]);
+    }, [wallet, addressesWithBalance.length]);
 
     useEffect(() => {
-        void loadConsolidationParams();
-    }, [loadConsolidationParams]);
+        void loadData();
+    }, [loadData]);
 
     const handleConsolidate = () => {
-        if (!params || !coldAddress) return;
+        if (!coldAddress || addressesWithBalance.length === 0) return;
 
         // Calculate total input amount in satoshis
-        const totalAmount = Number(BigInt(params.totalAmount));
+        const totalAmount = Number(totalBalance);
 
         const rawTxInfo: SendBitcoinParameters = {
             action: Action.SendBitcoin,
@@ -82,20 +95,20 @@ export default function ConsolidationScreen() {
             to: coldAddress,
             inputAmount: totalAmount,
             sourceType: SourceType.CONSOLIDATION,
-            sourceAddresses: params.sourceAddresses,
-            sourcePubkeys: params.sourcePubkeys,
+            sourceAddresses: addressesWithBalance.map(a => a.address),
+            sourcePubkeys: sourcePubkeys,
             optimize: true
         };
 
         navigate(RouteTypes.TxOpnetConfirmScreen, { rawTxInfo });
     };
 
-    if (loading && !params) {
+    if (loading) {
         return (
             <Layout>
                 <Header onBack={() => window.history.go(-1)} title="Consolidate Funds" />
                 <Content style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <OPNetLoader size={70} text="Preparing" />
+                    <OPNetLoader size={70} text="Loading" />
                 </Content>
             </Layout>
         );
@@ -178,8 +191,12 @@ export default function ConsolidationScreen() {
                                 />
                             </Row>
                             <Text
-                                text={`${satoshisToAmount(Number(BigInt(params?.totalAmount || '0')))} BTC`}
+                                text={`${satoshisToAmount(Number(totalBalance))} BTC`}
                                 style={{ fontSize: 24, fontWeight: 600, color: colors.hotOrange }}
+                            />
+                            <Text
+                                text={`${totalUtxos} UTXO${totalUtxos !== 1 ? 's' : ''}`}
+                                style={{ fontSize: 11, color: colors.textFaded, marginTop: 4 }}
                             />
                         </div>
 
@@ -201,78 +218,32 @@ export default function ConsolidationScreen() {
                                 <Text text="Cold Storage" style={{ fontWeight: 500 }} />
                             </Row>
                             <Text
-                                text={`${satoshisToAmount(Number(BigInt(params?.netAmount || '0')))} BTC`}
-                                style={{ fontSize: 24, fontWeight: 600, color: colors.coldBlue }}
-                            />
-                            <Text
-                                text="After network fee"
-                                style={{ fontSize: 11, color: colors.textFaded, marginTop: 4 }}
+                                text="Hidden & Secure"
+                                style={{ fontSize: 14, color: colors.coldBlue }}
                             />
                         </div>
                     </div>
 
-                    {/* Fee selection - using the same FeeRateBar component as other screens */}
+                    {/* Fee selection */}
                     <Column gap="sm">
                         <Text text="Network Fee" style={{ fontSize: 12, color: colors.textFaded }} />
                         <FeeRateBar onChange={setFeeRate} />
                     </Column>
 
-                    {/* Transaction details */}
-                    <div
-                        style={{
-                            background: colors.containerBgFaded,
-                            borderRadius: '12px',
-                            padding: '14px'
-                        }}>
-                        <Row justifyBetween style={{ marginBottom: 8 }}>
-                            <Text text="Total amount" style={{ fontSize: 12, color: colors.textFaded }} />
-                            <Text
-                                text={`${satoshisToAmount(Number(BigInt(params?.totalAmount || '0')))} BTC`}
-                                style={{ fontSize: 12 }}
-                            />
-                        </Row>
-                        <Row justifyBetween style={{ marginBottom: 8 }}>
-                            <Text text="Network fee" style={{ fontSize: 12, color: colors.textFaded }} />
-                            <Text
-                                text={`-${satoshisToAmount(Number(BigInt(params?.estimatedFee || '0')))} BTC`}
-                                style={{ fontSize: 12, color: colors.error }}
-                            />
-                        </Row>
-                        <Row justifyBetween style={{ marginBottom: 8 }}>
-                            <Text text="UTXOs to consolidate" style={{ fontSize: 12, color: colors.textFaded }} />
-                            <Text text={`${params?.utxoCount || 0}`} style={{ fontSize: 12 }} />
-                        </Row>
-                        <div
-                            style={{
-                                height: 1,
-                                background: colors.containerBorder,
-                                margin: '12px 0'
-                            }}
-                        />
-                        <Row justifyBetween>
-                            <Text text="You receive" style={{ fontSize: 14, fontWeight: 600 }} />
-                            <Text
-                                text={`${satoshisToAmount(Number(BigInt(params?.netAmount || '0')))} BTC`}
-                                style={{ fontSize: 14, fontWeight: 600, color: colors.success }}
-                            />
-                        </Row>
-                    </div>
+                    {/* Note about fees */}
+                    <Text
+                        text="Exact fees will be calculated on the next screen based on the actual transaction."
+                        style={{ fontSize: 11, color: colors.textFaded, textAlign: 'center' }}
+                    />
 
                     {/* Consolidate button */}
                     <Button
                         preset="primary"
-                        text="Review Consolidation"
+                        text="Review Transaction"
                         onClick={handleConsolidate}
-                        disabled={!params || !coldAddress || BigInt(params.netAmount) <= 0n}
+                        disabled={!coldAddress || addressesWithBalance.length === 0}
                         style={{ marginTop: 10 }}
                     />
-
-                    {params && BigInt(params.netAmount) <= 0n && (
-                        <Text
-                            text="Fee exceeds available balance"
-                            style={{ fontSize: 12, color: colors.error, textAlign: 'center' }}
-                        />
-                    )}
                 </Column>
             </Content>
         </Layout>
