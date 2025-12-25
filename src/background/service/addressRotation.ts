@@ -37,10 +37,6 @@ class AddressRotationService extends EventEmitter {
     private store: RotationStore = { settings: {} };
     private initialized = false;
 
-    constructor() {
-        super();
-    }
-
     /**
      * Initialize the service - load state from browser storage
      */
@@ -126,7 +122,7 @@ class AddressRotationService extends EventEmitter {
         };
 
         // Derive the first hot address
-        const firstAddress = await this.deriveRotationAddress(
+        const firstAddress = this.deriveRotationAddress(
             serialized.mnemonic,
             serialized.passphrase || '',
             0,
@@ -145,7 +141,7 @@ class AddressRotationService extends EventEmitter {
         });
 
         // Initialize cold wallet info (derive but don't store the address)
-        const coldWallet = await this.deriveColdWalletInfo(
+        const coldWallet = this.deriveColdWalletInfo(
             serialized.mnemonic,
             serialized.passphrase || '',
             network
@@ -231,7 +227,7 @@ class AddressRotationService extends EventEmitter {
 
         // Derive new address
         const now = Date.now();
-        const newAddress = await this.deriveRotationAddress(
+        const newAddress = this.deriveRotationAddress(
             serialized.mnemonic,
             serialized.passphrase || '',
             newIndex,
@@ -272,10 +268,10 @@ class AddressRotationService extends EventEmitter {
      * Get cold wallet address (INTERNAL USE ONLY - never expose to user)
      * Returns the actual cold wallet address for transaction building
      */
-    getColdWalletAddress = async (
+    getColdWalletAddress = (
         keyringIndex: number,
         network: Network = networks.bitcoin
-    ): Promise<string> => {
+    ): string => {
         const keyring = keyringService.keyrings[keyringIndex];
         if (!keyring || keyring.type !== KEYRING_TYPE.HdKeyring) {
             throw new Error('Invalid HD keyring');
@@ -317,11 +313,11 @@ class AddressRotationService extends EventEmitter {
      * Get the next unused rotation address for change outputs
      * This derives a new address without activating it yet
      */
-    getNextUnusedRotationAddress = async (
+    getNextUnusedRotationAddress = (
         keyringIndex: number,
         accountPubkey: string,
         network: Network = networks.bitcoin
-    ): Promise<string> => {
+    ): string => {
         const keyring = keyringService.keyrings[keyringIndex];
         if (!keyring || keyring.type !== KEYRING_TYPE.HdKeyring) {
             throw new Error('Invalid HD keyring');
@@ -340,7 +336,7 @@ class AddressRotationService extends EventEmitter {
         // Derive the next unused index
         const nextIndex = state.maxUsedIndex + 1;
 
-        const newAddress = await this.deriveRotationAddress(
+        const newAddress = this.deriveRotationAddress(
             serialized.mnemonic,
             serialized.passphrase || '',
             nextIndex,
@@ -432,7 +428,8 @@ class AddressRotationService extends EventEmitter {
                 if (!addr) continue;
 
                 const current = balancesByAddress.get(addr) || { balance: 0n, utxoCount: 0 };
-                current.balance += BigInt(utxo.value);
+                // utxo.value is already bigint from Web3API
+                current.balance += utxo.value;
                 current.utxoCount += 1;
                 balancesByAddress.set(addr, current);
             }
@@ -500,11 +497,11 @@ class AddressRotationService extends EventEmitter {
     /**
      * Prepare consolidation transaction parameters
      */
-    prepareConsolidation = async (
+    prepareConsolidation = (
         keyringIndex: number,
         accountPubkey: string,
         feeRate: number
-    ): Promise<ConsolidationParams> => {
+    ): ConsolidationParams => {
         const addressesWithBalance = this.getAddressesForConsolidation(accountPubkey);
 
         if (addressesWithBalance.length === 0) {
@@ -545,11 +542,11 @@ class AddressRotationService extends EventEmitter {
      * Create an HdKeyring configured to sign for consolidation addresses
      * Returns a keyring with all rotation address indices that have balance
      */
-    getConsolidationKeyring = async (
+    getConsolidationKeyring = (
         keyringIndex: number,
         accountPubkey: string,
         network: Network
-    ): Promise<HdKeyring> => {
+    ): HdKeyring => {
         const addressesWithBalance = this.getAddressesForConsolidation(accountPubkey);
         if (addressesWithBalance.length === 0) {
             throw new Error('No addresses to consolidate');
@@ -583,10 +580,10 @@ class AddressRotationService extends EventEmitter {
      * Get the cold wallet keyring for signing withdrawals
      * Returns a keyring configured to sign from the cold wallet address
      */
-    getColdWalletKeyring = async (
+    getColdWalletKeyring = (
         keyringIndex: number,
         network: Network = networks.bitcoin
-    ): Promise<HdKeyring> => {
+    ): HdKeyring => {
         const keyring = keyringService.keyrings[keyringIndex];
         if (!keyring || keyring.type !== KEYRING_TYPE.HdKeyring) {
             throw new Error('Invalid HD keyring');
@@ -606,6 +603,107 @@ class AddressRotationService extends EventEmitter {
             activeIndexes: [COLD_WALLET_INDEX],
             addressType: AddressTypes.P2TR
         });
+    };
+
+    /**
+     * Get a rotation wallet keyring for a specific derivation index
+     * Used for getting signers for change addresses or specific rotation addresses
+     */
+    getRotationWalletByIndex = (
+        keyringIndex: number,
+        derivationIndex: number,
+        network: Network = networks.bitcoin
+    ): HdKeyring => {
+        const keyring = keyringService.keyrings[keyringIndex];
+        if (!keyring || keyring.type !== KEYRING_TYPE.HdKeyring) {
+            throw new Error('Invalid HD keyring');
+        }
+
+        const serialized = keyring.serialize() as HdKeyringSerializedOptions;
+        if (!serialized.mnemonic) {
+            throw new Error('No mnemonic found');
+        }
+
+        return new HdKeyring({
+            mnemonic: serialized.mnemonic,
+            passphrase: serialized.passphrase || '',
+            network,
+            securityLevel: MLDSASecurityLevel.LEVEL2,
+            activeIndexes: [derivationIndex],
+            addressType: AddressTypes.P2TR
+        });
+    };
+
+    /**
+     * Get the next unused rotation address along with its wallet data for signing
+     * Returns { address, pubkey, wif, mldsaPrivateKey, chainCode, derivationIndex }
+     */
+    getNextUnusedRotationWallet = (
+        keyringIndex: number,
+        accountPubkey: string,
+        network: Network = networks.bitcoin
+    ): {
+        address: string;
+        pubkey: string;
+        wif: string;
+        mldsaPrivateKey: string;
+        chainCode: string;
+        derivationIndex: number;
+    } => {
+        const keyring = keyringService.keyrings[keyringIndex];
+        if (!keyring || keyring.type !== KEYRING_TYPE.HdKeyring) {
+            throw new Error('Invalid HD keyring');
+        }
+
+        const serialized = keyring.serialize() as HdKeyringSerializedOptions;
+        if (!serialized.mnemonic) {
+            throw new Error('No mnemonic found');
+        }
+
+        // Get state to find next unused index
+        const state = this.store.settings[accountPubkey];
+        if (!state || !state.enabled) {
+            throw new Error('Rotation mode not enabled');
+        }
+
+        // Find next unused index (max used index + 1)
+        const nextIndex = state.maxUsedIndex + 1;
+
+        // Derive the address
+        const { address, pubkey } = this.deriveRotationAddress(
+            serialized.mnemonic,
+            serialized.passphrase || '',
+            nextIndex,
+            network
+        );
+
+        // Get the wallet for signing
+        const rotationKeyring = new HdKeyring({
+            mnemonic: serialized.mnemonic,
+            passphrase: serialized.passphrase || '',
+            network,
+            securityLevel: MLDSASecurityLevel.LEVEL2,
+            activeIndexes: [nextIndex],
+            addressType: AddressTypes.P2TR
+        });
+
+        const wallet = rotationKeyring.getWallet(pubkey);
+        if (!wallet) {
+            throw new Error('Failed to get rotation wallet');
+        }
+
+        const wif = wallet.keypair.toWIF();
+        const mldsaPrivateKey = wallet.mldsaKeypair?.privateKey?.toString('hex') || '';
+        const chainCode = Buffer.from(wallet.chainCode).toString('hex');
+
+        return {
+            address,
+            pubkey,
+            wif,
+            mldsaPrivateKey,
+            chainCode,
+            derivationIndex: nextIndex
+        };
     };
 
     /**
@@ -654,7 +752,7 @@ class AddressRotationService extends EventEmitter {
     /**
      * Get summary for UI display
      */
-    getRotationSummary = async (accountPubkey: string): Promise<RotationModeSummary | null> => {
+    getRotationSummary = (accountPubkey: string): RotationModeSummary | null => {
         const state = this.store.settings[accountPubkey];
         if (!state?.enabled) return null;
 
@@ -678,10 +776,11 @@ class AddressRotationService extends EventEmitter {
             .reduce((sum, a) => sum + BigInt(a.currentBalance), 0n);
 
         // Find the last rotation timestamp
-        const receivedAddresses = state.rotatedAddresses.filter((a) => a.receivedAt);
+        const receivedAddresses = state.rotatedAddresses
+            .filter((a): a is RotatedAddress & { receivedAt: number } => typeof a.receivedAt === 'number');
         const lastRotation =
             receivedAddresses.length > 0
-                ? Math.max(...receivedAddresses.map((a) => a.receivedAt!))
+                ? Math.max(...receivedAddresses.map((a) => a.receivedAt))
                 : undefined;
 
         return {
@@ -741,12 +840,12 @@ class AddressRotationService extends EventEmitter {
      * Derive a rotation address at a specific index
      * Uses taproot (P2TR) address type
      */
-    private deriveRotationAddress = async (
+    private deriveRotationAddress = (
         mnemonic: string,
         passphrase: string,
         index: number,
         network: Network
-    ): Promise<{ address: string; pubkey: string }> => {
+    ): { address: string; pubkey: string } => {
         // Create a temporary HdKeyring just for derivation
         // We use the change path (internal) for rotation addresses
         const tempKeyring = new HdKeyring({
@@ -783,11 +882,11 @@ class AddressRotationService extends EventEmitter {
     /**
      * Derive cold wallet info (but not the actual address for security)
      */
-    private deriveColdWalletInfo = async (
+    private deriveColdWalletInfo = (
         mnemonic: string,
         passphrase: string,
         network: Network
-    ): Promise<ColdWalletInfo> => {
+    ): ColdWalletInfo => {
         // Create a temporary keyring for cold wallet using the dedicated high index
         const coldKeyring = new HdKeyring({
             mnemonic,

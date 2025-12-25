@@ -35,7 +35,11 @@ export default function CreatePasswordScreen() {
     const { isNewAccount, isKeystone, isEthereum } = state;
     const [newPassword, setNewPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
-    const [disabled, setDisabled] = useState(true);
+
+    // Derive disabled state from password values instead of using useEffect
+    const disabled = useMemo(() => {
+        return !(newPassword && newPassword.length >= MIN_PASSWORD_LENGTH && newPassword === confirmPassword);
+    }, [newPassword, confirmPassword]);
 
     const tools = useTools();
     const [run, _] = useWalletRequest(wallet.boot.bind(wallet), {
@@ -58,15 +62,6 @@ export default function CreatePasswordScreen() {
     const btnClick = () => {
         void run(newPassword.trim());
     };
-
-    useEffect(() => {
-        setDisabled(true);
-
-        if (newPassword && newPassword.length >= MIN_PASSWORD_LENGTH && newPassword === confirmPassword) {
-            setDisabled(false);
-            return;
-        }
-    }, [newPassword, confirmPassword]);
 
     const strongText = useMemo(() => {
         if (!newPassword) {

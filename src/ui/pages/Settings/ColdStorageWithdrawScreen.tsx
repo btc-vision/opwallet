@@ -12,7 +12,7 @@ import { useWallet, satoshisToAmount, amountToSatoshis } from '@/ui/utils';
 import { RouteTypes, useNavigate } from '@/ui/pages/routeTypes';
 import { useRotationState, useRefreshRotation } from '@/ui/state/rotation/hooks';
 import Web3API from '@/shared/web3/Web3API';
-import { Action, SourceType } from '@/shared/interfaces/RawTxParameters';
+import { Action, SendBitcoinParameters, SourceType } from '@/shared/interfaces/RawTxParameters';
 
 const colors = {
     main: '#f37413',
@@ -123,8 +123,7 @@ export default function ColdStorageWithdrawScreen() {
     const handleWithdraw = () => {
         if (!validateInputs()) return;
 
-        // Navigate to TxOpnetConfirmScreen with SendBitcoinParameters
-        navigate(RouteTypes.TxOpnetConfirmScreen, {
+        const rawTxInfo: SendBitcoinParameters = {
             action: Action.SendBitcoin,
             header: 'Cold Storage Withdrawal',
             features: {},
@@ -132,11 +131,13 @@ export default function ColdStorageWithdrawScreen() {
             feeRate: parseInt(feeRate),
             priorityFee: 0n,
             to: destinationAddress.trim(),
-            inputAmount: amountToSatoshis(amount),
+            inputAmount: parseFloat(amount), // BTC amount, will be converted to satoshis by TxOpnetConfirmScreen
             from: coldWalletAddress,
             sourceType: SourceType.COLD_STORAGE,
             optimize: true
-        });
+        };
+
+        navigate(RouteTypes.TxOpnetConfirmScreen, { rawTxInfo });
     };
 
     return (

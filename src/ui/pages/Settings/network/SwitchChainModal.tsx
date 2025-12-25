@@ -200,6 +200,7 @@ function ChainGroup(props: {
     useEffect(() => {
         if (group.type === 'list') {
             const hasSelected = group.items?.find((v) => v.enum == currentChain?.enum);
+            // eslint-disable-next-line react-hooks/set-state-in-effect -- Sync fold state with selection
             setFolded(!hasSelected);
         }
     }, [currentChain, group.type, group.items]);
@@ -358,6 +359,7 @@ export const SwitchChainModal = ({ onClose }: { onClose: () => void }) => {
     };
 
     useEffect(() => {
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- Async data loading on mount
         void loadData();
     }, []);
 

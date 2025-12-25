@@ -41,7 +41,7 @@ function Step1({ onNext }: { onNext: () => void }) {
             return navigate(RouteTypes.WelcomeScreen);
         }
         window.history.go(-1);
-    }, []);
+    }, [state?.fromUnlock, navigate]);
 
     return (
         <Layout>
@@ -197,16 +197,6 @@ function Step3({
         navigate(RouteTypes.MainScreen);
     };
 
-    useEffect(() => {
-        scanVaultAddress(1);
-    }, []);
-    useEffect(() => {
-        if (contextData.customHdPath.length >= 13) {
-            scanVaultAddress(1);
-            setScanned(false);
-        }
-    }, [contextData.customHdPath]);
-
     const scanVaultAddress = async (accountCount = 1, isScanned = false) => {
         tools.showLoading(true);
         setGroups([]);
@@ -294,6 +284,19 @@ function Step3({
         }
         tools.showLoading(false);
     };
+
+    useEffect(() => {
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- Async data loading on mount
+        scanVaultAddress(1);
+    }, []);
+    useEffect(() => {
+        if (contextData.customHdPath.length >= 13) {
+            // eslint-disable-next-line react-hooks/set-state-in-effect -- Async data loading on path change
+            scanVaultAddress(1);
+             
+            setScanned(false);
+        }
+    }, [contextData.customHdPath]);
 
     const getItems = (groups: Group[], addressType: AddressTypes) => {
         // if (!groups[addressType]) {

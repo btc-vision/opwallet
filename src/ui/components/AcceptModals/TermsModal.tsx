@@ -46,19 +46,27 @@ export function TermsOfServiceModal({
 
     const bothScrolled = tosScrolledBottom && privacyScrolledBottom;
 
-    // Reset gating states when modal opens
+    // Track previous open state to reset when modal opens (React recommended pattern)
+    const [prevOpen, setPrevOpen] = useState(open);
+    const shouldResetRef = open !== prevOpen && open;
+    if (open !== prevOpen) {
+        setPrevOpen(open);
+        if (open) {
+            // reset gating every time modal opens
+            setTosScrolledBottom(false);
+            setPrivacyScrolledBottom(false);
+            setTosInteracted(false);
+            setPrivacyInteracted(false);
+            setActiveDoc('tos');
+        }
+    }
+
+    // Handle ref mutation in effect to avoid mutating during render
     useEffect(() => {
-        if (!open) return;
-
-        // reset gating every time modal opens
-        setTosScrolledBottom(false);
-        setPrivacyScrolledBottom(false);
-        setTosInteracted(false);
-        setPrivacyInteracted(false);
-
-        setActiveDoc('tos');
-        switchingDocRef.current = true;
-    }, [open]);
+        if (shouldResetRef) {
+            switchingDocRef.current = true;
+        }
+    }, [shouldResetRef]);
 
     const isAtBottom = (el: HTMLDivElement) => {
         const tolerancePx = 8;

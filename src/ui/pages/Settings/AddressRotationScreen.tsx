@@ -36,7 +36,6 @@ const colors = {
     textFaded: 'rgba(219, 219, 219, 0.7)',
     buttonBg: '#434343',
     buttonHoverBg: 'rgba(85, 85, 85, 0.3)',
-    containerBg: '#434343',
     containerBgFaded: '#292929',
     containerBorder: '#303030',
     success: '#4ade80',
@@ -65,15 +64,12 @@ export default function AddressRotationScreen() {
     const [enabling, setEnabling] = useState(false);
     const [coldWalletAddress, setColdWalletAddress] = useState<string>('');
 
-    // If keyring rotation mode is enabled, the disable button should not be shown
-    // (rotation mode is permanent for this wallet)
     const canDisable = !isKeyringRotationMode;
 
     useEffect(() => {
         void refreshRotation();
     }, [refreshRotation]);
 
-    // Fetch cold wallet address when rotation is enabled
     useEffect(() => {
         const fetchColdAddress = async () => {
             if (rotationState.enabled) {
@@ -93,9 +89,9 @@ export default function AddressRotationScreen() {
         setCopying(true);
         try {
             await copyToClipboard(rotationState.currentAddress.address);
-            tools.toastSuccess('Address copied to clipboard');
+            tools.toastSuccess('Address copied');
         } catch {
-            tools.toastError('Failed to copy address');
+            tools.toastError('Failed to copy');
         } finally {
             setTimeout(() => setCopying(false), 1500);
         }
@@ -106,9 +102,9 @@ export default function AddressRotationScreen() {
         setCopyingCold(true);
         try {
             await copyToClipboard(coldWalletAddress);
-            tools.toastSuccess('Cold wallet address copied');
+            tools.toastSuccess('Cold address copied');
         } catch {
-            tools.toastError('Failed to copy address');
+            tools.toastError('Failed to copy');
         } finally {
             setTimeout(() => setCopyingCold(false), 1500);
         }
@@ -119,9 +115,9 @@ export default function AddressRotationScreen() {
         try {
             const success = await enableRotation();
             if (success) {
-                tools.toastSuccess('Address rotation enabled');
+                tools.toastSuccess('Rotation enabled');
             } else {
-                tools.toastError('Failed to enable rotation mode');
+                tools.toastError('Failed to enable');
             }
         } catch (error) {
             tools.toastError(String(error));
@@ -134,7 +130,7 @@ export default function AddressRotationScreen() {
         try {
             const success = await disableRotation();
             if (success) {
-                tools.toastSuccess('Address rotation disabled');
+                tools.toastSuccess('Rotation disabled');
             }
         } catch (error) {
             tools.toastError(String(error));
@@ -146,9 +142,9 @@ export default function AddressRotationScreen() {
         try {
             const newAddr = await rotateToNext();
             if (newAddr) {
-                tools.toastSuccess('Rotated to new address');
+                tools.toastSuccess('New address generated');
             } else {
-                tools.toastError('Failed to rotate address');
+                tools.toastError('Failed to rotate');
             }
         } catch (error) {
             tools.toastError(String(error));
@@ -162,7 +158,6 @@ export default function AddressRotationScreen() {
         await updateSettings({ autoRotate: newValue });
     };
 
-    // Loading state
     if (rotationState.loading && !rotationState.summary) {
         return (
             <Layout>
@@ -174,7 +169,6 @@ export default function AddressRotationScreen() {
         );
     }
 
-    // Not supported (not HD wallet)
     if (!rotationState.isSupported) {
         return (
             <Layout>
@@ -189,15 +183,10 @@ export default function AddressRotationScreen() {
                                 padding: '20px',
                                 textAlign: 'center'
                             }}>
-                            <InfoCircleOutlined
-                                style={{ fontSize: 48, color: colors.warning, marginBottom: 16 }}
-                            />
+                            <InfoCircleOutlined style={{ fontSize: 48, color: colors.warning, marginBottom: 16 }} />
+                            <Text text="HD Wallet Required" style={{ fontSize: 18, fontWeight: 600, marginBottom: 8 }} />
                             <Text
-                                text="HD Wallet Required"
-                                style={{ fontSize: 18, fontWeight: 600, marginBottom: 8 }}
-                            />
-                            <Text
-                                text="Address rotation mode requires an HD wallet created from a mnemonic phrase. This feature is not available for imported private key wallets."
+                                text="Address rotation requires an HD wallet created from a mnemonic phrase."
                                 preset="sub"
                                 style={{ textAlign: 'center' }}
                             />
@@ -208,14 +197,12 @@ export default function AddressRotationScreen() {
         );
     }
 
-    // Not enabled - show enable screen
     if (!rotationState.enabled) {
         return (
             <Layout>
                 <Header onBack={() => window.history.go(-1)} title="Address Rotation" />
                 <Content>
                     <Column gap="lg" style={{ padding: '20px' }}>
-                        {/* Feature explanation */}
                         <div
                             style={{
                                 background: colors.containerBgFaded,
@@ -236,28 +223,24 @@ export default function AddressRotationScreen() {
                                 }}>
                                 <SwapOutlined style={{ fontSize: 36, color: 'white' }} />
                             </div>
+                            <Text text="Enhanced Privacy" style={{ fontSize: 20, fontWeight: 600, marginBottom: 12 }} />
                             <Text
-                                text="Enhanced Privacy Mode"
-                                style={{ fontSize: 20, fontWeight: 600, marginBottom: 12 }}
-                            />
-                            <Text
-                                text="Generate a fresh receiving address for every transaction. This is how Bitcoin was designed to be used - never reuse addresses."
+                                text="Generate fresh receiving addresses for every transaction. Never reuse addresses."
                                 preset="sub"
                                 style={{ textAlign: 'center', lineHeight: 1.5 }}
                             />
                         </div>
 
-                        {/* Features list */}
                         <div style={{ background: colors.containerBgFaded, borderRadius: '14px', overflow: 'hidden' }}>
                             <FeatureItem
                                 icon={<ThunderboltOutlined style={{ color: colors.hotOrange }} />}
                                 title="Auto-Rotating Addresses"
-                                description="New address generated automatically when funds are received"
+                                description="New address generated when funds received"
                             />
                             <FeatureItem
                                 icon={<LockOutlined style={{ color: colors.coldBlue }} />}
                                 title="Hidden Cold Storage"
-                                description="Your cold wallet address is never revealed for maximum security"
+                                description="Cold wallet address never revealed"
                                 isLast
                             />
                         </div>
@@ -275,7 +258,6 @@ export default function AddressRotationScreen() {
         );
     }
 
-    // Enabled - show management screen
     const { summary, currentAddress } = rotationState;
 
     return (
@@ -292,223 +274,168 @@ export default function AddressRotationScreen() {
             />
             <Content>
                 <Column gap="md" style={{ padding: '16px' }}>
-                    {/* Current Hot Address Card */}
                     <div
                         style={{
-                            background: `linear-gradient(145deg, ${colors.containerBgFaded} 0%, ${colors.containerBg}40 100%)`,
-                            border: `1px solid ${colors.containerBorder}`,
+                            background: colors.containerBgFaded,
                             borderRadius: '16px',
                             padding: '20px',
-                            position: 'relative',
-                            overflow: 'hidden'
+                            textAlign: 'center'
                         }}>
-                        {/* Hot badge */}
-                        <div
-                            style={{
-                                position: 'absolute',
-                                top: 12,
-                                right: 12,
-                                background: colors.hotOrange,
-                                color: 'white',
-                                fontSize: 10,
-                                fontWeight: 600,
-                                padding: '4px 8px',
-                                borderRadius: '6px',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: 4
-                            }}>
-                            <ThunderboltOutlined style={{ fontSize: 10 }} />
-                            HOT WALLET
-                        </div>
+                        <Row style={{ justifyContent: 'center', gap: 8, marginBottom: 16 }}>
+                            <ThunderboltOutlined style={{ color: colors.hotOrange, fontSize: 14 }} />
+                            <Text
+                                text={`Address #${(summary?.currentIndex || 0) + 1}`}
+                                style={{ fontSize: 13, color: colors.hotOrange, fontWeight: 600 }}
+                            />
+                        </Row>
 
-                        <Text
-                            text="Current Receiving Address"
-                            style={{ fontSize: 12, color: colors.textFaded, marginBottom: 12 }}
-                        />
-
-                        {/* QR Code */}
                         <div
                             style={{
                                 background: 'white',
-                                padding: 16,
+                                padding: 12,
                                 borderRadius: 12,
                                 display: 'inline-block',
                                 marginBottom: 16
                             }}>
-                            <QRCodeSVG
-                                value={currentAddress?.address || ''}
-                                size={160}
-                                level="M"
-                                includeMargin={false}
-                            />
+                            <QRCodeSVG value={currentAddress?.address || ''} size={140} level="M" />
                         </div>
 
-                        {/* Address */}
                         <div
                             onClick={handleCopyAddress}
                             style={{
                                 background: colors.buttonHoverBg,
                                 borderRadius: 10,
-                                padding: '12px 14px',
+                                padding: '10px 14px',
                                 cursor: 'pointer',
                                 display: 'flex',
                                 alignItems: 'center',
-                                gap: 10,
-                                marginBottom: 12
+                                justifyContent: 'center',
+                                gap: 8,
+                                marginBottom: 16
                             }}>
                             <Text
                                 text={currentAddress?.address || ''}
                                 style={{
-                                    fontSize: 12,
+                                    fontSize: 11,
                                     fontFamily: 'monospace',
-                                    flex: 1,
-                                    wordBreak: 'break-all'
+                                    wordBreak: 'break-all',
+                                    textAlign: 'center'
                                 }}
                             />
                             {copying ? (
-                                <CheckCircleFilled style={{ color: colors.success, fontSize: 16 }} />
+                                <CheckCircleFilled style={{ color: colors.success, fontSize: 14, flexShrink: 0 }} />
                             ) : (
-                                <CopyOutlined style={{ color: colors.textFaded, fontSize: 16 }} />
+                                <CopyOutlined style={{ color: colors.textFaded, fontSize: 14, flexShrink: 0 }} />
                             )}
                         </div>
 
-                        {/* Index indicator */}
-                        <Row justifyBetween>
-                            <Text
-                                text={`Address #${(summary?.currentIndex || 0) + 1}`}
-                                style={{ fontSize: 11, color: colors.textFaded }}
-                            />
-                            <Button
-                                preset="default"
-                                text={rotating ? 'Rotating...' : 'Rotate Now'}
-                                icon={<SwapOutlined />}
-                                onClick={handleRotate}
-                                disabled={rotating}
-                                style={{ fontSize: 12 }}
-                            />
-                        </Row>
+                        <Button
+                            preset="primary"
+                            text={rotating ? 'Generating...' : 'New Address'}
+                            icon={<SwapOutlined />}
+                            onClick={handleRotate}
+                            disabled={rotating}
+                            style={{ width: '100%' }}
+                        />
                     </div>
 
-                    {/* Cold Storage Card */}
                     <div
                         style={{
                             background: `linear-gradient(145deg, ${colors.coldBlue}15 0%, ${colors.coldBlue}08 100%)`,
                             border: `1px solid ${colors.coldBlue}30`,
-                            borderRadius: '16px',
-                            padding: '16px'
+                            borderRadius: '14px',
+                            padding: '14px'
                         }}>
-                        <Row style={{ alignItems: 'flex-start', gap: 12, marginBottom: 12 }}>
+                        <Row style={{ alignItems: 'center', gap: 12 }}>
                             <div
                                 style={{
-                                    width: 44,
-                                    height: 44,
-                                    borderRadius: 12,
+                                    width: 40,
+                                    height: 40,
+                                    borderRadius: 10,
                                     background: `${colors.coldBlue}20`,
                                     display: 'flex',
                                     alignItems: 'center',
                                     justifyContent: 'center'
                                 }}>
-                                <SafetyCertificateOutlined style={{ fontSize: 22, color: colors.coldBlue }} />
+                                <SafetyCertificateOutlined style={{ fontSize: 20, color: colors.coldBlue }} />
                             </div>
                             <Column style={{ flex: 1 }}>
-                                <Row justifyBetween style={{ marginBottom: 4 }}>
-                                    <Text text="Cold Storage" style={{ fontWeight: 600, fontSize: 14 }} />
-                                    <LockOutlined style={{ fontSize: 12, color: colors.coldBlue }} />
-                                </Row>
+                                <Text text="Cold Storage" style={{ fontWeight: 600, fontSize: 13 }} />
                                 <Text
                                     text={`${satoshisToAmount(Number(BigInt(summary?.coldWalletBalance || '0')))} BTC`}
-                                    style={{ fontSize: 18, fontWeight: 600, color: colors.coldBlue }}
+                                    style={{ fontSize: 16, fontWeight: 600, color: colors.coldBlue }}
                                 />
                             </Column>
+                            {BigInt(summary?.coldWalletBalance || '0') > 0n && (
+                                <Button
+                                    preset="default"
+                                    text="Withdraw"
+                                    onClick={() => navigate(RouteTypes.ColdStorageWithdrawScreen)}
+                                    style={{
+                                        fontSize: 12,
+                                        padding: '6px 12px',
+                                        background: `${colors.coldBlue}20`,
+                                        borderColor: `${colors.coldBlue}40`,
+                                        color: colors.coldBlue
+                                    }}
+                                />
+                            )}
                         </Row>
-
-                        {/* Cold wallet address display */}
                         {coldWalletAddress && (
                             <div
                                 onClick={handleCopyColdAddress}
                                 style={{
                                     background: colors.buttonHoverBg,
-                                    borderRadius: 10,
-                                    padding: '10px 12px',
+                                    borderRadius: 8,
+                                    padding: '8px 10px',
                                     cursor: 'pointer',
                                     display: 'flex',
                                     alignItems: 'center',
-                                    gap: 10,
-                                    marginBottom: 12
+                                    gap: 8,
+                                    marginTop: 10
                                 }}>
                                 <Text
-                                    text={coldWalletAddress}
-                                    style={{
-                                        fontSize: 11,
-                                        fontFamily: 'monospace',
-                                        flex: 1,
-                                        wordBreak: 'break-all',
-                                        color: colors.textFaded
-                                    }}
+                                    text={`${coldWalletAddress.slice(0, 14)}...${coldWalletAddress.slice(-14)}`}
+                                    style={{ fontSize: 10, fontFamily: 'monospace', flex: 1, color: colors.textFaded }}
                                 />
                                 {copyingCold ? (
-                                    <CheckCircleFilled style={{ color: colors.success, fontSize: 14 }} />
+                                    <CheckCircleFilled style={{ color: colors.success, fontSize: 12 }} />
                                 ) : (
-                                    <CopyOutlined style={{ color: colors.textFaded, fontSize: 14 }} />
+                                    <CopyOutlined style={{ color: colors.textFaded, fontSize: 12 }} />
                                 )}
                             </div>
                         )}
-
-                        {/* Withdraw button */}
-                        {BigInt(summary?.coldWalletBalance || '0') > 0n && (
-                            <Button
-                                preset="default"
-                                text="Withdraw from Cold Storage"
-                                onClick={() => navigate(RouteTypes.ColdStorageWithdrawScreen)}
-                                style={{
-                                    width: '100%',
-                                    background: `${colors.coldBlue}20`,
-                                    borderColor: `${colors.coldBlue}40`,
-                                    color: colors.coldBlue
-                                }}
-                            />
-                        )}
                     </div>
 
-                    {/* Stats Grid */}
-                    <div
-                        style={{
-                            display: 'grid',
-                            gridTemplateColumns: '1fr 1fr',
-                            gap: 10
-                        }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                         <StatCard
                             label="Hot Addresses"
                             value={summary?.totalRotatedAddresses?.toString() || '0'}
-                            subValue={`${summary?.addressesWithBalance || 0} with balance`}
+                            sub={`${summary?.addressesWithBalance || 0} with balance`}
                         />
                         <StatCard
                             label="Hot Balance"
-                            value={`${satoshisToAmount(Number(BigInt(summary?.totalHotBalance || '0')))} BTC`}
-                            subValue="Pending consolidation"
+                            value={satoshisToAmount(Number(BigInt(summary?.totalHotBalance || '0')))}
+                            sub="BTC to consolidate"
                         />
                     </div>
 
-                    {/* Action Buttons */}
-                    <div style={{ background: colors.containerBgFaded, borderRadius: '14px', overflow: 'hidden' }}>
-                        <ActionItem
+                    <div style={{ background: colors.containerBgFaded, borderRadius: '12px', overflow: 'hidden' }}>
+                        <ActionRow
                             icon={<HistoryOutlined style={{ color: colors.main }} />}
                             title="View History"
-                            description={`${summary?.totalRotatedAddresses || 0} addresses rotated`}
                             onClick={() => navigate(RouteTypes.RotationHistoryScreen)}
                         />
-                        <ActionItem
+                        <ActionRow
                             icon={<SwapOutlined style={{ color: colors.success }} />}
                             title="Consolidate Funds"
-                            description={`${satoshisToAmount(Number(BigInt(summary?.pendingConsolidation || '0')))} BTC ready`}
+                            sub={`${satoshisToAmount(Number(BigInt(summary?.pendingConsolidation || '0')))} BTC`}
                             onClick={() => navigate(RouteTypes.ConsolidationScreen)}
                             disabled={BigInt(summary?.pendingConsolidation || '0') === 0n}
                         />
-                        <ActionItem
+                        <ActionRow
                             icon={<SettingOutlined style={{ color: colors.textFaded }} />}
                             title="Auto-Rotate"
-                            description="Rotate automatically when funds received"
                             isToggle
                             toggleValue={summary?.autoRotate}
                             onToggle={handleToggleAutoRotate}
@@ -516,54 +443,25 @@ export default function AddressRotationScreen() {
                         />
                     </div>
 
-                    {/* Disable button - only shown if rotation mode was NOT set at wallet creation */}
                     {canDisable && (
                         <Button
                             preset="default"
-                            text="Disable Rotation Mode"
+                            text="Disable Rotation"
                             onClick={handleDisable}
                             style={{
-                                marginTop: 10,
+                                marginTop: 8,
                                 background: 'transparent',
                                 border: `1px solid ${colors.error}40`,
-                                color: colors.error
+                                color: colors.error,
+                                fontSize: 13
                             }}
                         />
-                    )}
-
-                    {/* Show permanent mode indicator when keyring rotation mode is enabled */}
-                    {isKeyringRotationMode && (
-                        <div
-                            style={{
-                                marginTop: 16,
-                                padding: '12px 16px',
-                                background: `linear-gradient(135deg, ${colors.success}15 0%, ${colors.success}08 100%)`,
-                                border: `1px solid ${colors.success}40`,
-                                borderRadius: 12,
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: 10
-                            }}>
-                            <CheckCircleFilled style={{ color: colors.success, fontSize: 18 }} />
-                            <Column>
-                                <Text
-                                    text="Privacy Mode Active"
-                                    style={{ fontSize: 13, fontWeight: 600, color: colors.success }}
-                                />
-                                <Text
-                                    text="This wallet was created with privacy mode permanently enabled"
-                                    style={{ fontSize: 11, color: colors.textFaded }}
-                                />
-                            </Column>
-                        </div>
                     )}
                 </Column>
             </Content>
         </Layout>
     );
 }
-
-// Helper Components
 
 function FeatureItem({
     icon,
@@ -606,25 +504,20 @@ function FeatureItem({
     );
 }
 
-function StatCard({ label, value, subValue }: { label: string; value: string; subValue: string }) {
+function StatCard({ label, value, sub }: { label: string; value: string; sub: string }) {
     return (
-        <div
-            style={{
-                background: colors.containerBgFaded,
-                borderRadius: 12,
-                padding: 14
-            }}>
-            <Text text={label} style={{ fontSize: 11, color: colors.textFaded }} />
-            <Text text={value} style={{ fontSize: 18, fontWeight: 600, marginTop: 4 }} />
-            <Text text={subValue} style={{ fontSize: 10, color: colors.textFaded, marginTop: 2 }} />
+        <div style={{ background: colors.containerBgFaded, borderRadius: 10, padding: 12 }}>
+            <Text text={label} style={{ fontSize: 10, color: colors.textFaded }} />
+            <Text text={value} style={{ fontSize: 16, fontWeight: 600, marginTop: 2 }} />
+            <Text text={sub} style={{ fontSize: 9, color: colors.textFaded, marginTop: 1 }} />
         </div>
     );
 }
 
-function ActionItem({
+function ActionRow({
     icon,
     title,
-    description,
+    sub,
     onClick,
     disabled,
     isToggle,
@@ -634,7 +527,7 @@ function ActionItem({
 }: {
     icon: React.ReactNode;
     title: string;
-    description: string;
+    sub?: string;
     onClick?: () => void;
     disabled?: boolean;
     isToggle?: boolean;
@@ -648,53 +541,51 @@ function ActionItem({
             style={{
                 display: 'flex',
                 alignItems: 'center',
-                padding: '14px 16px',
-                gap: 12,
+                padding: '12px 14px',
+                gap: 10,
                 cursor: disabled ? 'default' : 'pointer',
                 opacity: disabled ? 0.5 : 1,
-                borderBottom: isLast ? 'none' : `1px solid ${colors.containerBorder}`,
-                transition: 'background 0.15s'
+                borderBottom: isLast ? 'none' : `1px solid ${colors.containerBorder}`
             }}>
             <div
                 style={{
-                    width: 36,
-                    height: 36,
-                    borderRadius: 10,
+                    width: 32,
+                    height: 32,
+                    borderRadius: 8,
                     background: colors.buttonHoverBg,
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    fontSize: 16
+                    fontSize: 14
                 }}>
                 {icon}
             </div>
             <Column style={{ flex: 1 }}>
-                <Text text={title} style={{ fontWeight: 500, fontSize: 14 }} />
-                <Text text={description} preset="sub" style={{ fontSize: 11, marginTop: 2 }} />
+                <Text text={title} style={{ fontWeight: 500, fontSize: 13 }} />
+                {sub && <Text text={sub} preset="sub" style={{ fontSize: 10, marginTop: 1 }} />}
             </Column>
             {isToggle ? (
                 <div
                     style={{
-                        width: 44,
-                        height: 24,
-                        borderRadius: 12,
+                        width: 40,
+                        height: 22,
+                        borderRadius: 11,
                         background: toggleValue ? colors.main : colors.buttonBg,
-                        padding: 2,
-                        transition: 'background 0.2s'
+                        padding: 2
                     }}>
                     <div
                         style={{
-                            width: 20,
-                            height: 20,
-                            borderRadius: 10,
+                            width: 18,
+                            height: 18,
+                            borderRadius: 9,
                             background: 'white',
-                            transform: toggleValue ? 'translateX(20px)' : 'translateX(0)',
+                            transform: toggleValue ? 'translateX(18px)' : 'translateX(0)',
                             transition: 'transform 0.2s'
                         }}
                     />
                 </div>
             ) : (
-                <RightOutlined style={{ fontSize: 12, color: colors.textFaded }} />
+                <RightOutlined style={{ fontSize: 11, color: colors.textFaded }} />
             )}
         </div>
     );

@@ -281,7 +281,8 @@ class TransactionStatusPoller {
                 const addr = utxo.scriptPubKey?.address || '';
                 if (!addr) continue;
                 const current = balancesByAddress.get(addr) || 0n;
-                balancesByAddress.set(addr, current + BigInt(utxo.value));
+                // utxo.value is already bigint from Web3API
+                balancesByAddress.set(addr, current + utxo.value);
             }
 
             // Check current hot address for new funds

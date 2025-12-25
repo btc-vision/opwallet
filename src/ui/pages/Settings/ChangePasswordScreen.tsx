@@ -15,7 +15,6 @@ export default function ChangePasswordScreen() {
     const [originPassword, setOriginPassword] = useState('');
     const [newPassword, setNewPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
-    const [disabled, setDisabled] = useState(true);
     const wallet = useWallet();
     const tools = useTools();
 
@@ -52,12 +51,9 @@ export default function ChangePasswordScreen() {
         }
     }, [newPassword, confirmPassword]);
 
-    useEffect(() => {
-        if (originPassword.length > 0 && newPassword.length >= MIN_PASSWORD_LENGTH && newPassword === confirmPassword) {
-            setDisabled(false);
-        } else {
-            setDisabled(true);
-        }
+    // Derive disabled from password values
+    const disabled = useMemo(() => {
+        return !(originPassword.length > 0 && newPassword.length >= MIN_PASSWORD_LENGTH && newPassword === confirmPassword);
     }, [originPassword, newPassword, confirmPassword]);
 
     const verify = async () => {

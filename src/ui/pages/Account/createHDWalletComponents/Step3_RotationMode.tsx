@@ -254,7 +254,7 @@ function OptionCard({
                         width: 56,
                         height: 56,
                         borderRadius: 14,
-                        background: option.id === 'privacy' ? `${colors.privacyBlue}20` : `${colors.containerBg}`,
+                        background: option.id === 'privacy' ? `${colors.privacyBlue}20` : colors.containerBg,
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center'

@@ -50,7 +50,7 @@ export function useCreateAccountCallback() {
             passphrase: string,
             addressType: AddressTypes,
             accountCount: number,
-            rotationModeEnabled = false
+            rotationModeEnabled?: boolean
         ) => {
             await wallet.createKeyringWithMnemonics(
                 mnemonics,

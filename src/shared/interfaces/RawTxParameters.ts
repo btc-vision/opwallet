@@ -82,7 +82,8 @@ export enum SourceType {
     CSV1 = 'csv1',
     P2WDA = 'p2wda',
     COLD_STORAGE = 'cold_storage',
-    CONSOLIDATION = 'consolidation'
+    CONSOLIDATION = 'consolidation',
+    ROTATION_ALL = 'rotation_all' // Send from all rotation addresses (hot + cold)
 }
 
 export interface NFTMetadata {

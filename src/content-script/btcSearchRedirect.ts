@@ -163,9 +163,9 @@ async function checkAndShowBanner(): Promise<void> {
 
     // Check if OPNet browser is enabled
     try {
-        const response = (await browser.runtime.sendMessage({
+        const response: { enabled?: boolean } | undefined = await browser.runtime.sendMessage({
             type: 'isOpnetBrowserEnabled'
-        })) as { enabled?: boolean } | undefined;
+        });
 
         if (!response?.enabled) {
             return;

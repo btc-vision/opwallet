@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import {
     SafetyCertificateOutlined,
     ArrowDownOutlined,
@@ -7,11 +7,12 @@ import {
 } from '@ant-design/icons';
 
 import { Layout, Header, Content, Column, Row, Button, Text, OPNetLoader } from '@/ui/components';
+import { FeeRateBar } from '@/ui/components/FeeRateBar';
 import { useWallet, satoshisToAmount } from '@/ui/utils';
 import { useRotationHistory } from '@/ui/state/rotation/hooks';
 import { RotatedAddressStatus, ConsolidationParams } from '@/shared/types/AddressRotation';
 import { RouteTypes, useNavigate } from '@/ui/pages/routeTypes';
-import { Action, SourceType } from '@/shared/interfaces/RawTxParameters';
+import { Action, SendBitcoinParameters, SourceType } from '@/shared/interfaces/RawTxParameters';
 
 const colors = {
     main: '#f37413',
@@ -27,12 +28,6 @@ const colors = {
     hotOrange: '#f97316'
 };
 
-const FEE_RATES = [
-    { label: 'Economy', rate: 1, description: '~60+ min' },
-    { label: 'Standard', rate: 5, description: '~30 min' },
-    { label: 'Fast', rate: 10, description: '~10 min' }
-];
-
 export default function ConsolidationScreen() {
     const wallet = useWallet();
     const navigate = useNavigate();
@@ -40,7 +35,7 @@ export default function ConsolidationScreen() {
     const history = useRotationHistory();
 
     const [loading, setLoading] = useState(true);
-    const [selectedFeeIndex, setSelectedFeeIndex] = useState(1);
+    const [feeRate, setFeeRate] = useState(5);
     const [params, setParams] = useState<ConsolidationParams | null>(null);
     const [coldAddress, setColdAddress] = useState('');
 
@@ -50,14 +45,9 @@ export default function ConsolidationScreen() {
             BigInt(a.currentBalance) > 0n
     );
 
-    useEffect(() => {
-        void loadConsolidationParams();
-    }, [selectedFeeIndex]);
-
-    const loadConsolidationParams = async () => {
+    const loadConsolidationParams = useCallback(async () => {
         setLoading(true);
         try {
-            const feeRate = FEE_RATES[selectedFeeIndex].rate;
             const consolidationParams = await wallet.prepareConsolidation(feeRate);
             setParams(consolidationParams);
 
@@ -70,7 +60,11 @@ export default function ConsolidationScreen() {
         } finally {
             setLoading(false);
         }
-    };
+    }, [wallet, feeRate]);
+
+    useEffect(() => {
+        void loadConsolidationParams();
+    }, [loadConsolidationParams]);
 
     const handleConsolidate = () => {
         if (!params || !coldAddress) return;
@@ -78,13 +72,12 @@ export default function ConsolidationScreen() {
         // Calculate total input amount in satoshis
         const totalAmount = Number(BigInt(params.totalAmount));
 
-        // Navigate to TxOpnetConfirmScreen with consolidation parameters
-        navigate(RouteTypes.TxOpnetConfirmScreen, {
+        const rawTxInfo: SendBitcoinParameters = {
             action: Action.SendBitcoin,
             header: 'Consolidate to Cold Storage',
             features: {},
             tokens: [],
-            feeRate: FEE_RATES[selectedFeeIndex].rate,
+            feeRate: feeRate,
             priorityFee: 0n,
             to: coldAddress,
             inputAmount: totalAmount,
@@ -92,7 +85,9 @@ export default function ConsolidationScreen() {
             sourceAddresses: params.sourceAddresses,
             sourcePubkeys: params.sourcePubkeys,
             optimize: true
-        });
+        };
+
+        navigate(RouteTypes.TxOpnetConfirmScreen, { rawTxInfo });
     };
 
     if (loading && !params) {
@@ -216,50 +211,10 @@ export default function ConsolidationScreen() {
                         </div>
                     </div>
 
-                    {/* Fee selection */}
+                    {/* Fee selection - using the same FeeRateBar component as other screens */}
                     <Column gap="sm">
                         <Text text="Network Fee" style={{ fontSize: 12, color: colors.textFaded }} />
-                        <div
-                            style={{
-                                display: 'grid',
-                                gridTemplateColumns: 'repeat(3, 1fr)',
-                                gap: 8
-                            }}>
-                            {FEE_RATES.map((fee, index) => (
-                                <div
-                                    key={fee.label}
-                                    onClick={() => setSelectedFeeIndex(index)}
-                                    style={{
-                                        background:
-                                            selectedFeeIndex === index
-                                                ? `linear-gradient(135deg, ${colors.main}20 0%, ${colors.main}10 100%)`
-                                                : colors.containerBgFaded,
-                                        border: `1px solid ${selectedFeeIndex === index ? colors.main : 'transparent'}`,
-                                        borderRadius: '10px',
-                                        padding: '12px 8px',
-                                        textAlign: 'center',
-                                        cursor: 'pointer',
-                                        transition: 'all 0.15s'
-                                    }}>
-                                    <Text
-                                        text={fee.label}
-                                        style={{
-                                            fontSize: 12,
-                                            fontWeight: 500,
-                                            color: selectedFeeIndex === index ? colors.main : colors.text
-                                        }}
-                                    />
-                                    <Text
-                                        text={`${fee.rate} sat/vB`}
-                                        style={{ fontSize: 11, color: colors.textFaded, marginTop: 2 }}
-                                    />
-                                    <Text
-                                        text={fee.description}
-                                        style={{ fontSize: 10, color: colors.textFaded, marginTop: 2 }}
-                                    />
-                                </div>
-                            ))}
-                        </div>
+                        <FeeRateBar onChange={setFeeRate} />
                     </Column>
 
                     {/* Transaction details */}

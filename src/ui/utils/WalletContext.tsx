@@ -405,10 +405,19 @@ export interface WalletController {
     updateRotationSettings(settings: { autoRotate?: boolean; rotationThreshold?: number }): Promise<void>;
     getColdWalletAddress(): Promise<string>;
     getNextUnusedRotationAddress(): Promise<string>;
-    getColdStorageWallet(): Promise<[string, string, string]>;
+    // Get next unused rotation wallet with full data for signing
+    getNextUnusedRotationWallet(): Promise<{
+        address: string;
+        pubkey: string;
+        wif: string;
+        mldsaPrivateKey: string;
+        chainCode: string;
+        derivationIndex: number;
+    }>;
+    getColdStorageWallet(): Promise<[string, string, string, string]>;
     registerColdStorageChangeAddress(): Promise<void>;
-    // Consolidation - returns wallet data for each source address: [wif, pubkey, mldsaPrivateKey][]
-    getConsolidationWallets(sourcePubkeys: string[]): Promise<Array<[string, string, string]>>;
+    // Consolidation - returns wallet data for each source address: [wif, pubkey, mldsaPrivateKey, chainCode][]
+    getConsolidationWallets(sourcePubkeys: string[]): Promise<Array<[string, string, string, string]>>;
     // Mark addresses as consolidated after successful broadcast
     markAddressesConsolidated(addresses: string[], consolidatedAmount: string): Promise<void>;
 }

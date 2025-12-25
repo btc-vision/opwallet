@@ -4474,7 +4474,7 @@ export class WalletController {
             return this.getEmptyBalance();
         }
 
-        const rotationEnabled = await addressRotationService.isRotationEnabled(account.pubkey);
+        const rotationEnabled = addressRotationService.isRotationEnabled(account.pubkey);
         if (!rotationEnabled) {
             return this.getEmptyBalance();
         }
@@ -4483,8 +4483,8 @@ export class WalletController {
             await Web3API.setNetwork(this.getChainType());
             const network = getBitcoinLibJSNetwork(this.getNetworkType(), this.getChainType());
 
-            const coldAddress = await addressRotationService.getColdWalletAddress(keyring.index, network);
-            const history = await addressRotationService.getRotationHistory(account.pubkey);
+            const coldAddress = addressRotationService.getColdWalletAddress(keyring.index, network);
+            const history = addressRotationService.getRotationHistory(account.pubkey);
             const hotAddresses = history.map((h) => h.address);
 
             const allAddresses = [coldAddress, ...hotAddresses];
@@ -4601,7 +4601,7 @@ export class WalletController {
             }
 
             // Get cold wallet address
-            const coldAddress = await addressRotationService.getColdWalletAddress(keyring.index, network);
+            const coldAddress = addressRotationService.getColdWalletAddress(keyring.index, network);
 
             // Fetch UTXOs from all source addresses
             const addressList = sourceAddresses.map((a) => a.address);
@@ -4616,7 +4616,7 @@ export class WalletController {
             const totalInputValue = allUtxos.reduce((sum, u) => sum + u.value, 0n);
 
             // Get the consolidation keyring with all needed derivation indices
-            const consolidationKeyring = await addressRotationService.getConsolidationKeyring(
+            const consolidationKeyring = addressRotationService.getConsolidationKeyring(
                 keyring.index,
                 account.pubkey,
                 network
@@ -4759,16 +4759,16 @@ export class WalletController {
 
     /**
      * Get cold storage wallet data for transaction signing
-     * Returns [wif, pubkey, mldsaPrivateKey] like getOPNetWallet but for cold storage
+     * Returns [wif, mldsaPrivateKey, chainCode, pubkey]
      */
-    public getColdStorageWallet = async (): Promise<[string, string, string]> => {
+    public getColdStorageWallet = async (): Promise<[string, string, string, string]> => {
         const keyring = await this.getCurrentKeyring();
         if (!keyring) {
             throw new Error('No current keyring');
         }
 
         const network = getBitcoinLibJSNetwork(this.getNetworkType(), this.getChainType());
-        const coldKeyring = await addressRotationService.getColdWalletKeyring(keyring.index, network);
+        const coldKeyring = addressRotationService.getColdWalletKeyring(keyring.index, network);
         const coldAccounts = coldKeyring.getAccounts();
 
         if (!coldAccounts[0]) {
@@ -4781,10 +4781,32 @@ export class WalletController {
         }
 
         const wif = wallet.keypair.toWIF();
-        const pubkey = coldAccounts[0];
         const mldsaPrivateKey = wallet.mldsaKeypair?.privateKey?.toString('hex') || '';
+        const chainCode = Buffer.from(wallet.chainCode).toString('hex');
 
-        return [wif, pubkey, mldsaPrivateKey];
+        return [wif, mldsaPrivateKey, chainCode, coldAccounts[0]];
+    };
+
+    /**
+     * Get the next unused rotation wallet with full data for signing
+     * Returns { address, pubkey, wif, mldsaPrivateKey, chainCode, derivationIndex }
+     */
+    public getNextUnusedRotationWallet = async (): Promise<{
+        address: string;
+        pubkey: string;
+        wif: string;
+        mldsaPrivateKey: string;
+        chainCode: string;
+        derivationIndex: number;
+    }> => {
+        const account = await this.getCurrentAccount();
+        const keyring = await this.getCurrentKeyring();
+        if (!keyring || !account) {
+            throw new WalletControllerError('No current keyring or account');
+        }
+
+        const network = getBitcoinLibJSNetwork(this.getNetworkType(), this.getChainType());
+        return addressRotationService.getNextUnusedRotationWallet(keyring.index, account.pubkey, network);
     };
 
     /**
@@ -4803,9 +4825,11 @@ export class WalletController {
 
     /**
      * Get wallet data for consolidation signers
-     * Returns [wif, pubkey, mldsaPrivateKey] for each source pubkey
+     * Returns [wif, pubkey, mldsaPrivateKey, chainCode] for each source pubkey
      */
-    public getConsolidationWallets = async (sourcePubkeys: string[]): Promise<Array<[string, string, string]>> => {
+    public getConsolidationWallets = async (
+        sourcePubkeys: string[]
+    ): Promise<Array<[string, string, string, string]>> => {
         const account = await this.getCurrentAccount();
         const keyring = await this.getCurrentKeyring();
 
@@ -4814,13 +4838,13 @@ export class WalletController {
         }
 
         const network = getBitcoinLibJSNetwork(this.getNetworkType(), this.getChainType());
-        const consolidationKeyring = await addressRotationService.getConsolidationKeyring(
+        const consolidationKeyring = addressRotationService.getConsolidationKeyring(
             keyring.index,
             account.pubkey,
             network
         );
 
-        const results: Array<[string, string, string]> = [];
+        const results: Array<[string, string, string, string]> = [];
 
         for (const pubkey of sourcePubkeys) {
             const wallet = consolidationKeyring.getWallet(pubkey);
@@ -4830,7 +4854,8 @@ export class WalletController {
 
             const wif = wallet.keypair.toWIF();
             const mldsaPrivateKey = wallet.mldsaKeypair?.privateKey?.toString('hex') || '';
-            results.push([wif, pubkey, mldsaPrivateKey]);
+            const chainCode = Buffer.from(wallet.chainCode).toString('hex');
+            results.push([wif, pubkey, mldsaPrivateKey, chainCode]);
         }
 
         return results;

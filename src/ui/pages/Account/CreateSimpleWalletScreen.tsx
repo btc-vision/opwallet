@@ -48,27 +48,16 @@ const colors = {
 
 function Step1({ updateContextData }: { updateContextData: (params: UpdateContextDataParams) => void }) {
     const [wif, setWif] = useState('');
-    const [disabled, setDisabled] = useState(true);
-    const [inputType, setInputType] = useState<'auto' | 'wif' | 'ethereum'>('auto');
     const wallet = useWallet();
     const tools = useTools();
 
-    useEffect(() => {
-        setDisabled(!wif.trim());
-    }, [wif]);
-
-    useEffect(() => {
+    // Derive disabled and inputType from wif instead of using useEffect
+    const disabled = useMemo(() => !wif.trim(), [wif]);
+    const inputType = useMemo((): 'auto' | 'wif' | 'ethereum' => {
         const raw = wif.trim();
-        if (!raw) {
-            setInputType('auto');
-            return;
-        }
-
-        if (isLikelyHexPriv(raw)) {
-            setInputType('ethereum');
-        } else {
-            setInputType('wif');
-        }
+        if (!raw) return 'auto';
+        if (isLikelyHexPriv(raw)) return 'ethereum';
+        return 'wif';
     }, [wif]);
 
     const onChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
@@ -438,24 +427,30 @@ function Step2({
     };
 
     useEffect(() => {
-        void run();
          
+        void run();
+
     }, [contextData.wif]);
 
-    useEffect(() => {
+    // Derive ethAddress from wif and keyKind instead of using useEffect
+    const derivedEthAddress = useMemo(() => {
         const raw = contextData.wif?.trim();
         if (contextData.keyKind !== 'rawHex' || !raw) {
-            setEthAddress(null);
-            return;
+            return null;
         }
         try {
             const pk = raw.startsWith('0x') ? raw : '0x' + raw;
-            const addr = ethers.computeAddress(pk);
-            setEthAddress(addr);
+            return ethers.computeAddress(pk);
         } catch {
-            setEthAddress(null);
+            return null;
         }
     }, [contextData.wif, contextData.keyKind]);
+
+    // Update ethAddress when derived value changes
+    useEffect(() => {
+         
+        setEthAddress(derivedEthAddress);
+    }, [derivedEthAddress]);
 
     const pathIndex = useMemo(() => {
         return hdPathOptions.findIndex((v) => v.addressType === contextData.addressType);

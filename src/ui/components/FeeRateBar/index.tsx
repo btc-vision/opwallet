@@ -55,6 +55,7 @@ export function FeeRateBar({ readonly, onChange }: { readonly?: boolean; onChang
     }, []);
 
     useEffect(() => {
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- Intentional async data loading on mount
         void getData();
     }, [getData]);
 

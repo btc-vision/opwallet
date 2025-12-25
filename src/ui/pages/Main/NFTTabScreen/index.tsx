@@ -592,7 +592,9 @@ function NFTCard({ nft, onClick }: { nft: OwnedNFT; onClick: () => void }) {
     useEffect(() => {
         const cached = nftCache.getMetadata(nft.tokenURI);
         if (cached) {
+            // eslint-disable-next-line react-hooks/set-state-in-effect -- Sync from cache
             setMetadata(cached);
+             
             setLoading(false);
             return;
         }

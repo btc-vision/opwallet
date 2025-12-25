@@ -51,6 +51,7 @@ export function PriceProvider({ children }: { children: ReactNode }) {
     }, [wallet]);
 
     useEffect(() => {
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- Fetch price on mount
         refreshBtcPrice();
     }, [refreshBtcPrice]);
 
