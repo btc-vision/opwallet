@@ -40,6 +40,7 @@ export function OutputValueBar({
         if (optionIndex === FeeRateType.CUSTOM) {
             if (!inputVal) {
                 onChange(0);
+                // eslint-disable-next-line react-hooks/set-state-in-effect -- Controlled component state sync
                 setCurrentValue(0);
                 return;
             }
@@ -51,6 +52,7 @@ export function OutputValueBar({
         //   setInputVal(val);
         // }
         onChange(val);
+         
         setCurrentValue(val);
     }, [optionIndex, inputVal, defaultValue, onChange, options]);
 

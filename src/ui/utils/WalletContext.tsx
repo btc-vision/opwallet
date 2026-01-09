@@ -56,6 +56,8 @@ export interface WalletController {
 
     isBooted(): Promise<boolean>;
 
+    isKeyringRotationMode(): Promise<boolean>;
+
     getApproval(): Promise<ApprovalData | undefined>;
 
     resolveApproval(
@@ -128,7 +130,8 @@ export interface WalletController {
         hdPath: string,
         passphrase: string,
         addressType: AddressTypes,
-        accountCount: number
+        accountCount: number,
+        rotationModeEnabled?: boolean
     ): Promise<{ address: string; type: string }[]>;
 
     createKeyringWithKeystone(
@@ -385,6 +388,38 @@ export interface WalletController {
     // [DEV/TEST] Conflict testing methods
     createTestConflicts(): Promise<{ created: string[]; message: string }>;
     clearTestConflicts(): Promise<void>;
+
+    // Address Rotation Methods
+    isRotationModeSupported(): Promise<boolean>;
+    isRotationModeEnabled(): Promise<boolean>;
+    enableRotationMode(): Promise<import('@/shared/types/AddressRotation').AddressRotationState>;
+    disableRotationMode(): Promise<void>;
+    getCurrentHotAddress(): Promise<import('@/shared/types/AddressRotation').RotatedAddress | null>;
+    rotateToNextAddress(): Promise<import('@/shared/types/AddressRotation').RotatedAddress>;
+    getRotationModeSummary(): Promise<import('@/shared/types/AddressRotation').RotationModeSummary | null>;
+    getRotationHistory(): Promise<import('@/shared/types/AddressRotation').RotatedAddress[]>;
+    getRotationModeBalance(): Promise<import('@/shared/types').BitcoinBalance>;
+    refreshRotationBalances(): Promise<void>;
+    prepareConsolidation(feeRate: number): Promise<import('@/shared/types/AddressRotation').ConsolidationParams>;
+    executeConsolidation(feeRate: number): Promise<{ success: boolean; txid?: string; error?: string }>;
+    updateRotationSettings(settings: { autoRotate?: boolean; rotationThreshold?: number }): Promise<void>;
+    getColdWalletAddress(): Promise<string>;
+    getNextUnusedRotationAddress(): Promise<string>;
+    // Get next unused rotation wallet with full data for signing
+    getNextUnusedRotationWallet(): Promise<{
+        address: string;
+        pubkey: string;
+        wif: string;
+        mldsaPrivateKey: string;
+        chainCode: string;
+        derivationIndex: number;
+    }>;
+    getColdStorageWallet(): Promise<[string, string, string, string]>;
+    registerColdStorageChangeAddress(): Promise<void>;
+    // Consolidation - returns wallet data for each source address: [wif, pubkey, mldsaPrivateKey, chainCode][]
+    getConsolidationWallets(sourcePubkeys: string[]): Promise<Array<[string, string, string, string]>>;
+    // Mark addresses as consolidated after successful broadcast
+    markAddressesConsolidated(addresses: string[], consolidatedAmount: string): Promise<void>;
 }
 
 const WalletContext = createContext<{

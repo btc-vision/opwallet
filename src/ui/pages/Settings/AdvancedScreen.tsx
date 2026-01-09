@@ -22,8 +22,12 @@ import {
     LayoutOutlined,
     LoadingOutlined,
     RightOutlined,
+    SwapOutlined,
     WarningOutlined
 } from '@ant-design/icons';
+
+import { RouteTypes, useNavigate } from '../routeTypes';
+import { useKeyringRotationMode } from '@/ui/state/rotation/hooks';
 
 type NotificationWindowMode = 'auto' | 'popup' | 'fullscreen';
 
@@ -47,6 +51,108 @@ const colors = {
     error: '#ef4444',
     warning: '#fbbf24'
 };
+
+function PrivacySection() {
+    const navigate = useNavigate();
+    const { isKeyringRotationMode } = useKeyringRotationMode();
+
+    if (!isKeyringRotationMode) {
+        return null;
+    }
+
+    return (
+        <>
+            <div
+                style={{
+                    fontSize: '11px',
+                    fontWeight: 600,
+                    color: colors.textFaded,
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.5px',
+                    marginTop: '20px',
+                    marginBottom: '10px',
+                    paddingLeft: '4px'
+                }}>
+                Privacy
+            </div>
+
+            <div
+                style={{
+                    background: colors.containerBgFaded,
+                    borderRadius: '14px',
+                    overflow: 'hidden'
+                }}>
+                <div
+                    style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        padding: '14px 12px',
+                        cursor: 'pointer',
+                        transition: 'all 0.15s'
+                    }}
+                    onClick={() => navigate(RouteTypes.AddressRotationScreen)}
+                    onMouseEnter={(e) => {
+                        e.currentTarget.style.background = colors.buttonHoverBg;
+                    }}
+                    onMouseLeave={(e) => {
+                        e.currentTarget.style.background = 'transparent';
+                    }}>
+                    <div
+                        style={{
+                            width: '36px',
+                            height: '36px',
+                            borderRadius: '10px',
+                            background: `linear-gradient(135deg, ${colors.main}20 0%, ${colors.main}10 100%)`,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            marginRight: '12px'
+                        }}>
+                        <SwapOutlined style={{ fontSize: 18, color: colors.main }} />
+                    </div>
+
+                    <div style={{ flex: 1 }}>
+                        <div
+                            style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '8px',
+                                fontSize: '14px',
+                                fontWeight: 500,
+                                color: colors.text,
+                                marginBottom: '2px',
+                                fontFamily: 'Inter-Regular, serif'
+                            }}>
+                            Address Rotation
+                            <span
+                                style={{
+                                    fontSize: '9px',
+                                    fontWeight: 600,
+                                    color: colors.success,
+                                    background: `${colors.success}20`,
+                                    padding: '2px 6px',
+                                    borderRadius: '4px',
+                                    textTransform: 'uppercase'
+                                }}>
+                                Active
+                            </span>
+                        </div>
+                        <div
+                            style={{
+                                fontSize: '11px',
+                                color: colors.textFaded,
+                                marginTop: '2px'
+                            }}>
+                            Manage rotating addresses and consolidation
+                        </div>
+                    </div>
+
+                    <RightOutlined style={{ fontSize: 12, color: colors.textFaded }} />
+                </div>
+            </div>
+        </>
+    );
+}
 
 export default function AdvancedScreen() {
     const wallet = useWallet();
@@ -419,7 +525,8 @@ export default function AdvancedScreen() {
                     </div>
                 </div>
 
-                {/* Developer Tools Section - Only visible in development builds */}
+                <PrivacySection />
+
                 {process.env.NODE_ENV !== 'production' && (
                 <div style={{ marginTop: '20px', marginBottom: '20px' }}>
                     <div

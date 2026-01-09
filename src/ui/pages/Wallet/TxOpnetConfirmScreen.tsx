@@ -50,6 +50,7 @@ import {
     AddressMap,
     AddressTypes,
     AddressVerificator,
+    createAddressRotation,
     DeploymentResult,
     IDeploymentParameters,
     IFundingTransactionParameters,
@@ -57,6 +58,7 @@ import {
     UTXO,
     Wallet
 } from '@btc-vision/transaction';
+import { ECPairInterface } from 'ecpair';
 import BigNumber from 'bignumber.js';
 import {
     Airdrop,
@@ -122,6 +124,12 @@ interface CachedBitcoinTransfer {
     // Decoded transaction data
     decodedData: DecodedPreSignedData | null;
     preSignedTxData: PreSignedTransactionData | null;
+    // Flag for cold storage withdrawal (to register change address after broadcast)
+    isColdStorage?: boolean;
+    // Flag for consolidation (to mark addresses as consolidated after broadcast)
+    isConsolidation?: boolean;
+    // Flag for rotation all (sending from all rotation addresses)
+    isRotationAll?: boolean;
 }
 
 export const AIRDROP_ABI: BitcoinInterfaceAbi = [
@@ -200,6 +208,7 @@ export default function TxOpnetConfirmScreen() {
     });
 
     // Fetch all user addresses for change detection
+    // Also includes rotation addresses and cold wallet when rotation mode is enabled
     useEffect(() => {
         const fetchUserAddresses = async () => {
             try {
@@ -220,6 +229,25 @@ export default function TxOpnetConfirmScreen() {
                     try { addresses.add(addressInst.p2pkh(Web3API.network).toLowerCase()); } catch { /* ignore */ }
                     try { addresses.add(addressInst.p2shp2wpkh(Web3API.network).toLowerCase()); } catch { /* ignore */ }
                 }
+
+                // Add rotation addresses when rotation mode is enabled
+                try {
+                    const isRotationEnabled = await wallet.isRotationModeEnabled();
+                    if (isRotationEnabled) {
+                        // Add all rotation (hot) addresses
+                        const rotationHistory = await wallet.getRotationHistory();
+                        for (const rotatedAddr of rotationHistory) {
+                            addresses.add(rotatedAddr.address.toLowerCase());
+                        }
+
+                        // Add cold wallet address
+                        try {
+                            const coldAddress = await wallet.getColdWalletAddress();
+                            addresses.add(coldAddress.toLowerCase());
+                        } catch { /* ignore if cold wallet derivation fails */ }
+                    }
+                } catch { /* ignore if rotation check fails */ }
+
                 setUserAddresses(addresses);
             } catch (e) {
                 console.error('Failed to fetch user addresses:', e);
@@ -246,7 +274,7 @@ export default function TxOpnetConfirmScreen() {
             // Fallback to estimate
             const miningFee = Number(rawTxInfo.priorityFee);
             const gasFee = Number(rawTxInfo.gasSatFee ?? 0);
-            const domainPrice = rawTxInfo.action === Action.RegisterDomain ? Number((rawTxInfo as RegisterDomainParameters).price) : 0;
+            const domainPrice = rawTxInfo.action === Action.RegisterDomain && 'price' in rawTxInfo ? Number(rawTxInfo.price) : 0;
             return {
                 totalCost: miningFee + gasFee + domainPrice,
                 changeOutputs: [] as { address: string; value: bigint }[],
@@ -276,7 +304,7 @@ export default function TxOpnetConfirmScreen() {
         const changeOutputs: { address: string; value: bigint }[] = [];
 
         for (const utxo of nextUTXOs) {
-            const value = BigInt(utxo.value);
+            const value = utxo.value;
             totalChange += value;
             const addr = utxo.scriptPubKey?.address || utxo.scriptPubKey?.addresses?.[0] || '';
             changeOutputs.push({ address: addr, value });
@@ -354,14 +382,26 @@ export default function TxOpnetConfirmScreen() {
                 const userWallet = await getOPNetWallet();
                 const currentWalletAddress = await wallet.getCurrentAccount();
 
+                // Determine refund address - use next rotation address if rotation mode is enabled
+                let refundAddress = currentWalletAddress.address;
+                try {
+                    const isRotationEnabled = await wallet.isRotationModeEnabled();
+                    if (isRotationEnabled) {
+                        refundAddress = await wallet.getNextUnusedRotationAddress();
+                    }
+                } catch {
+                    // Fallback to standard address if rotation check fails
+                }
+
                 // Ensure bigint values are properly converted (navigation state may serialize them as strings)
-                const basePriorityFee = BigInt(rawTxInfo.priorityFee);
+                const priorityFeeRaw = rawTxInfo.priorityFee;
+                const basePriorityFee = typeof priorityFeeRaw === 'bigint' ? priorityFeeRaw : BigInt(priorityFeeRaw);
 
                 // Create mutable interaction parameters - extraOutputs will be added for domain registration
                 let interactionParameters: TransactionParameters = {
                     signer: userWallet.keypair,
                     mldsaSigner: userWallet.mldsaKeypair,
-                    refundTo: currentWalletAddress.address,
+                    refundTo: refundAddress,
                     maximumAllowedSatToSpend: basePriorityFee,
                     feeRate: rawTxInfo.feeRate,
                     network: Web3API.network,
@@ -383,7 +423,8 @@ export default function TxOpnetConfirmScreen() {
                         );
                         const address = await getPubKey(rawTxInfo.to);
                         // Ensure inputAmount is bigint (navigation state may serialize it as string)
-                        const transferAmount = BigInt(rawTxInfo.inputAmount);
+                        const inputAmountRaw = rawTxInfo.inputAmount;
+                        const transferAmount = typeof inputAmountRaw === 'bigint' ? inputAmountRaw : BigInt(inputAmountRaw);
                         simulation = await contract.safeTransfer(address, transferAmount, new Uint8Array());
                         const symbolResult = await contract.symbol();
                         symbol = symbolResult.properties.symbol;
@@ -432,7 +473,8 @@ export default function TxOpnetConfirmScreen() {
                         );
                         const recipientAddress = await getPubKey(rawTxInfo.to);
                         // Ensure tokenId is bigint (navigation state may serialize it as string)
-                        const nftTokenId = BigInt(rawTxInfo.tokenId);
+                        const tokenIdRaw = rawTxInfo.tokenId;
+                        const nftTokenId = typeof tokenIdRaw === 'bigint' ? tokenIdRaw : BigInt(tokenIdRaw);
                         simulation = await contract.safeTransferFrom(
                             userWallet.address,
                             recipientAddress,
@@ -457,7 +499,8 @@ export default function TxOpnetConfirmScreen() {
                         );
 
                         // Ensure price is bigint (may have been serialized as string via navigation state)
-                        const domainPrice = BigInt(rawTxInfo.price);
+                        const priceRaw = rawTxInfo.price;
+                        const domainPrice = typeof priceRaw === 'bigint' ? priceRaw : BigInt(priceRaw);
 
                         // Set transaction details for simulation - contract needs to know about treasury payment
                         const outSimulation: StrippedTransactionOutput[] = [
@@ -661,16 +704,42 @@ export default function TxOpnetConfirmScreen() {
                 // rawTxInfo is already narrowed to SendBitcoinParameters by the action check above
                 const parameters = rawTxInfo;
                 // Ensure inputAmount is a number (navigation state may serialize it as string)
-                const btcInputAmount = Number(parameters.inputAmount);
+                const inputAmountValue = parameters.inputAmount;
+                const btcInputAmount = typeof inputAmountValue === 'number' ? inputAmountValue : Number(inputAmountValue);
 
                 // Determine source address and get UTXOs
+                // When rotation mode is enabled, change should go to the next rotation address
                 let fromAddress = currentWalletAddress.address;
+                try {
+                    const isRotationEnabled = await wallet.isRotationModeEnabled();
+                    if (isRotationEnabled) {
+                        fromAddress = await wallet.getNextUnusedRotationAddress();
+                    }
+                } catch {
+                    // Fallback to standard address if rotation check fails
+                }
+
                 let utxos: UTXO[] = [];
                 let witnessScript: Buffer | undefined;
                 const feeMin = 10_000n;
 
-                // Handle CSV address sources
-                if (parameters.from && parameters.sourceType && parameters.sourceType !== SourceType.CURRENT) {
+                // Handle special source types (CONSOLIDATION and ROTATION_ALL don't require 'from')
+                // SourceType is a string enum, so we can compare directly
+                const sourceType = parameters.sourceType;
+                const isConsolidation = sourceType === SourceType.CONSOLIDATION;
+                const isRotationAll = sourceType === SourceType.ROTATION_ALL;
+                const hasSpecialSourceType = sourceType &&
+                    (isConsolidation || isRotationAll ||
+                     (parameters.from && sourceType !== SourceType.CURRENT));
+
+                console.log('[SendBitcoin] sourceType:', parameters.sourceType, 'type:', typeof parameters.sourceType);
+                console.log('[SendBitcoin] from:', parameters.from);
+                console.log('[SendBitcoin] isConsolidation:', isConsolidation);
+                console.log('[SendBitcoin] isRotationAll:', isRotationAll);
+                console.log('[SendBitcoin] hasSpecialSourceType:', hasSpecialSourceType);
+                console.log('[SendBitcoin] inputAmount:', parameters.inputAmount, 'type:', typeof parameters.inputAmount);
+
+                if (hasSpecialSourceType) {
                     const zeroHash = '0x0000000000000000000000000000000000000000000000000000000000000000';
                     const currentAddress = currentWalletAddress.quantumPublicKeyHash
                         ? Address.fromString(currentWalletAddress.quantumPublicKeyHash, currentWalletAddress.pubkey)
@@ -716,6 +785,461 @@ export default function TxOpnetConfirmScreen() {
                             undefined,
                             parameters.optimize
                         );
+                    } else if (parameters.sourceType === SourceType.COLD_STORAGE) {
+                        // Cold storage withdrawal - use cold wallet keypair
+                        const coldWalletData = await wallet.getColdStorageWallet();
+                        const [coldWif, coldMldsaPrivateKey, coldChainCodeHex] = coldWalletData;
+                        const coldChainCode = coldChainCodeHex ? Buffer.from(coldChainCodeHex, 'hex') : undefined;
+                        const coldWallet = Wallet.fromWif(
+                            coldWif,
+                            coldMldsaPrivateKey || '',
+                            Web3API.network,
+                            MLDSASecurityLevel.LEVEL2,
+                            coldChainCode
+                        );
+
+                        fromAddress = parameters.from || '';
+                        utxos = await Web3API.getAllUTXOsForAddresses(
+                            [fromAddress],
+                            BitcoinUtils.expandToDecimals(btcInputAmount, 8) + feeMin,
+                            undefined,
+                            parameters.optimize
+                        );
+
+                        // Build and sign with cold wallet
+                        if (!utxos || utxos.length === 0) {
+                            throw new Error('No UTXOs available in cold storage');
+                        }
+
+                        const coldFundingParams: IFundingTransactionParameters = {
+                            amount: BitcoinUtils.expandToDecimals(btcInputAmount, 8),
+                            utxos: utxos,
+                            signer: coldWallet.keypair,
+                            mldsaSigner: coldWallet.mldsaKeypair,
+                            network: Web3API.network,
+                            feeRate: parameters.feeRate,
+                            priorityFee: 0n,
+                            gasSatFee: 0n,
+                            to: parameters.to,
+                            from: fromAddress,
+                            note: parameters.note
+                            // Note: Change goes back to cold wallet (from address).
+                            // User can make additional withdrawals for remaining funds.
+                        };
+
+                        const coldSignedTx = await Web3API.transactionFactory.createBTCTransfer(coldFundingParams);
+
+                        let decodedData: DecodedPreSignedData | null = null;
+                        let preSignedTxData: PreSignedTransactionData | null = null;
+
+                        try {
+                            decodedData = decodeBitcoinTransfer(coldSignedTx.tx, coldSignedTx.inputUtxos, Web3API.network);
+                            preSignedTxData = {
+                                type: 'bitcoin_transfer',
+                                createdAt: Date.now(),
+                                transactions: decodedData.transactions,
+                                totalMiningFee: decodedData.totalMiningFee,
+                                opnetGasFee: 0n,
+                                opnetEpochMinerOutput: null,
+                                rawData: {
+                                    fundingTxHex: null,
+                                    interactionTxHex: null,
+                                    deploymentTxs: null,
+                                    bitcoinTxHex: coldSignedTx.tx,
+                                    nextUTXOs: coldSignedTx.nextUTXOs
+                                }
+                            };
+                        } catch (decodeError) {
+                            console.warn('Failed to decode cold storage transfer:', decodeError);
+                        }
+
+                        setCachedBtcTx({
+                            txHex: coldSignedTx.tx,
+                            utxos: utxos,
+                            nextUtxos: coldSignedTx.nextUTXOs,
+                            createdAt: Date.now(),
+                            decodedData,
+                            preSignedTxData,
+                            isColdStorage: true
+                        });
+
+                        setIsSigning(false);
+                        return;
+                    } else if (isConsolidation) {
+                        // Consolidation - gather UTXOs from multiple hot addresses to cold storage
+                        console.log('[Consolidation] ENTERING CONSOLIDATION PATH');
+                        console.log('[Consolidation] sourceAddresses:', parameters.sourceAddresses);
+                        console.log('[Consolidation] sourcePubkeys:', parameters.sourcePubkeys);
+                        console.log('[Consolidation] inputAmount from params:', parameters.inputAmount);
+
+                        if (!parameters.sourceAddresses || !parameters.sourcePubkeys) {
+                            throw new Error('Consolidation requires source addresses and pubkeys');
+                        }
+
+                        // Fetch all UTXOs from source addresses
+                        utxos = await Web3API.getAllUTXOsForAddresses(
+                            parameters.sourceAddresses,
+                            undefined,
+                            undefined,
+                            true // optimize
+                        );
+
+                        if (!utxos || utxos.length === 0) {
+                            throw new Error('No UTXOs available for consolidation');
+                        }
+
+                        // Debug: Log UTXO details
+                        console.log('[Consolidation] Fetched', utxos.length, 'UTXOs');
+                        for (let i = 0; i < Math.min(utxos.length, 5); i++) {
+                            console.log(`[Consolidation] UTXO[${i}] value:`, utxos[i].value, 'type:', typeof utxos[i].value);
+                        }
+
+                        // Calculate total input value - ensure each value is a bigint
+                        // The UTXO.value should be bigint, but API responses may serialize differently
+                        const MAX_SATOSHIS = 2_100_000_000_000_000n; // 21 million BTC in satoshis
+                        let totalInputValue = 0n;
+                        for (const u of utxos) {
+                            // Ensure value is bigint (handle potential string serialization)
+                            const utxoValue = typeof u.value === 'bigint' ? u.value : BigInt(u.value);
+                            if (utxoValue < 0n || utxoValue > MAX_SATOSHIS) {
+                                console.error('[Consolidation] Invalid UTXO value:', u.value, 'type:', typeof u.value);
+                                throw new Error(`Invalid UTXO value detected: ${u.value}`);
+                            }
+                            totalInputValue += utxoValue;
+                        }
+
+                        // Sanity check total value
+                        if (totalInputValue > MAX_SATOSHIS) {
+                            console.error('[Consolidation] Total input value exceeds max:', totalInputValue.toString());
+                            throw new Error(`Total input value ${totalInputValue} exceeds maximum possible satoshis`);
+                        }
+
+                        // Get wallet data for all source addresses
+                        const walletDataArray = await wallet.getConsolidationWallets(parameters.sourcePubkeys);
+
+                        // Build signer map and create wallets
+                        const signerPairs: Array<readonly [string, ECPairInterface]> = [];
+                        let primaryWallet: Wallet | null = null;
+
+                        for (let i = 0; i < parameters.sourceAddresses.length; i++) {
+                            const address = parameters.sourceAddresses[i];
+                            const [wif, , mldsaPrivateKey, chainCodeHex] = walletDataArray[i];
+
+                            const chainCode = chainCodeHex ? Buffer.from(chainCodeHex, 'hex') : undefined;
+                            const addrWallet = Wallet.fromWif(
+                                wif,
+                                mldsaPrivateKey || '',
+                                Web3API.network,
+                                MLDSASecurityLevel.LEVEL2,
+                                chainCode
+                            );
+
+                            signerPairs.push([address, addrWallet.keypair] as const);
+
+                            if (!primaryWallet) {
+                                primaryWallet = addrWallet;
+                            }
+                        }
+
+                        if (!primaryWallet) {
+                            throw new Error('No wallets available for consolidation');
+                        }
+
+                        // Create address rotation config
+                        const addressRotation = createAddressRotation(signerPairs);
+
+                        // Estimate fees: ~68 vbytes per P2TR input, ~43 vbytes for output, ~12 overhead
+                        const estimatedVSize = BigInt(12 + utxos.length * 68 + 43);
+                        const estimatedFee = estimatedVSize * BigInt(parameters.feeRate);
+
+                        // Calculate output amount (total - estimated fees with buffer)
+                        // Add 20% buffer to fee estimate to ensure tx succeeds
+                        const feeBuffer = (estimatedFee * 120n) / 100n;
+                        const outputAmount = totalInputValue - feeBuffer;
+
+                        if (outputAmount <= 0n) {
+                            throw new Error('Consolidation amount too small to cover fees');
+                        }
+
+                        // Validate output amount is reasonable
+                        if (outputAmount > MAX_SATOSHIS) {
+                            console.error('[Consolidation] Output amount exceeds max:', outputAmount.toString());
+                            throw new Error(`Output amount ${outputAmount} exceeds maximum possible satoshis`);
+                        }
+
+                        console.log('[Consolidation] Building tx with amount:', outputAmount.toString(), 'satoshis');
+                        console.log('[Consolidation] Total input value:', totalInputValue.toString());
+                        console.log('[Consolidation] Fee buffer:', feeBuffer.toString());
+                        console.log('[Consolidation] UTXOs count:', utxos.length);
+
+                        // CRITICAL: Validate amount is reasonable before passing to library
+                        const FOUR_HUNDRED_MILLION_BTC = 40_000_000_000_000_000n;
+                        if (outputAmount >= FOUR_HUNDRED_MILLION_BTC) {
+                            throw new Error(`CRITICAL BUG: outputAmount=${outputAmount} is impossibly large! totalInputValue=${totalInputValue}, feeBuffer=${feeBuffer}`);
+                        }
+
+                        // Build consolidation transaction
+                        // For consolidation, we send ALL funds minus fees to the cold wallet
+                        // 'from' must be set to an address matching the signer (first source address)
+                        // Any small change will go back to this address (though we calculate to minimize change)
+                        const consolidationParams: IFundingTransactionParameters = {
+                            amount: outputAmount, // This must be bigint - calculated to minimize change
+                            utxos: utxos,
+                            signer: primaryWallet.keypair,
+                            mldsaSigner: primaryWallet.mldsaKeypair,
+                            network: Web3API.network,
+                            feeRate: parameters.feeRate,
+                            priorityFee: 0n,
+                            gasSatFee: 0n,
+                            to: parameters.to,
+                            from: parameters.sourceAddresses[0], // Must match signer (primaryWallet)
+                            addressRotation: addressRotation
+                        };
+
+                        const consolidationTx = await Web3API.transactionFactory.createBTCTransfer(consolidationParams);
+
+                        // Decode the transaction
+                        let decodedData: DecodedPreSignedData | null = null;
+                        let preSignedTxData: PreSignedTransactionData | null = null;
+
+                        try {
+                            decodedData = decodeBitcoinTransfer(consolidationTx.tx, consolidationTx.inputUtxos, Web3API.network);
+                            preSignedTxData = {
+                                type: 'bitcoin_transfer',
+                                createdAt: Date.now(),
+                                transactions: decodedData.transactions,
+                                totalMiningFee: decodedData.totalMiningFee,
+                                opnetGasFee: 0n,
+                                opnetEpochMinerOutput: null,
+                                rawData: {
+                                    fundingTxHex: null,
+                                    interactionTxHex: null,
+                                    deploymentTxs: null,
+                                    bitcoinTxHex: consolidationTx.tx,
+                                    nextUTXOs: consolidationTx.nextUTXOs
+                                }
+                            };
+                        } catch (decodeError) {
+                            console.warn('Failed to decode consolidation transfer:', decodeError);
+                        }
+
+                        setCachedBtcTx({
+                            txHex: consolidationTx.tx,
+                            utxos: utxos,
+                            nextUtxos: consolidationTx.nextUTXOs,
+                            createdAt: Date.now(),
+                            decodedData,
+                            preSignedTxData,
+                            isConsolidation: true
+                        });
+
+                        setIsSigning(false);
+                        return;
+                    } else if (isRotationAll) {
+                        // Send from all rotation addresses (hot + cold) to destination
+                        // Get rotation summary to find all addresses with balance
+                        const rotationHistory = await wallet.getRotationHistory();
+                        const coldAddress = await wallet.getColdWalletAddress();
+
+                        // Collect all addresses with balance
+                        const addressesWithBalance = rotationHistory
+                            .filter((a) => BigInt(a.currentBalance) > 0n)
+                            .map((a) => a.address);
+
+                        // Also check cold storage
+                        const allSourceAddresses = [...addressesWithBalance, coldAddress];
+                        const allSourcePubkeys = rotationHistory
+                            .filter((a) => BigInt(a.currentBalance) > 0n)
+                            .map((a) => a.pubkey);
+
+                        if (allSourceAddresses.length === 0) {
+                            throw new Error('No funds available in rotation addresses');
+                        }
+
+                        // Fetch UTXOs from all rotation addresses
+                        utxos = await Web3API.getAllUTXOsForAddresses(
+                            allSourceAddresses,
+                            undefined,
+                            undefined,
+                            true
+                        );
+
+                        if (!utxos || utxos.length === 0) {
+                            throw new Error('No UTXOs available in rotation addresses');
+                        }
+
+                        // Calculate total and validate
+                        const MAX_SATOSHIS = 2_100_000_000_000_000n;
+                        let totalInputValue = 0n;
+                        for (const u of utxos) {
+                            const utxoValue = typeof u.value === 'bigint' ? u.value : BigInt(u.value);
+                            if (utxoValue < 0n || utxoValue > MAX_SATOSHIS) {
+                                throw new Error(`Invalid UTXO value: ${u.value}`);
+                            }
+                            totalInputValue += utxoValue;
+                        }
+
+                        // Get the reserved MLDSA wallet (main account wallet) for MLDSA linkage
+                        // This is the keypair that gets linked to MLDSA for quantum migration
+                        // The main account address is exposed on-chain but never receives funds in rotation mode
+                        const opnetWalletData = await wallet.getOPNetWallet();
+                        const reservedMldsaWallet = Wallet.fromWif(
+                            opnetWalletData[0],
+                            opnetWalletData[1],
+                            Web3API.network,
+                            MLDSASecurityLevel.LEVEL2,
+                            Buffer.from(opnetWalletData[2], 'hex')
+                        );
+
+                        // Get the main account's Bitcoin address (NOT the MLDSA hash)
+                        // This is the "reserved" address for OPNet/MLDSA linkage (never receives funds)
+                        const currentAccount = await wallet.getCurrentAccount();
+                        const reservedAddress = currentAccount.address;
+
+                        // Get wallet data for hot addresses
+                        const hotWalletData = await wallet.getConsolidationWallets(allSourcePubkeys);
+
+                        // Get cold wallet data
+                        const coldWalletData = await wallet.getColdStorageWallet();
+
+                        // Build signers for all addresses (for per-UTXO signing via addressRotation)
+                        const signerPairs: Array<readonly [string, ECPairInterface]> = [];
+
+                        // Add hot wallet signers
+                        for (let i = 0; i < addressesWithBalance.length; i++) {
+                            const address = addressesWithBalance[i];
+                            const [wif, , mldsaPrivateKey, chainCodeHex] = hotWalletData[i];
+
+                            const chainCode = chainCodeHex ? Buffer.from(chainCodeHex, 'hex') : undefined;
+                            const addrWallet = Wallet.fromWif(
+                                wif,
+                                mldsaPrivateKey || '',
+                                Web3API.network,
+                                MLDSASecurityLevel.LEVEL2,
+                                chainCode
+                            );
+
+                            signerPairs.push([address, addrWallet.keypair] as const);
+                        }
+
+                        // Add cold wallet signer
+                        // getColdStorageWallet returns [wif, mldsaPrivateKey, chainCode, coldAddress]
+                        if (coldWalletData) {
+                            const [coldWif, coldMldsaPrivateKey, coldChainCodeHex] = coldWalletData;
+                            const coldChainCode = coldChainCodeHex ? Buffer.from(coldChainCodeHex, 'hex') : undefined;
+                            const coldWallet = Wallet.fromWif(
+                                coldWif,
+                                coldMldsaPrivateKey || '',
+                                Web3API.network,
+                                MLDSASecurityLevel.LEVEL2,
+                                coldChainCode
+                            );
+                            signerPairs.push([coldAddress, coldWallet.keypair] as const);
+                        }
+
+                        // Get a NEW unused rotation address for change output with its wallet data
+                        // This properly rotates to a fresh address rather than reusing existing ones
+                        const changeWalletData = await wallet.getNextUnusedRotationWallet();
+                        const changeChainCode = changeWalletData.chainCode
+                            ? Buffer.from(changeWalletData.chainCode, 'hex')
+                            : undefined;
+                        const changeWallet = Wallet.fromWif(
+                            changeWalletData.wif,
+                            changeWalletData.mldsaPrivateKey || '',
+                            Web3API.network,
+                            MLDSASecurityLevel.LEVEL2,
+                            changeChainCode
+                        );
+
+                        const changeAddress = changeWalletData.address;
+                        const changeSigner = changeWallet.keypair;
+
+                        // Add change address signer to the rotation map
+                        signerPairs.push([changeAddress, changeSigner] as const);
+
+                        // Also add reserved address to signer pairs for any signature needs
+                        signerPairs.push([reservedAddress, reservedMldsaWallet.keypair] as const);
+
+                        const addressRotation = createAddressRotation(signerPairs);
+
+                        // Calculate output amount
+                        const estimatedVSize = BigInt(12 + utxos.length * 68 + 43);
+                        const estimatedFee = estimatedVSize * BigInt(parameters.feeRate);
+                        const feeBuffer = (estimatedFee * 120n) / 100n;
+                        const outputAmount = totalInputValue - feeBuffer;
+
+                        if (outputAmount <= 0n) {
+                            throw new Error('Amount too small to cover fees');
+                        }
+
+                        console.log('[RotationAll] Building tx with amount:', outputAmount.toString(), 'satoshis');
+                        console.log('[RotationAll] Destination (to):', parameters.to);
+                        console.log('[RotationAll] Network:', Web3API.network);
+                        console.log('[RotationAll] Signer pairs count:', signerPairs.length);
+
+                        // Validate destination address
+                        if (!parameters.to || parameters.to.trim() === '') {
+                            throw new Error('Destination address is required');
+                        }
+
+                        console.log('[RotationAll] reservedAddress (for MLDSA linkage):', reservedAddress);
+                        console.log('[RotationAll] changeAddress (from - change goes here):', changeAddress);
+
+                        // Use reserved MLDSA wallet for MLDSA linkage (mldsaSigner)
+                        // Set `from` to an existing rotation address (we have its signer) for any change
+                        // The reserved address is exposed on-chain for MLDSA but should NEVER receive funds
+                        const rotationAllParams: IFundingTransactionParameters = {
+                            amount: outputAmount,
+                            utxos: utxos,
+                            signer: changeSigner, // Signer for change output (matches from address)
+                            mldsaSigner: reservedMldsaWallet.mldsaKeypair, // MLDSA signer for quantum linkage
+                            network: Web3API.network,
+                            feeRate: parameters.feeRate,
+                            priorityFee: 0n,
+                            gasSatFee: 0n,
+                            to: parameters.to,
+                            from: changeAddress, // Change goes to existing rotation address
+                            addressRotation: addressRotation
+                        };
+
+                        const rotationTx = await Web3API.transactionFactory.createBTCTransfer(rotationAllParams);
+
+                        let decodedData: DecodedPreSignedData | null = null;
+                        let preSignedTxData: PreSignedTransactionData | null = null;
+
+                        try {
+                            decodedData = decodeBitcoinTransfer(rotationTx.tx, rotationTx.inputUtxos, Web3API.network);
+                            preSignedTxData = {
+                                type: 'bitcoin_transfer',
+                                createdAt: Date.now(),
+                                transactions: decodedData.transactions,
+                                totalMiningFee: decodedData.totalMiningFee,
+                                opnetGasFee: 0n,
+                                opnetEpochMinerOutput: null,
+                                rawData: {
+                                    fundingTxHex: null,
+                                    interactionTxHex: null,
+                                    deploymentTxs: null,
+                                    bitcoinTxHex: rotationTx.tx,
+                                    nextUTXOs: rotationTx.nextUTXOs
+                                }
+                            };
+                        } catch (decodeError) {
+                            console.warn('Failed to decode rotation transfer:', decodeError);
+                        }
+
+                        setCachedBtcTx({
+                            txHex: rotationTx.tx,
+                            utxos: utxos,
+                            nextUtxos: rotationTx.nextUTXOs,
+                            createdAt: Date.now(),
+                            decodedData,
+                            preSignedTxData,
+                            isRotationAll: true
+                        });
+
+                        setIsSigning(false);
+                        return;
                     }
 
                     if (witnessScript && utxos.length > 0) {
@@ -848,7 +1372,8 @@ export default function TxOpnetConfirmScreen() {
     const transferToken = async (parameters: TransferParameters) => {
         const currentWalletAddress = await wallet.getCurrentAccount();
         // Ensure inputAmount is bigint (navigation state may serialize it as string)
-        const tokenInputAmount = BigInt(parameters.inputAmount);
+        const inputAmountRaw = parameters.inputAmount;
+        const tokenInputAmount = typeof inputAmountRaw === 'bigint' ? inputAmountRaw : BigInt(inputAmountRaw);
 
         try {
             // Check if we have a cached pre-signed transaction
@@ -966,7 +1491,8 @@ export default function TxOpnetConfirmScreen() {
         try {
             const currentWalletAddress = await wallet.getCurrentAccount();
             // Ensure inputAmount is a number (navigation state may serialize it as string)
-            const btcInputAmount = Number(parameters.inputAmount);
+            const inputAmountValue = parameters.inputAmount;
+            const btcInputAmount = typeof inputAmountValue === 'number' ? inputAmountValue : Number(inputAmountValue);
 
             // Check if we have a cached pre-signed transaction
             if (!cachedBtcTx) {
@@ -1021,6 +1547,40 @@ export default function TxOpnetConfirmScreen() {
             };
             void wallet.recordTransaction(txRecord);
 
+            // Register change address for cold storage withdrawal
+            if (cachedBtcTx.isColdStorage) {
+                try {
+                    await wallet.registerColdStorageChangeAddress();
+                } catch (err) {
+                    console.warn('Failed to register cold storage change address:', err);
+                }
+            }
+
+            // Mark addresses as consolidated after successful consolidation
+            if (cachedBtcTx.isConsolidation && parameters.sourceAddresses) {
+                try {
+                    // Get consolidated amount from the actual transaction output
+                    let consolidatedAmount = '0';
+                    if (cachedBtcTx.decodedData?.transactions?.[0]) {
+                        // Total output value is what was actually sent to cold storage
+                        consolidatedAmount = cachedBtcTx.decodedData.transactions[0].totalOutputValue.toString();
+                    }
+                    await wallet.markAddressesConsolidated(parameters.sourceAddresses, consolidatedAmount);
+                } catch (err) {
+                    console.warn('Failed to mark addresses as consolidated:', err);
+                }
+            }
+
+            // For ROTATION_ALL, refresh rotation balances to clear spent UTXOs
+            if (cachedBtcTx.isRotationAll) {
+                try {
+                    // Refresh balances to reflect the spent funds
+                    await wallet.refreshRotationBalances();
+                } catch (err) {
+                    console.warn('Failed to refresh rotation balances after send:', err);
+                }
+            }
+
             // Clear cached transaction
             setCachedBtcTx(null);
 
@@ -1039,8 +1599,10 @@ export default function TxOpnetConfirmScreen() {
             const currentWalletAddress = await wallet.getCurrentAccount();
             const userWallet = await getOPNetWallet();
             // Ensure bigint values are properly converted (navigation state may serialize them as strings)
-            const deployPriorityFee = BigInt(parameters.priorityFee ?? 0);
-            const deployGasSatFee = BigInt(parameters.gasSatFee ?? 10_000);
+            const priorityFeeRaw = parameters.priorityFee ?? 0;
+            const gasSatFeeRaw = parameters.gasSatFee ?? 10_000;
+            const deployPriorityFee = typeof priorityFeeRaw === 'bigint' ? priorityFeeRaw : BigInt(priorityFeeRaw);
+            const deployGasSatFee = typeof gasSatFeeRaw === 'bigint' ? gasSatFeeRaw : BigInt(gasSatFeeRaw);
 
             const utxos: UTXO[] = await Web3API.getAllUTXOsForAddresses([currentWalletAddress.address], 1_000_000n); // maximum fee a contract can pay
 
@@ -1139,7 +1701,8 @@ export default function TxOpnetConfirmScreen() {
         try {
             const currentWalletAddress = await wallet.getCurrentAccount();
             // Ensure inputAmount is a number (navigation state may serialize it as string)
-            const mintInputAmount = Number(parameters.inputAmount);
+            const mintInputAmountRaw = parameters.inputAmount;
+            const mintInputAmount = typeof mintInputAmountRaw === 'number' ? mintInputAmountRaw : Number(mintInputAmountRaw);
 
             // Check if we have a cached pre-signed transaction
             if (!cachedSignedTx) {

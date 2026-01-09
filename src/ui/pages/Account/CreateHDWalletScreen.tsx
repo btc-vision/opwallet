@@ -8,6 +8,7 @@ import { Step0 } from '@/ui/pages/Account/createHDWalletComponents/Step0';
 import { Step1_Create } from '@/ui/pages/Account/createHDWalletComponents/Step1_Create';
 import { Step1_Import } from '@/ui/pages/Account/createHDWalletComponents/Step1_Import';
 import { Step2 } from '@/ui/pages/Account/createHDWalletComponents/Step2';
+import { Step3_RotationMode } from '@/ui/pages/Account/createHDWalletComponents/Step3_RotationMode';
 import {
     ContextData,
     TabType,
@@ -53,7 +54,8 @@ export default function CreateHDWalletScreen() {
         isCustom: false,
         customHdPath: '',
         addressTypeIndex: 0,
-        wordsType: WordsType.WORDS_12
+        wordsType: WordsType.WORDS_12,
+        rotationModeEnabled: false
     });
 
     const updateContextData = useCallback(
@@ -66,6 +68,7 @@ export default function CreateHDWalletScreen() {
     const items = useMemo(() => {
         if (contextData.isRestore) {
             if (contextData.restoreWalletType === RestoreWalletType.OW) {
+                // OW import skips rotation mode (uses standard mode)
                 return [
                     {
                         key: TabType.STEP1,
@@ -79,6 +82,7 @@ export default function CreateHDWalletScreen() {
                     }
                 ];
             } else {
+                // Standard import: Type → Import → Address → Privacy Mode
                 return [
                     {
                         key: TabType.STEP1,
@@ -94,10 +98,16 @@ export default function CreateHDWalletScreen() {
                         key: TabType.STEP3,
                         label: 'Address',
                         children: <Step2 contextData={contextData} updateContextData={updateContextData} />
+                    },
+                    {
+                        key: TabType.STEP4,
+                        label: 'Privacy',
+                        children: <Step3_RotationMode contextData={contextData} updateContextData={updateContextData} />
                     }
                 ];
             }
         } else {
+            // Create: Create → Address → Privacy Mode
             return [
                 {
                     key: TabType.STEP1,
@@ -108,6 +118,11 @@ export default function CreateHDWalletScreen() {
                     key: TabType.STEP2,
                     label: 'Address',
                     children: <Step2 contextData={contextData} updateContextData={updateContextData} />
+                },
+                {
+                    key: TabType.STEP3,
+                    label: 'Privacy',
+                    children: <Step3_RotationMode contextData={contextData} updateContextData={updateContextData} />
                 }
             ];
         }

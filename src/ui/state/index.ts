@@ -7,6 +7,7 @@ import accounts from './accounts/reducer';
 import { updateVersion } from './global/actions';
 import global from './global/reducer';
 import keyrings from './keyrings/reducer';
+import rotation from './rotation/reducer';
 import settings from './settings/reducer';
 import transactions from './transactions/reducer';
 import ui from './ui/reducer';
@@ -19,6 +20,7 @@ const store = configureStore({
         settings,
         global,
         keyrings,
+        rotation,
         ui
     },
     middleware: (getDefaultMiddleware) =>

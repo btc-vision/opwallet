@@ -22,7 +22,9 @@ export default function ExportPrivateKeyScreen() {
     const { account } = useLocationState<LocationState>();
 
     const [password, setPassword] = useState('');
-    const [disabled, setDisabled] = useState(true);
+
+    // Derive disabled from password
+    const disabled = !password;
 
     const [privateKey, setPrivateKey] = useState({ hex: '', wif: '' });
     const [quantumPrivateKey, setQuantumPrivateKey] = useState('');
@@ -89,11 +91,12 @@ export default function ExportPrivateKeyScreen() {
         }
     };
 
+    // Reset status and error when password changes
     useEffect(() => {
-        setDisabled(true);
         if (password) {
-            setDisabled(false);
+            // eslint-disable-next-line react-hooks/set-state-in-effect -- Clear errors on password change
             setStatus('');
+             
             setError('');
         }
     }, [password]);

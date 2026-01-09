@@ -1,9 +1,3 @@
-/**
- * Gateway Manager Service
- *
- * Manages IPFS gateways with health checking and prioritization.
- */
-
 import {
     DEFAULT_IPFS_GATEWAYS,
     GatewayConfig,

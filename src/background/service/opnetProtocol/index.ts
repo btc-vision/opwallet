@@ -1,9 +1,3 @@
-/**
- * OPNet Protocol Service
- *
- * Main service for handling opnet:// protocol and .btc domain resolution.
- */
-
 import { getContract } from 'opnet';
 
 import browser from '../../webapi/browser';
@@ -65,16 +59,15 @@ class OpnetProtocolService {
     private setupNavigationListener(): void {
         // Listen for .btc domain navigation
         if (chrome.webNavigation) {
-            chrome.webNavigation.onBeforeNavigate.addListener(
-                this.handleNavigation.bind(this),
-                { url: [{ hostSuffix: '.btc' }] }
-            );
+            chrome.webNavigation.onBeforeNavigate.addListener(this.handleNavigation, {
+                url: [{ hostSuffix: '.btc' }]
+            });
         }
 
         // Set up omnibox if available
         if (chrome.omnibox) {
-            chrome.omnibox.onInputEntered.addListener(this.handleOmniboxInput.bind(this));
-            chrome.omnibox.onInputChanged.addListener(this.handleOmniboxSuggestions.bind(this));
+            chrome.omnibox.onInputEntered.addListener(this.handleOmniboxInput);
+            chrome.omnibox.onInputChanged.addListener(this.handleOmniboxSuggestions);
             chrome.omnibox.onInputStarted.addListener(() => {
                 chrome.omnibox.setDefaultSuggestion({
                     description: 'Navigate to OPNet domain: <match>%s</match>.btc'
@@ -93,7 +86,7 @@ class OpnetProtocolService {
         }
     }
 
-    private handleNavigation(details: { tabId: number; url: string; frameId: number }): void {
+    private handleNavigation = (details: { tabId: number; url: string; frameId: number }): void => {
         if (details.frameId !== 0) return; // Only main frame
 
         try {
@@ -110,12 +103,12 @@ class OpnetProtocolService {
         } catch (error) {
             console.error('Navigation handling error:', error);
         }
-    }
+    };
 
-    private handleOmniboxSuggestions(
+    private handleOmniboxSuggestions = (
         text: string,
         suggest: (suggestions: chrome.omnibox.SuggestResult[]) => void
-    ): void {
+    ): void => {
         const input = text.trim().toLowerCase();
         if (!input) {
             suggest([]);
@@ -156,12 +149,12 @@ class OpnetProtocolService {
         });
 
         suggest(suggestions);
-    }
+    };
 
-    private handleOmniboxInput(
+    private handleOmniboxInput = (
         text: string,
         disposition: 'currentTab' | 'newForegroundTab' | 'newBackgroundTab'
-    ): void {
+    ): void => {
         // Normalize input - user might type "mysite.btc" or just "mysite"
         let input = text.trim().toLowerCase();
 
@@ -204,7 +197,7 @@ class OpnetProtocolService {
                 chrome.tabs.create({ url: resolverUrl, active: false });
                 break;
         }
-    }
+    };
 
     /**
      * Handle web+opnet:// protocol URLs
@@ -751,6 +744,3 @@ class OpnetProtocolService {
 }
 
 export default new OpnetProtocolService();
-
-// Re-export sub-services for direct access if needed
-export { contenthashCacheService, contentCacheService, gatewayManager };

@@ -25,6 +25,7 @@ export default function UnavailableUtxoScreen() {
     const [loading, setLoading] = useState(false);
 
     useEffect(() => {
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- Async data loading on mount
         setLoading(true);
         wallet
             .getUnavailableUtxos()

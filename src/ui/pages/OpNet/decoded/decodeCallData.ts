@@ -1,15 +1,13 @@
 import { BinaryReader } from '@btc-vision/transaction';
-import { Buffer } from 'buffer';
-import { Decoded } from './DecodedTypes';
 import {
     InteractionMotoChef,
     InteractionMotoswap,
     InteractionOP20,
     InteractionTypeNativeSwap,
     isInteractionType
-} from './InteractionType';
-
-// ---- Import all decode methods from the step above
+} from '@/shared/types/InteractionType';
+import { Buffer } from 'buffer';
+import { Decoded } from './DecodedTypes';
 import { decodeAddLiquidityMotoswap } from '@/ui/pages/OpNet/decoded/motoswap/AddLiquidityDecodedInfo';
 import {
     decodeAddLiquidity,

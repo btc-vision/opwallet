@@ -10,6 +10,7 @@ import { FeeRateBar } from '@/ui/components/FeeRateBar';
 import { BalanceDisplay } from '@/ui/pages/Main/WalletTabScreen/components/BalanceDisplay';
 import { RouteTypes, useNavigate } from '@/ui/pages/routeTypes';
 import { useAccountBalance, useCurrentAccount } from '@/ui/state/accounts/hooks';
+import { useRotationEnabled, useRotationSummary } from '@/ui/state/rotation/hooks';
 import { useBTCUnit } from '@/ui/state/settings/hooks';
 import { useUiTxCreateScreen, useUpdateUiTxCreateScreen } from '@/ui/state/ui/hooks';
 import { amountToSatoshis, isValidAddress, satoshisToAmount, useWallet } from '@/ui/utils';
@@ -89,6 +90,10 @@ export default function TxCreateScreen() {
     const wallet = useWallet();
     const accountBalance = useAccountBalance();
 
+    // Rotation mode state
+    const isRotationEnabled = useRotationEnabled();
+    const rotationSummary = useRotationSummary();
+
     const { toInfo, inputAmount, enableRBF, feeRate } = uiState;
 
     const consolidationParams = (location.state as LocationState | undefined)?.consolidation;
@@ -147,15 +152,35 @@ export default function TxCreateScreen() {
 
                 const balances: AddressBalance[] = [];
 
+                // If rotation mode is enabled, add "All Rotation Addresses" as first option
+                if (isRotationEnabled && rotationSummary) {
+                    // Calculate total: hot wallet balance + cold wallet balance
+                    const totalHot = BigInt(rotationSummary.totalHotBalance || '0');
+                    const totalCold = BigInt(rotationSummary.coldWalletBalance || '0');
+                    const totalRotation = totalHot + totalCold;
+                    const totalRotationBTC = satoshisToAmount(Number(totalRotation));
+
+                    balances.push({
+                        type: SourceType.ROTATION_ALL,
+                        label: 'Privacy Mode - All Funds',
+                        address: '', // Multiple addresses, will be resolved at transaction time
+                        balance: totalRotationBTC,
+                        satoshis: totalRotation,
+                        available: totalRotation > 0n,
+                        description: `Hot: ${satoshisToAmount(Number(totalHot))} + Cold: ${satoshisToAmount(Number(totalCold))} BTC`,
+                        description2: 'Sends from all rotation addresses (hot + cold storage)'
+                    });
+                }
+
                 // Always add current address
                 balances.push({
                     type: SourceType.CURRENT,
-                    label: 'Primary Wallet',
+                    label: isRotationEnabled ? 'Current Hot Address' : 'Primary Wallet',
                     address: account.address,
                     balance: currentBalance.btc_total_amount,
                     satoshis: BigInt(amountToSatoshis(currentBalance.btc_total_amount)),
                     available: true,
-                    description: 'Standard wallet address'
+                    description: isRotationEnabled ? 'Active rotation address' : 'Standard wallet address'
                 });
 
                 // Check P2WDA balance from the response
@@ -245,7 +270,7 @@ export default function TxCreateScreen() {
         };
 
         void fetchAllBalances();
-    }, [account.address, account.pubkey, wallet]);
+    }, [account.address, account.pubkey, wallet, isRotationEnabled, rotationSummary]);
 
     // Handle consolidation mode - auto-select address and fill form (only on initial load)
     useEffect(() => {

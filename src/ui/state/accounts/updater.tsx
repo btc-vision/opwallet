@@ -9,6 +9,7 @@ import { globalActions } from '../global/reducer';
 import { useAppDispatch } from '../hooks';
 import { useAccountBalance, useCurrentAccount, useFetchBalanceCallback, useReloadAccounts } from './hooks';
 import { accountActions } from './reducer';
+import { useRefreshRotation } from '../rotation/hooks';
 
 export default function AccountUpdater() {
     const dispatch = useAppDispatch();
@@ -23,18 +24,17 @@ export default function AccountUpdater() {
     });
 
     const reloadAccounts = useReloadAccounts();
+    const refreshRotation = useRefreshRotation();
+
     const onCurrentChange = useCallback(async () => {
         const self = selfRef.current;
         if (isUnlocked && currentAccount && currentAccount.key != self.preAccountKey) {
             self.preAccountKey = currentAccount.key;
 
-            // setLoading(true);
-
             await reloadAccounts();
-
-            // setLoading(false);
+            await refreshRotation();
         }
-    }, [isUnlocked, currentAccount, reloadAccounts]);
+    }, [isUnlocked, currentAccount, reloadAccounts, refreshRotation]);
 
     useEffect(() => {
         void onCurrentChange();

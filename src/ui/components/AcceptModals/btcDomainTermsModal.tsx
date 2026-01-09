@@ -23,11 +23,18 @@ export function BTCDomainModal({
 
     const scrollRef = useRef<HTMLDivElement | null>(null);
 
+    // Track previous open state to reset when modal opens (React recommended pattern)
+    const [prevOpen, setPrevOpen] = useState(open);
+    if (open !== prevOpen) {
+        setPrevOpen(open);
+        if (open) {
+            // force scroll-to-bottom gating each time it opens
+            setCanInteract(false);
+        }
+    }
+
     useEffect(() => {
         if (!open) return;
-
-        // force scroll-to-bottom gating each time it opens
-        setCanInteract(false);
 
         requestAnimationFrame(() => {
             scrollRef.current?.scrollTo({ top: 0, behavior: 'auto' });

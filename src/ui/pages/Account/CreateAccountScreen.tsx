@@ -35,6 +35,7 @@ export default function CreateAccountScreen() {
         setDefaultName(accountName);
     };
     useEffect(() => {
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- Async data loading on mount
         init();
     }, []);
 

@@ -1,10 +1,3 @@
-/**
- * OPNet Provider for Resolver Page
- *
- * Simplified opnet provider that works within extension pages.
- * Exposes window.opnet for dApps loaded in the resolver iframe.
- */
-
 import browser from 'webextension-polyfill';
 import { EventEmitter } from 'events';
 

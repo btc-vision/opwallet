@@ -47,6 +47,10 @@ import OpnetBrowserScreen from './Settings/OpnetBrowserScreen';
 import BtcDomainScreen from './Domain/BtcDomainScreen';
 import DuplicationResolutionScreen from './Settings/DuplicationResolutionScreen';
 import QuantumMigrationScreen from './Settings/QuantumMigrationScreen';
+import AddressRotationScreen from './Settings/AddressRotationScreen';
+import RotationHistoryScreen from './Settings/RotationHistoryScreen';
+import ConsolidationScreen from './Settings/ConsolidationScreen';
+import ColdStorageWithdrawScreen from './Settings/ColdStorageWithdrawScreen';
 import UpgradeNoticeScreen from './Settings/UpgradeNoticeScreen';
 import ReceiveScreen from './Wallet/ReceiveScreen';
 import TxConfirmScreen from './Wallet/TxConfirmScreen';
@@ -258,6 +262,22 @@ export const routes: Routes = {
     [RouteTypes.BtcDomainScreen]: {
         path: routePaths[RouteTypes.BtcDomainScreen],
         element: <BtcDomainScreen />
+    },
+    [RouteTypes.AddressRotationScreen]: {
+        path: routePaths[RouteTypes.AddressRotationScreen],
+        element: <AddressRotationScreen />
+    },
+    [RouteTypes.RotationHistoryScreen]: {
+        path: routePaths[RouteTypes.RotationHistoryScreen],
+        element: <RotationHistoryScreen />
+    },
+    [RouteTypes.ConsolidationScreen]: {
+        path: routePaths[RouteTypes.ConsolidationScreen],
+        element: <ConsolidationScreen />
+    },
+    [RouteTypes.ColdStorageWithdrawScreen]: {
+        path: routePaths[RouteTypes.ColdStorageWithdrawScreen],
+        element: <ColdStorageWithdrawScreen />
     }
 };
 

@@ -346,7 +346,7 @@ export default function BtcDomainScreen() {
         if (activeTab === 'transfer' && myDomains.length > 0) {
             loadPendingTransfers();
         }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
+         
     }, [activeTab, myDomains.length]);
 
     // Handle initiate transfer - navigate to TxOpnetConfirmScreen

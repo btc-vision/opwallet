@@ -99,6 +99,7 @@ export default function SignInteraction(props: Props) {
 
     // Fetch all user addresses for change detection
     // Includes: main address, all CSV variants, p2wda, p2tr, p2wpkh (segwit), p2pkh (legacy), p2shp2wpkh (nested segwit)
+    // Also includes rotation addresses and cold wallet when rotation mode is enabled
     useEffect(() => {
         const fetchUserAddresses = async () => {
             try {
@@ -149,6 +150,24 @@ export default function SignInteraction(props: Props) {
                         addresses.add(addressInst.p2shp2wpkh(Web3API.network).toLowerCase());
                     } catch { /* ignore if derivation fails */ }
                 }
+
+                // Add rotation addresses when rotation mode is enabled
+                try {
+                    const isRotationEnabled = await wallet.isRotationModeEnabled();
+                    if (isRotationEnabled) {
+                        // Add all rotation (hot) addresses
+                        const rotationHistory = await wallet.getRotationHistory();
+                        for (const rotatedAddr of rotationHistory) {
+                            addresses.add(rotatedAddr.address.toLowerCase());
+                        }
+
+                        // Add cold wallet address
+                        try {
+                            const coldAddress = await wallet.getColdWalletAddress();
+                            addresses.add(coldAddress.toLowerCase());
+                        } catch { /* ignore if cold wallet derivation fails */ }
+                    }
+                } catch { /* ignore if rotation check fails */ }
 
                 setUserAddresses(addresses);
             } catch (e) {

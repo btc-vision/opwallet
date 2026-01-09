@@ -1,9 +1,3 @@
-/**
- * Content Cache Service
- *
- * Caches fetched IPFS content with LRU eviction.
- */
-
 import browser from '../../webapi/browser';
 import { ContentCacheEntry } from '@/shared/types/OpnetProtocol';
 

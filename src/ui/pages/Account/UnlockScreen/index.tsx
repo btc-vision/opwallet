@@ -15,11 +15,13 @@ export default function UnlockScreen() {
     const wallet = useWallet();
     const navigate = useNavigate();
     const [password, setPassword] = useState('');
-    const [disabled, setDisabled] = useState(true);
     const UIType = getUiType();
     const isInNotification = UIType.isNotification;
     const unlock = useUnlockCallback();
     const tools = useTools();
+
+    // Derive disabled from password
+    const disabled = !password;
 
     const btnClick = async () => {
         try {
@@ -46,14 +48,6 @@ export default function UnlockScreen() {
             await btnClick();
         }
     };
-
-    useEffect(() => {
-        if (password) {
-            setDisabled(false);
-        } else {
-            setDisabled(true);
-        }
-    }, [password]);
     return (
         <Layout>
             <Content preset="middle">

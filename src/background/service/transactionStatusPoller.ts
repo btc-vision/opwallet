@@ -1,9 +1,14 @@
 import { ChainType } from '@/shared/constant';
 import { TransactionHistoryItem, TransactionStatus } from '@/shared/types/TransactionHistory';
+import { RotatedAddressStatus, AddressRotationState } from '@/shared/types/AddressRotation';
 import Web3API from '@/shared/web3/Web3API';
+import { getBitcoinLibJSNetwork } from '@/shared/web3/Web3API';
+import { NetworkType } from '@/shared/types';
 
+import addressRotationService from './addressRotation';
 import preferenceService from './preference';
 import transactionHistoryService from './transactionHistory';
+import keyringService from './keyring';
 
 const POLL_INTERVAL_MS = 30000; // 30 seconds
 const MAX_STATUS_CHECK_ATTEMPTS = 50; // ~25 minutes then stop checking individual tx
@@ -235,8 +240,87 @@ class TransactionStatusPoller {
             // Update known UTXOs (keep last 500 to avoid unbounded growth)
             const allKnownTxids = [...new Set([...knownTxids, ...currentTxids])].slice(-500);
             await transactionHistoryService.updateKnownUtxoTxids(chainType, pubkey, allKnownTxids);
+
+            // Check rotation mode addresses if enabled
+            await this.checkRotationAddresses(pubkey, chainType);
         } catch (error) {
             console.error('[TransactionStatusPoller] Error checking incoming transactions:', error);
+        }
+    }
+
+    /**
+     * Check rotation mode addresses for incoming funds
+     * Automatically rotates to next address when funds are detected
+     */
+    private async checkRotationAddresses(pubkey: string, chainType: ChainType): Promise<void> {
+        try {
+            const rotationState = addressRotationService.getRotationState(pubkey);
+            if (!rotationState?.enabled) {
+                return;
+            }
+
+            // Get addresses that need balance checking
+            const addressesToCheck = rotationState.rotatedAddresses
+                .filter(
+                    (a) =>
+                        a.status === RotatedAddressStatus.ACTIVE ||
+                        a.status === RotatedAddressStatus.RECEIVED
+                )
+                .map((a) => a.address);
+
+            if (addressesToCheck.length === 0) {
+                return;
+            }
+
+            // Fetch UTXOs for all rotation addresses
+            const utxos = await Web3API.getAllUTXOsForAddresses(addressesToCheck);
+
+            // Group UTXOs by address
+            const balancesByAddress = new Map<string, bigint>();
+            for (const utxo of utxos) {
+                const addr = utxo.scriptPubKey?.address || '';
+                if (!addr) continue;
+                const current = balancesByAddress.get(addr) || 0n;
+                // utxo.value is already bigint from Web3API
+                balancesByAddress.set(addr, current + utxo.value);
+            }
+
+            // Check current hot address for new funds
+            const currentHot = addressRotationService.getCurrentHotAddress(pubkey);
+            if (currentHot) {
+                const newBalance = balancesByAddress.get(currentHot.address) || 0n;
+                const prevBalance = BigInt(currentHot.currentBalance);
+
+                if (newBalance > 0n && prevBalance === 0n) {
+                    // New funds detected on current hot address - trigger rotation!
+                    console.log(
+                        `[TransactionStatusPoller] New funds detected on rotation address ${currentHot.address}: ${newBalance} sats`
+                    );
+
+                    // Get keyring index for derivation
+                    const currentKeyringIndex = preferenceService.getCurrentKeyringIndex();
+                    const networkType = preferenceService.store.networkType;
+                    const network = getBitcoinLibJSNetwork(networkType, chainType);
+
+                    // Handle incoming funds (may trigger auto-rotation)
+                    const rotated = await addressRotationService.handleIncomingFunds(
+                        pubkey,
+                        currentHot.address,
+                        newBalance.toString(),
+                        currentKeyringIndex,
+                        network
+                    );
+
+                    if (rotated) {
+                        console.log('[TransactionStatusPoller] Auto-rotated to new address');
+                    }
+                }
+            }
+
+            // Refresh all rotation address balances
+            await addressRotationService.refreshAddressBalances(pubkey, chainType);
+        } catch (error) {
+            console.error('[TransactionStatusPoller] Error checking rotation addresses:', error);
         }
     }
 

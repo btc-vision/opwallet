@@ -24,6 +24,7 @@ export interface HdKeyringSerializedOptions {
     securityLevel?: MLDSASecurityLevel;
     activeIndexes?: number[];
     addressType?: AddressTypes;
+    rotationModeEnabled?: boolean; // Privacy mode - permanent choice at wallet creation
 }
 
 export interface SimpleKeyringSerializedOptions {
@@ -39,6 +40,7 @@ export interface SavedVault {
     type: string;
     data: KeyringOptions;
     addressType: AddressTypes | number; // Support both for migration
+    rotationModeEnabled?: boolean; // Privacy mode - permanent choice
 }
 
 // Keyring type union - only HD and Simple now
@@ -135,6 +137,7 @@ class KeyringService extends EventEmitter {
     memStore: ObservableStore<MemStoreState>;
     keyrings: (Keyring | EmptyKeyring)[];
     addressTypes: AddressTypes[];
+    rotationModes: boolean[]; // Privacy mode per keyring (permanent choice)
     encryptor: typeof encryptor = encryptor;
     password: string | null = null;
 
@@ -149,6 +152,7 @@ class KeyringService extends EventEmitter {
 
         this.keyrings = [];
         this.addressTypes = [];
+        this.rotationModes = [];
     }
 
     loadStore = (initState: StoredData) => {
@@ -262,6 +266,7 @@ class KeyringService extends EventEmitter {
 
     /**
      * Create HD keyring from mnemonic with quantum support
+     * @param rotationModeEnabled - If true, enables address rotation (privacy) mode for this keyring
      */
     createKeyringWithMnemonics = async (
         seed: string,
@@ -269,7 +274,8 @@ class KeyringService extends EventEmitter {
         passphrase: string,
         addressType: AddressTypes,
         accountCount: number,
-        network: Network = networks.bitcoin
+        network: Network = networks.bitcoin,
+        rotationModeEnabled = false
     ) => {
         if (accountCount < 1) {
             throw new Error(i18n.t('account count must be greater than 0'));
@@ -339,7 +345,8 @@ class KeyringService extends EventEmitter {
                 passphrase,
                 network,
                 securityLevel: MLDSASecurityLevel.LEVEL2,
-                addressType
+                addressType,
+                rotationModeEnabled
             } as HdKeyringSerializedOptions,
             addressType
         );
@@ -355,9 +362,10 @@ class KeyringService extends EventEmitter {
         return keyring;
     };
 
-    addKeyring = async (keyring: Keyring | EmptyKeyring, addressType: AddressTypes) => {
+    addKeyring = async (keyring: Keyring | EmptyKeyring, addressType: AddressTypes, rotationModeEnabled = false) => {
         this.keyrings.push(keyring);
         this.addressTypes.push(addressType);
+        this.rotationModes.push(rotationModeEnabled);
         await this.persistAllKeyrings();
         this._updateMemStoreKeyrings();
         this.fullUpdate();
@@ -441,9 +449,11 @@ class KeyringService extends EventEmitter {
         addressType: AddressTypes
     ): Promise<Keyring | EmptyKeyring> => {
         let keyring: Keyring | EmptyKeyring;
+        let rotationModeEnabled = false;
 
         if (type === KEYRING_TYPE.HdKeyring) {
             const hdOpts = opts as HdKeyringSerializedOptions;
+            rotationModeEnabled = hdOpts.rotationModeEnabled ?? false;
             keyring = new HdKeyring({
                 mnemonic: hdOpts.mnemonic,
                 passphrase: hdOpts.passphrase,
@@ -466,7 +476,7 @@ class KeyringService extends EventEmitter {
             throw new Error(`Keyring type not found: ${type}`);
         }
 
-        return await this.addKeyring(keyring, addressType);
+        return await this.addKeyring(keyring, addressType, rotationModeEnabled);
     };
 
     createTmpKeyring = (type: string, opts: KeyringOptions | undefined): Keyring | EmptyKeyring => {
@@ -574,6 +584,7 @@ class KeyringService extends EventEmitter {
     removeKeyring = async (keyringIndex: number): Promise<void> => {
         this.keyrings.splice(keyringIndex, 1);
         this.addressTypes.splice(keyringIndex, 1);
+        this.rotationModes.splice(keyringIndex, 1);
 
         await this.persistAllKeyrings();
         this._updateMemStoreKeyrings();
@@ -691,7 +702,8 @@ class KeyringService extends EventEmitter {
             return {
                 type: keyring.type,
                 data: serializedData,
-                addressType: this.addressTypes[index]
+                addressType: this.addressTypes[index],
+                rotationModeEnabled: this.rotationModes[index] ?? false
             };
         });
 
@@ -768,6 +780,7 @@ ${hasSalvageableData ? `║  Salvageable Fields: ${salvageableFields.join(', ').
                 }
                 this.keyrings.push(keyring);
                 this.addressTypes.push(addressType);
+                this.rotationModes.push(key.rotationModeEnabled ?? false);
             } catch (e) {
                 console.error(`Failed to restore keyring at index ${i}:`, e, 'Data:', JSON.stringify(key));
                 failedKeyrings.push({ index: i, error: e, data: key });
@@ -1050,9 +1063,17 @@ ${hasSalvageableData ? `║  Salvageable Fields: ${salvageableFields.join(', ').
         return !!addresses.find((item) => item.pubkey === pubkey);
     };
 
+    /**
+     * Get the rotation mode status for a keyring by index
+     */
+    getRotationMode = (keyringIndex: number): boolean => {
+        return this.rotationModes[keyringIndex] ?? false;
+    };
+
     clearKeyrings = (): void => {
         this.keyrings = [];
         this.addressTypes = [];
+        this.rotationModes = [];
         this.memStore.updateState({
             keyrings: []
         });
@@ -1273,6 +1294,7 @@ ${hasSalvageableData ? `║  Salvageable Fields: ${salvageableFields.join(', ').
 
         this.keyrings.splice(keyringIndex, 1);
         this.addressTypes.splice(keyringIndex, 1);
+        this.rotationModes.splice(keyringIndex, 1);
 
         await this.persistAllKeyrings();
         this._updateMemStoreKeyrings();

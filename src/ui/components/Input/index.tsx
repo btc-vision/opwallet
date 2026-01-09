@@ -106,33 +106,24 @@ function AmountInput(props: InputProps) {
         ...rest
     } = props;
 
-    // All hooks must be called before any conditional returns
-    const [inputValue, setInputValue] = useState(props.value ?? '');
-    const [validAmount, setValidAmount] = useState(props.value ?? '');
-
-    useEffect(() => {
-        if (onAmountInputChange) {
-            onAmountInputChange(validAmount);
-        }
-    }, [validAmount, onAmountInputChange]);
-
     if (!onAmountInputChange) {
         return <div />;
     }
+
+    // Use props.value directly as the controlled value
+    const displayValue = props.value ?? '';
 
     const handleInputAmount = (e: React.ChangeEvent<HTMLInputElement>) => {
         const value = e.target.value;
         if (disableDecimal) {
             if (/^[1-9]\d*$/.test(value) || value === '') {
-                setValidAmount(value);
-                setInputValue(value);
+                onAmountInputChange(value);
             }
         } else {
             const maxDecimals = decimalPlaces ?? 8;
             const decimalRegex = new RegExp(`^\\d*\\.?\\d{0,${maxDecimals}}$`);
             if (decimalRegex.test(value) || value === '') {
-                setValidAmount(value);
-                setInputValue(value);
+                onAmountInputChange(value);
             }
         }
     };
@@ -141,7 +132,7 @@ function AmountInput(props: InputProps) {
             <input
                 placeholder={placeholder ?? 'Amount'}
                 type={'text'}
-                value={inputValue}
+                value={displayValue}
                 onChange={handleInputAmount}
                 className={`op_input_address ${enableMax ? 'with_max' : ''}`}
                 disabled={disabled}

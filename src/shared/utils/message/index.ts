@@ -1,6 +1,3 @@
-/**
- * this script is live in content-script / dapp's page
- */
 import { EventEmitter } from 'events';
 
 import { providerErrors, rpcErrors } from '@/shared/lib/bitcoin-rpc-errors/errors';

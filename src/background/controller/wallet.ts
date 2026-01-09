@@ -3,6 +3,7 @@ import { BitcoinUtils, BroadcastedTransaction, getContract, UTXOs } from 'opnet'
 import { BTC_NAME_RESOLVER_ABI } from '@/shared/web3/abi/BTC_NAME_RESOLVER_ABI';
 import { IBtcNameResolverContract } from '@/shared/web3/interfaces/IBtcNameResolverContract';
 
+import addressRotationService from '@/background/service/addressRotation';
 import contactBookService from '@/background/service/contactBook';
 import duplicationBackupService from '@/background/service/duplicationBackup';
 import duplicationDetectionService from '@/background/service/duplicationDetection';
@@ -74,18 +75,28 @@ import {
     DuplicationState,
     OnChainLinkageInfo
 } from '@/shared/types/Duplication';
+import {
+    AddressRotationState,
+    ConsolidationParams,
+    ConsolidationResult,
+    RotatedAddress,
+    RotationModeSummary,
+    RotationModeUpdateSettings
+} from '@/shared/types/AddressRotation';
 import { getChainInfo } from '@/shared/utils';
 import Web3API, { getBitcoinLibJSNetwork } from '@/shared/web3/Web3API';
 import {
     Address,
     AddressTypes,
     CancelledTransaction,
+    createAddressRotation,
     DeploymentResult,
     EcKeyPair,
     ICancelTransactionParameters,
     ICancelTransactionParametersWithoutSigner,
     IDeploymentParameters,
     IDeploymentParametersWithoutSigner,
+    IFundingTransactionParameters,
     IInteractionParameters,
     InteractionParametersWithoutSigner,
     InteractionResponse,
@@ -121,10 +132,12 @@ import {
     PsbtOutputExtended,
     PsbtOutputExtendedAddress,
     PsbtOutputExtendedScript,
+    tapTweakHash,
     toXOnly,
     Transaction
 } from '@btc-vision/bitcoin';
 import { Buffer } from 'buffer';
+import { ECPairInterface } from 'ecpair';
 import { ContactBookItem, ContactBookStore } from '../service/contactBook';
 import { ConnectedSite } from '../service/permission';
 
@@ -893,6 +906,7 @@ export class WalletController {
 
     /**
      * Create a new HD keyring from a mnemonic (BIP39).
+     * @param rotationModeEnabled - If true, enables address rotation (privacy) mode for this keyring (permanent choice)
      * @throws WalletControllerError
      */
     public createKeyringWithMnemonics = async (
@@ -900,7 +914,8 @@ export class WalletController {
         hdPath: string,
         passphrase: string,
         addressType: AddressTypes,
-        accountCount: number
+        accountCount: number,
+        rotationModeEnabled = false
     ): Promise<void> => {
         try {
             const network = getBitcoinLibJSNetwork(this.getNetworkType(), this.getChainType());
@@ -910,7 +925,8 @@ export class WalletController {
                 passphrase,
                 addressType,
                 accountCount,
-                network
+                network,
+                rotationModeEnabled
             );
             keyringService.removePreMnemonics();
 
@@ -929,6 +945,19 @@ export class WalletController {
             );
 
             this.changeKeyring(walletKeyring);
+
+            // If rotation mode is enabled, initialize the address rotation service
+            if (rotationModeEnabled) {
+                const keyringIndex = keyringService.keyrings.length - 1;
+                const currentAccount = walletKeyring.accounts[0];
+                if (currentAccount) {
+                    await addressRotationService.enableRotationMode(
+                        keyringIndex,
+                        currentAccount.pubkey,
+                        network
+                    );
+                }
+            }
 
             await preferenceService.setShowSafeNotice(true);
         } catch (err) {
@@ -1080,6 +1109,15 @@ export class WalletController {
                 addressType
             });
         }
+    };
+
+    /**
+     * Check if the current keyring has rotation mode (privacy mode) enabled.
+     * This is a permanent setting chosen during wallet creation.
+     */
+    public isKeyringRotationMode = (): boolean => {
+        const currentKeyringIndex = preferenceService.getCurrentKeyringIndex();
+        return keyringService.getRotationMode(currentKeyringIndex);
     };
 
     /**
@@ -4339,6 +4377,500 @@ export class WalletController {
             newOwner,
             initiatedAt: pendingResult.properties.initiatedAt
         };
+    };
+
+    // ==================== ADDRESS ROTATION MODE ====================
+
+    /**
+     * Check if rotation mode is supported for current keyring (HD wallets only)
+     */
+    public isRotationModeSupported = async (): Promise<boolean> => {
+        const keyring = await this.getCurrentKeyring();
+        return keyring?.type === KEYRING_TYPE.HdKeyring;
+    };
+
+    /**
+     * Check if rotation mode is enabled for current account
+     */
+    public isRotationModeEnabled = async (): Promise<boolean> => {
+        const account = await this.getCurrentAccount();
+        if (!account) return false;
+        return addressRotationService.isRotationEnabled(account.pubkey);
+    };
+
+    /**
+     * Enable rotation mode for current account
+     */
+    public enableRotationMode = async (): Promise<AddressRotationState> => {
+        const account = await this.getCurrentAccount();
+        const keyring = await this.getCurrentKeyring();
+
+        if (!account || !keyring) {
+            throw new WalletControllerError('No current account or keyring');
+        }
+
+        if (keyring.type !== KEYRING_TYPE.HdKeyring) {
+            throw new WalletControllerError('Rotation mode only supported for HD wallets');
+        }
+
+        const network = getBitcoinLibJSNetwork(this.getNetworkType(), this.getChainType());
+        return addressRotationService.enableRotationMode(keyring.index, account.pubkey, network);
+    };
+
+    /**
+     * Disable rotation mode for current account
+     */
+    public disableRotationMode = async (): Promise<void> => {
+        const account = await this.getCurrentAccount();
+        if (!account) throw new WalletControllerError('No current account');
+
+        await addressRotationService.disableRotationMode(account.pubkey);
+    };
+
+    /**
+     * Get current hot wallet address for receiving
+     */
+    public getCurrentHotAddress = async (): Promise<RotatedAddress | null> => {
+        const account = await this.getCurrentAccount();
+        if (!account) return null;
+
+        return addressRotationService.getCurrentHotAddress(account.pubkey);
+    };
+
+    /**
+     * Manually rotate to next address
+     */
+    public rotateToNextAddress = async (): Promise<RotatedAddress> => {
+        const account = await this.getCurrentAccount();
+        const keyring = await this.getCurrentKeyring();
+
+        if (!account || !keyring) {
+            throw new WalletControllerError('No current account or keyring');
+        }
+
+        const network = getBitcoinLibJSNetwork(this.getNetworkType(), this.getChainType());
+        return addressRotationService.deriveNextHotAddress(keyring.index, account.pubkey, network);
+    };
+
+    public getRotationModeSummary = async (): Promise<RotationModeSummary | null> => {
+        const account = await this.getCurrentAccount();
+        if (!account) return null;
+
+        return addressRotationService.getRotationSummary(account.pubkey);
+    };
+
+    public getRotationHistory = async (): Promise<RotatedAddress[]> => {
+        const account = await this.getCurrentAccount();
+        if (!account) return [];
+
+        return addressRotationService.getRotationHistory(account.pubkey);
+    };
+
+    public getRotationModeBalance = async (): Promise<BitcoinBalance> => {
+        const account = await this.getCurrentAccount();
+        const keyring = await this.getCurrentKeyring();
+
+        if (!account || !keyring) {
+            return this.getEmptyBalance();
+        }
+
+        const rotationEnabled = addressRotationService.isRotationEnabled(account.pubkey);
+        if (!rotationEnabled) {
+            return this.getEmptyBalance();
+        }
+
+        try {
+            await Web3API.setNetwork(this.getChainType());
+            const network = getBitcoinLibJSNetwork(this.getNetworkType(), this.getChainType());
+
+            const coldAddress = addressRotationService.getColdWalletAddress(keyring.index, network);
+            const history = addressRotationService.getRotationHistory(account.pubkey);
+            const hotAddresses = history.map((h) => h.address);
+
+            const allAddresses = [coldAddress, ...hotAddresses];
+
+            const [allUTXOs, unspentUTXOs] = await Promise.all([
+                Web3API.getAllUTXOsForAddresses(allAddresses),
+                Web3API.getUnspentUTXOsForAddresses(allAddresses)
+            ]);
+
+            const totalAll = allUTXOs.reduce((sum, u) => sum + u.value, 0n);
+            const totalUnspent = unspentUTXOs.reduce((sum, u) => sum + u.value, 0n);
+            const pendingAmount = totalAll - totalUnspent;
+
+            let usdValue = '0.00';
+            try {
+                const btcPrice = await opnetApi.getBtcPrice();
+                if (btcPrice > 0) {
+                    const btcAmount = Number(totalAll) / 100000000;
+                    usdValue = (btcAmount * btcPrice).toFixed(2);
+                }
+            } catch {
+                // Silently fail
+            }
+
+            return {
+                btc_total_amount: BitcoinUtils.formatUnits(totalAll, 8),
+                btc_confirm_amount: BitcoinUtils.formatUnits(totalUnspent, 8),
+                btc_pending_amount: BitcoinUtils.formatUnits(pendingAmount, 8),
+
+                csv75_total_amount: '0',
+                csv75_unlocked_amount: '0',
+                csv75_locked_amount: '0',
+                csv2_total_amount: '0',
+                csv2_unlocked_amount: '0',
+                csv2_locked_amount: '0',
+                csv1_total_amount: '0',
+                csv1_unlocked_amount: '0',
+                csv1_locked_amount: '0',
+                p2wda_pending_amount: '0',
+                p2wda_total_amount: '0',
+
+                consolidation_amount: '0',
+                consolidation_unspent_amount: '0',
+                consolidation_unspent_count: 0,
+                consolidation_csv75_unlocked_amount: '0',
+                consolidation_csv75_unlocked_count: 0,
+                consolidation_csv2_unlocked_amount: '0',
+                consolidation_csv2_unlocked_count: 0,
+                consolidation_csv1_unlocked_amount: '0',
+                consolidation_csv1_unlocked_count: 0,
+                consolidation_p2wda_unspent_amount: '0',
+                consolidation_p2wda_unspent_count: 0,
+
+                usd_value: usdValue,
+
+                all_utxos_count: allUTXOs.length,
+                unspent_utxos_count: unspentUTXOs.length,
+                csv75_locked_utxos_count: 0,
+                csv75_unlocked_utxos_count: 0,
+                csv2_locked_utxos_count: 0,
+                csv2_unlocked_utxos_count: 0,
+                csv1_locked_utxos_count: 0,
+                csv1_unlocked_utxos_count: 0,
+                p2wda_utxos_count: 0,
+                unspent_p2wda_utxos_count: 0
+            };
+        } catch (err) {
+            console.error('[getRotationModeBalance] Error:', err);
+            return this.getEmptyBalance();
+        }
+    };
+
+
+    public refreshRotationBalances = async (): Promise<void> => {
+        const account = await this.getCurrentAccount();
+        if (!account) return;
+
+        await addressRotationService.refreshAddressBalances(account.pubkey, this.getChainType());
+    };
+
+    /**
+     * Prepare consolidation transaction (gather UTXOs from hot addresses to cold)
+     */
+    public prepareConsolidation = async (feeRate: number): Promise<ConsolidationParams> => {
+        const account = await this.getCurrentAccount();
+        const keyring = await this.getCurrentKeyring();
+
+        if (!account || !keyring) {
+            throw new WalletControllerError('No current account or keyring');
+        }
+
+        return addressRotationService.prepareConsolidation(keyring.index, account.pubkey, feeRate);
+    };
+
+    /**
+     * Execute consolidation to cold storage using TransactionFactory with addressRotation
+     */
+    public executeConsolidation = async (feeRate: number): Promise<ConsolidationResult> => {
+        const account = await this.getCurrentAccount();
+        const keyring = await this.getCurrentKeyring();
+
+        if (!account || !keyring) {
+            throw new WalletControllerError('No current account or keyring');
+        }
+
+        try {
+            // Get the bitcoin network
+            const network = getBitcoinLibJSNetwork(this.getNetworkType(), this.getChainType());
+
+            // Get addresses with balance for consolidation
+            const sourceAddresses = addressRotationService.getAddressesForConsolidation(account.pubkey);
+            if (sourceAddresses.length === 0) {
+                throw new WalletControllerError('No funds to consolidate');
+            }
+
+            // Get cold wallet address
+            const coldAddress = addressRotationService.getColdWalletAddress(keyring.index, network);
+
+            // Fetch UTXOs from all source addresses
+            const addressList = sourceAddresses.map((a) => a.address);
+            await Web3API.setNetwork(this.getChainType());
+            const allUtxos = await Web3API.getAllUTXOsForAddresses(addressList);
+
+            if (allUtxos.length === 0) {
+                throw new WalletControllerError('No UTXOs found to consolidate');
+            }
+
+            // Calculate total input value
+            const totalInputValue = allUtxos.reduce((sum, u) => sum + u.value, 0n);
+
+            // Get the consolidation keyring with all needed derivation indices
+            const consolidationKeyring = addressRotationService.getConsolidationKeyring(
+                keyring.index,
+                account.pubkey,
+                network
+            );
+
+            // Build signer map: address -> keypair for each source address
+            const signerPairs: Array<readonly [string, ECPairInterface]> = [];
+            let primaryWallet: Wallet | null = null;
+
+            for (const addr of sourceAddresses) {
+                const wallet = consolidationKeyring.getWallet(addr.pubkey);
+                if (!wallet) {
+                    throw new WalletControllerError(`Failed to get wallet for address ${addr.address}`);
+                }
+                signerPairs.push([addr.address, wallet.keypair] as const);
+
+                // Use first wallet as primary signer (required by interface)
+                if (!primaryWallet) {
+                    primaryWallet = wallet;
+                }
+            }
+
+            if (!primaryWallet) {
+                throw new WalletControllerError('No wallets available for consolidation');
+            }
+
+            // Create address rotation config with signer map
+            const addressRotation = createAddressRotation(signerPairs);
+
+            // Estimate fees: ~68 vbytes per P2TR input, ~43 vbytes for output, ~12 overhead
+            const estimatedVSize = BigInt(12 + allUtxos.length * 68 + 43);
+            const estimatedFee = estimatedVSize * BigInt(feeRate);
+
+            // Calculate output amount with 20% fee buffer
+            const feeBuffer = (estimatedFee * 120n) / 100n;
+            const outputAmount = totalInputValue - feeBuffer;
+
+            if (outputAmount <= 0n) {
+                throw new WalletControllerError('Consolidation amount too small to cover fees');
+            }
+
+            // Build funding transaction parameters
+            // Set 'from' to cold address so any change also goes to cold storage
+            const fundingParams: IFundingTransactionParameters = {
+                amount: outputAmount,
+                utxos: allUtxos,
+                signer: primaryWallet.keypair,
+                mldsaSigner: primaryWallet.mldsaKeypair,
+                network: Web3API.network,
+                feeRate: feeRate,
+                priorityFee: 0n,
+                gasSatFee: 0n,
+                to: coldAddress,
+                from: coldAddress, // Change also goes to cold storage
+                addressRotation: addressRotation
+            };
+
+            // Create and sign the consolidation transaction using TransactionFactory
+            const signedTx = await Web3API.transactionFactory.createBTCTransfer(fundingParams);
+
+            // Broadcast the transaction
+            const txid = await this.pushTx(signedTx.tx);
+
+            // Calculate actual fee from the transaction
+            const actualFee = signedTx.estimatedFees;
+            const consolidatedAmount = (totalInputValue - actualFee).toString();
+
+            // Mark addresses as consolidated
+            await addressRotationService.markConsolidated(
+                account.pubkey,
+                addressList,
+                consolidatedAmount
+            );
+
+            return {
+                success: true,
+                txid,
+                consolidatedAmount,
+                fee: actualFee.toString(),
+                sourceAddressCount: sourceAddresses.length
+            };
+        } catch (error) {
+            return {
+                success: false,
+                error: String(error),
+                consolidatedAmount: '0',
+                fee: '0',
+                sourceAddressCount: 0
+            };
+        }
+    };
+
+    /**
+     * Update rotation mode settings
+     */
+    public updateRotationSettings = async (settings: RotationModeUpdateSettings): Promise<void> => {
+        const account = await this.getCurrentAccount();
+        if (!account) throw new WalletControllerError('No current account');
+
+        const state = addressRotationService.getRotationState(account.pubkey);
+        if (!state) throw new WalletControllerError('Rotation mode not enabled');
+
+        const updates: Partial<AddressRotationState> = {};
+        if (settings.autoRotate !== undefined) {
+            updates.autoRotate = settings.autoRotate;
+        }
+        if (settings.rotationThreshold !== undefined) {
+            updates.rotationThreshold = settings.rotationThreshold;
+        }
+
+        await addressRotationService.updateRotationState(account.pubkey, updates);
+    };
+
+    /**
+     * Get the cold wallet address (INTERNAL - for consolidation only)
+     */
+    public getColdWalletAddress = async (): Promise<string> => {
+        const keyring = await this.getCurrentKeyring();
+        if (!keyring) {
+            throw new WalletControllerError('No current keyring');
+        }
+
+        const network = getBitcoinLibJSNetwork(this.getNetworkType(), this.getChainType());
+        return addressRotationService.getColdWalletAddress(keyring.index, network);
+    };
+
+    /**
+     * Get the next unused rotation address for change outputs
+     */
+    public getNextUnusedRotationAddress = async (): Promise<string> => {
+        const account = await this.getCurrentAccount();
+        const keyring = await this.getCurrentKeyring();
+        if (!keyring || !account) {
+            throw new WalletControllerError('No current keyring or account');
+        }
+
+        const network = getBitcoinLibJSNetwork(this.getNetworkType(), this.getChainType());
+        return addressRotationService.getNextUnusedRotationAddress(keyring.index, account.pubkey, network);
+    };
+
+    /**
+     * Get cold storage wallet data for transaction signing
+     * Returns [wif, mldsaPrivateKey, chainCode, pubkey]
+     */
+    public getColdStorageWallet = async (): Promise<[string, string, string, string]> => {
+        const keyring = await this.getCurrentKeyring();
+        if (!keyring) {
+            throw new Error('No current keyring');
+        }
+
+        const network = getBitcoinLibJSNetwork(this.getNetworkType(), this.getChainType());
+        const coldKeyring = addressRotationService.getColdWalletKeyring(keyring.index, network);
+        const coldAccounts = coldKeyring.getAccounts();
+
+        if (!coldAccounts[0]) {
+            throw new Error('Failed to get cold wallet account');
+        }
+
+        const wallet = coldKeyring.getWallet(coldAccounts[0]);
+        if (!wallet) {
+            throw new Error('Failed to get cold wallet');
+        }
+
+        const wif = wallet.keypair.toWIF();
+        const mldsaPrivateKey = wallet.mldsaKeypair?.privateKey?.toString('hex') || '';
+        const chainCode = Buffer.from(wallet.chainCode).toString('hex');
+
+        return [wif, mldsaPrivateKey, chainCode, coldAccounts[0]];
+    };
+
+    /**
+     * Get the next unused rotation wallet with full data for signing
+     * Returns { address, pubkey, wif, mldsaPrivateKey, chainCode, derivationIndex }
+     */
+    public getNextUnusedRotationWallet = async (): Promise<{
+        address: string;
+        pubkey: string;
+        wif: string;
+        mldsaPrivateKey: string;
+        chainCode: string;
+        derivationIndex: number;
+    }> => {
+        const account = await this.getCurrentAccount();
+        const keyring = await this.getCurrentKeyring();
+        if (!keyring || !account) {
+            throw new WalletControllerError('No current keyring or account');
+        }
+
+        const network = getBitcoinLibJSNetwork(this.getNetworkType(), this.getChainType());
+        return addressRotationService.getNextUnusedRotationWallet(keyring.index, account.pubkey, network);
+    };
+
+    /**
+     * Register change address after cold storage withdrawal
+     */
+    public registerColdStorageChangeAddress = async (): Promise<void> => {
+        const account = await this.getCurrentAccount();
+        const keyring = await this.getCurrentKeyring();
+        if (!keyring || !account) {
+            throw new Error('No current keyring or account');
+        }
+
+        const network = getBitcoinLibJSNetwork(this.getNetworkType(), this.getChainType());
+        await addressRotationService.deriveNextHotAddress(keyring.index, account.pubkey, network);
+    };
+
+    /**
+     * Get wallet data for consolidation signers
+     * Returns [wif, pubkey, mldsaPrivateKey, chainCode] for each source pubkey
+     */
+    public getConsolidationWallets = async (
+        sourcePubkeys: string[]
+    ): Promise<Array<[string, string, string, string]>> => {
+        const account = await this.getCurrentAccount();
+        const keyring = await this.getCurrentKeyring();
+
+        if (!account || !keyring) {
+            throw new Error('No current account or keyring');
+        }
+
+        const network = getBitcoinLibJSNetwork(this.getNetworkType(), this.getChainType());
+        const consolidationKeyring = addressRotationService.getConsolidationKeyring(
+            keyring.index,
+            account.pubkey,
+            network
+        );
+
+        const results: Array<[string, string, string, string]> = [];
+
+        for (const pubkey of sourcePubkeys) {
+            const wallet = consolidationKeyring.getWallet(pubkey);
+            if (!wallet) {
+                throw new Error(`Failed to get wallet for pubkey ${pubkey}`);
+            }
+
+            const wif = wallet.keypair.toWIF();
+            const mldsaPrivateKey = wallet.mldsaKeypair?.privateKey?.toString('hex') || '';
+            const chainCode = Buffer.from(wallet.chainCode).toString('hex');
+            results.push([wif, pubkey, mldsaPrivateKey, chainCode]);
+        }
+
+        return results;
+    };
+
+    /**
+     * Mark addresses as consolidated after successful broadcast
+     */
+    public markAddressesConsolidated = async (addresses: string[], consolidatedAmount: string): Promise<void> => {
+        const account = await this.getCurrentAccount();
+        if (!account) {
+            throw new Error('No current account');
+        }
+
+        await addressRotationService.markConsolidated(account.pubkey, addresses, consolidatedAmount);
     };
 }
 

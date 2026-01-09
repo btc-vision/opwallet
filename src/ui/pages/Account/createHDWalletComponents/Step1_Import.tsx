@@ -39,7 +39,6 @@ export function Step1_Import({
 }) {
     const [curInputIndex, setCurInputIndex] = useState(0);
     const [hover, setHover] = useState(999);
-    const [disabled, setDisabled] = useState(true);
 
     const wordsItems = useMemo(() => {
         if (contextData.restoreWalletType === RestoreWalletType.OW) {
@@ -76,23 +75,19 @@ export function Step1_Import({
         setKeys(newKeys);
     };
 
-    useEffect(() => {
-        setDisabled(true);
-
-        const hasEmpty =
-            keys.filter((key) => {
-                return key == '';
-            }).length > 0;
+    // Derive disabled state from keys instead of using useEffect
+    const disabled = useMemo(() => {
+        const hasEmpty = keys.some((key) => key === '');
         if (hasEmpty) {
-            return;
+            return true;
         }
 
         const mnemonic = keys.join(' ');
         if (!bip39.validateMnemonic(mnemonic)) {
-            return;
+            return true;
         }
 
-        setDisabled(false);
+        return false;
     }, [keys]);
 
     useEffect(() => {

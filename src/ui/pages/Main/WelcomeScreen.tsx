@@ -19,6 +19,7 @@ export default function WelcomeScreen() {
 
         // Only show if they haven't accepted yet (tied to the accept button).
         const accepted = window.localStorage.getItem(TOS_ACCEPTED_KEY) === '1';
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- Check localStorage on mount
         if (!accepted) setTermsVisible(true);
     }, []);
 

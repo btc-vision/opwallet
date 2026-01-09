@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
 
 import { ConnectedSite } from '@/background/service/permission';
+import { getCurrentTab } from '@/shared/utils/browser-tabs';
 import { Column, Content, Header, Layout, Text } from '@/ui/components';
-import { getCurrentTab } from '@/ui/features/browser/tabs';
 import { useWallet } from '@/ui/utils';
 import {
     CheckCircleFilled,

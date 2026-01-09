@@ -25,6 +25,7 @@ import {
 import { accountActions } from '@/ui/state/accounts/reducer';
 import { useAppDispatch } from '@/ui/state/hooks';
 import { useCurrentKeyring } from '@/ui/state/keyrings/hooks';
+import { useRotationEnabled, useCurrentRotationAddress } from '@/ui/state/rotation/hooks';
 import {
     useBTCUnit,
     useChain,
@@ -46,6 +47,7 @@ import {
     ExperimentOutlined,
     GlobalOutlined,
     HistoryOutlined,
+    LockOutlined,
     QrcodeOutlined,
     SendOutlined,
     SettingOutlined,
@@ -92,12 +94,16 @@ export default function WalletTabScreen() {
     const navigate = useNavigate();
 
     const untweakedPublicKey = useAccountPublicKey();
-    const bitcoinAddress = useAccountAddress();
+    const baseAddress = useAccountAddress();
+
+    const rotationEnabled = useRotationEnabled();
+    const currentRotationAddress = useCurrentRotationAddress();
+    const bitcoinAddress = rotationEnabled && currentRotationAddress
+        ? currentRotationAddress.address
+        : baseAddress;
 
     const [address, setAddress] = useState<Address | null>(null);
 
-    // untweakedPublicKey.mldsa can be UNDEFINED if the account is not quantum-enabled! we need to handle this gracefully, no error!
-    // Address.fromString requires (mldsaHashedKey, legacyKey) - use pubkey for both if no mldsa
     useEffect(() => {
         if (untweakedPublicKey.mldsa) {
             setAddress(Address.fromString(untweakedPublicKey.mldsa, untweakedPublicKey.pubkey));
@@ -1005,6 +1011,45 @@ export default function WalletTabScreen() {
                                 style={{ fontSize: 10, color: colors.textFaded, transform: 'rotate(-90deg)' }}
                             />
                         </div>
+
+                        {/* Address Rotation Card - Only show when rotation mode is enabled */}
+                        {rotationEnabled && (
+                            <div
+                                onClick={() => navigate(RouteTypes.AddressRotationScreen)}
+                                style={{
+                                    margin: '0 12px 12px',
+                                    padding: '10px 14px',
+                                    background: `linear-gradient(135deg, ${colors.success}15 0%, ${colors.success}08 100%)`,
+                                    border: `1px solid ${colors.success}30`,
+                                    borderRadius: '10px',
+                                    cursor: 'pointer',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '10px',
+                                    transition: 'all 0.2s'
+                                }}
+                                onMouseEnter={(e) => {
+                                    e.currentTarget.style.borderColor = `${colors.success}60`;
+                                    e.currentTarget.style.background = `linear-gradient(135deg, ${colors.success}20 0%, ${colors.success}10 100%)`;
+                                }}
+                                onMouseLeave={(e) => {
+                                    e.currentTarget.style.borderColor = `${colors.success}30`;
+                                    e.currentTarget.style.background = `linear-gradient(135deg, ${colors.success}15 0%, ${colors.success}08 100%)`;
+                                }}>
+                                <LockOutlined style={{ fontSize: 18, color: colors.success }} />
+                                <div style={{ flex: 1 }}>
+                                    <div style={{ fontSize: '12px', fontWeight: 600, color: colors.text }}>
+                                        Privacy Mode
+                                    </div>
+                                    <div style={{ fontSize: '10px', color: colors.textFaded }}>
+                                        Manage rotating addresses & consolidation
+                                    </div>
+                                </div>
+                                <DownOutlined
+                                    style={{ fontSize: 10, color: colors.textFaded, transform: 'rotate(-90deg)' }}
+                                />
+                            </div>
+                        )}
                     </div>
                     {/* Tokens Section */}
                     <div style={{ marginTop: '4px' }}>
