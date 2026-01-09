@@ -294,10 +294,16 @@ export default function HistoryScreen() {
         [wallet, filterStatus]
     );
 
-    // Initial load
+    // Initial load - refresh transaction status when opening history page
     useEffect(() => {
-        void loadHistory(true);
-    }, [loadHistory, currentAccount.pubkey, chainType]);
+        const init = async () => {
+            // Refresh pending tx status and check incoming (only when on this page)
+            void wallet.refreshTransactionStatus();
+            // Load history
+            await loadHistory(true);
+        };
+        void init();
+    }, [loadHistory, wallet, currentAccount.pubkey, chainType]);
 
     // Check if there are any pending transactions
     const hasPendingTransactions = useMemo(() => {

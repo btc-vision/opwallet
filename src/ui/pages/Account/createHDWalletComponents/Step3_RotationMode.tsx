@@ -3,7 +3,6 @@ import {
     WalletOutlined,
     SafetyCertificateOutlined,
     LockOutlined,
-    SwapOutlined,
     CheckCircleFilled,
     InfoCircleOutlined
 } from '@ant-design/icons';
@@ -28,39 +27,33 @@ const colors = {
     privacyBlue: '#3b82f6'
 };
 
+enum PrivacyLevel {
+    STANDARD = 'standard',
+    PRIVACY = 'privacy'
+}
+
 interface PrivacyOption {
-    id: 'standard' | 'privacy';
+    id: PrivacyLevel;
     icon: React.ReactNode;
     title: string;
     subtitle: string;
     features: string[];
-    recommended?: boolean;
 }
 
 const privacyOptions: PrivacyOption[] = [
     {
-        id: 'standard',
-        icon: <WalletOutlined style={{ fontSize: 32, color: colors.text }} />,
+        id: PrivacyLevel.STANDARD,
+        icon: <WalletOutlined style={{ fontSize: 22, color: colors.text }} />,
         title: 'Standard Wallet',
         subtitle: 'Traditional Bitcoin wallet',
-        features: [
-            'Single receiving address',
-            'Simple and familiar',
-            'Good for basic usage'
-        ]
+        features: ['Single address', 'Simple and familiar']
     },
     {
-        id: 'privacy',
-        icon: <SafetyCertificateOutlined style={{ fontSize: 32, color: colors.privacyBlue }} />,
-        title: 'Privacy Wallet',
-        subtitle: 'Maximum privacy protection',
-        features: [
-            'Auto-rotating addresses',
-            'Hidden cold storage',
-            'One-time use addresses',
-            'Like using cash'
-        ],
-        recommended: true
+        id: PrivacyLevel.PRIVACY,
+        icon: <SafetyCertificateOutlined style={{ fontSize: 22, color: colors.privacyBlue }} />,
+        title: 'Privacy Wallet (Advanced)',
+        subtitle: 'For experienced Bitcoin users',
+        features: ['Auto-rotating addresses', 'Hidden cold storage']
     }
 ];
 
@@ -75,13 +68,13 @@ export function Step3_RotationMode({
     const navigate = useNavigate();
     const createAccount = useCreateAccountCallback();
 
-    const [selectedOption, setSelectedOption] = useState<'standard' | 'privacy'>('privacy');
+    const [selectedOption, setSelectedOption] = useState<PrivacyLevel>(PrivacyLevel.STANDARD);
     const [loading, setLoading] = useState(false);
 
     const handleContinue = async () => {
         setLoading(true);
         try {
-            const rotationModeEnabled = selectedOption === 'privacy';
+            const rotationModeEnabled = selectedOption === PrivacyLevel.PRIVACY;
 
             // Update context with rotation mode choice
             updateContextData({ rotationModeEnabled });
@@ -106,17 +99,17 @@ export function Step3_RotationMode({
     };
 
     return (
-        <Column gap="lg" style={{ padding: '0 16px' }}>
+        <Column gap="md" style={{ padding: '0 16px' }}>
             {/* Header */}
-            <Column gap="sm" style={{ textAlign: 'center', marginBottom: 8 }}>
+            <Column gap="xs" style={{ textAlign: 'center' }}>
                 <Text
                     text="Choose Privacy Level"
-                    style={{ fontSize: 20, fontWeight: 600 }}
+                    style={{ fontSize: 18, fontWeight: 600 }}
                 />
                 <Text
                     text="Select how you want to receive Bitcoin"
                     preset="sub"
-                    style={{ fontSize: 14 }}
+                    style={{ fontSize: 13 }}
                 />
             </Column>
 
@@ -125,21 +118,21 @@ export function Step3_RotationMode({
                 style={{
                     background: `linear-gradient(135deg, ${colors.warning}15 0%, ${colors.warning}08 100%)`,
                     border: `1px solid ${colors.warning}40`,
-                    borderRadius: 12,
-                    padding: 12,
+                    borderRadius: 10,
+                    padding: 10,
                     display: 'flex',
-                    alignItems: 'flex-start',
-                    gap: 10
+                    alignItems: 'center',
+                    gap: 8
                 }}>
-                <InfoCircleOutlined style={{ fontSize: 16, color: colors.warning, marginTop: 2 }} />
+                <InfoCircleOutlined style={{ fontSize: 14, color: colors.warning }} />
                 <Text
-                    text="This choice is permanent and cannot be changed after wallet creation."
-                    style={{ fontSize: 12, color: colors.warning, lineHeight: 1.4 }}
+                    text="This choice is permanent and cannot be changed later."
+                    style={{ fontSize: 11, color: colors.warning, lineHeight: 1.3 }}
                 />
             </div>
 
             {/* Options */}
-            <Column gap="md">
+            <Column gap="sm">
                 {privacyOptions.map((option) => (
                     <OptionCard
                         key={option.id}
@@ -154,31 +147,31 @@ export function Step3_RotationMode({
             <div
                 style={{
                     background: colors.containerBgFaded,
-                    borderRadius: 12,
-                    padding: 14
+                    borderRadius: 10,
+                    padding: 12
                 }}>
-                {selectedOption === 'privacy' ? (
-                    <Column gap="sm">
-                        <Row style={{ gap: 8, alignItems: 'center' }}>
-                            <LockOutlined style={{ color: colors.privacyBlue }} />
-                            <Text text="How Privacy Mode works" style={{ fontWeight: 500, fontSize: 13 }} />
+                {selectedOption === PrivacyLevel.PRIVACY ? (
+                    <Column gap="xs">
+                        <Row style={{ gap: 6, alignItems: 'center' }}>
+                            <LockOutlined style={{ color: colors.privacyBlue, fontSize: 12 }} />
+                            <Text text="How Privacy Mode works" style={{ fontWeight: 500, fontSize: 12 }} />
                         </Row>
                         <Text
-                            text="Every time you receive Bitcoin, a new unique address is generated. Your funds are automatically protected in a hidden cold storage that only you can access."
+                            text="Each time you receive Bitcoin, a new address is generated. Funds are automatically moved to hidden cold storage."
                             preset="sub"
-                            style={{ fontSize: 12, lineHeight: 1.5 }}
+                            style={{ fontSize: 11, lineHeight: 1.4 }}
                         />
                     </Column>
                 ) : (
-                    <Column gap="sm">
-                        <Row style={{ gap: 8, alignItems: 'center' }}>
-                            <WalletOutlined style={{ color: colors.text }} />
-                            <Text text="How Standard Mode works" style={{ fontWeight: 500, fontSize: 13 }} />
+                    <Column gap="xs">
+                        <Row style={{ gap: 6, alignItems: 'center' }}>
+                            <WalletOutlined style={{ color: colors.text, fontSize: 12 }} />
+                            <Text text="How Standard Mode works" style={{ fontWeight: 500, fontSize: 12 }} />
                         </Row>
                         <Text
-                            text="You'll have a single Bitcoin address that you can share with anyone. Simple and straightforward, but all transactions to this address are publicly linked."
+                            text="Single Bitcoin address you can share with anyone. Simple but all transactions are publicly linked."
                             preset="sub"
-                            style={{ fontSize: 12, lineHeight: 1.5 }}
+                            style={{ fontSize: 11, lineHeight: 1.4 }}
                         />
                     </Column>
                 )}
@@ -205,16 +198,11 @@ function OptionCard({
     selected: boolean;
     onClick: () => void;
 }) {
-    const borderColor = selected
-        ? option.id === 'privacy'
-            ? colors.privacyBlue
-            : colors.main
-        : 'transparent';
-
+    const isPrivacy = option.id === PrivacyLevel.PRIVACY;
+    const accentColor = isPrivacy ? colors.privacyBlue : colors.main;
+    const borderColor = selected ? accentColor : 'transparent';
     const bgGradient = selected
-        ? option.id === 'privacy'
-            ? `linear-gradient(145deg, ${colors.privacyBlue}15 0%, ${colors.privacyBlue}08 100%)`
-            : `linear-gradient(145deg, ${colors.main}15 0%, ${colors.main}08 100%)`
+        ? `linear-gradient(145deg, ${accentColor}15 0%, ${accentColor}08 100%)`
         : colors.containerBgFaded;
 
     return (
@@ -223,86 +211,40 @@ function OptionCard({
             style={{
                 background: bgGradient,
                 border: `2px solid ${borderColor}`,
-                borderRadius: 14,
-                padding: 16,
+                borderRadius: 12,
+                padding: 12,
                 cursor: 'pointer',
-                transition: 'all 0.2s',
-                position: 'relative'
+                transition: 'all 0.2s'
             }}>
-            {/* Recommended badge */}
-            {option.recommended && (
-                <div
-                    style={{
-                        position: 'absolute',
-                        top: -10,
-                        right: 12,
-                        background: colors.privacyBlue,
-                        color: 'white',
-                        fontSize: 10,
-                        fontWeight: 600,
-                        padding: '4px 10px',
-                        borderRadius: 10
-                    }}>
-                    RECOMMENDED
-                </div>
-            )}
-
-            <Row style={{ gap: 14, alignItems: 'flex-start' }}>
+            <Row style={{ gap: 10, alignItems: 'center' }}>
                 {/* Icon */}
                 <div
                     style={{
-                        width: 56,
-                        height: 56,
-                        borderRadius: 14,
-                        background: option.id === 'privacy' ? `${colors.privacyBlue}20` : colors.containerBg,
+                        width: 44,
+                        height: 44,
+                        borderRadius: 10,
+                        background: isPrivacy ? `${colors.privacyBlue}20` : colors.containerBg,
                         display: 'flex',
                         alignItems: 'center',
-                        justifyContent: 'center'
+                        justifyContent: 'center',
+                        flexShrink: 0
                     }}>
                     {option.icon}
                 </div>
 
                 {/* Content */}
-                <Column style={{ flex: 1 }}>
-                    <Row justifyBetween style={{ marginBottom: 4 }}>
-                        <Text text={option.title} style={{ fontWeight: 600, fontSize: 15 }} />
+                <Column style={{ flex: 1, gap: 2 }}>
+                    <Row justifyBetween>
+                        <Text text={option.title} style={{ fontWeight: 600, fontSize: 14 }} />
                         {selected && (
-                            <CheckCircleFilled
-                                style={{
-                                    color: option.id === 'privacy' ? colors.privacyBlue : colors.main,
-                                    fontSize: 18
-                                }}
-                            />
+                            <CheckCircleFilled style={{ color: accentColor, fontSize: 16 }} />
                         )}
                     </Row>
+                    <Text text={option.subtitle} preset="sub" style={{ fontSize: 11 }} />
                     <Text
-                        text={option.subtitle}
-                        preset="sub"
-                        style={{ fontSize: 12, marginBottom: 10 }}
+                        text={option.features.join(' · ')}
+                        style={{ fontSize: 10, color: colors.textFaded }}
                     />
-
-                    {/* Features */}
-                    <Column gap="xs">
-                        {option.features.map((feature, index) => (
-                            <Row key={index} style={{ gap: 6, alignItems: 'center' }}>
-                                <div
-                                    style={{
-                                        width: 4,
-                                        height: 4,
-                                        borderRadius: 2,
-                                        background: option.id === 'privacy' ? colors.privacyBlue : colors.textFaded
-                                    }}
-                                />
-                                <Text
-                                    text={feature}
-                                    style={{
-                                        fontSize: 11,
-                                        color: colors.textFaded
-                                    }}
-                                />
-                            </Row>
-                        ))}
-                    </Column>
                 </Column>
             </Row>
         </div>

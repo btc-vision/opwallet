@@ -415,8 +415,7 @@ export class WalletController {
             // Start cache cleanup timer
             this._startCacheCleanup();
 
-            // Start transaction status polling
-            transactionStatusPoller.start();
+            // NOTE: Transaction status polling disabled - only runs on-demand when user opens history page
         } catch (err) {
             throw new WalletControllerError(`Unlock failed: ${String(err)}`, {
                 passwordProvided: !!password
@@ -448,9 +447,6 @@ export class WalletController {
             // Clear caches and stop cleanup timer
             this._clearBalanceCache();
             this.invalidateKeyringCache();
-
-            // Stop transaction status polling
-            transactionStatusPoller.stop();
         } catch (err) {
             throw new WalletControllerError(`Lock wallet failed: ${String(err)}`);
         }
@@ -4047,6 +4043,14 @@ export class WalletController {
 
         const chainType = this.getChainType();
         await transactionHistoryService.clearHistory(chainType, account.pubkey);
+    };
+
+    /**
+     * Refresh transaction status on-demand
+     * Should be called when user opens the transaction history page
+     */
+    public refreshTransactionStatus = async (): Promise<void> => {
+        await transactionStatusPoller.refreshTransactionsNow();
     };
 
     // =========================================================================

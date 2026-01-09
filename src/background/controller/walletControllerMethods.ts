@@ -138,6 +138,7 @@ export const WALLET_CONTROLLER_METHODS = [
     'recordTransaction',
     'refreshOpnetGateways',
     'refreshRotationBalances',
+    'refreshTransactionStatus',
     'rejectApproval',
     'removeAddressFlag',
     'removeAllRecentConnectedSites',

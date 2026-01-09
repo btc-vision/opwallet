@@ -79,5 +79,16 @@ export default function AccountUpdater() {
         };
     }, [dispatch]);
 
+    // Listen for rotation state changes from background polling
+    useEffect(() => {
+        const rotationHandler = () => {
+            void refreshRotation();
+        };
+        eventBus.addEventListener('rotationStateChanged', rotationHandler);
+        return () => {
+            eventBus.removeEventListener('rotationStateChanged', rotationHandler);
+        };
+    }, [refreshRotation]);
+
     return null;
 }

@@ -1,9 +1,10 @@
-import { ChainType } from '@/shared/constant';
+import { ChainType, EVENTS } from '@/shared/constant';
 import { TransactionHistoryItem, TransactionStatus } from '@/shared/types/TransactionHistory';
 import { RotatedAddressStatus, AddressRotationState } from '@/shared/types/AddressRotation';
 import Web3API from '@/shared/web3/Web3API';
 import { getBitcoinLibJSNetwork } from '@/shared/web3/Web3API';
 import { NetworkType } from '@/shared/types';
+import eventBus from '@/shared/eventBus';
 
 import addressRotationService from './addressRotation';
 import preferenceService from './preference';
@@ -53,7 +54,8 @@ class TransactionStatusPoller {
     }
 
     /**
-     * Main polling function
+     * Main polling function - checks pending transaction status and rotation addresses
+     * Heavy operations like full incoming transaction detection are done on-demand
      */
     private async poll(): Promise<void> {
         if (this.isPolling) {
@@ -63,8 +65,15 @@ class TransactionStatusPoller {
         this.isPolling = true;
 
         try {
+            // Poll pending transaction status - this is lightweight
             await this.pollPendingTransactions();
-            await this.checkForIncomingTransactions();
+
+            // Check rotation addresses for auto-rotation feature
+            // This is lightweight since it only checks rotation-enabled accounts
+            await this.pollRotationAddresses();
+
+            // NOTE: checkForIncomingTransactions() not called in background polling
+            // It's called on-demand via refreshTransactionsNow() when user opens history page
         } catch (error) {
             console.error('[TransactionStatusPoller] Error during poll:', error);
         } finally {
@@ -249,6 +258,36 @@ class TransactionStatusPoller {
     }
 
     /**
+     * Poll rotation addresses for all accounts with rotation mode enabled
+     * This runs in the background to detect incoming funds and trigger auto-rotation
+     */
+    private async pollRotationAddresses(): Promise<void> {
+        try {
+            const currentAccount = preferenceService.getCurrentAccount();
+            if (!currentAccount) {
+                return;
+            }
+
+            const chainType = preferenceService.getChainType();
+            const pubkey = currentAccount.pubkey;
+
+            // Only check if rotation mode is enabled for current account
+            const rotationState = addressRotationService.getRotationState(pubkey);
+            if (!rotationState?.enabled) {
+                return;
+            }
+
+            // Ensure Web3API is set to the correct network
+            await Web3API.setNetwork(chainType);
+
+            // Check rotation addresses for incoming funds
+            await this.checkRotationAddresses(pubkey, chainType);
+        } catch (error) {
+            console.error('[TransactionStatusPoller] Error polling rotation addresses:', error);
+        }
+    }
+
+    /**
      * Check rotation mode addresses for incoming funds
      * Automatically rotates to next address when funds are detected
      */
@@ -319,6 +358,12 @@ class TransactionStatusPoller {
 
             // Refresh all rotation address balances
             await addressRotationService.refreshAddressBalances(pubkey, chainType);
+
+            // Always notify UI of balance refresh so it can update display
+            eventBus.emit(EVENTS.broadcastToUI, {
+                method: 'rotationStateChanged',
+                params: { pubkey }
+            });
         } catch (error) {
             console.error('[TransactionStatusPoller] Error checking rotation addresses:', error);
         }
@@ -329,6 +374,26 @@ class TransactionStatusPoller {
      */
     async pollNow(): Promise<void> {
         await this.poll();
+    }
+
+    /**
+     * Refresh transaction status on-demand
+     * Called when user opens the transaction history page
+     * Checks both pending transaction status and incoming transactions
+     */
+    async refreshTransactionsNow(): Promise<void> {
+        if (this.isPolling) {
+            return;
+        }
+        this.isPolling = true;
+        try {
+            await this.pollPendingTransactions();
+            await this.checkForIncomingTransactions();
+        } catch (error) {
+            console.error('[TransactionStatusPoller] Error refreshing transactions:', error);
+        } finally {
+            this.isPolling = false;
+        }
     }
 }
 

@@ -318,6 +318,8 @@ export interface WalletController {
 
     clearTransactionHistory(): Promise<void>;
 
+    refreshTransactionStatus(): Promise<void>;
+
     recordTransaction(
         params: import('@/shared/types/TransactionHistory').RecordTransactionInput,
         origin?: import('@/shared/types/TransactionHistory').TransactionOrigin
