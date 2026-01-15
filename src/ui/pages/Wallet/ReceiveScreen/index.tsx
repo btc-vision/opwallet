@@ -131,7 +131,7 @@ export default function ReceiveScreen() {
             try {
                 const [mldsaHashPubKey] = await wallet.getWalletAddress();
                 if (mldsaHashPubKey) {
-                    setQuantumPublicKeyHash(mldsaHashPubKey);
+                    setQuantumPublicKeyHash(`0x${mldsaHashPubKey}`);
                 }
             } catch (e) {
                 console.error('Error fetching quantum public key:', e);
