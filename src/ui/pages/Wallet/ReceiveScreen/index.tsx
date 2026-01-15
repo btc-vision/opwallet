@@ -468,10 +468,7 @@ export default function ReceiveScreen() {
                                         text="OPNet Receive Address"
                                         style={{ fontSize: 14, fontWeight: 600, color: colors.text }}
                                     />
-                                    <Text
-                                        text="(OP20 Receive Address)"
-                                        style={{ fontSize: 11, color: colors.textFaded }}
-                                    />
+                                    <Text text="(OP20)" style={{ fontSize: 11, color: colors.textFaded }} />
                                 </div>
 
                                 {loadingQuantum ? (
