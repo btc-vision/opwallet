@@ -39,6 +39,8 @@ import { copyToClipboard, useWallet } from '@/ui/utils';
 
 import { useTools } from '@/ui/components/ActionComponent';
 import ParticleField from '@/ui/components/ParticleField/ParticleField';
+import { useBtcDomainsEnabled, usePrivacyModeEnabled } from '@/ui/hooks/useAppConfig';
+import { useSimpleModeEnabled } from '@/ui/hooks/useExperienceMode';
 import {
     CheckCircleOutlined,
     CloseOutlined,
@@ -101,6 +103,11 @@ export default function WalletTabScreen() {
     const bitcoinAddress = rotationEnabled && currentRotationAddress
         ? currentRotationAddress.address
         : baseAddress;
+
+    // Feature flags
+    const btcDomainsEnabled = useBtcDomainsEnabled();
+    const privacyModeEnabled = usePrivacyModeEnabled();
+    const isSimpleMode = useSimpleModeEnabled();
 
     const [address, setAddress] = useState<Address | null>(null);
 
@@ -775,15 +782,16 @@ export default function WalletTabScreen() {
                                             </span>
                                         )}
 
-                                        {/* MLDSA Key and Bitcoin Address Row */}
-                                        <div
-                                            style={{
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                justifyContent: 'center',
-                                                gap: '8px',
-                                                flexWrap: 'wrap'
-                                            }}>
+                                        {/* MLDSA Key and Bitcoin Address Row - hidden in Simple Mode */}
+                                        {!isSimpleMode && (
+                                            <div
+                                                style={{
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'center',
+                                                    gap: '8px',
+                                                    flexWrap: 'wrap'
+                                                }}>
                                             {/* MLDSA Key Display - only show if wallet is migrated */}
                                             {untweakedPublicKey.mldsa && (
                                                 <Tooltip title="Click to copy MLDSA public key hash" placement="top">
@@ -920,7 +928,8 @@ export default function WalletTabScreen() {
                                                     </svg>
                                                 </button>
                                             </Tooltip>
-                                        </div>
+                                            </div>
+                                        )}
                                     </div>
                                 )}
                             </div>
@@ -975,45 +984,47 @@ export default function WalletTabScreen() {
                             />
                         </div>
 
-                        {/* Assign .btc Domain Card */}
-                        <div
-                            onClick={() => domainTermsVisible ? setShowDomainTerms(true) : navigate(RouteTypes.BtcDomainScreen)}
-                            style={{
-                                margin: '0 12px 12px',
-                                padding: '10px 14px',
-                                background: `linear-gradient(135deg, ${colors.main}15 0%, ${colors.main}08 100%)`,
-                                border: `1px solid ${colors.main}30`,
-                                borderRadius: '10px',
-                                cursor: 'pointer',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '10px',
-                                transition: 'all 0.2s'
-                            }}
-                            onMouseEnter={(e) => {
-                                e.currentTarget.style.borderColor = `${colors.main}60`;
-                                e.currentTarget.style.background = `linear-gradient(135deg, ${colors.main}20 0%, ${colors.main}10 100%)`;
-                            }}
-                            onMouseLeave={(e) => {
-                                e.currentTarget.style.borderColor = `${colors.main}30`;
-                                e.currentTarget.style.background = `linear-gradient(135deg, ${colors.main}15 0%, ${colors.main}08 100%)`;
-                            }}>
-                            <GlobalOutlined style={{ fontSize: 18, color: colors.main }} />
-                            <div style={{ flex: 1 }}>
-                                <div style={{ fontSize: '12px', fontWeight: 600, color: colors.text }}>
-                                    .btc Domains
+                        {/* Assign .btc Domain Card - Only show when feature is enabled */}
+                        {btcDomainsEnabled && (
+                            <div
+                                onClick={() => domainTermsVisible ? setShowDomainTerms(true) : navigate(RouteTypes.BtcDomainScreen)}
+                                style={{
+                                    margin: '0 12px 12px',
+                                    padding: '10px 14px',
+                                    background: `linear-gradient(135deg, ${colors.main}15 0%, ${colors.main}08 100%)`,
+                                    border: `1px solid ${colors.main}30`,
+                                    borderRadius: '10px',
+                                    cursor: 'pointer',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '10px',
+                                    transition: 'all 0.2s'
+                                }}
+                                onMouseEnter={(e) => {
+                                    e.currentTarget.style.borderColor = `${colors.main}60`;
+                                    e.currentTarget.style.background = `linear-gradient(135deg, ${colors.main}20 0%, ${colors.main}10 100%)`;
+                                }}
+                                onMouseLeave={(e) => {
+                                    e.currentTarget.style.borderColor = `${colors.main}30`;
+                                    e.currentTarget.style.background = `linear-gradient(135deg, ${colors.main}15 0%, ${colors.main}08 100%)`;
+                                }}>
+                                <GlobalOutlined style={{ fontSize: 18, color: colors.main }} />
+                                <div style={{ flex: 1 }}>
+                                    <div style={{ fontSize: '12px', fontWeight: 600, color: colors.text }}>
+                                        .btc Domains
+                                    </div>
+                                    <div style={{ fontSize: '10px', color: colors.textFaded }}>
+                                        Register domains & publish websites
+                                    </div>
                                 </div>
-                                <div style={{ fontSize: '10px', color: colors.textFaded }}>
-                                    Register domains & publish websites
-                                </div>
+                                <DownOutlined
+                                    style={{ fontSize: 10, color: colors.textFaded, transform: 'rotate(-90deg)' }}
+                                />
                             </div>
-                            <DownOutlined
-                                style={{ fontSize: 10, color: colors.textFaded, transform: 'rotate(-90deg)' }}
-                            />
-                        </div>
+                        )}
 
-                        {/* Address Rotation Card - Only show when rotation mode is enabled */}
-                        {rotationEnabled && (
+                        {/* Address Rotation Card - Only show when feature and rotation mode are enabled */}
+                        {privacyModeEnabled && rotationEnabled && (
                             <div
                                 onClick={() => navigate(RouteTypes.AddressRotationScreen)}
                                 style={{

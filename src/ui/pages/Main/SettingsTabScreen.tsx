@@ -10,6 +10,7 @@ import { useExtensionIsInTab, useOpenExtensionInTab } from '@/ui/features/browse
 import { useCurrentAccount } from '@/ui/state/accounts/hooks';
 import { useCurrentKeyring } from '@/ui/state/keyrings/hooks';
 import { useChain, useVersionInfo } from '@/ui/state/settings/hooks';
+import { useExperienceMode } from '@/ui/hooks/useExperienceMode';
 import { useWallet } from '@/ui/utils';
 import {
     CheckCircleFilled,
@@ -23,6 +24,7 @@ import {
     RightOutlined,
     SendOutlined,
     SettingOutlined,
+    UserSwitchOutlined,
     WifiOutlined,
     XOutlined
 } from '@ant-design/icons';
@@ -104,6 +106,15 @@ const SettingList: Setting[] = [
         right: true
     },
     {
+        label: 'Experience Mode',
+        value: 'Expert',
+        desc: 'Switch between Simple and Expert mode',
+        icon: <UserSwitchOutlined />,
+        action: 'experience-mode',
+        route: '/settings/experience-mode',
+        right: true
+    },
+    {
         label: 'OPNet Browser',
         value: '',
         desc: 'Browse .btc domains',
@@ -140,6 +151,7 @@ export default function SettingsTabScreen() {
     const currentAccount = useCurrentAccount();
     const versionInfo = useVersionInfo();
     const wallet = useWallet();
+    const { mode: experienceMode } = useExperienceMode();
     const [switchChainModalVisible, setSwitchChainModalVisible] = useState(false);
     const tools = useTools();
     const openExtensionInTab = useOpenExtensionInTab();
@@ -186,6 +198,10 @@ export default function SettingsTabScreen() {
             if (item) {
                 v.value = item.name;
             }
+        }
+
+        if (v.action == 'experience-mode') {
+            v.value = experienceMode === 'simple' ? 'Simple' : experienceMode === 'expert' ? 'Expert' : 'Not Set';
         }
 
         if (v.action == 'expand-view' && isInTab) {

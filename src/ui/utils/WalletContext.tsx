@@ -307,6 +307,12 @@ export interface WalletController {
 
     setUseSidePanel(useSidePanel: boolean): Promise<void>;
 
+    getExperienceMode(): Promise<'simple' | 'expert' | undefined>;
+
+    setExperienceMode(mode: 'simple' | 'expert' | undefined): Promise<void>;
+
+    isExperienceModeSet(): Promise<boolean>;
+
     setQuantumKey(quantumPrivateKey: string): Promise<void>;
 
     generateQuantumKey(): Promise<void>;

@@ -68,7 +68,7 @@ export default function ReceiveScreen() {
     const handleCopyQuantumKey = () => {
         if (quantumPublicKeyHash) {
             copyToClipboard(quantumPublicKeyHash).then(() => {
-                tools.toastSuccess('Quantum public key hash copied');
+                tools.toastSuccess('OPNet address copied');
             });
         }
     };
@@ -180,7 +180,7 @@ export default function ReceiveScreen() {
                         <Column gap="md">
                             <Row itemsCenter gap="sm">
                                 <SafetyOutlined style={{ fontSize: 16, color: '#8B5CF6' }} />
-                                <Text text="Post-Quantum Identity" preset="bold" size="sm" />
+                                <Text text="OPNet Receive Address" preset="bold" size="sm" />
                             </Row>
 
                             {loadingQuantum ? (
