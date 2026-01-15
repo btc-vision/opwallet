@@ -177,23 +177,66 @@ export default function ReceiveScreen() {
             />
             <Content style={{ padding: '16px' }}>
                 <Column gap="md">
-                    {/* Instructions Card */}
-                    <div
-                        style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: 12,
-                            backgroundColor: `${colors.main}10`,
-                            borderRadius: 12,
-                            border: `1px solid ${colors.main}30`,
-                            padding: 16
-                        }}>
-                        <InfoCircleOutlined style={{ fontSize: 24, color: colors.main }} />
-                        <Text
-                            text={`Share your ${chain.label || 'Bitcoin'} address or QR code to receive payments`}
-                            style={{ flex: 1, fontSize: 14, color: colors.text, lineHeight: '20px' }}
-                        />
-                    </div>
+                    {/* OPNet Receive Address */}
+                    {!hideQuantumSection && (
+                        <div
+                            style={{
+                                width: '100%',
+                                backgroundColor: 'rgba(139, 92, 246, 0.1)',
+                                borderRadius: 12,
+                                padding: 16,
+                                gap: 8,
+                                display: 'flex',
+                                flexDirection: 'column',
+                                border: '1px solid rgba(139, 92, 246, 0.3)'
+                            }}>
+                            <div style={{ display: 'flex', flexDirection: 'row', gap: 8, alignItems: 'center' }}>
+                                <SafetyOutlined style={{ fontSize: 16, color: colors.quantum }} />
+                                <Text
+                                    text="OPNet Receive Address"
+                                    style={{ fontSize: 14, fontWeight: 600, color: colors.text }}
+                                />
+                                <Text text="(OP20)" style={{ fontSize: 11, color: colors.textFaded }} />
+                            </div>
+
+                            {loadingQuantum ? (
+                                <Text text="Loading..." preset="sub" size="xs" />
+                            ) : quantumPublicKeyHash ? (
+                                <div
+                                    onClick={handleCopyQuantumKey}
+                                    style={{
+                                        display: 'flex',
+                                        flexDirection: 'row',
+                                        alignItems: 'center',
+                                        gap: 8,
+                                        cursor: 'pointer'
+                                    }}>
+                                    <Text
+                                        text={quantumPublicKeyHash}
+                                        style={{
+                                            flex: 1,
+                                            fontSize: 12,
+                                            color: colors.textFaded,
+                                            fontFamily: 'monospace',
+                                            lineHeight: '18px',
+                                            wordBreak: 'break-all'
+                                        }}
+                                    />
+                                    <CopyOutlined style={{ fontSize: 16, color: colors.quantum, flexShrink: 0 }} />
+                                </div>
+                            ) : (
+                                <Row itemsCenter gap="sm">
+                                    <InfoCircleOutlined style={{ fontSize: 14, color: 'rgba(255,255,255,0.6)' }} />
+                                    <Text
+                                        text="Available after first OPNet transaction"
+                                        preset="sub"
+                                        size="xs"
+                                        style={{ opacity: 0.7 }}
+                                    />
+                                </Row>
+                            )}
+                        </div>
+                    )}
 
                     {/* QR Code Card */}
                     <div
@@ -449,66 +492,6 @@ export default function ReceiveScreen() {
                             </div>
                         </div>
 
-                        {/* OPNet Receive Address */}
-                        {!hideQuantumSection && (
-                            <div
-                                style={{
-                                    width: '100%',
-                                    backgroundColor: 'rgba(139, 92, 246, 0.1)',
-                                    borderRadius: 12,
-                                    padding: 16,
-                                    gap: 8,
-                                    display: 'flex',
-                                    flexDirection: 'column',
-                                    border: '1px solid rgba(139, 92, 246, 0.3)'
-                                }}>
-                                <div style={{ display: 'flex', flexDirection: 'row', gap: 8, alignItems: 'center' }}>
-                                    <SafetyOutlined style={{ fontSize: 16, color: colors.quantum }} />
-                                    <Text
-                                        text="OPNet Receive Address"
-                                        style={{ fontSize: 14, fontWeight: 600, color: colors.text }}
-                                    />
-                                    <Text text="(OP20)" style={{ fontSize: 11, color: colors.textFaded }} />
-                                </div>
-
-                                {loadingQuantum ? (
-                                    <Text text="Loading..." preset="sub" size="xs" />
-                                ) : quantumPublicKeyHash ? (
-                                    <div
-                                        onClick={handleCopyQuantumKey}
-                                        style={{
-                                            display: 'flex',
-                                            flexDirection: 'row',
-                                            alignItems: 'center',
-                                            gap: 8,
-                                            cursor: 'pointer'
-                                        }}>
-                                        <Text
-                                            text={quantumPublicKeyHash}
-                                            style={{
-                                                flex: 1,
-                                                fontSize: 12,
-                                                color: colors.textFaded,
-                                                fontFamily: 'monospace',
-                                                lineHeight: '18px',
-                                                wordBreak: 'break-all'
-                                            }}
-                                        />
-                                        <CopyOutlined style={{ fontSize: 16, color: colors.quantum, flexShrink: 0 }} />
-                                    </div>
-                                ) : (
-                                    <Row itemsCenter gap="sm">
-                                        <InfoCircleOutlined style={{ fontSize: 14, color: 'rgba(255,255,255,0.6)' }} />
-                                        <Text
-                                            text="Available after first OPNet transaction"
-                                            preset="sub"
-                                            size="xs"
-                                            style={{ opacity: 0.7 }}
-                                        />
-                                    </Row>
-                                )}
-                            </div>
-                        )}
                     </div>
                 </Column>
             </Content>
