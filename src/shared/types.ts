@@ -56,26 +56,13 @@ export enum NetworkType {
 export function networkTypeToOPNet(networkType: NetworkType): WalletNetworks {
     switch (networkType) {
         case NetworkType.MAINNET:
-            return WalletNetworks.mainnet;
+            return WalletNetworks.Mainnet;
         case NetworkType.TESTNET:
-            return WalletNetworks.testnet;
+            return WalletNetworks.Testnet;
         case NetworkType.REGTEST:
-            return WalletNetworks.regtest;
+            return WalletNetworks.Regtest;
         default:
-            return WalletNetworks.mainnet;
-    }
-}
-
-export function opNetToNetworkType(opNetNetwork: WalletNetworks): NetworkType {
-    switch (opNetNetwork) {
-        case WalletNetworks.mainnet:
-            return NetworkType.MAINNET;
-        case WalletNetworks.testnet:
-            return NetworkType.TESTNET;
-        case WalletNetworks.regtest:
-            return NetworkType.REGTEST;
-        default:
-            return NetworkType.MAINNET;
+            return WalletNetworks.Mainnet;
     }
 }
 
