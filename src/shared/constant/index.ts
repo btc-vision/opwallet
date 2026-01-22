@@ -93,15 +93,15 @@ export const ADDRESS_TYPES: {
         hdPath: "m/86'/0'/0'/0",
         displayIndex: 2,
         isUnisatLegacy: false
-    },
-    {
+    }
+    /*{
         value: AddressTypes.P2SH_OR_P2SH_P2WPKH,
         label: 'P2SH-P2WPKH',
         name: 'Nested Segwit (P2SH-P2WPKH)',
         hdPath: "m/49'/0'/0'/0",
         displayIndex: 1,
         isUnisatLegacy: false
-    }
+    }*/
 ];
 
 export const OW_HD_PATH = "m/86'/0'/0'";

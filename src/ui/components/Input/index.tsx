@@ -11,6 +11,7 @@ import { useTools } from '../ActionComponent';
 import { Icon } from '../Icon';
 import { Row } from '../Row';
 import { $textPresets, Text } from '../Text';
+import { useBtcDomainsEnabled } from '@/ui/hooks/useAppConfig';
 
 export interface InputProps {
     preset?: Presets;
@@ -165,6 +166,7 @@ export const AddressInput = (props: InputProps) => {
     const [searching, setSearching] = useState(false);
     const wallet = useWallet();
     const tools = useTools();
+    const btcDomainsEnabled = useBtcDomainsEnabled();
 
     useEffect(() => {
         if (onAddressInputChange) {
@@ -204,8 +206,14 @@ export const AddressInput = (props: InputProps) => {
 
         resetState();
 
-        // Check if it's a .btc domain
+        // Check if it's a .btc domain - only resolve if feature is enabled
         if (inputAddress.toLowerCase().endsWith('.btc')) {
+            if (!btcDomainsEnabled) {
+                // Feature disabled - treat .btc as invalid
+                setFormatError('.btc domains are not available on this network');
+                return;
+            }
+
             setSearching(true);
             try {
                 const resolvedAddress = await wallet.resolveBtcDomain(inputAddress);
@@ -238,7 +246,7 @@ export const AddressInput = (props: InputProps) => {
         <div style={{ alignSelf: 'stretch' }}>
             <div className="op_input_amount_container">
                 <input
-                    placeholder={'Address or .btc domain'}
+                    placeholder={btcDomainsEnabled ? 'Address or .btc domain' : 'Address'}
                     type={'text'}
                     className="op_input_address"
                     onChange={(e) => {

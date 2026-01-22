@@ -51,6 +51,7 @@ import AddressRotationScreen from './Settings/AddressRotationScreen';
 import RotationHistoryScreen from './Settings/RotationHistoryScreen';
 import ConsolidationScreen from './Settings/ConsolidationScreen';
 import ColdStorageWithdrawScreen from './Settings/ColdStorageWithdrawScreen';
+import UserExperienceModeScreen from './Settings/UserExperienceModeScreen';
 import UpgradeNoticeScreen from './Settings/UpgradeNoticeScreen';
 import ReceiveScreen from './Wallet/ReceiveScreen';
 import TxConfirmScreen from './Wallet/TxConfirmScreen';
@@ -278,6 +279,10 @@ export const routes: Routes = {
     [RouteTypes.ColdStorageWithdrawScreen]: {
         path: routePaths[RouteTypes.ColdStorageWithdrawScreen],
         element: <ColdStorageWithdrawScreen />
+    },
+    [RouteTypes.UserExperienceModeScreen]: {
+        path: routePaths[RouteTypes.UserExperienceModeScreen],
+        element: <UserExperienceModeScreen />
     }
 };
 

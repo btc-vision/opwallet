@@ -20,6 +20,8 @@ export interface TrackedDomain {
     lastVerified?: number; // timestamp when ownership was last verified
 }
 
+export type ExperienceMode = 'simple' | 'expert' | undefined;
+
 export interface PreferenceStore {
     currentKeyringIndex: number;
     currentAccount: Account | undefined | null;
@@ -55,6 +57,7 @@ export interface PreferenceStore {
     trackedDomains: Record<string, TrackedDomain[]>; // keyed by address
     mldsaBackupDismissed: Record<string, boolean>; // keyed by wallet pubkey
     duplicationState: DuplicationState; // tracks duplication resolution progress
+    experienceMode: ExperienceMode; // 'simple' | 'expert' | undefined (not set)
 }
 
 const SUPPORT_LOCALES = ['en'];
@@ -100,7 +103,8 @@ const DEFAULTS = {
             backupCreated: false,
             backupDownloaded: false,
             conflictsResolved: []
-        }
+        },
+        experienceMode: undefined
     } as PreferenceStore
 };
 
@@ -711,6 +715,33 @@ class PreferenceService {
     };
 
     // ==================== END DUPLICATION STATE ====================
+
+    // ==================== EXPERIENCE MODE ====================
+
+    /**
+     * Get user experience mode preference
+     * Returns 'simple', 'expert', or undefined (not set)
+     */
+    getExperienceMode = (): ExperienceMode => {
+        return this.store.experienceMode;
+    };
+
+    /**
+     * Set user experience mode preference
+     */
+    setExperienceMode = async (mode: ExperienceMode): Promise<void> => {
+        this.store.experienceMode = mode;
+        await this.persist();
+    };
+
+    /**
+     * Check if experience mode has been set by the user
+     */
+    isExperienceModeSet = (): boolean => {
+        return this.store.experienceMode !== undefined;
+    };
+
+    // ==================== END EXPERIENCE MODE ====================
 
     private persist = async () => {
         await browser.storage.local.set({ preference: this.store });

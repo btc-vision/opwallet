@@ -51,6 +51,8 @@ class ImageService {
             return uri; // Already a gateway URL
         }
 
+        // TODO: Add a reverse proxy check for other gateways if needed
+
         return uri; // Return as-is if not IPFS
     }
 
@@ -140,7 +142,7 @@ class ImageService {
         });
 
         // Start processing
-        this.processQueue();
+        void this.processQueue();
     }
 
     /**
@@ -199,7 +201,7 @@ class ImageService {
     /**
      * Queue an image for loading
      */
-    private queueImage(element: HTMLElement, src: string, priority: number) {
+    private queueImage(element: HTMLElement, src: string, priority: number): void {
         // Remove if already in queue
         this.imageQueue = this.imageQueue.filter((item) => item.element !== element);
 
@@ -211,14 +213,14 @@ class ImageService {
 
         // Start processing if not already
         if (!this.isProcessing) {
-            this.processQueue();
+            void this.processQueue();
         }
     }
 
     /**
      * Process the image queue
      */
-    private async processQueue() {
+    private async processQueue(): Promise<void> {
         if (this.isProcessing || this.imageQueue.length === 0) return;
 
         this.isProcessing = true;

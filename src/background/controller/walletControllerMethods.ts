@@ -207,7 +207,10 @@ export const WALLET_CONTROLLER_METHODS = [
     'registerColdStorageChangeAddress',
     'getConsolidationWallets',
     'markAddressesConsolidated',
-    'getNextUnusedRotationWallet'
+    'getNextUnusedRotationWallet',
+    'getExperienceMode',
+    'setExperienceMode',
+    'isExperienceModeSet'
 ] as const;
 
 export type WalletControllerMethod = (typeof WALLET_CONTROLLER_METHODS)[number];

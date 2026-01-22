@@ -36,6 +36,7 @@ import {
     WarningOutlined
 } from '@ant-design/icons';
 import { RouteTypes, useNavigate } from '../routeTypes';
+import { useBtcDomainsEnabled } from '@/ui/hooks/useAppConfig';
 
 const colors = {
     main: '#f37413',
@@ -83,6 +84,7 @@ export default function BtcDomainScreen() {
     const wallet = useWallet();
     const chain = useChain();
     const userAddress = useAccountAddress();
+    const btcDomainsEnabled = useBtcDomainsEnabled();
     const [activeTab, setActiveTab] = useState<Tab>('mydomains');
 
     // My Domains state
@@ -504,6 +506,33 @@ export default function BtcDomainScreen() {
 
         navigate(RouteTypes.TxOpnetConfirmScreen, { rawTxInfo });
     }, [publishDomainInfo, publishDomain, uploadedCid, publishFeeRate, navigate]);
+
+    // Feature flag check - .btc domains not available on this network
+    if (!btcDomainsEnabled) {
+        return (
+            <Layout>
+                <Header title=".btc Domains" onBack={() => navigate(RouteTypes.MainScreen)} />
+                <Content style={{ padding: '20px' }}>
+                    <div
+                        style={{
+                            background: `linear-gradient(135deg, ${colors.warning}15 0%, ${colors.warning}08 100%)`,
+                            border: `1px solid ${colors.warning}40`,
+                            borderRadius: '14px',
+                            padding: '20px',
+                            textAlign: 'center'
+                        }}>
+                        <GlobalOutlined style={{ fontSize: 48, color: colors.warning, marginBottom: 16 }} />
+                        <div style={{ fontSize: 18, fontWeight: 600, marginBottom: 8, color: colors.text }}>
+                            Coming Soon
+                        </div>
+                        <div style={{ fontSize: 13, color: colors.textFaded, textAlign: 'center' }}>
+                            .btc domains are currently only available on Bitcoin Regtest. Switch networks to use this feature.
+                        </div>
+                    </div>
+                </Content>
+            </Layout>
+        );
+    }
 
     return (
         <Layout>

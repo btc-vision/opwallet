@@ -27,6 +27,7 @@ import {
     useUpdateRotationSettings,
     useKeyringRotationMode
 } from '@/ui/state/rotation/hooks';
+import { usePrivacyModeEnabled } from '@/ui/hooks/useAppConfig';
 
 const colors = {
     main: '#f37413',
@@ -57,6 +58,7 @@ export default function AddressRotationScreen() {
     const rotateToNext = useRotateToNextAddress();
     const updateSettings = useUpdateRotationSettings();
     const { isKeyringRotationMode } = useKeyringRotationMode();
+    const privacyModeEnabled = usePrivacyModeEnabled();
 
     const [copying, setCopying] = useState(false);
     const [copyingCold, setCopyingCold] = useState(false);
@@ -164,6 +166,35 @@ export default function AddressRotationScreen() {
                 <Header onBack={() => window.history.go(-1)} title="Address Rotation" />
                 <Content style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     <OPNetLoader size={70} text="Loading" />
+                </Content>
+            </Layout>
+        );
+    }
+
+    // Feature flag check - privacy mode not available on this network
+    if (!privacyModeEnabled) {
+        return (
+            <Layout>
+                <Header onBack={() => window.history.go(-1)} title="Address Rotation" />
+                <Content>
+                    <Column gap="lg" style={{ padding: '20px' }}>
+                        <div
+                            style={{
+                                background: `linear-gradient(135deg, ${colors.warning}15 0%, ${colors.warning}08 100%)`,
+                                border: `1px solid ${colors.warning}40`,
+                                borderRadius: '14px',
+                                padding: '20px',
+                                textAlign: 'center'
+                            }}>
+                            <InfoCircleOutlined style={{ fontSize: 48, color: colors.warning, marginBottom: 16 }} />
+                            <Text text="Feature Not Available" style={{ fontSize: 18, fontWeight: 600, marginBottom: 8 }} />
+                            <Text
+                                text="Privacy mode is not available on this network. Switch to Bitcoin Regtest to use this feature."
+                                preset="sub"
+                                style={{ textAlign: 'center' }}
+                            />
+                        </div>
+                    </Column>
                 </Content>
             </Layout>
         );

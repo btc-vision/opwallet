@@ -11,6 +11,9 @@ import { FooterButtonContainer } from '@/ui/components/FooterButtonContainer';
 import { ContextData, TabType, UpdateContextDataParams } from '@/ui/pages/Account/createHDWalletComponents/types';
 import { satoshisToAmount, useWallet } from '@/ui/utils';
 import { LoadingOutlined } from '@ant-design/icons';
+import { usePrivacyModeEnabled } from '@/ui/hooks/useAppConfig';
+import { useCreateAccountCallback } from '@/ui/state/global/hooks';
+import { RouteTypes, useNavigate } from '@/ui/pages/routeTypes';
 
 export function Step2({
     contextData,
@@ -21,6 +24,9 @@ export function Step2({
 }) {
     const wallet = useWallet();
     const tools = useTools();
+    const navigate = useNavigate();
+    const createAccount = useCreateAccountCallback();
+    const privacyModeEnabled = usePrivacyModeEnabled();
 
     const hdPathOptions = useMemo(() => {
         const restoreWallet = RESTORE_WALLETS[contextData.restoreWalletType];
@@ -81,6 +87,7 @@ export function Step2({
     const [error, setError] = useState('');
     const [pathError, setPathError] = useState('');
     const [loading, setLoading] = useState(false);
+    const [creatingWallet, setCreatingWallet] = useState(false);
 
 
     const [pathText, setPathText] = useState(contextData.customHdPath);
@@ -220,16 +227,38 @@ export function Step2({
         return !(!error && !pathError);
     }, [error, pathError]);
 
-    const onNext = () => {
+    const onNext = async () => {
         // Store the selected hdPath in context for the next step
+        let hdPath: string;
         if (scannedGroups.length > 0) {
             const option = allHdPathOptions[contextData.addressTypeIndex];
-            const hdPath = contextData.customHdPath || option.hdPath;
+            hdPath = contextData.customHdPath || option.hdPath;
             updateContextData({ hdPath });
         } else {
             const option = hdPathOptions[contextData.addressTypeIndex];
-            const hdPath = contextData.customHdPath || option.hdPath;
+            hdPath = contextData.customHdPath || option.hdPath;
             updateContextData({ hdPath });
+        }
+
+        // If privacy mode is disabled, create wallet directly with standard mode
+        if (!privacyModeEnabled) {
+            setCreatingWallet(true);
+            try {
+                await createAccount(
+                    contextData.mnemonics,
+                    hdPath,
+                    contextData.passphrase,
+                    contextData.addressType,
+                    1,
+                    false // rotationModeEnabled = false (standard mode)
+                );
+                navigate(RouteTypes.MainScreen);
+            } catch (e) {
+                tools.toastError((e as Error).message);
+            } finally {
+                setCreatingWallet(false);
+            }
+            return;
         }
 
         // Navigate to rotation mode selection step
@@ -397,7 +426,12 @@ export function Step2({
             />
 
             <FooterButtonContainer>
-                <Button text="Continue" preset="primary" onClick={onNext} disabled={disabled} />
+                <Button
+                    text={creatingWallet ? 'Creating Wallet...' : 'Continue'}
+                    preset="primary"
+                    onClick={onNext}
+                    disabled={disabled || creatingWallet}
+                />
             </FooterButtonContainer>
 
             {loading && (

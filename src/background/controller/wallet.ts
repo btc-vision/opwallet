@@ -25,7 +25,7 @@ import notificationService, {
 import opnetApi from '@/background/service/opnetApi';
 import opnetProtocolService from '@/background/service/opnetProtocol';
 import permissionService from '@/background/service/permission';
-import preferenceService, { WalletSaveList } from '@/background/service/preference';
+import preferenceService, { ExperienceMode, WalletSaveList } from '@/background/service/preference';
 import sessionService from '@/background/service/session';
 import transactionHistoryService from '@/background/service/transactionHistory';
 import transactionStatusPoller from '@/background/service/transactionStatusPoller';
@@ -3361,6 +3361,18 @@ export class WalletController {
         if (chrome.sidePanel) {
             chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: useSidePanel }).catch(console.error);
         }
+    };
+
+    public getExperienceMode = (): ExperienceMode => {
+        return preferenceService.getExperienceMode();
+    };
+
+    public setExperienceMode = async (mode: ExperienceMode): Promise<void> => {
+        await preferenceService.setExperienceMode(mode);
+    };
+
+    public isExperienceModeSet = (): boolean => {
+        return preferenceService.isExperienceModeSet();
     };
 
     public setLastActiveTime = (): void => {

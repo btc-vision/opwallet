@@ -55,6 +55,11 @@ export default function BoostScreen() {
         } else if (approval) {
             navigate(RouteTypes.ApprovalScreen);
         } else {
+            const experienceModeSet = await wallet.isExperienceModeSet();
+            if (!experienceModeSet) {
+                navigate(RouteTypes.UserExperienceModeScreen, { isSetup: true });
+                return;
+            }
             navigate(RouteTypes.MainScreen);
             return;
         }

@@ -28,6 +28,7 @@ import {
 
 import { RouteTypes, useNavigate } from '../routeTypes';
 import { useKeyringRotationMode } from '@/ui/state/rotation/hooks';
+import { usePrivacyModeEnabled } from '@/ui/hooks/useAppConfig';
 
 type NotificationWindowMode = 'auto' | 'popup' | 'fullscreen';
 
@@ -55,8 +56,10 @@ const colors = {
 function PrivacySection() {
     const navigate = useNavigate();
     const { isKeyringRotationMode } = useKeyringRotationMode();
+    const privacyModeEnabled = usePrivacyModeEnabled();
 
-    if (!isKeyringRotationMode) {
+    // Hide section if feature is disabled OR keyring doesn't have rotation mode
+    if (!privacyModeEnabled || !isKeyringRotationMode) {
         return null;
     }
 
