@@ -69,7 +69,7 @@ export default function ExportPrivateKeyScreen() {
 
             // Get the quantum private key for all wallet types
             try {
-                const opnetWallet = await wallet.getOPNetWallet();
+                const opnetWallet = await wallet.getOPNetWallet(account);
                 setQuantumPrivateKey(opnetWallet[1]);
             } catch (e) {
                 console.error('Could not retrieve quantum private key:', e);

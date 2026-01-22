@@ -103,7 +103,7 @@ export interface WalletController {
 
     getInternalPrivateKey(account: { pubkey: string; type: string }): Promise<{ hex: string; wif: string }>;
 
-    getOPNetWallet(): Promise<[string, string, string]>;
+    getOPNetWallet(account?: { pubkey: string; type: string }): Promise<[string, string, string]>;
 
     getWalletAddress(): Promise<[string, string]>;
 
