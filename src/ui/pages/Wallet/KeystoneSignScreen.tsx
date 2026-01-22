@@ -104,9 +104,12 @@ function Step2(props: Props) {
 export default function KeystoneSignScreen(props: Props) {
     const [step, setStep] = useState(1);
 
-    useEffect(() => {
+    // Track previous id to reset step when id changes
+    const [prevId, setPrevId] = useState(props.id);
+    if (props.id !== prevId) {
+        setPrevId(props.id);
         setStep(1);
-    }, [props.id]);
+    }
 
     return (
         <Layout>

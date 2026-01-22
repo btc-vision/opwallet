@@ -7,6 +7,7 @@ import { Account } from '@/shared/types';
 import { isWalletError } from '@/shared/utils/errors';
 import { Button, Card, Column, Content, Header, Icon, Input, Layout, Row, Text } from '@/ui/components';
 import { useTools } from '@/ui/components/ActionComponent';
+import { WifExportWarningModal } from '@/ui/components/WifExportWarningModal';
 import { copyToClipboard, useLocationState, useWallet } from '@/ui/utils';
 
 type Status = '' | 'error' | 'warning' | undefined;
@@ -21,13 +22,17 @@ export default function ExportPrivateKeyScreen() {
     const { account } = useLocationState<LocationState>();
 
     const [password, setPassword] = useState('');
-    const [disabled, setDisabled] = useState(true);
+
+    // Derive disabled from password
+    const disabled = !password;
 
     const [privateKey, setPrivateKey] = useState({ hex: '', wif: '' });
     const [quantumPrivateKey, setQuantumPrivateKey] = useState('');
     const [isSimpleKeyring, setIsSimpleKeyring] = useState(false);
     const [status, setStatus] = useState<Status>('');
     const [error, setError] = useState('');
+    const [showWifWarning, setShowWifWarning] = useState(false);
+    const [pendingExport, setPendingExport] = useState(false);
     const wallet = useWallet();
     const tools = useTools();
 
@@ -45,6 +50,12 @@ export default function ExportPrivateKeyScreen() {
     }, [wallet]);
 
     const btnClick = async () => {
+        // For HD wallets (mnemonic-based), show warning before exporting WIF
+        if (!isSimpleKeyring && !pendingExport) {
+            setShowWifWarning(true);
+            return;
+        }
+
         try {
             const _res = await wallet.getPrivateKey(password, account);
             if (!_res) {
@@ -54,6 +65,7 @@ export default function ExportPrivateKeyScreen() {
             }
 
             setPrivateKey(_res);
+            setPendingExport(false); // Reset after successful export
 
             // Get the quantum private key for all wallet types
             try {
@@ -79,11 +91,12 @@ export default function ExportPrivateKeyScreen() {
         }
     };
 
+    // Reset status and error when password changes
     useEffect(() => {
-        setDisabled(true);
         if (password) {
-            setDisabled(false);
+            // eslint-disable-next-line react-hooks/set-state-in-effect -- Clear errors on password change
             setStatus('');
+             
             setError('');
         }
     }, [password]);
@@ -92,6 +105,18 @@ export default function ExportPrivateKeyScreen() {
         void copyToClipboard(str);
         tools.toastSuccess('Copied');
     }
+
+    const handleWifExportConfirm = () => {
+        setShowWifWarning(false);
+        setPendingExport(true);
+        // Now call btnClick which will proceed past the warning check
+        void btnClick();
+    };
+
+    const handleWifExportCancel = () => {
+        setShowWifWarning(false);
+        setPendingExport(false);
+    };
 
     return (
         <Layout>
@@ -321,6 +346,13 @@ export default function ExportPrivateKeyScreen() {
                     </Column>
                 )}
             </Content>
+
+            {/* WIF Export Warning Modal for HD Wallets */}
+            <WifExportWarningModal
+                open={showWifWarning}
+                onConfirm={handleWifExportConfirm}
+                onCancel={handleWifExportCancel}
+            />
         </Layout>
     );
 }

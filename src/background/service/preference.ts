@@ -1,15 +1,26 @@
 import { AddressFlagType, CHAINS, ChainType, CustomNetwork, DEFAULT_LOCKTIME_ID, EVENTS } from '@/shared/constant';
 import eventBus from '@/shared/eventBus';
 import { SessionEvent } from '@/shared/interfaces/SessionEvent';
-import { Account, AddressTypes, AppSummary, NetworkType, storageToAddressTypes, TxHistoryItem } from '@/shared/types';
+import { Account, AppSummary, NetworkType, storageToAddressTypes, TxHistoryItem } from '@/shared/types';
+import { AddressTypes } from '@btc-vision/transaction';
+import { DuplicationState } from '@/shared/types/Duplication';
 import { compareVersions } from 'compare-versions';
-import cloneDeep from 'lodash/cloneDeep';
+import { cloneDeep } from 'lodash-es';
 import browser from '../webapi/browser';
-import { i18n, sessionService } from './index';
+import i18n from './i18n';
+import sessionService from './session';
 
 const version = process.env.release ?? '0';
 
 export type WalletSaveList = [];
+
+export interface TrackedDomain {
+    name: string; // domain name without .btc
+    registeredAt?: number; // timestamp when registered
+    lastVerified?: number; // timestamp when ownership was last verified
+}
+
+export type ExperienceMode = 'simple' | 'expert' | undefined;
 
 export interface PreferenceStore {
     currentKeyringIndex: number;
@@ -43,6 +54,10 @@ export interface PreferenceStore {
     customNetworks: Record<string, CustomNetwork>;
     notificationWindowMode: 'auto' | 'popup' | 'fullscreen';
     useSidePanel: boolean;
+    trackedDomains: Record<string, TrackedDomain[]>; // keyed by address
+    mldsaBackupDismissed: Record<string, boolean>; // keyed by wallet pubkey
+    duplicationState: DuplicationState; // tracks duplication resolution progress
+    experienceMode: ExperienceMode; // 'simple' | 'expert' | undefined (not set)
 }
 
 const SUPPORT_LOCALES = ['en'];
@@ -80,7 +95,16 @@ const DEFAULTS = {
         autoLockTimeId: DEFAULT_LOCKTIME_ID,
         customNetworks: {},
         notificationWindowMode: 'popup',
-        useSidePanel: false
+        useSidePanel: false,
+        trackedDomains: {},
+        mldsaBackupDismissed: {},
+        duplicationState: {
+            isResolved: false,
+            backupCreated: false,
+            backupDownloaded: false,
+            conflictsResolved: []
+        },
+        experienceMode: undefined
     } as PreferenceStore
 };
 
@@ -515,6 +539,209 @@ class PreferenceService {
         this.store.useSidePanel = useSidePanel;
         await this.persist();
     };
+
+    // Tracked .btc domains
+    getTrackedDomains = (address: string): TrackedDomain[] => {
+        return this.store.trackedDomains?.[address] || [];
+    };
+
+    addTrackedDomain = async (address: string, domain: TrackedDomain) => {
+        if (!this.store.trackedDomains) {
+            this.store.trackedDomains = {};
+        }
+        if (!this.store.trackedDomains[address]) {
+            this.store.trackedDomains[address] = [];
+        }
+        // Check if domain already exists
+        const exists = this.store.trackedDomains[address].some((d) => d.name === domain.name);
+        if (!exists) {
+            this.store.trackedDomains[address].push(domain);
+            await this.persist();
+        }
+    };
+
+    removeTrackedDomain = async (address: string, domainName: string) => {
+        if (this.store.trackedDomains?.[address]) {
+            this.store.trackedDomains[address] = this.store.trackedDomains[address].filter(
+                (d) => d.name !== domainName
+            );
+            await this.persist();
+        }
+    };
+
+    updateTrackedDomainVerification = async (address: string, domainName: string) => {
+        if (this.store.trackedDomains?.[address]) {
+            const domain = this.store.trackedDomains[address].find((d) => d.name === domainName);
+            if (domain) {
+                domain.lastVerified = Date.now();
+                await this.persist();
+            }
+        }
+    };
+
+    // MLDSA Backup Reminder dismissed state (keyed by wallet pubkey)
+    getMldsaBackupDismissed = (pubkey: string): boolean => {
+        return this.store.mldsaBackupDismissed?.[pubkey] || false;
+    };
+
+    setMldsaBackupDismissed = async (pubkey: string, dismissed: boolean) => {
+        if (!this.store.mldsaBackupDismissed) {
+            this.store.mldsaBackupDismissed = {};
+        }
+        this.store.mldsaBackupDismissed[pubkey] = dismissed;
+        await this.persist();
+    };
+
+    // ==================== DUPLICATION STATE MANAGEMENT ====================
+
+    /**
+     * Get current duplication resolution state
+     */
+    getDuplicationState = (): DuplicationState => {
+        return (
+            this.store.duplicationState || {
+                isResolved: false,
+                backupCreated: false,
+                backupDownloaded: false,
+                conflictsResolved: []
+            }
+        );
+    };
+
+    /**
+     * Set whether internal backup was created
+     */
+    setDuplicationBackupCreated = async (created: boolean): Promise<void> => {
+        if (!this.store.duplicationState) {
+            this.store.duplicationState = {
+                isResolved: false,
+                backupCreated: false,
+                backupDownloaded: false,
+                conflictsResolved: []
+            };
+        }
+        this.store.duplicationState.backupCreated = created;
+        await this.persist();
+    };
+
+    /**
+     * Set whether user downloaded the backup file
+     */
+    setDuplicationBackupDownloaded = async (downloaded: boolean): Promise<void> => {
+        if (!this.store.duplicationState) {
+            this.store.duplicationState = {
+                isResolved: false,
+                backupCreated: false,
+                backupDownloaded: false,
+                conflictsResolved: []
+            };
+        }
+        this.store.duplicationState.backupDownloaded = downloaded;
+        await this.persist();
+    };
+
+    /**
+     * Mark a conflict as resolved
+     */
+    markConflictResolved = async (conflictId: string): Promise<void> => {
+        if (!this.store.duplicationState) {
+            this.store.duplicationState = {
+                isResolved: false,
+                backupCreated: false,
+                backupDownloaded: false,
+                conflictsResolved: []
+            };
+        }
+        if (!this.store.duplicationState.conflictsResolved.includes(conflictId)) {
+            this.store.duplicationState.conflictsResolved.push(conflictId);
+        }
+        await this.persist();
+    };
+
+    /**
+     * Mark all duplication issues as resolved
+     */
+    setDuplicationResolved = async (resolved: boolean): Promise<void> => {
+        if (!this.store.duplicationState) {
+            this.store.duplicationState = {
+                isResolved: false,
+                backupCreated: false,
+                backupDownloaded: false,
+                conflictsResolved: []
+            };
+        }
+        this.store.duplicationState.isResolved = resolved;
+        this.store.duplicationState.lastDetectionTime = Date.now();
+        await this.persist();
+    };
+
+    /**
+     * Reset duplication state (for re-checking or testing)
+     */
+    resetDuplicationState = async (): Promise<void> => {
+        this.store.duplicationState = {
+            isResolved: false,
+            backupCreated: false,
+            backupDownloaded: false,
+            conflictsResolved: []
+        };
+        await this.persist();
+    };
+
+    /**
+     * Check if duplicate check should be skipped (already done recently)
+     * Returns true if check was done within the threshold
+     */
+    shouldSkipDuplicateCheck = (thresholdMs: number = 30000): boolean => {
+        const state = this.getDuplicationState();
+        if (!state.lastCheckTime) return false;
+        return Date.now() - state.lastCheckTime < thresholdMs;
+    };
+
+    /**
+     * Mark duplicate check as done for this session
+     */
+    setDuplicateCheckDone = async (): Promise<void> => {
+        if (!this.store.duplicationState) {
+            this.store.duplicationState = {
+                isResolved: false,
+                backupCreated: false,
+                backupDownloaded: false,
+                conflictsResolved: []
+            };
+        }
+        this.store.duplicationState.lastCheckTime = Date.now();
+        await this.persist();
+    };
+
+    // ==================== END DUPLICATION STATE ====================
+
+    // ==================== EXPERIENCE MODE ====================
+
+    /**
+     * Get user experience mode preference
+     * Returns 'simple', 'expert', or undefined (not set)
+     */
+    getExperienceMode = (): ExperienceMode => {
+        return this.store.experienceMode;
+    };
+
+    /**
+     * Set user experience mode preference
+     */
+    setExperienceMode = async (mode: ExperienceMode): Promise<void> => {
+        this.store.experienceMode = mode;
+        await this.persist();
+    };
+
+    /**
+     * Check if experience mode has been set by the user
+     */
+    isExperienceModeSet = (): boolean => {
+        return this.store.experienceMode !== undefined;
+    };
+
+    // ==================== END EXPERIENCE MODE ====================
 
     private persist = async () => {
         await browser.storage.local.set({ preference: this.store });

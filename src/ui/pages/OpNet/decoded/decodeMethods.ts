@@ -1,5 +1,5 @@
-// decodeMethods.ts
 import { BinaryReader } from '@btc-vision/transaction';
+import type { InteractionType } from '@/shared/types/InteractionType';
 import {
     DecodedAddLiquidityNative,
     DecodedAirdrop,
@@ -21,7 +21,6 @@ import {
     DecodedSetFees,
     DecodedSwap
 } from './DecodedTypes';
-import { InteractionType } from './InteractionType';
 
 /**
  * Helpers for reading custom data from a BinaryReader

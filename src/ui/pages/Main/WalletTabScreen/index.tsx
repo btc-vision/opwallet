@@ -1,14 +1,17 @@
 import React, { CSSProperties, useCallback, useEffect, useMemo, useState } from 'react';
 
-import { AddressFlagType, KEYRING_TYPE } from '@/shared/constant';
 import { UTXO_CONFIG } from '@/shared/config';
+import { AddressFlagType, KEYRING_TYPE } from '@/shared/constant';
+import { DuplicationDetectionResult } from '@/shared/types/Duplication';
 import { checkAddressFlag } from '@/shared/utils';
 import { Column, Content, Footer, Header, Image, Layout } from '@/ui/components';
 import AccountSelect from '@/ui/components/AccountSelect';
-import { FeeRateBar } from '@/ui/components/FeeRateBar';
-import { QuantumMigrationBanner } from '@/ui/components/QuantumMigrationBanner';
 import { DisableUnconfirmedsPopover } from '@/ui/components/DisableUnconfirmedPopover';
+import { DuplicationAlertModal } from '@/ui/components/DuplicationAlertModal';
+import { FeeRateBar } from '@/ui/components/FeeRateBar';
+import { MldsaBackupReminder } from '@/ui/components/MldsaBackupReminder';
 import { NavTabBar } from '@/ui/components/NavTabBar';
+import { QuantumMigrationBanner } from '@/ui/components/QuantumMigrationBanner';
 import { UpgradePopover } from '@/ui/components/UpgradePopover';
 import { BalanceDisplay } from '@/ui/pages/Main/WalletTabScreen/components/BalanceDisplay';
 import {
@@ -22,6 +25,7 @@ import {
 import { accountActions } from '@/ui/state/accounts/reducer';
 import { useAppDispatch } from '@/ui/state/hooks';
 import { useCurrentKeyring } from '@/ui/state/keyrings/hooks';
+import { useRotationEnabled, useCurrentRotationAddress } from '@/ui/state/rotation/hooks';
 import {
     useBTCUnit,
     useChain,
@@ -35,13 +39,17 @@ import { copyToClipboard, useWallet } from '@/ui/utils';
 
 import { useTools } from '@/ui/components/ActionComponent';
 import ParticleField from '@/ui/components/ParticleField/ParticleField';
+import { useBtcDomainsEnabled, usePrivacyModeEnabled } from '@/ui/hooks/useAppConfig';
+import { useSimpleModeEnabled } from '@/ui/hooks/useExperienceMode';
 import {
     CheckCircleOutlined,
     CloseOutlined,
     DownOutlined,
     ExclamationCircleOutlined,
     ExperimentOutlined,
+    GlobalOutlined,
     HistoryOutlined,
+    LockOutlined,
     QrcodeOutlined,
     SendOutlined,
     SettingOutlined,
@@ -52,10 +60,12 @@ import {
 import { Address } from '@btc-vision/transaction';
 import { Tooltip } from 'antd';
 import ActionButton from '../../../components/ActionButton/index';
-import { RouteTypes, useNavigate } from '../../MainRoute';
+import { RouteTypes, useNavigate } from '../../routeTypes';
 import { SwitchChainModal } from '../../Settings/network/SwitchChainModal';
 import { OPNetList } from './OPNetList';
-import { useConsolidation, OptimizationStatus } from './hooks';
+import { useConsolidation } from './hooks';
+import {BTCDomainModal, TOS_DOMAIN_ACCEPTED_KEY} from "@/ui/components/AcceptModals/btcDomainTermsModal";
+import {TermsOfServiceModal, TOS_ACCEPTED_KEY} from "@/ui/components/AcceptModals/TermsModal";
 
 const colors = {
     main: '#f37413',
@@ -86,12 +96,21 @@ export default function WalletTabScreen() {
     const navigate = useNavigate();
 
     const untweakedPublicKey = useAccountPublicKey();
-    const bitcoinAddress = useAccountAddress();
+    const baseAddress = useAccountAddress();
+
+    const rotationEnabled = useRotationEnabled();
+    const currentRotationAddress = useCurrentRotationAddress();
+    const bitcoinAddress = rotationEnabled && currentRotationAddress
+        ? currentRotationAddress.address
+        : baseAddress;
+
+    // Feature flags
+    const btcDomainsEnabled = useBtcDomainsEnabled();
+    const privacyModeEnabled = usePrivacyModeEnabled();
+    const isSimpleMode = useSimpleModeEnabled();
 
     const [address, setAddress] = useState<Address | null>(null);
 
-    // untweakedPublicKey.mldsa can be UNDEFINED if the account is not quantum-enabled! we need to handle this gracefully, no error!
-    // Address.fromString requires (mldsaHashedKey, legacyKey) - use pubkey for both if no mldsa
     useEffect(() => {
         if (untweakedPublicKey.mldsa) {
             setAddress(Address.fromString(untweakedPublicKey.mldsa, untweakedPublicKey.pubkey));
@@ -148,6 +167,14 @@ export default function WalletTabScreen() {
     const [splitCount, setSplitCount] = useState(25);
     const [splitFeeRate, setSplitFeeRate] = useState(5); // Default fee rate
     const [needsQuantumMigration, setNeedsQuantumMigration] = useState(false);
+    const [showMldsaBackupReminder, setShowMldsaBackupReminder] = useState(false);
+
+    // Duplication detection state
+    const [duplicationDetection, setDuplicationDetection] = useState<DuplicationDetectionResult | null>(null);
+    const [showDuplicationAlert, setShowDuplicationAlert] = useState(false);
+
+    // TOS state - must be declared before duplication check useEffect
+    const [termsVisible, setTermsVisible] = useState(false);
 
     // Check if quantum migration is needed (SimpleKeyring without quantum key)
     useEffect(() => {
@@ -170,6 +197,74 @@ export default function WalletTabScreen() {
         };
         void checkQuantumStatus();
     }, [currentKeyring, wallet]);
+
+    // Check for wallet duplications - only once after TOS is accepted
+    useEffect(() => {
+        // Don't check for duplicates until TOS is accepted
+        if (termsVisible) {
+            return;
+        }
+
+        const checkForDuplicates = async () => {
+            // Only check once per session (30 seconds threshold)
+            if (await wallet.shouldSkipDuplicateCheck()) {
+                return;
+            }
+
+            // Mark check as done immediately to prevent concurrent checks
+            await wallet.setDuplicateCheckDone();
+
+            try {
+                const detection = await wallet.checkForDuplicates();
+
+                if (detection.hasDuplicates) {
+                    const state = await wallet.getDuplicationState();
+
+                    // If there are still conflicts but state says resolved, reset it
+                    // This can happen if resolution didn't fully work or new conflicts appeared
+                    if (state.isResolved && detection.totalConflicts > 0) {
+                        await wallet.resetDuplicationState();
+                    }
+
+                    if (!state.isResolved || detection.totalConflicts > 0) {
+                        setDuplicationDetection(detection);
+                        setShowDuplicationAlert(true);
+                    }
+                }
+            } catch {
+                // Failed to check for duplicates
+            }
+        };
+
+        void checkForDuplicates();
+         
+    }, [termsVisible]);
+
+    // Check if MLDSA backup reminder should be shown (only for Simple Keyrings / WIF imports)
+    useEffect(() => {
+        const checkMldsaBackupReminder = async () => {
+            try {
+                // Only show for SimpleKeyring (WIF imports) - HD wallets derive MLDSA from seed phrase
+                if (currentKeyring.type !== KEYRING_TYPE.SimpleKeyring) {
+                    setShowMldsaBackupReminder(false);
+                    return;
+                }
+
+                // Don't show if wallet still needs quantum migration
+                if (needsQuantumMigration) {
+                    setShowMldsaBackupReminder(false);
+                    return;
+                }
+
+                // Check if user has already dismissed the reminder for this wallet
+                const dismissed = await wallet.getMldsaBackupDismissed(currentAccount.pubkey);
+                setShowMldsaBackupReminder(!dismissed);
+            } catch {
+                setShowMldsaBackupReminder(false);
+            }
+        };
+        void checkMldsaBackupReminder();
+    }, [currentAccount.pubkey, currentKeyring.type, needsQuantumMigration, wallet]);
 
     useEffect(() => {
         void (async () => {
@@ -237,7 +332,27 @@ export default function WalletTabScreen() {
         await navigateToConsolidation();
     }, [navigateToConsolidation]);
 
+    // Handle duplication resolution navigation
+    const handleDuplicationResolve = useCallback(() => {
+        setShowDuplicationAlert(false);
+        navigate(RouteTypes.DuplicationResolutionScreen);
+    }, [navigate]);
+
     const tools = useTools();
+
+    const [domainTermsVisible, setDomainTermsVisible] = useState(false);
+    const [showDomainTerms, setShowDomainTerms] = useState(false);
+
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+
+        const accepted = window.localStorage.getItem(TOS_ACCEPTED_KEY) === '1';
+        if (!accepted) setTermsVisible(true);
+
+        const acceptedDomain = window.localStorage.getItem(TOS_DOMAIN_ACCEPTED_KEY) === '1';
+        if (!acceptedDomain) setDomainTermsVisible(true);
+
+    }, []);
 
     return (
         <Layout>
@@ -521,13 +636,7 @@ export default function WalletTabScreen() {
                                                     color: 'rgba(219, 219, 219, 0.7)',
                                                     marginBottom: '8px'
                                                 }}>
-                                                Your total balance is not fully displayed since it has exceeded 2,000
-                                                UTXOs.
-                                                <strong
-                                                    style={{ display: 'block', marginTop: '4px', color: colors.main }}>
-                                                    You can consolidate up to {consolidationLimit} UTXOs at a time to
-                                                    fix this issue.
-                                                </strong>
+                                                Balance incomplete (2,000+ UTXOs). Consolidate to fix.
                                             </div>
                                             <button
                                                 onClick={navigateToConsolidation}
@@ -673,15 +782,16 @@ export default function WalletTabScreen() {
                                             </span>
                                         )}
 
-                                        {/* MLDSA Key and Bitcoin Address Row */}
-                                        <div
-                                            style={{
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                justifyContent: 'center',
-                                                gap: '8px',
-                                                flexWrap: 'wrap'
-                                            }}>
+                                        {/* MLDSA Key and Bitcoin Address Row - hidden in Simple Mode */}
+                                        {!isSimpleMode && (
+                                            <div
+                                                style={{
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'center',
+                                                    gap: '8px',
+                                                    flexWrap: 'wrap'
+                                                }}>
                                             {/* MLDSA Key Display - only show if wallet is migrated */}
                                             {untweakedPublicKey.mldsa && (
                                                 <Tooltip title="Click to copy MLDSA public key hash" placement="top">
@@ -818,7 +928,8 @@ export default function WalletTabScreen() {
                                                     </svg>
                                                 </button>
                                             </Tooltip>
-                                        </div>
+                                            </div>
+                                        )}
                                     </div>
                                 )}
                             </div>
@@ -872,6 +983,84 @@ export default function WalletTabScreen() {
                                 onClick={() => navigate(RouteTypes.HistoryScreen)}
                             />
                         </div>
+
+                        {/* Assign .btc Domain Card - Only show when feature is enabled */}
+                        {btcDomainsEnabled && (
+                            <div
+                                onClick={() => domainTermsVisible ? setShowDomainTerms(true) : navigate(RouteTypes.BtcDomainScreen)}
+                                style={{
+                                    margin: '0 12px 12px',
+                                    padding: '10px 14px',
+                                    background: `linear-gradient(135deg, ${colors.main}15 0%, ${colors.main}08 100%)`,
+                                    border: `1px solid ${colors.main}30`,
+                                    borderRadius: '10px',
+                                    cursor: 'pointer',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '10px',
+                                    transition: 'all 0.2s'
+                                }}
+                                onMouseEnter={(e) => {
+                                    e.currentTarget.style.borderColor = `${colors.main}60`;
+                                    e.currentTarget.style.background = `linear-gradient(135deg, ${colors.main}20 0%, ${colors.main}10 100%)`;
+                                }}
+                                onMouseLeave={(e) => {
+                                    e.currentTarget.style.borderColor = `${colors.main}30`;
+                                    e.currentTarget.style.background = `linear-gradient(135deg, ${colors.main}15 0%, ${colors.main}08 100%)`;
+                                }}>
+                                <GlobalOutlined style={{ fontSize: 18, color: colors.main }} />
+                                <div style={{ flex: 1 }}>
+                                    <div style={{ fontSize: '12px', fontWeight: 600, color: colors.text }}>
+                                        .btc Domains
+                                    </div>
+                                    <div style={{ fontSize: '10px', color: colors.textFaded }}>
+                                        Register domains & publish websites
+                                    </div>
+                                </div>
+                                <DownOutlined
+                                    style={{ fontSize: 10, color: colors.textFaded, transform: 'rotate(-90deg)' }}
+                                />
+                            </div>
+                        )}
+
+                        {/* Address Rotation Card - Only show when feature and rotation mode are enabled */}
+                        {privacyModeEnabled && rotationEnabled && (
+                            <div
+                                onClick={() => navigate(RouteTypes.AddressRotationScreen)}
+                                style={{
+                                    margin: '0 12px 12px',
+                                    padding: '10px 14px',
+                                    background: `linear-gradient(135deg, ${colors.success}15 0%, ${colors.success}08 100%)`,
+                                    border: `1px solid ${colors.success}30`,
+                                    borderRadius: '10px',
+                                    cursor: 'pointer',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '10px',
+                                    transition: 'all 0.2s'
+                                }}
+                                onMouseEnter={(e) => {
+                                    e.currentTarget.style.borderColor = `${colors.success}60`;
+                                    e.currentTarget.style.background = `linear-gradient(135deg, ${colors.success}20 0%, ${colors.success}10 100%)`;
+                                }}
+                                onMouseLeave={(e) => {
+                                    e.currentTarget.style.borderColor = `${colors.success}30`;
+                                    e.currentTarget.style.background = `linear-gradient(135deg, ${colors.success}15 0%, ${colors.success}08 100%)`;
+                                }}>
+                                <LockOutlined style={{ fontSize: 18, color: colors.success }} />
+                                <div style={{ flex: 1 }}>
+                                    <div style={{ fontSize: '12px', fontWeight: 600, color: colors.text }}>
+                                        Privacy Mode
+                                    </div>
+                                    <div style={{ fontSize: '10px', color: colors.textFaded }}>
+                                        Manage rotating addresses & consolidation
+                                    </div>
+                                </div>
+                                <DownOutlined
+                                    style={{ fontSize: 10, color: colors.textFaded, transform: 'rotate(-90deg)' }}
+                                />
+                            </div>
+                        )}
                     </div>
                     {/* Tokens Section */}
                     <div style={{ marginTop: '4px' }}>
@@ -889,6 +1078,10 @@ export default function WalletTabScreen() {
 
                 {showDisableUnconfirmedUtxoNotice && (
                     <DisableUnconfirmedsPopover onClose={() => setShowDisableUnconfirmedUtxoNotice(false)} />
+                )}
+
+                {showMldsaBackupReminder && (
+                    <MldsaBackupReminder account={currentAccount} onClose={() => setShowMldsaBackupReminder(false)} />
                 )}
 
                 {switchChainModalVisible && (
@@ -1114,8 +1307,8 @@ export default function WalletTabScreen() {
                                                     color: colors.error,
                                                     marginTop: '4px'
                                                 }}>
-                                                Each output must be at least {UTXO_CONFIG.MIN_SPLIT_OUTPUT.toLocaleString()}{' '}
-                                                sats
+                                                Each output must be at least{' '}
+                                                {UTXO_CONFIG.MIN_SPLIT_OUTPUT.toLocaleString()} sats
                                             </div>
                                         )}
                                     </div>
@@ -1139,7 +1332,8 @@ export default function WalletTabScreen() {
                                         style={{
                                             width: '100%',
                                             padding: '12px',
-                                            background: isSplitValid && splitFeeRate > 0 ? colors.main : colors.buttonBg,
+                                            background:
+                                                isSplitValid && splitFeeRate > 0 ? colors.main : colors.buttonBg,
                                             border: 'none',
                                             borderRadius: '8px',
                                             cursor: isSplitValid && splitFeeRate > 0 ? 'pointer' : 'not-allowed',
@@ -1203,6 +1397,30 @@ export default function WalletTabScreen() {
                     </div>
                 )}
             </Content>
+
+            <TermsOfServiceModal
+                open={termsVisible}
+                onAccept={() => {
+                    setTermsVisible(false);
+                }}
+            />
+
+            <BTCDomainModal
+                onClose={() => setShowDomainTerms(false)}
+                open={domainTermsVisible && showDomainTerms}
+                onAccept={() => {
+                    setDomainTermsVisible(false);
+                    navigate(RouteTypes.BtcDomainScreen)
+                }}
+            />
+
+            {/* Duplication Alert Modal - blocks interaction until resolved */}
+            {duplicationDetection && showDuplicationAlert && (
+                <DuplicationAlertModal
+                    detection={duplicationDetection}
+                    onResolve={handleDuplicationResolve}
+                />
+            )}
 
             <Footer px="zero" py="zero">
                 <NavTabBar tab="home" />

@@ -1,9 +1,3 @@
-/**
- * Transaction Decoder Utility
- * Parses raw Bitcoin transaction hex to extract inputs, outputs, and calculate fees.
- * Uses @btc-vision/bitcoin for accurate parsing.
- */
-
 import { Transaction, address, Network } from '@btc-vision/bitcoin';
 import { ParsedTransaction, ParsedTxOutput } from '@/background/service/notification';
 import { UTXO } from '@btc-vision/transaction';

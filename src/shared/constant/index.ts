@@ -1,4 +1,5 @@
-import { AddressTypes, NetworkType, RestoreWalletType } from '../types';
+import { NetworkType, RestoreWalletType } from '../types';
+import { AddressTypes } from '@btc-vision/transaction';
 
 export enum CHAINS_ENUM {
     BTC = 'BTC'
@@ -51,6 +52,10 @@ export const KEYRING_TYPES: Record<
     }
 };
 
+// Duplication backup storage
+export const DUPLICATION_BACKUP_STORAGE_KEY = 'duplicationBackupVault';
+export const DUPLICATION_BACKUP_VERSION = '1.0.0';
+
 export const IS_CHROME = /Chrome\//i.test(navigator.userAgent);
 
 export const IS_LINUX = /linux/i.test(navigator.userAgent);
@@ -88,15 +93,15 @@ export const ADDRESS_TYPES: {
         hdPath: "m/86'/0'/0'/0",
         displayIndex: 2,
         isUnisatLegacy: false
-    },
-    {
+    }
+    /*{
         value: AddressTypes.P2SH_OR_P2SH_P2WPKH,
         label: 'P2SH-P2WPKH',
         name: 'Nested Segwit (P2SH-P2WPKH)',
         hdPath: "m/49'/0'/0'/0",
         displayIndex: 1,
         isUnisatLegacy: false
-    }
+    }*/
 ];
 
 export const OW_HD_PATH = "m/86'/0'/0'";
@@ -174,6 +179,7 @@ export enum ChainId {
 export interface ContractsDetails {
     moto?: string;
     pill?: string;
+    btcResolver?: string;
 }
 
 export interface CustomNetwork {
@@ -277,7 +283,8 @@ export const DEFAULT_CHAINS_MAP: { [key in ChainType]?: TypeChain<key> } = {
         defaultExplorer: 'mempool-space',
         contractAddresses: {
             moto: '0x0a6732489a31e6de07917a28ff7df311fc5f98f6e1664943ac1c3fe7893bdab5',
-            pill: '0xfb7df2f08d8042d4df0506c0d4cee3cfa5f2d7b02ef01ec76dd699551393a438'
+            pill: '0xfb7df2f08d8042d4df0506c0d4cee3cfa5f2d7b02ef01ec76dd699551393a438',
+            btcResolver: '0x271ea47b91797e5900a3c9bdd39b87a79919eac7c9ec2c860f494704fb0dcaea'
         }
     },
     [ChainType.BITCOIN_SIGNET]: {
@@ -455,7 +462,14 @@ export const TWITTER_URL = 'https://x.com/opnetbtc';
 export const TELEGRAM_URL = 'https://t.me/opnetbtc ';
 
 export const CHANNEL = process.env.channel ?? 'github';
+
 export const VERSION = process.env.release ?? '0.0.0';
+export const TOS_VERSION = process.env.tos ?? '0.0.2';
+export const TOS_LAST_UPDATE = process.env.tosLastUpdate ?? '2025-12-20';
+
+export const DOMAIN_TOS_VERSION = process.env.domainTosVersion ?? '0.0.2';
+export const DOMAIN_TOS_LAST_UPDATE = process.env.domainTosLastUpdate ?? '2025-12-20';
+
 export const MANIFEST_VERSION = process.env.manifest ?? 'mv3';
 
 export enum AddressFlagType {

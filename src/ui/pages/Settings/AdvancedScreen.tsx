@@ -6,7 +6,7 @@ import { Column, Content, Header, Layout, OPNetLoader } from '@/ui/components';
 import { useTools } from '@/ui/components/ActionComponent';
 import { EnableUnconfirmedPopover } from '@/ui/components/EnableUnconfirmedPopover';
 import { Popover } from '@/ui/components/Popover';
-import { useCurrentAccount } from '@/ui/state/accounts/hooks';
+import { useCurrentAccount, useReloadAccounts } from '@/ui/state/accounts/hooks';
 import { accountActions } from '@/ui/state/accounts/reducer';
 import { useAppDispatch } from '@/ui/state/hooks';
 import { useAutoLockTimeId } from '@/ui/state/settings/hooks';
@@ -14,13 +14,21 @@ import { settingsActions } from '@/ui/state/settings/reducer';
 import { useWallet } from '@/ui/utils';
 import {
     AppstoreOutlined,
+    BugOutlined,
     CheckCircleFilled,
     ClockCircleOutlined,
+    DeleteOutlined,
     InfoCircleOutlined,
     LayoutOutlined,
     LoadingOutlined,
-    RightOutlined
+    RightOutlined,
+    SwapOutlined,
+    WarningOutlined
 } from '@ant-design/icons';
+
+import { RouteTypes, useNavigate } from '../routeTypes';
+import { useKeyringRotationMode } from '@/ui/state/rotation/hooks';
+import { usePrivacyModeEnabled } from '@/ui/hooks/useAppConfig';
 
 type NotificationWindowMode = 'auto' | 'popup' | 'fullscreen';
 
@@ -45,9 +53,114 @@ const colors = {
     warning: '#fbbf24'
 };
 
+function PrivacySection() {
+    const navigate = useNavigate();
+    const { isKeyringRotationMode } = useKeyringRotationMode();
+    const privacyModeEnabled = usePrivacyModeEnabled();
+
+    // Hide section if feature is disabled OR keyring doesn't have rotation mode
+    if (!privacyModeEnabled || !isKeyringRotationMode) {
+        return null;
+    }
+
+    return (
+        <>
+            <div
+                style={{
+                    fontSize: '11px',
+                    fontWeight: 600,
+                    color: colors.textFaded,
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.5px',
+                    marginTop: '20px',
+                    marginBottom: '10px',
+                    paddingLeft: '4px'
+                }}>
+                Privacy
+            </div>
+
+            <div
+                style={{
+                    background: colors.containerBgFaded,
+                    borderRadius: '14px',
+                    overflow: 'hidden'
+                }}>
+                <div
+                    style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        padding: '14px 12px',
+                        cursor: 'pointer',
+                        transition: 'all 0.15s'
+                    }}
+                    onClick={() => navigate(RouteTypes.AddressRotationScreen)}
+                    onMouseEnter={(e) => {
+                        e.currentTarget.style.background = colors.buttonHoverBg;
+                    }}
+                    onMouseLeave={(e) => {
+                        e.currentTarget.style.background = 'transparent';
+                    }}>
+                    <div
+                        style={{
+                            width: '36px',
+                            height: '36px',
+                            borderRadius: '10px',
+                            background: `linear-gradient(135deg, ${colors.main}20 0%, ${colors.main}10 100%)`,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            marginRight: '12px'
+                        }}>
+                        <SwapOutlined style={{ fontSize: 18, color: colors.main }} />
+                    </div>
+
+                    <div style={{ flex: 1 }}>
+                        <div
+                            style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '8px',
+                                fontSize: '14px',
+                                fontWeight: 500,
+                                color: colors.text,
+                                marginBottom: '2px',
+                                fontFamily: 'Inter-Regular, serif'
+                            }}>
+                            Address Rotation
+                            <span
+                                style={{
+                                    fontSize: '9px',
+                                    fontWeight: 600,
+                                    color: colors.success,
+                                    background: `${colors.success}20`,
+                                    padding: '2px 6px',
+                                    borderRadius: '4px',
+                                    textTransform: 'uppercase'
+                                }}>
+                                Active
+                            </span>
+                        </div>
+                        <div
+                            style={{
+                                fontSize: '11px',
+                                color: colors.textFaded,
+                                marginTop: '2px'
+                            }}>
+                            Manage rotating addresses and consolidation
+                        </div>
+                    </div>
+
+                    <RightOutlined style={{ fontSize: 12, color: colors.textFaded }} />
+                </div>
+            </div>
+        </>
+    );
+}
+
 export default function AdvancedScreen() {
     const wallet = useWallet();
     const tools = useTools();
+    const reloadAccounts = useReloadAccounts();
 
     const [enableUnconfirmed, setEnableUnconfirmed] = useState(false);
     const [unconfirmedPopoverVisible, setUnconfirmedPopoverVisible] = useState(false);
@@ -56,6 +169,8 @@ export default function AdvancedScreen() {
     const [notificationWindowMode, setNotificationWindowMode] = useState<NotificationWindowMode>('popup');
     const [useSidePanel, setUseSidePanel] = useState(false);
     const [sidePanelLoading, setSidePanelLoading] = useState(false);
+    const [testConflictsLoading, setTestConflictsLoading] = useState(false);
+    const [clearConflictsLoading, setClearConflictsLoading] = useState(false);
     const autoLockTimeId = useAutoLockTimeId();
     const lockTimeConfig = AUTO_LOCKTIMES[autoLockTimeId] || AUTO_LOCKTIMES[DEFAULT_LOCKTIME_ID];
     const windowModeConfig =
@@ -106,7 +221,14 @@ export default function AdvancedScreen() {
     return (
         <Layout>
             <Header onBack={() => window.history.go(-1)} title="Advanced Settings" />
-            <Content style={{ padding: '12px' }}>
+            <div
+                style={{
+                    flex: 1,
+                    overflowY: 'auto',
+                    overflowX: 'hidden',
+                    padding: '12px',
+                    paddingBottom: '40px'
+                }}>
                 {/* Info Card */}
                 <div
                     style={{
@@ -405,7 +527,222 @@ export default function AdvancedScreen() {
                         </div>
                     </div>
                 </div>
-            </Content>
+
+                <PrivacySection />
+
+                {process.env.NODE_ENV !== 'production' && (
+                <div style={{ marginTop: '20px', marginBottom: '20px' }}>
+                    <div
+                        style={{
+                            fontSize: '11px',
+                            fontWeight: 600,
+                            color: colors.warning,
+                            textTransform: 'uppercase',
+                            letterSpacing: '0.5px',
+                            marginBottom: '10px',
+                            paddingLeft: '4px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '6px'
+                        }}>
+                        <BugOutlined style={{ fontSize: 12 }} />
+                        Developer Tools (DEV BUILD ONLY)
+                    </div>
+
+                    <div
+                        style={{
+                            background: colors.containerBgFaded,
+                            borderRadius: '14px',
+                            overflow: 'hidden',
+                            border: `1px solid ${colors.warning}30`
+                        }}>
+                        {/* Create Test Conflicts Button */}
+                        <div
+                            style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                padding: '14px 12px',
+                                borderBottom: `1px solid ${colors.containerBorder}`,
+                                cursor: testConflictsLoading ? 'not-allowed' : 'pointer',
+                                transition: 'all 0.15s',
+                                opacity: testConflictsLoading ? 0.7 : 1
+                            }}
+                            onClick={async () => {
+                                if (testConflictsLoading) return;
+                                setTestConflictsLoading(true);
+                                try {
+                                    const result = await wallet.createTestConflicts();
+                                    tools.toastSuccess(result.message);
+                                    console.log('Test conflicts created:', result.created);
+                                    // Reload accounts to show new test wallets
+                                    await reloadAccounts();
+                                } catch (error) {
+                                    tools.toastError(
+                                        `Failed to create test conflicts: ${error instanceof Error ? error.message : String(error)}`
+                                    );
+                                } finally {
+                                    setTestConflictsLoading(false);
+                                }
+                            }}
+                            onMouseEnter={(e) => {
+                                if (!testConflictsLoading) e.currentTarget.style.background = colors.buttonHoverBg;
+                            }}
+                            onMouseLeave={(e) => {
+                                e.currentTarget.style.background = 'transparent';
+                            }}>
+                            {/* Icon */}
+                            <div
+                                style={{
+                                    width: '36px',
+                                    height: '36px',
+                                    borderRadius: '10px',
+                                    background: `${colors.warning}15`,
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    marginRight: '12px'
+                                }}>
+                                {testConflictsLoading ? (
+                                    <LoadingOutlined style={{ fontSize: 18, color: colors.warning }} />
+                                ) : (
+                                    <WarningOutlined style={{ fontSize: 18, color: colors.warning }} />
+                                )}
+                            </div>
+
+                            {/* Content */}
+                            <div style={{ flex: 1 }}>
+                                <div
+                                    style={{
+                                        fontSize: '14px',
+                                        fontWeight: 500,
+                                        color: colors.text,
+                                        marginBottom: '2px',
+                                        fontFamily: 'Inter-Regular, serif'
+                                    }}>
+                                    Create Test Conflicts
+                                </div>
+                                <div
+                                    style={{
+                                        fontSize: '11px',
+                                        color: colors.textFaded,
+                                        marginTop: '2px'
+                                    }}>
+                                    Creates duplicate wallets to test conflict resolution
+                                </div>
+                            </div>
+
+                            {/* Arrow */}
+                            <RightOutlined
+                                style={{
+                                    fontSize: 12,
+                                    color: colors.textFaded
+                                }}
+                            />
+                        </div>
+
+                        {/* Clear Test Data Button */}
+                        <div
+                            style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                padding: '14px 12px',
+                                cursor: clearConflictsLoading ? 'not-allowed' : 'pointer',
+                                transition: 'all 0.15s',
+                                opacity: clearConflictsLoading ? 0.7 : 1
+                            }}
+                            onClick={async () => {
+                                if (clearConflictsLoading) return;
+                                setClearConflictsLoading(true);
+                                try {
+                                    await wallet.clearTestConflicts();
+                                    tools.toastSuccess('Test data cleared. State reset.');
+                                } catch (error) {
+                                    tools.toastError(
+                                        `Failed to clear: ${error instanceof Error ? error.message : String(error)}`
+                                    );
+                                } finally {
+                                    setClearConflictsLoading(false);
+                                }
+                            }}
+                            onMouseEnter={(e) => {
+                                if (!clearConflictsLoading) e.currentTarget.style.background = colors.buttonHoverBg;
+                            }}
+                            onMouseLeave={(e) => {
+                                e.currentTarget.style.background = 'transparent';
+                            }}>
+                            {/* Icon */}
+                            <div
+                                style={{
+                                    width: '36px',
+                                    height: '36px',
+                                    borderRadius: '10px',
+                                    background: `${colors.error}15`,
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    marginRight: '12px'
+                                }}>
+                                {clearConflictsLoading ? (
+                                    <LoadingOutlined style={{ fontSize: 18, color: colors.error }} />
+                                ) : (
+                                    <DeleteOutlined style={{ fontSize: 18, color: colors.error }} />
+                                )}
+                            </div>
+
+                            {/* Content */}
+                            <div style={{ flex: 1 }}>
+                                <div
+                                    style={{
+                                        fontSize: '14px',
+                                        fontWeight: 500,
+                                        color: colors.text,
+                                        marginBottom: '2px',
+                                        fontFamily: 'Inter-Regular, serif'
+                                    }}>
+                                    Clear Test Data
+                                </div>
+                                <div
+                                    style={{
+                                        fontSize: '11px',
+                                        color: colors.textFaded,
+                                        marginTop: '2px'
+                                    }}>
+                                    Reset duplication state and clear backup
+                                </div>
+                            </div>
+
+                            {/* Arrow */}
+                            <RightOutlined
+                                style={{
+                                    fontSize: 12,
+                                    color: colors.textFaded
+                                }}
+                            />
+                        </div>
+                    </div>
+
+                    {/* Warning Note */}
+                    <div
+                        style={{
+                            padding: '10px',
+                            background: `${colors.warning}10`,
+                            border: `1px solid ${colors.warning}25`,
+                            borderRadius: '8px',
+                            marginTop: '10px'
+                        }}>
+                        <div
+                            style={{
+                                fontSize: '10px',
+                                color: colors.warning,
+                                lineHeight: '1.4'
+                            }}>
+                            <strong>Testing:</strong> After creating test conflicts, lock and unlock your wallet to
+                            trigger the detection modal.
+                        </div>
+                    </div>
+                </div>
+                )}
+            </div>
 
             {unconfirmedPopoverVisible ? (
                 <EnableUnconfirmedPopover

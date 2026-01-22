@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react';
-import { RouteTypes, useNavigate } from '@/ui/pages/MainRoute';
+import { RouteTypes, useNavigate } from '@/ui/pages/routeTypes';
 import { useCurrentAccount } from '@/ui/state/accounts/hooks';
 import { copyToClipboard, shortAddress, useWallet } from '@/ui/utils';
 import { CopyOutlined, WarningOutlined } from '@ant-design/icons';
 
 import { KEYRING_TYPE } from '@/shared/constant';
-import { AddressTypes } from '@/shared/types';
+import { AddressTypes } from '@btc-vision/transaction';
 import { useCurrentKeyring } from '@/ui/state/keyrings/hooks';
+import { useSimpleModeEnabled } from '@/ui/hooks/useExperienceMode';
 import { useTools } from '../ActionComponent';
 import { Icon } from '../Icon';
 import './index.less';
@@ -19,6 +20,7 @@ const AccountSelect = () => {
     const currentKeyring = useCurrentKeyring();
     const tools = useTools();
     const address = currentAccount.address;
+    const isSimpleMode = useSimpleModeEnabled();
 
     const [needsQuantumMigration, setNeedsQuantumMigration] = useState(false);
 
@@ -102,17 +104,19 @@ const AccountSelect = () => {
                             {getAddressTypeLabel(currentKeyring.addressType)}
                         </span>
                     </div>
-                    <div
-                        className="op_account_wallet"
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            copyToClipboard(address).then(() => {
-                                tools.toastSuccess('Copied');
-                            });
-                        }}>
-                        {shortAddress(address)}
-                        <CopyOutlined style={{ color: 'rgba(219, 219, 219, 0.7)', fontSize: 14 }} />
-                    </div>
+                    {!isSimpleMode && (
+                        <div
+                            className="op_account_wallet"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                copyToClipboard(address).then(() => {
+                                    tools.toastSuccess('Copied');
+                                });
+                            }}>
+                            {shortAddress(address)}
+                            <CopyOutlined style={{ color: 'rgba(219, 219, 219, 0.7)', fontSize: 14 }} />
+                        </div>
+                    )}
                 </div>
             </div>
             <div className="op_account_col_2">

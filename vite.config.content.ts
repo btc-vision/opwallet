@@ -33,6 +33,10 @@ export default defineConfig({
                 Buffer: true,
                 global: true,
                 process: true
+            },
+            overrides: {
+                // Use ESM events shim to avoid CJS bundling issues
+                events: resolve(__dirname, 'src/shims/events-browser.js')
             }
         }),
         tsconfigPaths()
@@ -43,6 +47,11 @@ export default defineConfig({
             {
                 find: '@',
                 replacement: resolve(__dirname, './src')
+            },
+            // ESM-compatible events shim
+            {
+                find: 'events',
+                replacement: resolve(__dirname, 'src/shims/events-browser.js')
             }
         ]
     },

@@ -1,11 +1,11 @@
 /// Updated KeyringService for wallet-sdk 2.0 with MLDSA/quantum support
 import * as bip39 from 'bip39';
-import * as oldEncryptor from 'browser-passworder';
 import { EventEmitter } from 'events';
 import log from 'loglevel';
 
 import { KEYRING_TYPE } from '@/shared/constant';
-import { AddressTypes, isLegacyAddressType, legacyToAddressTypes, storageToAddressTypes } from '@/shared/types';
+import { isLegacyAddressType, legacyToAddressTypes, storageToAddressTypes } from '@/shared/types';
+import { AddressTypes } from '@btc-vision/transaction';
 import { Network, networks, Psbt } from '@btc-vision/bitcoin';
 import * as encryptor from '@btc-vision/passworder';
 import { MLDSASecurityLevel, QuantumBIP32Interface } from '@btc-vision/transaction';
@@ -14,7 +14,7 @@ import { ObservableStore } from '@metamask/obs-store';
 
 import i18n from '../i18n';
 import preference from '../preference';
-import DisplayKeyring from './display';
+import DisplayKeyring, { setKeyringGetter } from './display';
 
 // Type for serialized keyring options
 export interface HdKeyringSerializedOptions {
@@ -24,6 +24,7 @@ export interface HdKeyringSerializedOptions {
     securityLevel?: MLDSASecurityLevel;
     activeIndexes?: number[];
     addressType?: AddressTypes;
+    rotationModeEnabled?: boolean; // Privacy mode - permanent choice at wallet creation
 }
 
 export interface SimpleKeyringSerializedOptions {
@@ -39,6 +40,7 @@ export interface SavedVault {
     type: string;
     data: KeyringOptions;
     addressType: AddressTypes | number; // Support both for migration
+    rotationModeEnabled?: boolean; // Privacy mode - permanent choice
 }
 
 // Keyring type union - only HD and Simple now
@@ -135,6 +137,7 @@ class KeyringService extends EventEmitter {
     memStore: ObservableStore<MemStoreState>;
     keyrings: (Keyring | EmptyKeyring)[];
     addressTypes: AddressTypes[];
+    rotationModes: boolean[]; // Privacy mode per keyring (permanent choice)
     encryptor: typeof encryptor = encryptor;
     password: string | null = null;
 
@@ -149,6 +152,7 @@ class KeyringService extends EventEmitter {
 
         this.keyrings = [];
         this.addressTypes = [];
+        this.rotationModes = [];
     }
 
     loadStore = (initState: StoredData) => {
@@ -187,6 +191,28 @@ class KeyringService extends EventEmitter {
         quantumPrivateKey?: string
     ) => {
         privateKey = privateKey.replace('0x', '');
+
+        // If quantum private key is provided, check for duplicates before importing
+        if (quantumPrivateKey) {
+            // Create temporary keyring to get the MLDSA hash
+            const tempKeyring = new SimpleKeyring({
+                privateKey,
+                quantumPrivateKey,
+                network,
+                securityLevel: MLDSASecurityLevel.LEVEL2
+            });
+
+            // Check for duplicate MLDSA keys
+            if (tempKeyring.hasQuantumKey()) {
+                const existingMldsaHashes = this.getAllQuantumKeyHashes();
+                const newHash = tempKeyring.getQuantumPublicKeyHash();
+
+                if (newHash && existingMldsaHashes.includes(newHash.toLowerCase()))
+                    throw new Error(
+                        'This MLDSA key is already associated with another wallet. Each wallet must have a unique MLDSA key.'
+                    );
+            }
+        }
 
         await this.persistAllKeyrings();
 
@@ -240,6 +266,7 @@ class KeyringService extends EventEmitter {
 
     /**
      * Create HD keyring from mnemonic with quantum support
+     * @param rotationModeEnabled - If true, enables address rotation (privacy) mode for this keyring
      */
     createKeyringWithMnemonics = async (
         seed: string,
@@ -247,7 +274,8 @@ class KeyringService extends EventEmitter {
         passphrase: string,
         addressType: AddressTypes,
         accountCount: number,
-        network: Network = networks.bitcoin
+        network: Network = networks.bitcoin,
+        rotationModeEnabled = false
     ) => {
         if (accountCount < 1) {
             throw new Error(i18n.t('account count must be greater than 0'));
@@ -257,11 +285,57 @@ class KeyringService extends EventEmitter {
             return Promise.reject(new Error(i18n.t('mnemonic phrase is invalid')));
         }
 
-        await this.persistAllKeyrings();
         const activeIndexes: number[] = [];
         for (let i = 0; i < accountCount; i++) {
             activeIndexes.push(i);
         }
+
+        // Create a temporary keyring to check for duplicates before adding
+        const tempKeyring = new HdKeyring({
+            mnemonic: seed,
+            passphrase,
+            network,
+            securityLevel: MLDSASecurityLevel.LEVEL2,
+            activeIndexes,
+            addressType
+        });
+
+        const tempAccounts = tempKeyring.getAccounts();
+        if (!tempAccounts[0]) throw new Error('KeyringController - Failed to derive accounts from mnemonic.');
+
+        // Check for duplicate addresses
+        const existingAccounts = this.getAllPubkeys();
+        for (const pubkey of tempAccounts) {
+            const duplicate = existingAccounts.find((acc) => acc.pubkey === pubkey);
+            if (duplicate)
+                throw new Error(
+                    'This wallet has already been imported. The mnemonic derives the same addresses as an existing wallet.'
+                );
+        }
+
+        // Check for duplicate MLDSA keys
+        const existingMldsaHashes = this.getAllQuantumKeyHashes();
+        for (const pubkey of tempAccounts) {
+            try {
+                const wallet = tempKeyring.getWallet(pubkey);
+                if (wallet?.mldsaKeypair) {
+                    const mldsaHash = wallet.address.toHex().replace('0x', '').toLowerCase();
+                    if (existingMldsaHashes.includes(mldsaHash)) {
+                        throw new Error(
+                            'This wallet has already been imported. The mnemonic derives MLDSA keys that are already in use.'
+                        );
+                    }
+                }
+            } catch (e) {
+                // If error is about duplicate, rethrow it
+                if (e instanceof Error && e.message.includes('already been imported')) {
+                    throw e;
+                }
+                // Otherwise ignore - MLDSA key might not be available yet
+            }
+        }
+
+        await this.persistAllKeyrings();
 
         const keyring = await this.addNewKeyring(
             KEYRING_TYPE.HdKeyring,
@@ -271,7 +345,8 @@ class KeyringService extends EventEmitter {
                 passphrase,
                 network,
                 securityLevel: MLDSASecurityLevel.LEVEL2,
-                addressType
+                addressType,
+                rotationModeEnabled
             } as HdKeyringSerializedOptions,
             addressType
         );
@@ -287,9 +362,10 @@ class KeyringService extends EventEmitter {
         return keyring;
     };
 
-    addKeyring = async (keyring: Keyring | EmptyKeyring, addressType: AddressTypes) => {
+    addKeyring = async (keyring: Keyring | EmptyKeyring, addressType: AddressTypes, rotationModeEnabled = false) => {
         this.keyrings.push(keyring);
         this.addressTypes.push(addressType);
+        this.rotationModes.push(rotationModeEnabled);
         await this.persistAllKeyrings();
         this._updateMemStoreKeyrings();
         this.fullUpdate();
@@ -315,22 +391,13 @@ class KeyringService extends EventEmitter {
     };
 
     submitPassword = async (password: string): Promise<MemStoreState> => {
-        const oldMethod = await this.verifyPassword(password);
+        await this.verifyPassword(password);
         this.password = password;
 
         try {
-            this.keyrings = await this.unlockKeyrings(password, oldMethod);
+            this.keyrings = await this.unlockKeyrings(password);
         } catch (e) {
-            if (oldMethod) {
-                try {
-                    await this.boot(password);
-                    this.keyrings = await this.unlockKeyrings(password, false);
-                } catch (e) {
-                    console.log('unlock failed (new)', e);
-                }
-            } else {
-                console.log('unlock failed', e);
-            }
+            console.log('unlock failed', e);
         } finally {
             this.setUnlocked();
         }
@@ -339,25 +406,10 @@ class KeyringService extends EventEmitter {
     };
 
     changePassword = async (oldPassword: string, newPassword: string) => {
-        const oldMethod = await this.verifyPassword(oldPassword);
+        await this.verifyPassword(oldPassword);
         this.password = oldPassword;
 
-        try {
-            this.keyrings = await this.unlockKeyrings(oldPassword, oldMethod);
-        } catch (e) {
-            if (oldMethod) {
-                try {
-                    await this.boot(oldPassword);
-                    this.keyrings = await this.unlockKeyrings(oldPassword, false);
-                } catch (e) {
-                    console.log('unlock failed (new)', e);
-                    throw e;
-                }
-            } else {
-                console.log('unlock failed', e);
-                throw e;
-            }
-        }
+        this.keyrings = await this.unlockKeyrings(oldPassword);
 
         this.password = newPassword;
 
@@ -376,19 +428,16 @@ class KeyringService extends EventEmitter {
         this.fullUpdate();
     };
 
-    verifyPassword = async (password: string): Promise<boolean> => {
+    verifyPassword = async (password: string): Promise<void> => {
         const encryptedBooted = this.store.getState().booted;
         if (!encryptedBooted) {
             throw new Error(i18n.t('Cannot unlock without a previous vault'));
         }
 
-        if (encryptedBooted.includes('keyMetadata')) {
-            const resp = (await this.encryptor.decrypt(password, encryptedBooted)) as string;
-            return resp == 'true';
+        const resp = (await this.encryptor.decrypt(password, encryptedBooted)) as string;
+        if (resp !== 'true') {
+            throw new Error(i18n.t('Incorrect password'));
         }
-
-        const isValid = await oldEncryptor.decrypt(password, encryptedBooted);
-        return isValid == 'true';
     };
 
     /**
@@ -400,9 +449,11 @@ class KeyringService extends EventEmitter {
         addressType: AddressTypes
     ): Promise<Keyring | EmptyKeyring> => {
         let keyring: Keyring | EmptyKeyring;
+        let rotationModeEnabled = false;
 
         if (type === KEYRING_TYPE.HdKeyring) {
             const hdOpts = opts as HdKeyringSerializedOptions;
+            rotationModeEnabled = hdOpts.rotationModeEnabled ?? false;
             keyring = new HdKeyring({
                 mnemonic: hdOpts.mnemonic,
                 passphrase: hdOpts.passphrase,
@@ -425,7 +476,7 @@ class KeyringService extends EventEmitter {
             throw new Error(`Keyring type not found: ${type}`);
         }
 
-        return await this.addKeyring(keyring, addressType);
+        return await this.addKeyring(keyring, addressType, rotationModeEnabled);
     };
 
     createTmpKeyring = (type: string, opts: KeyringOptions | undefined): Keyring | EmptyKeyring => {
@@ -533,10 +584,46 @@ class KeyringService extends EventEmitter {
     removeKeyring = async (keyringIndex: number): Promise<void> => {
         this.keyrings.splice(keyringIndex, 1);
         this.addressTypes.splice(keyringIndex, 1);
+        this.rotationModes.splice(keyringIndex, 1);
 
         await this.persistAllKeyrings();
         this._updateMemStoreKeyrings();
         this.fullUpdate();
+    };
+
+    /**
+     * Remove all corrupted/empty keyrings that have no salvageable data.
+     * Returns the number of keyrings removed.
+     */
+    removeCorruptedKeyrings = async (): Promise<number> => {
+        const indicesToRemove: number[] = [];
+
+        for (let i = this.keyrings.length - 1; i >= 0; i--) {
+            const keyring = this.keyrings[i];
+            if (keyring.type === KEYRING_TYPE.Empty) {
+                // This keyring is corrupted - safe to remove since no keys
+                indicesToRemove.push(i);
+            }
+        }
+
+        if (indicesToRemove.length === 0) {
+            return 0;
+        }
+
+        console.log(`[removeCorruptedKeyrings] Removing ${indicesToRemove.length} corrupted keyring(s) at indices:`, indicesToRemove);
+
+        // Remove from end to start to preserve indices
+        for (const index of indicesToRemove) {
+            this.keyrings.splice(index, 1);
+            this.addressTypes.splice(index, 1);
+        }
+
+        await this.persistAllKeyrings();
+        this._updateMemStoreKeyrings();
+        this.fullUpdate();
+
+        console.log(`[removeCorruptedKeyrings] Successfully removed ${indicesToRemove.length} corrupted keyring(s)`);
+        return indicesToRemove.length;
     };
 
     signTransaction = (keyring: Keyring | EmptyKeyring, psbt: Psbt, inputs: ToSignInput[]) => {
@@ -615,7 +702,8 @@ class KeyringService extends EventEmitter {
             return {
                 type: keyring.type,
                 data: serializedData,
-                addressType: this.addressTypes[index]
+                addressType: this.addressTypes[index],
+                rotationModeEnabled: this.rotationModes[index] ?? false
             };
         });
 
@@ -624,7 +712,7 @@ class KeyringService extends EventEmitter {
         return true;
     };
 
-    unlockKeyrings = async (password: string, oldMethod: boolean): Promise<(Keyring | EmptyKeyring)[]> => {
+    unlockKeyrings = async (password: string): Promise<(Keyring | EmptyKeyring)[]> => {
         const encryptedVault = this.store.getState().vault;
         if (!encryptedVault) {
             throw new Error(i18n.t('Cannot unlock without a previous vault'));
@@ -632,18 +720,67 @@ class KeyringService extends EventEmitter {
 
         this.clearKeyrings();
 
-        const vault = oldMethod
-            ? ((await oldEncryptor.decrypt(password, encryptedVault)) as SavedVault[])
-            : ((await this.encryptor.decrypt(password, encryptedVault)) as SavedVault[]);
+        const vault = (await this.encryptor.decrypt(password, encryptedVault)) as SavedVault[];
 
         const failedKeyrings: { index: number; error: unknown; data: SavedVault }[] = [];
+        const corruptedKeyrings: {
+            index: number;
+            originalType: string;
+            reason: string;
+            hasSalvageableData: boolean;
+            salvageableFields: string[];
+        }[] = [];
 
         for (let i = 0; i < vault.length; i++) {
             const key = vault[i];
             try {
                 const { keyring, addressType } = this._restoreKeyring(key);
+                if (keyring.type === KEYRING_TYPE.Empty) {
+                    // Check if there's any salvageable data in the original vault entry
+                    const data = key.data as Record<string, unknown> | undefined;
+                    const salvageableFields: string[] = [];
+
+                    if (data) {
+                        if (data.privateKey) salvageableFields.push('privateKey');
+                        if (data.mnemonic) salvageableFields.push('mnemonic');
+                        if (data.hdPath) salvageableFields.push('hdPath');
+                        if (data.quantumPrivateKey) salvageableFields.push('quantumPrivateKey');
+                        if (data.xfp) salvageableFields.push('xfp (Keystone fingerprint)');
+                    }
+
+                    const hasSalvageableData = salvageableFields.length > 0;
+                    const reason = key.type === KEYRING_TYPE.KeystoneKeyring
+                        ? 'Keystone hardware wallet no longer supported'
+                        : key.type === KEYRING_TYPE.Empty
+                            ? 'Wallet data was corrupted or deleted'
+                            : `Unknown keyring type: ${key.type}`;
+
+                    corruptedKeyrings.push({
+                        index: i,
+                        originalType: key.type,
+                        reason,
+                        hasSalvageableData,
+                        salvageableFields
+                    });
+
+                    console.error(`
+╔══════════════════════════════════════════════════════════════════╗
+║  ⚠️  CORRUPTED WALLET DETECTED AT INDEX ${i.toString().padStart(2, ' ')}                       ║
+╠══════════════════════════════════════════════════════════════════╣
+║  Original Type: ${key.type.padEnd(47, ' ')}║
+║  Reason: ${reason.substring(0, 54).padEnd(54, ' ')}║
+║  Has Salvageable Data: ${hasSalvageableData ? 'YES' : 'NO '}                                   ║
+${hasSalvageableData ? `║  Salvageable Fields: ${salvageableFields.join(', ').substring(0, 42).padEnd(42, ' ')}║\n` : ''}║  Vault Data Keys: ${Object.keys(key.data || {}).join(', ').substring(0, 44).padEnd(44, ' ')}║
+╚══════════════════════════════════════════════════════════════════╝`);
+
+                    if (hasSalvageableData) {
+                        console.warn('[unlockKeyrings] Salvageable data found! The wallet may be recoverable.');
+                        console.warn('[unlockKeyrings] Raw vault data for recovery:', JSON.stringify(key, null, 2));
+                    }
+                }
                 this.keyrings.push(keyring);
                 this.addressTypes.push(addressType);
+                this.rotationModes.push(key.rotationModeEnabled ?? false);
             } catch (e) {
                 console.error(`Failed to restore keyring at index ${i}:`, e, 'Data:', JSON.stringify(key));
                 failedKeyrings.push({ index: i, error: e, data: key });
@@ -660,11 +797,33 @@ class KeyringService extends EventEmitter {
             );
         }
 
-        this._updateMemStoreKeyrings();
+        // Handle corrupted keyrings
+        if (corruptedKeyrings.length > 0) {
+            const salvageableCount = corruptedKeyrings.filter(k => k.hasSalvageableData).length;
+            const removableCount = corruptedKeyrings.length - salvageableCount;
 
-        if (oldMethod) {
-            await this.persistAllKeyrings();
+            console.error(`
+╔══════════════════════════════════════════════════════════════════╗
+║  ⚠️  ${corruptedKeyrings.length} CORRUPTED WALLET(S) FOUND IN VAULT                        ║
+║  These wallets have missing or invalid data and cannot be used.  ║
+╠══════════════════════════════════════════════════════════════════╣
+║  With salvageable data: ${salvageableCount} (will NOT be removed)                  ║
+║  Without salvageable data: ${removableCount} (will be auto-removed)               ║
+╚══════════════════════════════════════════════════════════════════╝`);
+
+            // Auto-remove corrupted keyrings that have NO salvageable data
+            if (removableCount > 0) {
+                await this.removeCorruptedKeyrings();
+            }
+
+            // Emit event for keyrings WITH salvageable data so UI can warn user
+            const salvageableKeyrings = corruptedKeyrings.filter(k => k.hasSalvageableData);
+            if (salvageableKeyrings.length > 0) {
+                this.emit('corruptedKeyrings', salvageableKeyrings);
+            }
         }
+
+        this._updateMemStoreKeyrings();
 
         return this.keyrings;
     };
@@ -904,9 +1063,17 @@ class KeyringService extends EventEmitter {
         return !!addresses.find((item) => item.pubkey === pubkey);
     };
 
+    /**
+     * Get the rotation mode status for a keyring by index
+     */
+    getRotationMode = (keyringIndex: number): boolean => {
+        return this.rotationModes[keyringIndex] ?? false;
+    };
+
     clearKeyrings = (): void => {
         this.keyrings = [];
         this.addressTypes = [];
+        this.rotationModes = [];
         this.memStore.updateState({
             keyrings: []
         });
@@ -1013,6 +1180,162 @@ class KeyringService extends EventEmitter {
     };
 
     /**
+     * Clear MLDSA key from a wallet (for SimpleKeyring only)
+     * Used for MLDSA duplicate resolution - removes MLDSA but keeps the wallet
+     */
+    clearQuantumKeyByIndex = async (keyringIndex: number): Promise<void> => {
+        const keyring = this.keyrings[keyringIndex];
+
+        if (!(keyring instanceof SimpleKeyring)) {
+            throw new Error('MLDSA key clearing only supported for Simple Key Pair wallets');
+        }
+
+        const serialized = keyring.serialize() as SimpleKeyringSerializedOptions;
+
+        // Recreate keyring without quantum key
+        const newKeyring = new SimpleKeyring({
+            privateKey: serialized.privateKey,
+            quantumPrivateKey: undefined,
+            network: serialized.network,
+            securityLevel: serialized.securityLevel || MLDSASecurityLevel.LEVEL2
+        });
+        this.keyrings[keyringIndex] = newKeyring;
+
+        await this.persistAllKeyrings();
+        this._updateMemStoreKeyrings();
+        this.fullUpdate();
+    };
+
+    /**
+     * Move MLDSA key from one wallet to another (for SimpleKeyring only)
+     * Used when correct MLDSA is on wrong wallet instance during duplication resolution
+     */
+    moveQuantumKey = async (fromKeyringIndex: number, toKeyringIndex: number): Promise<void> => {
+        const fromKeyring = this.keyrings[fromKeyringIndex];
+        const toKeyring = this.keyrings[toKeyringIndex];
+
+        if (!(fromKeyring instanceof SimpleKeyring) || !(toKeyring instanceof SimpleKeyring)) {
+            throw new Error('MLDSA key movement only supported between Simple Key Pair wallets');
+        }
+
+        // Export quantum key from source
+        const serialized = fromKeyring.serialize() as SimpleKeyringSerializedOptions;
+        const quantumPrivateKey = serialized.quantumPrivateKey;
+
+        if (!quantumPrivateKey) {
+            throw new Error('Source wallet has no quantum key to move');
+        }
+
+        // Clear from source by recreating without quantum key
+        const newFromKeyring = new SimpleKeyring({
+            privateKey: serialized.privateKey,
+            quantumPrivateKey: undefined,
+            network: serialized.network,
+            securityLevel: serialized.securityLevel || MLDSASecurityLevel.LEVEL2
+        });
+        this.keyrings[fromKeyringIndex] = newFromKeyring;
+
+        // Import to destination
+        toKeyring.importQuantumKey(quantumPrivateKey);
+
+        await this.persistAllKeyrings();
+        this._updateMemStoreKeyrings();
+        this.fullUpdate();
+    };
+
+    /**
+     * Replace MLDSA key on a wallet with a new one
+     * Used when local MLDSA doesn't match on-chain during duplication resolution
+     */
+    replaceQuantumKey = async (keyringIndex: number, newQuantumPrivateKey: string): Promise<void> => {
+        const keyring = this.keyrings[keyringIndex];
+
+        if (!(keyring instanceof SimpleKeyring)) {
+            throw new Error('MLDSA key replacement only supported for Simple Key Pair wallets');
+        }
+
+        // Get existing key hashes to check for duplicates (excluding this keyring)
+        const accounts = keyring.getAccounts();
+        const excludePubkey = accounts[0];
+        const existingHashes = this.getAllQuantumKeyHashes(excludePubkey);
+
+        // Create a temp keyring to get the hash of the new key
+        const serialized = keyring.serialize() as SimpleKeyringSerializedOptions;
+        const tempKeyring = new SimpleKeyring({
+            privateKey: serialized.privateKey,
+            quantumPrivateKey: newQuantumPrivateKey,
+            network: serialized.network,
+            securityLevel: serialized.securityLevel || MLDSASecurityLevel.LEVEL2
+        });
+
+        const newHash = tempKeyring.getQuantumPublicKeyHash();
+        if (newHash && existingHashes.includes(newHash.toLowerCase())) {
+            throw new Error(
+                'This quantum key is already associated with another account. Each account must have a unique quantum key.'
+            );
+        }
+
+        // Replace the keyring with the new one
+        this.keyrings[keyringIndex] = tempKeyring;
+
+        await this.persistAllKeyrings();
+        this._updateMemStoreKeyrings();
+        this.fullUpdate();
+    };
+
+    /**
+     * Remove a keyring by index
+     * Used during duplication resolution to remove duplicate wallets
+     */
+    removeKeyringByIndex = async (keyringIndex: number): Promise<void> => {
+        if (keyringIndex < 0 || keyringIndex >= this.keyrings.length) {
+            throw new Error('Invalid keyring index');
+        }
+
+        this.keyrings.splice(keyringIndex, 1);
+        this.addressTypes.splice(keyringIndex, 1);
+        this.rotationModes.splice(keyringIndex, 1);
+
+        await this.persistAllKeyrings();
+        this._updateMemStoreKeyrings();
+        this.fullUpdate();
+    };
+
+    /**
+     * [DEV/TEST ONLY] Force add a keyring bypassing duplicate checks
+     * WARNING: This method is disabled in production builds
+     */
+    forceAddKeyringForTest = async (
+        type: string,
+        opts: SimpleKeyringSerializedOptions | HdKeyringSerializedOptions,
+        addressType: AddressTypes
+    ): Promise<Keyring> => {
+        // SECURITY: Block this method in production
+        if (process.env.NODE_ENV === 'production') {
+            throw new Error('Test methods are not available in production builds');
+        }
+
+        let keyring: Keyring;
+
+        if (type === KEYRING_TYPE.SimpleKeyring) {
+            keyring = new SimpleKeyring(opts as SimpleKeyringSerializedOptions);
+        } else if (type === KEYRING_TYPE.HdKeyring) {
+            keyring = new HdKeyring(opts as HdKeyringSerializedOptions);
+        } else {
+            throw new Error(`Unknown keyring type: ${type}`);
+        }
+
+        this.keyrings.push(keyring);
+        this.addressTypes.push(addressType);
+
+        await this.persistAllKeyrings();
+        this._updateMemStoreKeyrings();
+        this.fullUpdate();
+
+        return keyring;
+    };
+
+    /**
      * Check if an account needs quantum migration
      * Note: In wallet-sdk 2.0, SimpleKeyring always generates a quantum key on creation
      * This method checks if for some reason the quantum key is missing
@@ -1102,4 +1425,9 @@ class KeyringService extends EventEmitter {
     };
 }
 
-export default new KeyringService();
+const keyringService = new KeyringService();
+
+// Initialize the display keyring getter to break circular dependency
+setKeyringGetter((account: string, type: string) => keyringService.getKeyringForAccount(account, type));
+
+export default keyringService;

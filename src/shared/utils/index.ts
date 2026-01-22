@@ -1,4 +1,4 @@
-import { keyBy } from 'lodash';
+import { keyBy } from 'lodash-es';
 import { AddressFlagType, CHAINS, CHAINS_MAP, ChainType, NETWORK_TYPES } from '@/shared/constant';
 
 import BroadcastChannelMessage from './message/broadcastChannelMessage';

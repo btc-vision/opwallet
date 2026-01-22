@@ -4,7 +4,7 @@ import { TransactionHistoryItem, TransactionStatus, TransactionType } from '@/sh
 import { selectorToString } from '@/shared/web3/decoder/CalldataDecoder';
 import { Column, Content, Header, Layout, OPNetLoader } from '@/ui/components';
 import { useTools } from '@/ui/components/ActionComponent';
-import { RouteTypes, useNavigate } from '@/ui/pages/MainRoute';
+import { RouteTypes, useNavigate } from '@/ui/pages/routeTypes';
 import { decodeCallData } from '@/ui/pages/OpNet/decoded/decodeCallData';
 import { DecodedCalldata } from '@/ui/pages/OpNet/decoded/DecodedCalldata';
 import { Decoded } from '@/ui/pages/OpNet/decoded/DecodedTypes';
@@ -213,7 +213,7 @@ export default function TransactionDetailScreen() {
     const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
     const loadTransaction = useCallback(
-        async (showLoader = true) => {
+        async (showLoader: boolean) => {
             if (showLoader) {
                 setLoading(true);
             }

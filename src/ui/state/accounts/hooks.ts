@@ -86,7 +86,10 @@ export function useFetchBalanceCallback() {
     return useCallback(async () => {
         if (!currentAccount.address) return;
 
-        const accountBalance = await wallet.getAddressBalance(currentAccount.address, currentAccount.pubkey);
+        const isRotationMode = await wallet.isRotationModeEnabled();
+        const accountBalance = isRotationMode
+            ? await wallet.getRotationModeBalance()
+            : await wallet.getAddressBalance(currentAccount.address, currentAccount.pubkey);
 
         const balanceToDispatch = {
             address: currentAccount.address,

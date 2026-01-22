@@ -5,7 +5,7 @@ import { ParsedTransaction, PreSignedTransactionData } from '@/background/servic
 import { shortAddress } from '@/ui/utils';
 
 import { MultiTxBowtieGraph, TransactionData } from './MultiTxBowtieGraph';
-import { TxInput, TxOutput } from './index';
+import { TxInput, TxOutput } from './types';
 
 const colors = {
     main: '#f37413',

@@ -23,9 +23,6 @@ import {
     AddressVerificator,
     ChainId,
     OPNetLimitedProvider,
-    OPNetMetadata,
-    OPNetNetwork,
-    OPNetTokenMetadata,
     TransactionFactory,
     UTXO
 } from '@btc-vision/transaction';
@@ -73,19 +70,6 @@ export async function getOPNetChainType(chain: ChainType): Promise<ChainId> {
     }
 
     return ChainId.Bitcoin;
-}
-
-export function getOPNetNetwork(network: NetworkType): OPNetNetwork {
-    switch (network) {
-        case NetworkType.MAINNET:
-            return OPNetNetwork.Mainnet;
-        case NetworkType.TESTNET:
-            return OPNetNetwork.Testnet;
-        case NetworkType.REGTEST:
-            return OPNetNetwork.Regtest;
-        default:
-            throw new Error('Invalid network type');
-    }
 }
 
 export function getBitcoinLibJSNetwork(networkType: NetworkType, chainType?: ChainType): Network {
@@ -174,6 +158,15 @@ class Web3API {
         return Address.fromString(chainConfig.contractAddresses.pill);
     }
 
+    public get btcResolverAddress(): Address | null {
+        if (!this.currentChain) return null;
+
+        const chainConfig = customNetworksManager.getChain(this.currentChain);
+        if (!chainConfig?.contractAddresses?.btcResolver) return null;
+
+        return Address.fromString(chainConfig.contractAddresses.btcResolver);
+    }
+
     public get motoAddressP2OP(): string | null {
         return this.motoAddress?.p2op(this.network) || null;
     }
@@ -182,20 +175,16 @@ class Web3API {
         return this.pillAddress?.p2op(this.network) || null;
     }
 
+    public get btcResolverAddressP2OP(): string | null {
+        return this.btcResolverAddress?.p2op(this.network) || null;
+    }
+
     public get chain(): ChainType {
         if (!this.currentChain) {
             throw new Error('Chain not set');
         }
 
         return this.currentChain;
-    }
-
-    private _metadata?: OPNetTokenMetadata;
-
-    private get metadata(): OPNetTokenMetadata | null {
-        if (!this._metadata) return null;
-
-        return this._metadata;
     }
 
     public async setNetwork(chainType: ChainType): Promise<void> {
@@ -219,27 +208,7 @@ class Web3API {
             this.currentChain = chainType;
             this.chainId = chainId;
 
-            try {
-                this._metadata = OPNetMetadata.getAddresses(this.getOPNetNetwork(), chainId);
-            } catch (e) {
-                // Metadata might not be available for custom networks
-                console.warn(`Metadata not available for chain ${chainType}:`, e);
-            }
-
             this.setProvider(chainType);
-        }
-    }
-
-    public getOPNetNetwork(): OPNetNetwork {
-        switch (this.network) {
-            case networks.bitcoin:
-                return OPNetNetwork.Mainnet;
-            case networks.testnet:
-                return OPNetNetwork.Testnet;
-            case networks.regtest:
-                return OPNetNetwork.Regtest;
-            default:
-                throw new Error(`Invalid network ${this.network.bech32}`);
         }
     }
 

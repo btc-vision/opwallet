@@ -5,7 +5,7 @@ import { ApprovalResponse } from '@/shared/types/Approval';
 import { WalletError } from '@/shared/types/Error';
 import { isWalletError } from '@/shared/utils/errors';
 import { InteractionParametersWithoutSigner } from '@btc-vision/transaction';
-import { getUiType } from '.';
+import { getUiType } from './uiType';
 import { useWallet } from './WalletContext';
 
 export const useApproval = () => {
@@ -17,8 +17,8 @@ export const useApproval = () => {
         async (
             data?: ApprovalResponse,
             interactionParametersToUse?: InteractionParametersWithoutSigner,
-            stay = false,
-            forceReject = false
+            stay?: boolean,
+            forceReject?: boolean
         ) => {
             const approval = await getApproval();
 
@@ -38,7 +38,7 @@ export const useApproval = () => {
     );
 
     const rejectApproval = useCallback(
-        async (err?: string, stay = false, isInternal = false) => {
+        async (err?: string, stay?: boolean, isInternal?: boolean) => {
             const approval = await getApproval();
             if (approval) {
                 await wallet.rejectApproval(err, stay, isInternal);

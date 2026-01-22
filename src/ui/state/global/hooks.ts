@@ -1,7 +1,7 @@
 import { useCallback } from 'react';
 
 import { useApproval, useWallet } from '@/ui/utils';
-import { AddressTypes } from '@/shared/types';
+import { AddressTypes } from '@btc-vision/transaction';
 
 import { AppState } from '..';
 import { useAppDispatch, useAppSelector } from '../hooks';
@@ -49,9 +49,17 @@ export function useCreateAccountCallback() {
             hdPath: string,
             passphrase: string,
             addressType: AddressTypes,
-            accountCount: number
+            accountCount: number,
+            rotationModeEnabled?: boolean
         ) => {
-            await wallet.createKeyringWithMnemonics(mnemonics, hdPath, passphrase, addressType, accountCount);
+            await wallet.createKeyringWithMnemonics(
+                mnemonics,
+                hdPath,
+                passphrase,
+                addressType,
+                accountCount,
+                rotationModeEnabled
+            );
             dispatch(globalActions.update({ isUnlocked: true }));
         },
         [dispatch, wallet]

@@ -1,7 +1,3 @@
-/**
- * UI Display Labels for UTXO sections
- * Used in TransactionsCount component to display different UTXO categories
- */
 export const UTXO_SECTION_LABELS = {
     PRIMARY: 'Primary Account',
     CSV75_LOCKED: 'CSV75 Locked',

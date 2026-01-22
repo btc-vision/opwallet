@@ -23,7 +23,7 @@ import {
 } from '@ant-design/icons';
 import { Address, AddressMap } from '@btc-vision/transaction';
 
-import { RouteTypes, useNavigate } from '../MainRoute';
+import { RouteTypes, useNavigate } from '../routeTypes';
 
 interface LocationState {
     address: string;

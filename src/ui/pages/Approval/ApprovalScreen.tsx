@@ -34,6 +34,7 @@ export default function ApprovalScreen() {
     }, [getApproval, navigate, rejectApproval, wallet]);
 
     useEffect(() => {
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- Async data loading on mount
         void init();
     }, []);
 

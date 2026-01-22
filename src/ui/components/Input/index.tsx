@@ -1,4 +1,4 @@
-import { isNull } from 'lodash';
+import { isNull } from 'lodash-es';
 import React, { CSSProperties, useEffect, useState } from 'react';
 
 import Web3API from '@/shared/web3/Web3API';
@@ -11,6 +11,7 @@ import { useTools } from '../ActionComponent';
 import { Icon } from '../Icon';
 import { Row } from '../Row';
 import { $textPresets, Text } from '../Text';
+import { useBtcDomainsEnabled } from '@/ui/hooks/useAppConfig';
 
 export interface InputProps {
     preset?: Presets;
@@ -106,17 +107,13 @@ function AmountInput(props: InputProps) {
         ...rest
     } = props;
 
-    // All hooks must be called before any conditional returns
     const [inputValue, setInputValue] = useState(props.value ?? '');
-    const [validAmount, setValidAmount] = useState(props.value ?? '');
 
-    // Sync local state with props.value when it changes externally (e.g., from Redux)
     useEffect(() => {
         if (props.value !== undefined && props.value !== inputValue) {
             setInputValue(props.value);
-            setValidAmount(props.value);
         }
-    }, [props.value]);
+    }, [props.value, inputValue]);
 
     if (!onAmountInputChange) {
         return <div />;
@@ -126,7 +123,6 @@ function AmountInput(props: InputProps) {
         const value = e.target.value;
         if (disableDecimal) {
             if (/^[1-9]\d*$/.test(value) || value === '') {
-                setValidAmount(value);
                 setInputValue(value);
                 onAmountInputChange(value);
             }
@@ -134,7 +130,6 @@ function AmountInput(props: InputProps) {
             const maxDecimals = decimalPlaces ?? 8;
             const decimalRegex = new RegExp(`^\\d*\\.?\\d{0,${maxDecimals}}$`);
             if (decimalRegex.test(value) || value === '') {
-                setValidAmount(value);
                 setInputValue(value);
                 onAmountInputChange(value);
             }
@@ -168,7 +163,6 @@ function AmountInput(props: InputProps) {
 export const AddressInput = (props: InputProps) => {
     const { placeholder, onAddressInputChange, addressInputData, style: $inputStyleOverride, ...rest } = props;
 
-    // All hooks must be called before any conditional returns
     const [validAddress, setValidAddress] = useState(addressInputData?.address ?? '');
     const [parseAddress, setParseAddress] = useState(addressInputData?.domain ? addressInputData.address : '');
     const [parseError, setParseError] = useState('');
@@ -178,14 +172,14 @@ export const AddressInput = (props: InputProps) => {
     const [searching, setSearching] = useState(false);
     const wallet = useWallet();
     const tools = useTools();
+    const btcDomainsEnabled = useBtcDomainsEnabled();
 
-    // Sync local state with addressInputData when it changes externally (e.g., from Redux)
     useEffect(() => {
         if (addressInputData?.address !== undefined && addressInputData.address !== validAddress) {
             setValidAddress(addressInputData.address);
             setInputVal(addressInputData.domain || addressInputData.address || '');
         }
-    }, [addressInputData?.address, addressInputData?.domain]);
+    }, [addressInputData?.address, addressInputData?.domain, validAddress]);
 
     if (!addressInputData || !onAddressInputChange) {
         return <div />;
@@ -209,11 +203,36 @@ export const AddressInput = (props: InputProps) => {
         setParseName('');
     };
 
-    const handleInputAddress = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleInputAddress = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const inputAddress = e.target.value.trim();
         setInputVal(inputAddress);
 
         resetState();
+
+        if (inputAddress.toLowerCase().endsWith('.btc')) {
+            if (!btcDomainsEnabled) {
+                setFormatError('.btc domains are not available on this network');
+                return;
+            }
+
+            setSearching(true);
+            try {
+                const resolvedAddress = await wallet.resolveBtcDomain(inputAddress);
+                setSearching(false);
+
+                if (resolvedAddress) {
+                    setValidAddress(resolvedAddress);
+                    setParseAddress(resolvedAddress);
+                    setParseName(inputAddress);
+                } else {
+                    setParseError(`Domain "${inputAddress}" not found or has no owner`);
+                }
+            } catch (error) {
+                setSearching(false);
+                setParseError('Failed to resolve domain');
+            }
+            return;
+        }
 
         const isValid = AddressVerificator.detectAddressType(inputAddress, Web3API.network);
         if (!isValid) {
@@ -230,7 +249,7 @@ export const AddressInput = (props: InputProps) => {
         <div style={{ alignSelf: 'stretch' }}>
             <div className="op_input_amount_container">
                 <input
-                    placeholder={'Address or name (sats, unisat, ...) '}
+                    placeholder={btcDomainsEnabled ? 'Address or .btc domain' : 'Address'}
                     type={'text'}
                     className="op_input_address"
                     onChange={(e) => {
@@ -242,23 +261,14 @@ export const AddressInput = (props: InputProps) => {
 
                 {searching && (
                     <Row full mt="sm">
-                        <Text preset="sub" text={'Loading...'} />
+                        <Text preset="sub" text={'Resolving domain...'} />
                     </Row>
                 )}
             </div>
 
             {parseName ? (
                 <Row mt="sm" gap="zero" itemsCenter>
-                    <Text preset="sub" size="sm" text={'Name recognized and resolved. ('} />
-                    <Text
-                        preset="link"
-                        color="yellow"
-                        text={'More details'}
-                        onClick={() => {
-                            window.open('https://docs.unisat.io/unisat-wallet/name-recognized-and-resolved');
-                        }}
-                    />
-                    <Text preset="sub" size="sm" text={')'} />
+                    <Text preset="sub" size="sm" color="green" text={`Resolved ${parseName} via OPNet`} />
                 </Row>
             ) : null}
             {parseError && <Text text={parseError} preset="regular" color="error" />}

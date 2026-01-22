@@ -18,7 +18,7 @@ import { useChainType } from '@/ui/state/settings/hooks';
 
 import { faEye, faEyeSlash, faPencil, faPlus, faRefresh, faTrash } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { RouteTypes, useNavigate } from '../../MainRoute';
+import { RouteTypes, useNavigate } from '../../routeTypes';
 
 BigNumber.config({ EXPONENTIAL_AT: 256 });
 
@@ -683,60 +683,42 @@ export function OPNetList() {
             )*/}
 
             {/* Remove/Hide Modal */}
-            <>
-                {/* Add styles to override Ant Design */}
-                <style>{`
-            .custom-token-modal .ant-modal-content {
-                background: ${colors.containerBg} !important;
-                border: 1px solid ${colors.containerBorder} !important;
-                border-radius: 14px !important;
-            }
-            
-            .custom-token-modal .ant-modal-header {
-                background: ${colors.containerBg} !important;
-                border-bottom: 1px solid ${colors.containerBorder} !important;
-                border-radius: 14px 14px 0 0 !important;
-            }
-            
-            .custom-token-modal .ant-modal-title {
-                color: ${colors.text} !important;
-                font-weight: 600 !important;
-                font-size: 18px !important;
-            }
-            
-            .custom-token-modal .ant-modal-body {
-                background: ${colors.containerBg} !important;
-                color: ${colors.text} !important;
-                padding: 8px !important;
-            }
-            
-            .custom-token-modal .ant-modal-close {
-                color: ${colors.textFaded} !important;
-            }
-            
-            .custom-token-modal .ant-modal-close:hover {
-                color: ${colors.text} !important;
-                background: ${colors.buttonHoverBg} !important;
-            }
-            
-            .custom-token-modal .ant-modal-mask {
-                background: rgba(0, 0, 0, 0.6) !important;
-                backdrop-filter: blur(4px) !important;
-            }
-        `}</style>
-
-                {/* Updated Modal with className */}
-                <Modal
-                    open={showModal}
-                    onCancel={() => {
-                        setShowModal(false);
-                        setModalToken(null);
-                    }}
-                    footer={null}
-                    closeIcon={<CloseOutlined style={{ fontSize: '16px' }} />}
-                    centered
-                    className="custom-token-modal"
-                    title="Token Options">
+            <Modal
+                open={showModal}
+                onCancel={() => {
+                    setShowModal(false);
+                    setModalToken(null);
+                }}
+                footer={null}
+                closeIcon={<CloseOutlined style={{ fontSize: '16px', color: colors.textFaded }} />}
+                centered
+                title="Token Options"
+                styles={{
+                    mask: {
+                        background: 'rgba(0, 0, 0, 0.6)',
+                        backdropFilter: 'blur(4px)'
+                    },
+                    container: {
+                        background: colors.containerBg,
+                        border: `1px solid ${colors.containerBorder}`,
+                        borderRadius: '14px'
+                    },
+                    header: {
+                        background: colors.containerBg,
+                        borderBottom: `1px solid ${colors.containerBorder}`,
+                        borderRadius: '14px 14px 0 0'
+                    },
+                    body: {
+                        background: colors.containerBg,
+                        color: colors.text,
+                        padding: '8px'
+                    },
+                    title: {
+                        color: colors.text,
+                        fontWeight: 600,
+                        fontSize: '18px'
+                    }
+                }}>
                     <div style={{ padding: '8px 0' }}>
                         <Text
                             text="What would you like to do with this token?"
@@ -812,7 +794,6 @@ export function OPNetList() {
                         </div>
                     </div>
                 </Modal>
-            </>
         </div>
     );
 }

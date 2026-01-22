@@ -1,12 +1,14 @@
 import { CheckCircleFilled } from '@ant-design/icons';
 import { useCallback, useMemo, useState } from 'react';
 
-import { AddressTypes, RestoreWalletType } from '@/shared/types';
+import { RestoreWalletType } from '@/shared/types';
+import { AddressTypes } from '@btc-vision/transaction';
 import { Content, Header, Layout } from '@/ui/components';
 import { Step0 } from '@/ui/pages/Account/createHDWalletComponents/Step0';
 import { Step1_Create } from '@/ui/pages/Account/createHDWalletComponents/Step1_Create';
 import { Step1_Import } from '@/ui/pages/Account/createHDWalletComponents/Step1_Import';
 import { Step2 } from '@/ui/pages/Account/createHDWalletComponents/Step2';
+import { Step3_RotationMode } from '@/ui/pages/Account/createHDWalletComponents/Step3_RotationMode';
 import {
     ContextData,
     TabType,
@@ -15,7 +17,8 @@ import {
 } from '@/ui/pages/Account/createHDWalletComponents/types';
 
 import { useLocationState } from '@/ui/utils';
-import { RouteTypes, useNavigate } from '../MainRoute';
+import { RouteTypes, useNavigate } from '../routeTypes';
+import { usePrivacyModeEnabled } from '@/ui/hooks/useAppConfig';
 
 const colors = {
     main: '#f37413',
@@ -39,6 +42,7 @@ interface LocationState {
 export default function CreateHDWalletScreen() {
     const navigate = useNavigate();
     const { isImport, fromUnlock } = useLocationState<LocationState>();
+    const privacyModeEnabled = usePrivacyModeEnabled();
 
     const [contextData, setContextData] = useState<ContextData>({
         mnemonics: '',
@@ -52,7 +56,8 @@ export default function CreateHDWalletScreen() {
         isCustom: false,
         customHdPath: '',
         addressTypeIndex: 0,
-        wordsType: WordsType.WORDS_12
+        wordsType: WordsType.WORDS_12,
+        rotationModeEnabled: false
     });
 
     const updateContextData = useCallback(
@@ -65,6 +70,7 @@ export default function CreateHDWalletScreen() {
     const items = useMemo(() => {
         if (contextData.isRestore) {
             if (contextData.restoreWalletType === RestoreWalletType.OW) {
+                // OW import skips rotation mode (uses standard mode)
                 return [
                     {
                         key: TabType.STEP1,
@@ -78,7 +84,8 @@ export default function CreateHDWalletScreen() {
                     }
                 ];
             } else {
-                return [
+                // Standard import: Type → Import → Address → (Privacy Mode if enabled)
+                const steps = [
                     {
                         key: TabType.STEP1,
                         label: 'Type',
@@ -95,9 +102,19 @@ export default function CreateHDWalletScreen() {
                         children: <Step2 contextData={contextData} updateContextData={updateContextData} />
                     }
                 ];
+                // Only add privacy step if feature is enabled
+                if (privacyModeEnabled) {
+                    steps.push({
+                        key: TabType.STEP4,
+                        label: 'Privacy',
+                        children: <Step3_RotationMode contextData={contextData} updateContextData={updateContextData} />
+                    });
+                }
+                return steps;
             }
         } else {
-            return [
+            // Create: Create → Address → (Privacy Mode if enabled)
+            const steps = [
                 {
                     key: TabType.STEP1,
                     label: 'Create',
@@ -109,8 +126,17 @@ export default function CreateHDWalletScreen() {
                     children: <Step2 contextData={contextData} updateContextData={updateContextData} />
                 }
             ];
+            // Only add privacy step if feature is enabled
+            if (privacyModeEnabled) {
+                steps.push({
+                    key: TabType.STEP3,
+                    label: 'Privacy',
+                    children: <Step3_RotationMode contextData={contextData} updateContextData={updateContextData} />
+                });
+            }
+            return steps;
         }
-    }, [contextData, updateContextData]);
+    }, [contextData, updateContextData, privacyModeEnabled]);
 
     const currentChildren = useMemo(() => {
         const item = items.find((v) => v.key === contextData.tabType);

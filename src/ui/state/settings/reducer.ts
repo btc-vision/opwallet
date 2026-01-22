@@ -1,5 +1,6 @@
 import { ChainType, DEFAULT_LOCKTIME_ID } from '@/shared/constant';
-import { AddressTypes, NetworkType, WalletConfig } from '@/shared/types';
+import { NetworkType, WalletConfig } from '@/shared/types';
+import { AddressTypes } from '@btc-vision/transaction';
 import { createSlice } from '@reduxjs/toolkit';
 
 import { updateVersion } from '../global/actions';

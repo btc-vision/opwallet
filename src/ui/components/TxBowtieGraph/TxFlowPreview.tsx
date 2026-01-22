@@ -2,7 +2,8 @@ import React from 'react';
 
 import { DecodedPsbt } from '@/shared/types';
 
-import { TxBowtieGraph, TxInput, TxOutput } from './index';
+import { TxBowtieGraph } from './index';
+import { TxInput, TxOutput } from './types';
 
 interface TxFlowPreviewProps {
     decodedPsbt: DecodedPsbt;
@@ -60,6 +61,3 @@ export function TxFlowPreview({
 }
 
 export default TxFlowPreview;
-
-// Also export types for external use
-export type { TxInput, TxOutput } from './index';

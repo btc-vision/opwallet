@@ -2,17 +2,26 @@ import { nanoid } from 'nanoid';
 
 import { SendMessagePayload } from '@/shared/types/Message';
 import { RequestParams } from '@/shared/types/Request.js';
-import { Message } from '@/shared/utils';
+// Import message classes directly to avoid circular dependency issues with events shim
+import BroadcastChannelMessage from '@/shared/utils/message/broadcastChannelMessage';
+import PortMessage from '@/shared/utils/message/portMessage';
 import browser from 'webextension-polyfill';
+
+// Import search redirect for .btc domain detection on search pages
+import './btcSearchRedirect';
 
 function injectScript() {
     try {
         const channelName = nanoid();
 
-        // Use sessionStorage (works across page context)
-        sessionStorage.setItem('__opnetChannel', channelName);
+        // Try sessionStorage (works across page context), but may fail in sandboxed iframes
+        try {
+            sessionStorage.setItem('__opnetChannel', channelName);
+        } catch {
+            // sessionStorage not available in sandboxed iframes - fallback to data attribute only
+        }
 
-        // Use a data attribute on the script tag itself
+        // Use a data attribute on the script tag itself (primary method for sandboxed contexts)
         const scriptTag = document.createElement('script');
         scriptTag.setAttribute('type', 'module');
         scriptTag.setAttribute('data-channel', channelName);
@@ -42,8 +51,6 @@ function injectScript() {
         });
 
         // Set up communication channels
-        const { BroadcastChannelMessage, PortMessage } = Message;
-
         const pm = new PortMessage().connect();
         const bcm = new BroadcastChannelMessage(channelName).listen((data: RequestParams) => {
             return pm.request(data);
@@ -133,8 +140,27 @@ function blockedDomainCheck(): boolean {
     return false;
 }
 
-function iframeCheck(): boolean {
-    return self != top;
+function isIframe(): boolean {
+    return self !== top;
+}
+
+/**
+ * Check if we're in an IPFS gateway iframe (OPNet browser context)
+ */
+function isIpfsGatewayIframe(): boolean {
+    if (!isIframe()) return false;
+
+    const ipfsGateways = [
+        'ipfs.opnet.org',
+        'ipfs.io',
+        'dweb.link',
+        'gateway.pinata.cloud'
+    ];
+
+    const hostname = window.location.hostname;
+    return ipfsGateways.some(gateway =>
+        hostname === gateway || hostname.endsWith('.' + gateway)
+    );
 }
 
 /**
@@ -143,7 +169,17 @@ function iframeCheck(): boolean {
  * @returns {boolean} {@code true} Whether the provider should be injected
  */
 function shouldInjectProvider(): boolean {
-    return doctypeCheck() && suffixCheck() && documentElementCheck() && !blockedDomainCheck() && !iframeCheck();
+    const basicChecks = doctypeCheck() && suffixCheck() && documentElementCheck() && !blockedDomainCheck();
+
+    if (!basicChecks) return false;
+
+    // Allow injection in IPFS gateway iframes (for OPNet browser)
+    if (isIpfsGatewayIframe()) return true;
+
+    // For other iframes, don't inject anything
+    if (isIframe()) return false;
+
+    return true;
 }
 
 if (shouldInjectProvider()) {

@@ -1,4 +1,5 @@
-import { Account, AddressTypes, WalletKeyring } from '@/shared/types';
+import { Account, WalletKeyring } from '@/shared/types';
+import { AddressTypes } from '@btc-vision/transaction';
 import { createSlice } from '@reduxjs/toolkit';
 
 import { updateVersion } from '../global/actions';

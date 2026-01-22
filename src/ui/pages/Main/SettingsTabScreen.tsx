@@ -2,16 +2,19 @@ import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import { ADDRESS_TYPES, GITHUB_URL, KEYRING_TYPE, TELEGRAM_URL, TWITTER_URL } from '@/shared/constant';
+import { getCurrentTab } from '@/shared/utils/browser-tabs';
 import { Column, Content, Footer, Header, Layout } from '@/ui/components';
 import { useTools } from '@/ui/components/ActionComponent';
 import { NavTabBar } from '@/ui/components/NavTabBar';
-import { getCurrentTab, useExtensionIsInTab, useOpenExtensionInTab } from '@/ui/features/browser/tabs';
+import { useExtensionIsInTab, useOpenExtensionInTab } from '@/ui/features/browser/tabs';
 import { useCurrentAccount } from '@/ui/state/accounts/hooks';
 import { useCurrentKeyring } from '@/ui/state/keyrings/hooks';
 import { useChain, useVersionInfo } from '@/ui/state/settings/hooks';
+import { useExperienceMode } from '@/ui/hooks/useExperienceMode';
 import { useWallet } from '@/ui/utils';
 import {
     CheckCircleFilled,
+    ChromeOutlined,
     ExpandOutlined,
     GithubOutlined,
     GlobalOutlined,
@@ -21,6 +24,7 @@ import {
     RightOutlined,
     SendOutlined,
     SettingOutlined,
+    UserSwitchOutlined,
     WifiOutlined,
     XOutlined
 } from '@ant-design/icons';
@@ -102,6 +106,24 @@ const SettingList: Setting[] = [
         right: true
     },
     {
+        label: 'Experience Mode',
+        value: 'Expert',
+        desc: 'Switch between Simple and Expert mode',
+        icon: <UserSwitchOutlined />,
+        action: 'experience-mode',
+        route: '/settings/experience-mode',
+        right: true
+    },
+    {
+        label: 'OPNet Browser',
+        value: '',
+        desc: 'Browse .btc domains',
+        icon: <ChromeOutlined />,
+        action: 'opnet-browser',
+        route: '/settings/opnet-browser',
+        right: true
+    },
+    {
         desc: 'Expand View',
         icon: <ExpandOutlined />,
         action: 'expand-view',
@@ -129,6 +151,7 @@ export default function SettingsTabScreen() {
     const currentAccount = useCurrentAccount();
     const versionInfo = useVersionInfo();
     const wallet = useWallet();
+    const { mode: experienceMode } = useExperienceMode();
     const [switchChainModalVisible, setSwitchChainModalVisible] = useState(false);
     const tools = useTools();
     const openExtensionInTab = useOpenExtensionInTab();
@@ -175,6 +198,10 @@ export default function SettingsTabScreen() {
             if (item) {
                 v.value = item.name;
             }
+        }
+
+        if (v.action == 'experience-mode') {
+            v.value = experienceMode === 'simple' ? 'Simple' : experienceMode === 'expert' ? 'Expert' : 'Not Set';
         }
 
         if (v.action == 'expand-view' && isInTab) {

@@ -5,7 +5,7 @@ import { KEYRING_TYPE } from '@/shared/constant';
 import Web3API from '@/shared/web3/Web3API';
 import { Button, Card, Column, Content, Footer, Header, Input, Layout, OPNetLoader, Row, Text } from '@/ui/components';
 import { useTools } from '@/ui/components/ActionComponent';
-import { useAccountPublicKey } from '@/ui/state/accounts/hooks';
+import { useAccountPublicKey, useReloadAccounts } from '@/ui/state/accounts/hooks';
 import { copyToClipboard, useWallet } from '@/ui/utils';
 import { getMLDSAConfig, MLDSASecurityLevel } from '@btc-vision/bip32';
 import { networks } from '@btc-vision/bitcoin';
@@ -35,6 +35,7 @@ export default function QuantumMigrationScreen() {
     const wallet = useWallet();
     const tools = useTools();
     const address = useAccountPublicKey();
+    const reloadAccounts = useReloadAccounts();
 
     const [loading, setLoading] = useState(true);
     const [isHdWallet, setIsHdWallet] = useState(false);
@@ -95,7 +96,7 @@ export default function QuantumMigrationScreen() {
         };
 
         void checkStatus();
-        // eslint-disable-next-line react-hooks/exhaustive-deps
+         
     }, [address.pubkey]);
 
     const handleImport = async () => {
@@ -149,6 +150,8 @@ export default function QuantumMigrationScreen() {
             setHasQuantumKey(true);
             setQuantumPublicKeyHash(importedKeyHash);
             setImportMode(false);
+            // Reload accounts to reflect the new key
+            await reloadAccounts();
         } catch (e) {
             console.error('[QuantumMigration] Import error:', e);
             setError((e as Error).message);
@@ -175,6 +178,8 @@ export default function QuantumMigrationScreen() {
             // Refresh status - getWalletAddress returns [mldsaHashPubKey, legacyPubKey]
             const [mldsaHashPubKey] = await wallet.getWalletAddress();
             setQuantumPublicKeyHash(mldsaHashPubKey);
+            // Reload accounts to reflect the new key
+            await reloadAccounts();
         } catch (e) {
             tools.toastError((e as Error).message);
         } finally {
