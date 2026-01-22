@@ -100,15 +100,10 @@ export interface BitcoinBalance {
     consolidation_amount: string;
 
     consolidation_unspent_amount: string;
-    consolidation_unspent_count: number;
     consolidation_csv75_unlocked_amount: string;
-    consolidation_csv75_unlocked_count: number;
     consolidation_csv2_unlocked_amount: string;
-    consolidation_csv2_unlocked_count: number;
     consolidation_csv1_unlocked_amount: string;
-    consolidation_csv1_unlocked_count: number;
     consolidation_p2wda_unspent_amount: string;
-    consolidation_p2wda_unspent_count: number;
 
     all_utxos_count: number;
     unspent_utxos_count: number;

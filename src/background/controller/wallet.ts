@@ -3427,15 +3427,10 @@ export class WalletController {
             p2wda_pending_amount: '0',
             consolidation_amount: '0',
             consolidation_unspent_amount: '0',
-            consolidation_unspent_count: 0,
             consolidation_csv75_unlocked_amount: '0',
-            consolidation_csv75_unlocked_count: 0,
             consolidation_csv2_unlocked_amount: '0',
-            consolidation_csv2_unlocked_count: 0,
             consolidation_csv1_unlocked_amount: '0',
-            consolidation_csv1_unlocked_count: 0,
             consolidation_p2wda_unspent_amount: '0',
-            consolidation_p2wda_unspent_count: 0,
             usd_value: '0.00',
 
             all_utxos_count: 0,
@@ -3545,13 +3540,9 @@ export class WalletController {
                     consolidation_unspent_amount: BitcoinUtils.formatUnits(consolidationUnspentAmount, 8),
                     consolidation_unspent_count: consolidatableUnspentUTXOs.length,
                     consolidation_csv75_unlocked_amount: '0',
-                    consolidation_csv75_unlocked_count: 0,
                     consolidation_csv2_unlocked_amount: '0',
-                    consolidation_csv2_unlocked_count: 0,
                     consolidation_csv1_unlocked_amount: '0',
-                    consolidation_csv1_unlocked_count: 0,
                     consolidation_p2wda_unspent_amount: '0',
-                    consolidation_p2wda_unspent_count: 0,
 
                     usd_value: usdValue,
 
@@ -3711,13 +3702,9 @@ export class WalletController {
                 consolidation_unspent_amount: BitcoinUtils.formatUnits(consolidationUnspentAmount, 8),
                 consolidation_unspent_count: consolidatableUnspentUTXOs.length,
                 consolidation_csv75_unlocked_amount: BitcoinUtils.formatUnits(consolidationCsv75UnlockedAmount, 8),
-                consolidation_csv75_unlocked_count: consolidatableCsv75UnlockedUTXOs.length,
                 consolidation_csv2_unlocked_amount: BitcoinUtils.formatUnits(consolidationCsv2UnlockedAmount, 8),
-                consolidation_csv2_unlocked_count: consolidatableCsv2UnlockedUTXOs.length,
                 consolidation_csv1_unlocked_amount: BitcoinUtils.formatUnits(consolidationCsv1UnlockedAmount, 8),
-                consolidation_csv1_unlocked_count: consolidatableCsv1UnlockedUTXOs.length,
                 consolidation_p2wda_unspent_amount: BitcoinUtils.formatUnits(consolidationP2wdaUnspentAmount, 8),
-                consolidation_p2wda_unspent_count: consolidatableP2wdaUnspentUTXOs.length,
 
                 usd_value: usdValue,
 

@@ -107,23 +107,30 @@ function AmountInput(props: InputProps) {
         ...rest
     } = props;
 
+    const [inputValue, setInputValue] = useState(props.value ?? '');
+
+    useEffect(() => {
+        if (props.value !== undefined && props.value !== inputValue) {
+            setInputValue(props.value);
+        }
+    }, [props.value, inputValue]);
+
     if (!onAmountInputChange) {
         return <div />;
     }
-
-    // Use props.value directly as the controlled value
-    const displayValue = props.value ?? '';
 
     const handleInputAmount = (e: React.ChangeEvent<HTMLInputElement>) => {
         const value = e.target.value;
         if (disableDecimal) {
             if (/^[1-9]\d*$/.test(value) || value === '') {
+                setInputValue(value);
                 onAmountInputChange(value);
             }
         } else {
             const maxDecimals = decimalPlaces ?? 8;
             const decimalRegex = new RegExp(`^\\d*\\.?\\d{0,${maxDecimals}}$`);
             if (decimalRegex.test(value) || value === '') {
+                setInputValue(value);
                 onAmountInputChange(value);
             }
         }
@@ -133,7 +140,7 @@ function AmountInput(props: InputProps) {
             <input
                 placeholder={placeholder ?? 'Amount'}
                 type={'text'}
-                value={displayValue}
+                value={inputValue}
                 onChange={handleInputAmount}
                 className={`op_input_address ${enableMax ? 'with_max' : ''}`}
                 disabled={disabled}
@@ -156,7 +163,6 @@ function AmountInput(props: InputProps) {
 export const AddressInput = (props: InputProps) => {
     const { placeholder, onAddressInputChange, addressInputData, style: $inputStyleOverride, ...rest } = props;
 
-    // All hooks must be called before any conditional returns
     const [validAddress, setValidAddress] = useState(addressInputData?.address ?? '');
     const [parseAddress, setParseAddress] = useState(addressInputData?.domain ? addressInputData.address : '');
     const [parseError, setParseError] = useState('');
@@ -169,14 +175,11 @@ export const AddressInput = (props: InputProps) => {
     const btcDomainsEnabled = useBtcDomainsEnabled();
 
     useEffect(() => {
-        if (onAddressInputChange) {
-            onAddressInputChange({
-                address: validAddress,
-                domain: parseAddress ? inputVal : ''
-            });
+        if (addressInputData?.address !== undefined && addressInputData.address !== validAddress) {
+            setValidAddress(addressInputData.address);
+            setInputVal(addressInputData.domain || addressInputData.address || '');
         }
-         
-    }, [validAddress, parseAddress, inputVal]);
+    }, [addressInputData?.address, addressInputData?.domain, validAddress]);
 
     if (!addressInputData || !onAddressInputChange) {
         return <div />;
@@ -206,10 +209,8 @@ export const AddressInput = (props: InputProps) => {
 
         resetState();
 
-        // Check if it's a .btc domain - only resolve if feature is enabled
         if (inputAddress.toLowerCase().endsWith('.btc')) {
             if (!btcDomainsEnabled) {
-                // Feature disabled - treat .btc as invalid
                 setFormatError('.btc domains are not available on this network');
                 return;
             }
@@ -236,10 +237,12 @@ export const AddressInput = (props: InputProps) => {
         const isValid = AddressVerificator.detectAddressType(inputAddress, Web3API.network);
         if (!isValid) {
             setFormatError('Recipient address is invalid');
+            onAddressInputChange({ address: '', domain: '' });
             return;
         }
 
         setValidAddress(inputAddress);
+        onAddressInputChange({ address: inputAddress, domain: '' });
     };
 
     return (
@@ -252,7 +255,7 @@ export const AddressInput = (props: InputProps) => {
                     onChange={(e) => {
                         handleInputAddress(e);
                     }}
-                    defaultValue={inputVal}
+                    value={inputVal}
                     {...rest}
                 />
 
