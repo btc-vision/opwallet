@@ -645,19 +645,32 @@ export class WalletController {
     };
 
     /**
-     * Get the OPNet Wallet instance with quantum keys for the current account.
+     * Get the OPNet Wallet instance with quantum keys for a specific account or the current account.
      * This is needed for OPNet transaction signing which requires both classical and quantum keys.
+     * @param accountInfo Optional account info (pubkey, type). If not provided, uses current account.
      * @throws WalletControllerError if keys cannot be retrieved
      */
-    public getOPNetWallet = async (): Promise<[string, string, string]> => {
-        const account = await this.getCurrentAccount();
-        if (!account) {
-            throw new WalletControllerError('No current account');
+    public getOPNetWallet = async (
+        accountInfo?: { pubkey: string; type: string }
+    ): Promise<[string, string, string]> => {
+        let pubkey: string;
+        let type: string;
+
+        if (accountInfo) {
+            pubkey = accountInfo.pubkey;
+            type = accountInfo.type;
+        } else {
+            const account = await this.getCurrentAccount();
+            if (!account) {
+                throw new WalletControllerError('No current account');
+            }
+            pubkey = account.pubkey;
+            type = account.type;
         }
 
         const wifData = this.getInternalPrivateKey({
-            pubkey: account.pubkey,
-            type: account.type
+            pubkey,
+            type
         });
 
         if (!wifData) {
@@ -665,7 +678,7 @@ export class WalletController {
         }
 
         // Get quantum private key from keyring
-        const quantumPrivateKey = keyringService.exportQuantumAccount(account.pubkey);
+        const quantumPrivateKey = keyringService.exportQuantumAccount(pubkey);
         if (!quantumPrivateKey) {
             throw new WalletControllerError(
                 'Could not retrieve quantum private key. Quantum migration may be required.'

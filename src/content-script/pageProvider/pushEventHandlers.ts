@@ -62,7 +62,13 @@ class PushEventHandlers {
     networkChanged = async ({ network, chainType }: { network: string; chainType: ChainType }) => {
         this.connect({});
 
-        if (network !== this._unisatProviderPrivate._network) {
+        let hasChain = false;
+        try {
+            const asChain = Web3API.chain;
+            hasChain = asChain != null;
+        } catch {}
+
+        if (network !== this._unisatProviderPrivate._network || !hasChain) {
             if (chainType) await Web3API.setNetwork(chainType);
 
             this._unisatProviderPrivate._network = network;
