@@ -2,14 +2,14 @@ import Web3API from '@/shared/web3/Web3API';
 
 import { ChainType } from '@/shared/constant';
 import { providerErrors } from '@/shared/lib/bitcoin-rpc-errors/errors';
-import { OpnetProvider, OpnetProviderPrivate } from './index';
+import { OpnetProviderPrivateBase, ProviderEmitter } from './types';
 
 class PushEventHandlers {
-    provider: OpnetProvider;
+    provider: ProviderEmitter;
 
-    _unisatProviderPrivate: OpnetProviderPrivate;
+    _unisatProviderPrivate: OpnetProviderPrivateBase;
 
-    constructor(provider: OpnetProvider, _opnetProviderPrivate: OpnetProviderPrivate) {
+    constructor(provider: ProviderEmitter, _opnetProviderPrivate: OpnetProviderPrivateBase) {
         this.provider = provider;
         this._unisatProviderPrivate = _opnetProviderPrivate;
     }
@@ -62,7 +62,13 @@ class PushEventHandlers {
     networkChanged = async ({ network, chainType }: { network: string; chainType: ChainType }) => {
         this.connect({});
 
-        if (network !== this._unisatProviderPrivate._network) {
+        let hasChain = false;
+        try {
+            const asChain = Web3API.chain;
+            hasChain = asChain != null;
+        } catch {}
+
+        if (network !== this._unisatProviderPrivate._network || !hasChain) {
             if (chainType) await Web3API.setNetwork(chainType);
 
             this._unisatProviderPrivate._network = network;

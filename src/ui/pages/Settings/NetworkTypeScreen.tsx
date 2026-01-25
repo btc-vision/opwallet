@@ -4,7 +4,7 @@ import { useTools } from '@/ui/components/ActionComponent';
 import { useReloadAccounts } from '@/ui/state/accounts/hooks';
 import { useChainType, useChangeChainTypeCallback } from '@/ui/state/settings/hooks';
 
-import { RouteTypes, useNavigate } from '../MainRoute';
+import { RouteTypes, useNavigate } from '../routeTypes';
 
 export default function NetworkTypeScreen() {
     const chainType = useChainType();

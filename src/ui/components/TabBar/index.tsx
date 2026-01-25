@@ -41,17 +41,21 @@ export function TabBar(props: TabBarProps) {
 
     useEffect(() => {
         const curIndex = items.findIndex((v) => v.key === tabKey);
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- Sync progress with tab key
         setProgress(curIndex);
         onTabClick(tabKey);
-    }, [tabKey]);
+    }, [tabKey, items, onTabClick]);
 
-    useEffect(() => {
+    // Track previous activeKey for controlled component sync
+    const [prevActiveKey, setPrevActiveKey] = useState(activeKey);
+    if (activeKey !== prevActiveKey) {
+        setPrevActiveKey(activeKey);
         if (activeKey !== tabKey) {
             setTabKey(activeKey);
             const curIndex = items.findIndex((v) => v.key === activeKey);
             setProgress(curIndex);
         }
-    }, [activeKey]);
+    }
 
     // Number Page Style (Step indicator)
     if (preset === 'number-page') {

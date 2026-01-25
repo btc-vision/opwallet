@@ -16,7 +16,9 @@ export default function ExportMnemonicsScreen() {
     const { t } = useTranslation();
 
     const [password, setPassword] = useState('');
-    const [disabled, setDisabled] = useState(true);
+
+    // Derive disabled from password
+    const disabled = !password;
 
     const [mnemonic, setMnemonic] = useState('');
     const [status, setStatus] = useState<Status>('');
@@ -65,11 +67,12 @@ export default function ExportMnemonicsScreen() {
         }
     };
 
+    // Reset status and error when password changes
     useEffect(() => {
-        setDisabled(true);
         if (password) {
-            setDisabled(false);
+            // eslint-disable-next-line react-hooks/set-state-in-effect -- Reset validation state on password change
             setStatus('');
+             
             setError('');
         }
     }, [password]);

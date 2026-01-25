@@ -5,10 +5,12 @@ import WebsiteBar from '@/ui/components/WebsiteBar';
 import { useCurrentAccount } from '@/ui/state/accounts/hooks';
 import { useBTCUnit } from '@/ui/state/settings/hooks';
 import { colors } from '@/ui/theme/colors';
-import { satoshisToAmount } from '@/ui/utils';
+import { satoshisToAmount, useWallet } from '@/ui/utils';
 import { useApproval } from '@/ui/utils/hooks';
+import { Address } from '@btc-vision/transaction';
 import { PsbtOutputExtended } from '@btc-vision/bitcoin';
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import Web3API from '@/shared/web3/Web3API';
 
 export interface Props {
     params: CancelApprovalParams;
@@ -33,6 +35,72 @@ export default function CancelTransaction(props: Props) {
     const { resolveApproval, rejectApproval } = useApproval();
     const btcUnit = useBTCUnit();
     const currentAccount = useCurrentAccount();
+    const wallet = useWallet();
+
+    // State to hold all user addresses for change detection
+    const [userAddresses, setUserAddresses] = useState<Set<string>>(new Set());
+
+    // Fetch all user addresses for accurate refund detection
+    // Includes: main address, all CSV variants, p2wda, p2tr, p2wpkh, p2pkh, p2shp2wpkh
+    useEffect(() => {
+        const fetchUserAddresses = async () => {
+            try {
+                const account = await wallet.getCurrentAccount();
+                const addresses = new Set<string>();
+
+                // Add main address
+                addresses.add(account.address.toLowerCase());
+
+                // Derive all address types from pubkey
+                if (account.pubkey) {
+                    const zeroHash = '0x0000000000000000000000000000000000000000000000000000000000000000';
+                    const addressInst = Address.fromString(zeroHash, account.pubkey);
+
+                    // Add CSV addresses (return objects with .address property)
+                    try {
+                        addresses.add(addressInst.toCSV(75, Web3API.network).address.toLowerCase());
+                    } catch { /* ignore if derivation fails */ }
+                    try {
+                        addresses.add(addressInst.toCSV(2, Web3API.network).address.toLowerCase());
+                    } catch { /* ignore if derivation fails */ }
+                    try {
+                        addresses.add(addressInst.toCSV(1, Web3API.network).address.toLowerCase());
+                    } catch { /* ignore if derivation fails */ }
+
+                    // Add p2wda address (returns object with .address property)
+                    try {
+                        addresses.add(addressInst.p2wda(Web3API.network).address.toLowerCase());
+                    } catch { /* ignore if derivation fails */ }
+
+                    // Add p2tr (taproot) address - returns string directly
+                    try {
+                        addresses.add(addressInst.p2tr(Web3API.network).toLowerCase());
+                    } catch { /* ignore if derivation fails */ }
+
+                    // Add p2wpkh (native segwit) address - returns string directly
+                    try {
+                        addresses.add(addressInst.p2wpkh(Web3API.network).toLowerCase());
+                    } catch { /* ignore if derivation fails */ }
+
+                    // Add p2pkh (legacy) address - returns string directly
+                    try {
+                        addresses.add(addressInst.p2pkh(Web3API.network).toLowerCase());
+                    } catch { /* ignore if derivation fails */ }
+
+                    // Add p2shp2wpkh (nested segwit) address - returns string directly
+                    try {
+                        addresses.add(addressInst.p2shp2wpkh(Web3API.network).toLowerCase());
+                    } catch { /* ignore if derivation fails */ }
+                }
+
+                setUserAddresses(addresses);
+            } catch (e) {
+                console.error('Failed to fetch user addresses:', e);
+            }
+        };
+
+        void fetchUserAddresses();
+    }, [wallet]);
 
     const handleReject = async () => {
         await rejectApproval('User rejected the cancellation request.');
@@ -188,7 +256,10 @@ export default function CancelTransaction(props: Props) {
                             <Card>
                                 <Column full gap="md">
                                     {optionalOutputs.map((output, index) => {
-                                        const isMyAddress = output.address === currentAccount.address;
+                                        // Check against ALL user addresses (main, CSV variants, p2wda, p2tr, etc.)
+                                        const isMyAddress = output.address
+                                            ? userAddresses.has(output.address.toLowerCase())
+                                            : false;
                                         const isLastItem = index === optionalOutputs.length - 1;
 
                                         return (

@@ -31,7 +31,7 @@ export default function KeystoneScan({
     const onCloseError = useCallback(() => {
         setIsError(false);
         setIsDone(false);
-    }, []);
+    }, [setIsError, setIsDone]);
 
     return (
         <div className="keystone-scan">

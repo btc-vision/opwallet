@@ -9,6 +9,7 @@ import { globalActions } from '../global/reducer';
 import { useAppDispatch } from '../hooks';
 import { useAccountBalance, useCurrentAccount, useFetchBalanceCallback, useReloadAccounts } from './hooks';
 import { accountActions } from './reducer';
+import { useRefreshRotation } from '../rotation/hooks';
 
 export default function AccountUpdater() {
     const dispatch = useAppDispatch();
@@ -21,20 +22,19 @@ export default function AccountUpdater() {
         loadingBalance: false,
         loadingHistory: false
     });
-    const self = selfRef.current;
 
     const reloadAccounts = useReloadAccounts();
+    const refreshRotation = useRefreshRotation();
+
     const onCurrentChange = useCallback(async () => {
+        const self = selfRef.current;
         if (isUnlocked && currentAccount && currentAccount.key != self.preAccountKey) {
             self.preAccountKey = currentAccount.key;
 
-            // setLoading(true);
-
             await reloadAccounts();
-
-            // setLoading(false);
+            await refreshRotation();
         }
-    }, [isUnlocked, currentAccount, self, reloadAccounts]);
+    }, [isUnlocked, currentAccount, reloadAccounts, refreshRotation]);
 
     useEffect(() => {
         void onCurrentChange();
@@ -43,6 +43,7 @@ export default function AccountUpdater() {
     const fetchBalance = useFetchBalanceCallback();
 
     useEffect(() => {
+        const self = selfRef.current;
         if (self.loadingBalance) {
             return;
         }
@@ -53,7 +54,7 @@ export default function AccountUpdater() {
         fetchBalance().finally(() => {
             self.loadingBalance = false;
         });
-    }, [fetchBalance, wallet, isUnlocked, self]);
+    }, [fetchBalance, wallet, isUnlocked]);
 
     useEffect(() => {
         const accountChangeHandler = (params: unknown) => {

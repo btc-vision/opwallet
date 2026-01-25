@@ -1,4 +1,4 @@
-import { isNull } from 'lodash';
+import { isNull } from 'lodash-es';
 import React, { CSSProperties, useEffect, useState } from 'react';
 
 import Web3API from '@/shared/web3/Web3API';
@@ -11,6 +11,7 @@ import { useTools } from '../ActionComponent';
 import { Icon } from '../Icon';
 import { Row } from '../Row';
 import { $textPresets, Text } from '../Text';
+import { useBtcDomainsEnabled } from '@/ui/hooks/useAppConfig';
 
 export interface InputProps {
     preset?: Presets;
@@ -61,8 +62,8 @@ const $baseContainerStyle: CSSProperties = {
 const $baseInputStyle: CSSProperties = Object.assign({}, $textPresets.regular, {
     display: 'flex',
     flex: 1,
-    borderWidth: 0,
-    outlineWidth: 0,
+    border: 'none',
+    outline: 'none',
     backgroundColor: 'rgba(0,0,0,0)',
     alignSelf: 'stretch'
 });
@@ -103,18 +104,14 @@ function AmountInput(props: InputProps) {
         decimalPlaces,
         enableMax,
         onMaxClick,
+        value: propValue,
         ...rest
     } = props;
 
-    // All hooks must be called before any conditional returns
-    const [inputValue, setInputValue] = useState(props.value ?? '');
-    const [validAmount, setValidAmount] = useState(props.value ?? '');
-
-    useEffect(() => {
-        if (onAmountInputChange) {
-            onAmountInputChange(validAmount);
-        }
-    }, [validAmount, onAmountInputChange]);
+    // Use controlled value from props if provided, otherwise use internal state
+    const [internalValue, setInternalValue] = useState('');
+    const isControlled = propValue !== undefined;
+    const inputValue = isControlled ? propValue : internalValue;
 
     if (!onAmountInputChange) {
         return <div />;
@@ -124,15 +121,19 @@ function AmountInput(props: InputProps) {
         const value = e.target.value;
         if (disableDecimal) {
             if (/^[1-9]\d*$/.test(value) || value === '') {
-                setValidAmount(value);
-                setInputValue(value);
+                if (!isControlled) {
+                    setInternalValue(value);
+                }
+                onAmountInputChange(value);
             }
         } else {
             const maxDecimals = decimalPlaces ?? 8;
             const decimalRegex = new RegExp(`^\\d*\\.?\\d{0,${maxDecimals}}$`);
             if (decimalRegex.test(value) || value === '') {
-                setValidAmount(value);
-                setInputValue(value);
+                if (!isControlled) {
+                    setInternalValue(value);
+                }
+                onAmountInputChange(value);
             }
         }
     };
@@ -164,97 +165,114 @@ function AmountInput(props: InputProps) {
 export const AddressInput = (props: InputProps) => {
     const { placeholder, onAddressInputChange, addressInputData, style: $inputStyleOverride, ...rest } = props;
 
-    // All hooks must be called before any conditional returns
-    const [validAddress, setValidAddress] = useState(addressInputData?.address ?? '');
-    const [parseAddress, setParseAddress] = useState(addressInputData?.domain ? addressInputData.address : '');
+    const [inputVal, setInputVal] = useState(addressInputData?.domain || addressInputData?.address || '');
+    const [parseAddress, setParseAddress] = useState('');
     const [parseError, setParseError] = useState('');
     const [formatError, setFormatError] = useState('');
-    const [inputVal, setInputVal] = useState(addressInputData?.domain || addressInputData?.address || '');
     const [parseName, setParseName] = useState('');
     const [searching, setSearching] = useState(false);
     const wallet = useWallet();
     const tools = useTools();
+    const btcDomainsEnabled = useBtcDomainsEnabled();
 
-    useEffect(() => {
-        if (onAddressInputChange) {
-            onAddressInputChange({
-                address: validAddress,
-                domain: parseAddress ? inputVal : ''
-            });
+    // Expose a reset method via callback when parent needs to clear
+    const handleReset = React.useCallback(() => {
+        setInputVal('');
+        setParseError('');
+        setParseAddress('');
+        setFormatError('');
+        setParseName('');
+    }, []);
+
+    // Check if parent is signaling a reset (address cleared externally)
+    const prevAddressRef = React.useRef(addressInputData?.address);
+    React.useEffect(() => {
+        const prevAddress = prevAddressRef.current;
+        const currentAddress = addressInputData?.address;
+        prevAddressRef.current = currentAddress;
+
+        // Only reset if parent explicitly cleared the address (not on initial mount)
+        if (prevAddress && prevAddress !== '' && currentAddress === '') {
+            handleReset();
         }
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [validAddress, parseAddress, inputVal]);
+    }, [addressInputData?.address, handleReset]);
 
     if (!addressInputData || !onAddressInputChange) {
         return <div />;
     }
 
     const resetState = () => {
-        if (parseError) {
-            setParseError('');
-        }
-        if (parseAddress) {
-            setParseAddress('');
-        }
-        if (formatError) {
-            setFormatError('');
-        }
-
-        if (validAddress) {
-            setValidAddress('');
-        }
-
+        setParseError('');
+        setParseAddress('');
+        setFormatError('');
         setParseName('');
     };
 
-    const handleInputAddress = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleInputAddress = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const inputAddress = e.target.value.trim();
         setInputVal(inputAddress);
 
         resetState();
 
-        const isValid = AddressVerificator.detectAddressType(inputAddress, Web3API.network);
-        if (!isValid) {
-            setFormatError('Recipient address is invalid');
+        if (inputAddress.toLowerCase().endsWith('.btc')) {
+            if (!btcDomainsEnabled) {
+                setFormatError('.btc domains are not available on this network');
+                return;
+            }
+
+            setSearching(true);
+            try {
+                const resolvedAddress = await wallet.resolveBtcDomain(inputAddress);
+                setSearching(false);
+
+                if (resolvedAddress) {
+                    setParseAddress(resolvedAddress);
+                    setParseName(inputAddress);
+                    onAddressInputChange({ address: resolvedAddress, domain: inputAddress });
+                } else {
+                    setParseError(`Domain "${inputAddress}" not found or has no owner`);
+                }
+            } catch (error) {
+                setSearching(false);
+                setParseError('Failed to resolve domain');
+            }
             return;
         }
 
-        setValidAddress(inputAddress);
+        const isValid = AddressVerificator.detectAddressType(inputAddress, Web3API.network);
+        if (!isValid) {
+            setFormatError('Recipient address is invalid');
+            onAddressInputChange({ address: '', domain: '' });
+            return;
+        }
+
+        onAddressInputChange({ address: inputAddress, domain: '' });
     };
 
     return (
         <div style={{ alignSelf: 'stretch' }}>
             <div className="op_input_amount_container">
                 <input
-                    placeholder={'Address or name (sats, unisat, ...) '}
+                    placeholder={btcDomainsEnabled ? 'Address or .btc domain' : 'Address'}
                     type={'text'}
                     className="op_input_address"
                     onChange={(e) => {
                         handleInputAddress(e);
                     }}
-                    defaultValue={inputVal}
+                    value={inputVal}
                     {...rest}
                 />
 
                 {searching && (
                     <Row full mt="sm">
-                        <Text preset="sub" text={'Loading...'} />
+                        <Text preset="sub" text={'Resolving domain...'} />
                     </Row>
                 )}
             </div>
 
             {parseName ? (
                 <Row mt="sm" gap="zero" itemsCenter>
-                    <Text preset="sub" size="sm" text={'Name recognized and resolved. ('} />
-                    <Text
-                        preset="link"
-                        color="yellow"
-                        text={'More details'}
-                        onClick={() => {
-                            window.open('https://docs.unisat.io/unisat-wallet/name-recognized-and-resolved');
-                        }}
-                    />
-                    <Text preset="sub" size="sm" text={')'} />
+                    <Text preset="sub" size="sm" color="green" text={`Resolved ${parseName} via OPNet`} />
                 </Row>
             ) : null}
             {parseError && <Text text={parseError} preset="regular" color="error" />}

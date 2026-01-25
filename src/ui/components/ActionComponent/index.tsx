@@ -1,4 +1,4 @@
-import React, { useCallback, useContext, useRef, useState } from 'react';
+import React, { useCallback, useContext, useMemo, useRef, useState } from 'react';
 
 import { Loading } from './Loading';
 import { Tip } from './Tip';
@@ -16,139 +16,119 @@ export interface ContextType {
     showTip: ToastFunction;
 }
 
-const initContext = {
-    toast: (content: string) => {
-        // todo
-    },
-    toastSuccess: (content: string) => {
-        // todo
-    },
-    toastError: (content: string) => {
-        // todo
-    },
-    toastWarning: (content: string) => {
-        // todo
-    },
-    showLoading: () => {
-        // todo
-    },
-    showTip: (content: string) => {
-        // todo
-    }
-};
+// Noop handlers for initial context
+const noopToast = () => {};
+const noopLoading = () => {};
 
-const ActionComponentContext = React.createContext<ContextType>(initContext);
+const ActionComponentContext = React.createContext<ContextType>({
+    toast: noopToast,
+    toastSuccess: noopToast,
+    toastError: noopToast,
+    toastWarning: noopToast,
+    showLoading: noopLoading,
+    showTip: noopToast
+});
 
-function ToastContainer({ handler }: { handler: ContextType }) {
-    const [toasts, setToasts] = useState<{ key: string; props: ToastProps }[]>([]);
-    const selfRef = useRef<{ toasts: { key: string; props: ToastProps }[] }>({
-        toasts: []
-    });
-
-    const self = selfRef.current;
-    const basicToast = useCallback(
-        (content: string, preset?: ToastPresets) => {
-            const key = `Toast_${Math.random()}`;
-            self.toasts.push({
-                key,
-                props: {
-                    preset: preset ?? 'info',
-                    content,
-                    onClose: () => {
-                        self.toasts = self.toasts.filter((v) => v.key !== key);
-                        setToasts(self.toasts.map((v) => v));
-                    }
-                }
-            });
-            setToasts(self.toasts.map((v) => v));
-        },
-        [toasts]
-    );
-
-    handler.toast = useCallback(
-        (content: string) => {
-            basicToast(content);
-        },
-        [basicToast]
-    );
-
-    handler.toastSuccess = useCallback(
-        (content: string) => {
-            basicToast(content, 'success');
-        },
-        [basicToast]
-    );
-
-    handler.toastError = useCallback(
-        (content: string) => {
-            basicToast(content, 'error');
-        },
-        [basicToast]
-    );
-
-    handler.toastWarning = useCallback(
-        (content: string) => {
-            basicToast(content, 'warning');
-        },
-        [basicToast]
-    );
-
-    return (
-        <div>
-            {toasts.map(({ key, props }) => (
-                <Toast key={key} {...props} />
-            ))}
-        </div>
-    );
+interface ToastItem {
+    key: string;
+    props: ToastProps;
 }
 
-function LoadingContainer({ handler }: { handler: ContextType }) {
+export function ActionComponentProvider({ children }: { children: React.ReactNode }) {
+    // Toast state
+    const [toasts, setToasts] = useState<ToastItem[]>([]);
+    const toastsRef = useRef<ToastItem[]>([]);
+
+    // Loading state
     const [loadingInfo, setLoadingInfo] = useState<{ visible: boolean; content?: string }>({
         visible: false,
         content: ''
     });
-    handler.showLoading = useCallback((visible: boolean, content?: string) => {
-        setLoadingInfo({ visible, content });
-    }, []);
-    if (loadingInfo.visible) {
-        return <Loading text={loadingInfo.content} />;
-    } else {
-        return <div />;
-    }
-}
 
-function TipContainer({ handler }: { handler: ContextType }) {
+    // Tip state
     const [tipData, setTipData] = useState<{ visible: boolean; content: string }>({
         visible: false,
         content: ''
     });
-    handler.showTip = useCallback((content: string) => {
+
+    // Toast handlers
+    const basicToast = useCallback((content: string, preset?: ToastPresets) => {
+        const key = `Toast_${Math.random()}`;
+        const newToast: ToastItem = {
+            key,
+            props: {
+                preset: preset ?? 'info',
+                content,
+                onClose: () => {
+                    toastsRef.current = toastsRef.current.filter((v) => v.key !== key);
+                    setToasts([...toastsRef.current]);
+                }
+            }
+        };
+        toastsRef.current = [...toastsRef.current, newToast];
+        setToasts([...toastsRef.current]);
+    }, []);
+
+    const toast = useCallback(
+        (content: string) => basicToast(content),
+        [basicToast]
+    );
+
+    const toastSuccess = useCallback(
+        (content: string) => basicToast(content, 'success'),
+        [basicToast]
+    );
+
+    const toastError = useCallback(
+        (content: string) => basicToast(content, 'error'),
+        [basicToast]
+    );
+
+    const toastWarning = useCallback(
+        (content: string) => basicToast(content, 'warning'),
+        [basicToast]
+    );
+
+    // Loading handler
+    const showLoading = useCallback((visible: boolean, content?: string) => {
+        setLoadingInfo({ visible, content });
+    }, []);
+
+    // Tip handler
+    const showTip = useCallback((content: string) => {
         setTipData({ content, visible: true });
     }, []);
-    if (tipData.visible) {
-        return (
-            <Tip
-                text={tipData.content}
-                onClose={() => {
-                    setTipData({ visible: false, content: '' });
-                }}
-            />
-        );
-    } else {
-        return <div />;
-    }
-}
 
-export function ActionComponentProvider({ children }: { children: React.ReactNode }) {
-    const selfRef = useRef<ContextType>(initContext);
-    const self = selfRef.current;
+    const closeTip = useCallback(() => {
+        setTipData({ visible: false, content: '' });
+    }, []);
+
+    // Build context value immutably
+    const contextValue = useMemo<ContextType>(
+        () => ({
+            toast,
+            toastSuccess,
+            toastError,
+            toastWarning,
+            showLoading,
+            showTip
+        }),
+        [toast, toastSuccess, toastError, toastWarning, showLoading, showTip]
+    );
 
     return (
-        <ActionComponentContext.Provider value={self}>
+        <ActionComponentContext.Provider value={contextValue}>
             {children}
-            <ToastContainer handler={self} />
-            <LoadingContainer handler={self} />
-            <TipContainer handler={self} />
+            {/* Toast container */}
+            <div>
+                {toasts.map(({ key, props }) => (
+                    <Toast key={key} {...props} />
+                ))}
+            </div>
+            {/* Loading container */}
+            {loadingInfo.visible && <Loading text={loadingInfo.content} />}
+            {/* Tip container */}
+            {tipData.visible && <Tip text={tipData.content} onClose={closeTip} />}
         </ActionComponentContext.Provider>
     );
 }

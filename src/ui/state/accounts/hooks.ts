@@ -86,7 +86,10 @@ export function useFetchBalanceCallback() {
     return useCallback(async () => {
         if (!currentAccount.address) return;
 
-        const accountBalance = await wallet.getAddressBalance(currentAccount.address, currentAccount.pubkey);
+        const isRotationMode = await wallet.isRotationModeEnabled();
+        const accountBalance = isRotationMode
+            ? await wallet.getRotationModeBalance()
+            : await wallet.getAddressBalance(currentAccount.address, currentAccount.pubkey);
 
         const balanceToDispatch = {
             address: currentAccount.address,
@@ -112,15 +115,10 @@ export function useFetchBalanceCallback() {
 
             consolidation_amount: accountBalance.consolidation_amount,
             consolidation_unspent_amount: accountBalance.consolidation_unspent_amount,
-            consolidation_unspent_count: accountBalance.consolidation_unspent_count,
             consolidation_csv75_unlocked_amount: accountBalance.consolidation_csv75_unlocked_amount,
-            consolidation_csv75_unlocked_count: accountBalance.consolidation_csv75_unlocked_count,
             consolidation_csv2_unlocked_amount: accountBalance.consolidation_csv2_unlocked_amount,
-            consolidation_csv2_unlocked_count: accountBalance.consolidation_csv2_unlocked_count,
             consolidation_csv1_unlocked_amount: accountBalance.consolidation_csv1_unlocked_amount,
-            consolidation_csv1_unlocked_count: accountBalance.consolidation_csv1_unlocked_count,
             consolidation_p2wda_unspent_amount: accountBalance.consolidation_p2wda_unspent_amount,
-            consolidation_p2wda_unspent_count: accountBalance.consolidation_p2wda_unspent_count,
 
             usd_value: accountBalance.usd_value,
 

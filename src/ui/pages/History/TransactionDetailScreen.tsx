@@ -1,20 +1,16 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
+import { TransactionHistoryItem, TransactionStatus, TransactionType } from '@/shared/types/TransactionHistory';
+import { selectorToString } from '@/shared/web3/decoder/CalldataDecoder';
 import { Column, Content, Header, Layout, OPNetLoader } from '@/ui/components';
 import { useTools } from '@/ui/components/ActionComponent';
-import { RouteTypes, useNavigate } from '@/ui/pages/MainRoute';
-import { useCurrentAccount } from '@/ui/state/accounts/hooks';
-import { copyToClipboard, useLocationState, useWallet } from '@/ui/utils';
-import {
-    TransactionHistoryItem,
-    TransactionStatus,
-    TransactionType
-} from '@/shared/types/TransactionHistory';
-import { selectorToString } from '@/shared/web3/decoder/CalldataDecoder';
+import { RouteTypes, useNavigate } from '@/ui/pages/routeTypes';
 import { decodeCallData } from '@/ui/pages/OpNet/decoded/decodeCallData';
 import { DecodedCalldata } from '@/ui/pages/OpNet/decoded/DecodedCalldata';
 import { Decoded } from '@/ui/pages/OpNet/decoded/DecodedTypes';
+import { useCurrentAccount } from '@/ui/state/accounts/hooks';
 import { useChainType } from '@/ui/state/settings/hooks';
+import { copyToClipboard, useLocationState, useWallet } from '@/ui/utils';
 import {
     CheckCircleOutlined,
     CheckOutlined,
@@ -144,11 +140,7 @@ function DetailRow({ label, value, copyable, onCopy, copied, external }: DetailR
                     </div>
                 )}
                 {external && (
-                    <a
-                        href={external}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        style={{ flexShrink: 0 }}>
+                    <a href={external} target="_blank" rel="noopener noreferrer" style={{ flexShrink: 0 }}>
                         <ExportOutlined style={{ fontSize: 12, color: colors.main }} />
                     </a>
                 )}
@@ -218,26 +210,59 @@ export default function TransactionDetailScreen() {
     const [loading, setLoading] = useState(true);
     const [tx, setTx] = useState<TransactionHistoryItem | null>(null);
     const [copiedField, setCopiedField] = useState<string | null>(null);
+    const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-    const loadTransaction = useCallback(async () => {
-        setLoading(true);
-        try {
-            const history = await wallet.getTransactionHistory();
-            const found = history.find((t) => t.txid === txid);
-            setTx(found || null);
-        } catch (error) {
-            console.error('Failed to load transaction:', error);
-            setTx(null);
-        } finally {
-            setLoading(false);
-        }
-    }, [wallet, txid]);
+    const loadTransaction = useCallback(
+        async (showLoader: boolean) => {
+            if (showLoader) {
+                setLoading(true);
+            }
+            try {
+                const history = await wallet.getTransactionHistory();
+                const found = history.find((t) => t.txid === txid);
+                setTx(found || null);
+            } catch (error) {
+                console.error('Failed to load transaction:', error);
+                setTx(null);
+            } finally {
+                if (showLoader) {
+                    setLoading(false);
+                }
+            }
+        },
+        [wallet, txid]
+    );
 
+    // Initial load
     useEffect(() => {
         if (txid) {
-            void loadTransaction();
+            void loadTransaction(true);
         }
     }, [loadTransaction, txid]);
+
+    // Poll for updates when transaction is pending
+    useEffect(() => {
+        // Clear any existing interval
+        if (pollIntervalRef.current) {
+            clearInterval(pollIntervalRef.current);
+            pollIntervalRef.current = null;
+        }
+
+        // Only poll if transaction is pending
+        if (tx && tx.status === TransactionStatus.PENDING) {
+            pollIntervalRef.current = setInterval(() => {
+                void loadTransaction(false);
+            }, 10000); // Poll every 10 seconds
+        }
+
+        // Cleanup on unmount or when tx changes
+        return () => {
+            if (pollIntervalRef.current) {
+                clearInterval(pollIntervalRef.current);
+                pollIntervalRef.current = null;
+            }
+        };
+    }, [tx?.status, loadTransaction]);
 
     const handleCopy = async (field: string, value: string) => {
         await copyToClipboard(value);
@@ -270,7 +295,7 @@ export default function TransactionDetailScreen() {
         );
     }
 
-    const explorerUrl = `https://opscan.org/tx/${tx.txid}`;
+    const explorerUrl = `https://opscan.org/transactions/${tx.txid}`;
 
     return (
         <Layout>
@@ -323,7 +348,7 @@ export default function TransactionDetailScreen() {
                                 copyable
                                 onCopy={() => handleCopy('fundingTxid', tx.fundingTxid ?? '')}
                                 copied={copiedField === 'fundingTxid'}
-                                external={`https://opscan.org/tx/${tx.fundingTxid}`}
+                                external={`https://opscan.org/transactions/${tx.fundingTxid}`}
                             />
                         )}
 
@@ -368,7 +393,7 @@ export default function TransactionDetailScreen() {
                                 copyable
                                 onCopy={() => handleCopy('contract', tx.contractAddress ?? '')}
                                 copied={copiedField === 'contract'}
-                                external={`https://opscan.org/address/${tx.contractAddress}`}
+                                external={`https://opscan.org/accounts/${tx.contractAddress}`}
                             />
                         )}
                     </div>
@@ -411,7 +436,14 @@ export default function TransactionDetailScreen() {
                                     borderBottom: `1px solid ${colors.border}`
                                 }}>
                                 <span style={{ fontSize: 12, color: colors.textFaded }}>Origin</span>
-                                <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 8 }}>
+                                <div
+                                    style={{
+                                        flex: 1,
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'flex-end',
+                                        gap: 8
+                                    }}>
                                     {tx.origin.siteIcon && (
                                         <img
                                             src={tx.origin.siteIcon}

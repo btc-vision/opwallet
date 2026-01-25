@@ -44,7 +44,7 @@ export function usePushBitcoinTxCallback() {
 
             return ret;
         },
-        [dispatch, wallet]
+        [dispatch, wallet, tools]
     );
 }
 

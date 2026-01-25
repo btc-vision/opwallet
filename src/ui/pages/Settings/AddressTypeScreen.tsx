@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 
-import { AddressAssets, AddressTypes } from '@/shared/types';
+import { AddressAssets } from '@/shared/types';
+import { AddressTypes } from '@btc-vision/transaction';
 import { Column, Content, Header, Layout, OPNetLoader, Text } from '@/ui/components';
 import { useTools } from '@/ui/components/ActionComponent';
 import { useCurrentAccount, useReloadAccounts } from '@/ui/state/accounts/hooks';
@@ -11,7 +12,7 @@ import { CheckCircleFilled, CheckOutlined, CopyOutlined, InfoCircleOutlined, Wal
 import { getBitcoinLibJSNetwork } from '@/shared/web3/Web3API';
 import { useBTCUnit } from '@/ui/state/settings/hooks';
 import { Address } from '@btc-vision/transaction';
-import { RouteTypes, useNavigate } from '../MainRoute';
+import { RouteTypes, useNavigate } from '../routeTypes';
 
 const colors = {
     main: '#f37413',

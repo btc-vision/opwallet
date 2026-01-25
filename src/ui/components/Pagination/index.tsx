@@ -34,7 +34,7 @@ export const Pagination = (props: PaginationProps) => {
                 />
             );
         }
-    }, [totalPage, pagination]);
+    }, [totalPage, pagination, onChange]);
 
     const nexButton = useMemo(() => {
         if (pagination.currentPage == totalPage) {
@@ -52,7 +52,7 @@ export const Pagination = (props: PaginationProps) => {
                 />
             );
         }
-    }, [totalPage, pagination]);
+    }, [totalPage, pagination, onChange]);
 
     const pageArray = useMemo(() => {
         const arr: { page: number; label: string }[] = [];
@@ -119,5 +119,5 @@ export const Pagination = (props: PaginationProps) => {
                 {nexButton}
             </Row>
         );
-    }, [pagination, preButton, nexButton, pageArray]);
+    }, [pagination, preButton, nexButton, pageArray, onChange]);
 };

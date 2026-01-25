@@ -6,7 +6,7 @@ import { useSetCurrentAccountCallback } from '@/ui/state/accounts/hooks';
 import { useCurrentKeyring } from '@/ui/state/keyrings/hooks';
 import { useWallet } from '@/ui/utils';
 
-import { RouteTypes, useNavigate } from '../MainRoute';
+import { RouteTypes, useNavigate } from '../routeTypes';
 
 export default function CreateAccountScreen() {
     const navigate = useNavigate();
@@ -35,6 +35,7 @@ export default function CreateAccountScreen() {
         setDefaultName(accountName);
     };
     useEffect(() => {
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- Async data loading on mount
         init();
     }, []);
 

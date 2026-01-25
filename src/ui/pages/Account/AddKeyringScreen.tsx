@@ -1,16 +1,17 @@
 import { Column, Content, Header, Layout } from '@/ui/components';
-import { useExtensionIsInTab } from '@/ui/features/browser/tabs';
+// import { useExtensionIsInTab } from '@/ui/features/browser/tabs'; // Hidden: Hardware wallet support
 import {
+    CheckCircleOutlined,
     FileTextOutlined,
-    ImportOutlined,
+    // ImportOutlined, // Hidden: Ethereum private key import
     KeyOutlined,
     PlusCircleOutlined,
-    RightOutlined,
     SafetyOutlined,
-    UsbOutlined
+    // UsbOutlined, // Hidden: Hardware wallet support
+    WarningOutlined
 } from '@ant-design/icons';
 
-import { RouteTypes, useNavigate } from '../MainRoute';
+import { RouteTypes, useNavigate } from '../routeTypes';
 
 const colors = {
     main: '#f37413',
@@ -25,157 +26,13 @@ const colors = {
     success: '#4ade80',
     error: '#ef4444',
     warning: '#fbbf24',
-    ethereum: '#627EEA'
+    ethereum: '#627EEA',
+    purple: '#8B5CF6'
 };
-
-interface WalletOption {
-    icon: React.ReactNode;
-    title: string;
-    description: string;
-    onClick: () => void;
-    badge?: string;
-    accentColor?: string;
-}
 
 export default function AddKeyringScreen() {
     const navigate = useNavigate();
-    const isInTab = useExtensionIsInTab();
-
-    const createOptions: WalletOption[] = [
-        {
-            icon: <PlusCircleOutlined style={{ fontSize: 20 }} />,
-            title: 'Create New Wallet',
-            description: 'Generate a new 12-word seed phrase',
-            onClick: () => navigate(RouteTypes.CreateHDWalletScreen, { isImport: false })
-        }
-    ];
-
-    const restoreOptions: WalletOption[] = [
-        {
-            icon: <FileTextOutlined style={{ fontSize: 20 }} />,
-            title: 'Seed Phrase',
-            description: 'Restore from 12 or 24 words',
-            onClick: () => navigate(RouteTypes.CreateHDWalletScreen, { isImport: true })
-        },
-        {
-            icon: <KeyOutlined style={{ fontSize: 20 }} />,
-            title: 'Private Key',
-            description: 'Import a single private key',
-            onClick: () => navigate(RouteTypes.CreateSimpleWalletScreen)
-        },
-        {
-            icon: <ImportOutlined style={{ fontSize: 20 }} />,
-            title: 'Ethereum Private Key',
-            description: 'Import from MetaMask or other EVM wallets',
-            onClick: () => navigate(RouteTypes.CreateSimpleWalletScreen),
-            badge: 'ETH',
-            accentColor: colors.ethereum
-        }
-    ];
-
-    const hardwareOptions: WalletOption[] = [
-        {
-            icon: <UsbOutlined style={{ fontSize: 20 }} />,
-            title: 'Keystone',
-            description: 'Connect via QR code',
-            onClick: () => {
-                if (isInTab) {
-                    navigate(RouteTypes.CreateKeystoneWalletScreen);
-                } else {
-                    window.open('#/account/create-keystone-wallet');
-                }
-            }
-        }
-    ];
-
-    const WalletOptionCard = ({ option }: { option: WalletOption }) => (
-        <button
-            style={{
-                width: '100%',
-                padding: '14px',
-                background: colors.buttonHoverBg,
-                border: `1px solid ${colors.containerBorder}`,
-                borderRadius: '12px',
-                cursor: 'pointer',
-                transition: 'all 0.2s',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '12px',
-                textAlign: 'left',
-                marginBottom: '8px'
-            }}
-            onClick={option.onClick}
-            onMouseEnter={(e) => {
-                e.currentTarget.style.background = colors.buttonBg;
-                e.currentTarget.style.borderColor = option.accentColor || colors.main;
-                e.currentTarget.style.transform = 'translateX(4px)';
-            }}
-            onMouseLeave={(e) => {
-                e.currentTarget.style.background = colors.buttonHoverBg;
-                e.currentTarget.style.borderColor = colors.containerBorder;
-                e.currentTarget.style.transform = 'translateX(0)';
-            }}>
-            {/* Icon */}
-            <div
-                style={{
-                    width: '40px',
-                    height: '40px',
-                    borderRadius: '10px',
-                    background: option.accentColor ? `${option.accentColor}15` : colors.containerBgFaded,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    flexShrink: 0
-                }}>
-                <span style={{ color: option.accentColor || colors.main }}>{option.icon}</span>
-            </div>
-
-            {/* Content */}
-            <div style={{ flex: 1 }}>
-                <div
-                    style={{
-                        fontSize: '14px',
-                        fontWeight: 600,
-                        color: colors.text,
-                        marginBottom: '2px',
-                        fontFamily: 'Inter-Regular, serif',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '6px'
-                    }}>
-                    {option.title}
-                    {option.badge && (
-                        <span
-                            style={{
-                                fontSize: '10px',
-                                padding: '2px 6px',
-                                background: option.accentColor ? `${option.accentColor}20` : `${colors.main}20`,
-                                color: option.accentColor || colors.main,
-                                borderRadius: '4px',
-                                fontWeight: 700
-                            }}>
-                            {option.badge}
-                        </span>
-                    )}
-                </div>
-                <div
-                    style={{
-                        fontSize: '12px',
-                        color: colors.textFaded
-                    }}>
-                    {option.description}
-                </div>
-            </div>
-
-            {/* Arrow */}
-            <RightOutlined
-                style={{
-                    fontSize: 12,
-                    color: colors.textFaded
-                }}
-            />
-        </button>
-    );
+    // const isInTab = useExtensionIsInTab(); // Hidden: Hardware wallet support
 
     return (
         <Layout>
@@ -187,102 +44,375 @@ export default function AddKeyringScreen() {
             />
             <Content style={{ padding: '12px' }}>
                 <Column>
-                    {/* Create Section */}
-                    <div style={{ marginBottom: '20px' }}>
+                    {/* Recommended: Create/Import with Seed Phrase */}
+                    <div style={{ marginBottom: '12px' }}>
                         <div
                             style={{
                                 fontSize: '11px',
                                 fontWeight: 600,
-                                color: colors.textFaded,
+                                color: colors.success,
                                 textTransform: 'uppercase',
                                 letterSpacing: '0.5px',
-                                marginBottom: '10px',
+                                marginBottom: '8px',
                                 paddingLeft: '4px',
                                 display: 'flex',
                                 alignItems: 'center',
                                 gap: '6px'
                             }}>
-                            <SafetyOutlined style={{ fontSize: 12 }} />
-                            Create New
+                            <CheckCircleOutlined style={{ fontSize: 12 }} />
+                            Recommended
                         </div>
-                        <div
+
+                        {/* Create New Wallet - HD */}
+                        <button
+                            onClick={() => navigate(RouteTypes.CreateHDWalletScreen, { isImport: false })}
                             style={{
-                                background: colors.containerBgFaded,
-                                borderRadius: '14px',
-                                padding: '8px'
+                                width: '100%',
+                                padding: '14px',
+                                background: `${colors.success}10`,
+                                border: `2px solid ${colors.success}40`,
+                                borderRadius: '12px',
+                                cursor: 'pointer',
+                                textAlign: 'left',
+                                marginBottom: '8px',
+                                transition: 'all 0.2s'
+                            }}
+                            onMouseEnter={(e) => {
+                                e.currentTarget.style.borderColor = colors.success;
+                                e.currentTarget.style.transform = 'translateY(-2px)';
+                            }}
+                            onMouseLeave={(e) => {
+                                e.currentTarget.style.borderColor = `${colors.success}40`;
+                                e.currentTarget.style.transform = 'translateY(0)';
                             }}>
-                            {createOptions.map((option, index) => (
-                                <WalletOptionCard key={index} option={option} />
-                            ))}
-                        </div>
+                            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
+                                <div
+                                    style={{
+                                        width: '40px',
+                                        height: '40px',
+                                        borderRadius: '10px',
+                                        background: `${colors.success}20`,
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        flexShrink: 0
+                                    }}>
+                                    <PlusCircleOutlined style={{ fontSize: 20, color: colors.success }} />
+                                </div>
+                                <div style={{ flex: 1 }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                                        <span style={{ fontSize: '14px', fontWeight: 600, color: colors.text }}>
+                                            Create New Wallet
+                                        </span>
+                                        <span
+                                            style={{
+                                                fontSize: '9px',
+                                                padding: '2px 6px',
+                                                background: colors.success,
+                                                color: '#fff',
+                                                borderRadius: '4px',
+                                                fontWeight: 700
+                                            }}>
+                                            BEST
+                                        </span>
+                                    </div>
+                                    <div style={{ fontSize: '12px', color: colors.textFaded, marginBottom: '6px' }}>
+                                        Generate a new 12-word seed phrase
+                                    </div>
+                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                                        <span style={{ fontSize: '10px', color: colors.success, display: 'flex', alignItems: 'center', gap: '3px' }}>
+                                            <CheckCircleOutlined style={{ fontSize: 10 }} /> Auto MLDSA derivation
+                                        </span>
+                                        <span style={{ fontSize: '10px', color: colors.success, display: 'flex', alignItems: 'center', gap: '3px' }}>
+                                            <CheckCircleOutlined style={{ fontSize: 10 }} /> Single backup
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        </button>
+
+                        {/* Import Seed Phrase */}
+                        <button
+                            onClick={() => navigate(RouteTypes.CreateHDWalletScreen, { isImport: true })}
+                            style={{
+                                width: '100%',
+                                padding: '14px',
+                                background: `${colors.success}08`,
+                                border: `1px solid ${colors.success}30`,
+                                borderRadius: '12px',
+                                cursor: 'pointer',
+                                textAlign: 'left',
+                                transition: 'all 0.2s'
+                            }}
+                            onMouseEnter={(e) => {
+                                e.currentTarget.style.borderColor = colors.success;
+                                e.currentTarget.style.transform = 'translateY(-1px)';
+                            }}
+                            onMouseLeave={(e) => {
+                                e.currentTarget.style.borderColor = `${colors.success}30`;
+                                e.currentTarget.style.transform = 'translateY(0)';
+                            }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                <div
+                                    style={{
+                                        width: '40px',
+                                        height: '40px',
+                                        borderRadius: '10px',
+                                        background: `${colors.success}15`,
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        flexShrink: 0
+                                    }}>
+                                    <FileTextOutlined style={{ fontSize: 20, color: colors.success }} />
+                                </div>
+                                <div style={{ flex: 1 }}>
+                                    <span style={{ fontSize: '14px', fontWeight: 600, color: colors.text }}>
+                                        Import Seed Phrase
+                                    </span>
+                                    <div style={{ fontSize: '12px', color: colors.textFaded }}>
+                                        Restore from 12 or 24 words
+                                    </div>
+                                </div>
+                            </div>
+                        </button>
                     </div>
 
-                    {/* Restore Section */}
-                    <div style={{ marginBottom: '20px' }}>
+                    {/* Private Key Import - Advanced */}
+                    <div style={{ marginBottom: '12px' }}>
                         <div
                             style={{
                                 fontSize: '11px',
                                 fontWeight: 600,
-                                color: colors.textFaded,
+                                color: colors.warning,
                                 textTransform: 'uppercase',
                                 letterSpacing: '0.5px',
-                                marginBottom: '10px',
+                                marginBottom: '8px',
                                 paddingLeft: '4px',
                                 display: 'flex',
                                 alignItems: 'center',
                                 gap: '6px'
                             }}>
-                            <ImportOutlined style={{ fontSize: 12 }} />
-                            Import Existing
+                            <WarningOutlined style={{ fontSize: 12 }} />
+                            Advanced
                         </div>
-                        <div
+
+                        {/* Bitcoin Private Key */}
+                        <button
+                            onClick={() => navigate(RouteTypes.CreateSimpleWalletScreen)}
                             style={{
+                                width: '100%',
+                                padding: '14px',
                                 background: colors.containerBgFaded,
-                                borderRadius: '14px',
-                                padding: '8px'
+                                border: `1px solid ${colors.containerBorder}`,
+                                borderRadius: '12px',
+                                cursor: 'pointer',
+                                textAlign: 'left',
+                                marginBottom: '8px',
+                                transition: 'all 0.2s'
+                            }}
+                            onMouseEnter={(e) => {
+                                e.currentTarget.style.borderColor = colors.warning;
+                                e.currentTarget.style.transform = 'translateY(-1px)';
+                            }}
+                            onMouseLeave={(e) => {
+                                e.currentTarget.style.borderColor = colors.containerBorder;
+                                e.currentTarget.style.transform = 'translateY(0)';
                             }}>
-                            {restoreOptions.map((option, index) => (
-                                <WalletOptionCard key={index} option={option} />
-                            ))}
-                        </div>
+                            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
+                                <div
+                                    style={{
+                                        width: '40px',
+                                        height: '40px',
+                                        borderRadius: '10px',
+                                        background: `${colors.warning}15`,
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        flexShrink: 0
+                                    }}>
+                                    <KeyOutlined style={{ fontSize: 20, color: colors.warning }} />
+                                </div>
+                                <div style={{ flex: 1 }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                                        <span style={{ fontSize: '14px', fontWeight: 600, color: colors.text }}>
+                                            Private Key (WIF)
+                                        </span>
+                                        <span
+                                            style={{
+                                                fontSize: '9px',
+                                                padding: '2px 6px',
+                                                background: `${colors.warning}20`,
+                                                color: colors.warning,
+                                                borderRadius: '4px',
+                                                fontWeight: 600
+                                            }}>
+                                            ADVANCED
+                                        </span>
+                                    </div>
+                                    <div style={{ fontSize: '11px', color: colors.textFaded, display: 'flex', alignItems: 'flex-start', gap: '4px' }}>
+                                        <WarningOutlined style={{ fontSize: 10, marginTop: '2px', flexShrink: 0 }} />
+                                        <span>Requires separate MLDSA key backup</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </button>
+
                     </div>
 
-                    {/* Hardware Section */}
-                    <div style={{ marginBottom: '20px' }}>
-                        <div
+                    {/* Ethereum Private Key - Hidden: OPWallet doesn't support ETH private keys
+                        <button
+                            onClick={() => navigate(RouteTypes.CreateSimpleWalletScreen)}
                             style={{
-                                fontSize: '11px',
-                                fontWeight: 600,
-                                color: colors.textFaded,
-                                textTransform: 'uppercase',
-                                letterSpacing: '0.5px',
-                                marginBottom: '10px',
-                                paddingLeft: '4px',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '6px'
-                            }}>
-                            <UsbOutlined style={{ fontSize: 12 }} />
-                            Hardware Wallets
-                        </div>
-                        <div
-                            style={{
+                                width: '100%',
+                                padding: '14px',
                                 background: colors.containerBgFaded,
-                                borderRadius: '14px',
-                                padding: '8px'
+                                border: `1px solid ${colors.containerBorder}`,
+                                borderRadius: '12px',
+                                cursor: 'pointer',
+                                textAlign: 'left',
+                                transition: 'all 0.2s'
+                            }}
+                            onMouseEnter={(e) => {
+                                e.currentTarget.style.borderColor = colors.ethereum;
+                                e.currentTarget.style.transform = 'translateY(-1px)';
+                            }}
+                            onMouseLeave={(e) => {
+                                e.currentTarget.style.borderColor = colors.containerBorder;
+                                e.currentTarget.style.transform = 'translateY(0)';
                             }}>
-                            {hardwareOptions.map((option, index) => (
-                                <WalletOptionCard key={index} option={option} />
-                            ))}
+                            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
+                                <div
+                                    style={{
+                                        width: '40px',
+                                        height: '40px',
+                                        borderRadius: '10px',
+                                        background: `${colors.ethereum}15`,
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        flexShrink: 0
+                                    }}>
+                                    <ImportOutlined style={{ fontSize: 20, color: colors.ethereum }} />
+                                </div>
+                                <div style={{ flex: 1 }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                                        <span style={{ fontSize: '14px', fontWeight: 600, color: colors.text }}>
+                                            Ethereum Private Key
+                                        </span>
+                                        <span
+                                            style={{
+                                                fontSize: '9px',
+                                                padding: '2px 6px',
+                                                background: `${colors.ethereum}20`,
+                                                color: colors.ethereum,
+                                                borderRadius: '4px',
+                                                fontWeight: 700
+                                            }}>
+                                            ETH
+                                        </span>
+                                    </div>
+                                    <div style={{ fontSize: '12px', color: colors.textFaded }}>
+                                        Import from MetaMask or other EVM wallets
+                                    </div>
+                                </div>
+                            </div>
+                        </button>
+                    */}
+
+                    {/* Hardware Wallets - Hidden: OPWallet doesn't support hardware wallets ATM
+                        <div style={{ marginBottom: '12px' }}>
+                            <div
+                                style={{
+                                    fontSize: '11px',
+                                    fontWeight: 600,
+                                    color: colors.textFaded,
+                                    textTransform: 'uppercase',
+                                    letterSpacing: '0.5px',
+                                    marginBottom: '8px',
+                                    paddingLeft: '4px',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '6px'
+                                }}>
+                                <UsbOutlined style={{ fontSize: 12 }} />
+                                Hardware
+                            </div>
+
+                            <button
+                                onClick={() => {
+                                    if (isInTab) {
+                                        navigate(RouteTypes.CreateKeystoneWalletScreen);
+                                    } else {
+                                        window.open('#/account/create-keystone-wallet');
+                                    }
+                                }}
+                                style={{
+                                    width: '100%',
+                                    padding: '14px',
+                                    background: colors.containerBgFaded,
+                                    border: `1px solid ${colors.containerBorder}`,
+                                    borderRadius: '12px',
+                                    cursor: 'pointer',
+                                    textAlign: 'left',
+                                    transition: 'all 0.2s'
+                                }}
+                                onMouseEnter={(e) => {
+                                    e.currentTarget.style.borderColor = colors.main;
+                                    e.currentTarget.style.transform = 'translateY(-1px)';
+                                }}
+                                onMouseLeave={(e) => {
+                                    e.currentTarget.style.borderColor = colors.containerBorder;
+                                    e.currentTarget.style.transform = 'translateY(0)';
+                                }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                    <div
+                                        style={{
+                                            width: '40px',
+                                            height: '40px',
+                                            borderRadius: '10px',
+                                            background: `${colors.main}15`,
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            flexShrink: 0
+                                        }}>
+                                        <UsbOutlined style={{ fontSize: 20, color: colors.main }} />
+                                    </div>
+                                    <div style={{ flex: 1 }}>
+                                        <span style={{ fontSize: '14px', fontWeight: 600, color: colors.text }}>
+                                            Keystone
+                                        </span>
+                                        <div style={{ fontSize: '12px', color: colors.textFaded }}>
+                                            Connect via QR code
+                                        </div>
+                                    </div>
+                                </div>
+                            </button>
                         </div>
+                    */}
+
+                    {/* Info Note */}
+                    <div
+                        style={{
+                            padding: '10px 12px',
+                            background: `${colors.purple}10`,
+                            border: `1px solid ${colors.purple}25`,
+                            borderRadius: '10px',
+                            marginTop: '4px'
+                        }}>
+                        <p style={{ fontSize: '11px', color: colors.textFaded, margin: 0, lineHeight: '1.5' }}>
+                            <strong style={{ color: colors.purple }}>Why Seed Phrase?</strong> HD wallets automatically
+                            derive your MLDSA (post-quantum) key from the mnemonic, making recovery simple and secure.
+                        </p>
                     </div>
 
                     {/* Security Note */}
                     <div
                         style={{
-                            padding: '12px',
-                            background: `${colors.warning}10`,
-                            border: `1px solid ${colors.warning}30`,
+                            padding: '10px 12px',
+                            background: `${colors.warning}08`,
+                            border: `1px solid ${colors.warning}20`,
                             borderRadius: '10px',
                             marginTop: '8px'
                         }}>
@@ -291,21 +421,16 @@ export default function AddKeyringScreen() {
                                 fontSize: '11px',
                                 color: colors.warning,
                                 fontWeight: 600,
-                                marginBottom: '4px',
+                                marginBottom: '2px',
                                 display: 'flex',
                                 alignItems: 'center',
                                 gap: '6px'
                             }}>
-                            <SafetyOutlined style={{ fontSize: 12 }} />
+                            <SafetyOutlined style={{ fontSize: 11 }} />
                             Security Tip
                         </div>
-                        <div
-                            style={{
-                                fontSize: '11px',
-                                color: colors.textFaded,
-                                lineHeight: '1.4'
-                            }}>
-                            Never share your seed phrase or private keys with anyone. Store them securely offline.
+                        <div style={{ fontSize: '11px', color: colors.textFaded, lineHeight: '1.4' }}>
+                            Never share your seed phrase or private keys. Store them securely offline.
                         </div>
                     </div>
                 </Column>

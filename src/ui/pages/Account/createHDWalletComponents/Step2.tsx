@@ -2,17 +2,19 @@ import bitcore from 'bitcore-lib';
 import { useEffect, useMemo, useState } from 'react';
 
 import { ADDRESS_TYPES, RESTORE_WALLETS } from '@/shared/constant';
-import { AddressTypes } from '@/shared/types';
+import { RestoreWalletType } from '@/shared/types';
+import { AddressTypes } from '@btc-vision/transaction';
 import Web3API from '@/shared/web3/Web3API';
 import { Button, Column, Icon, Input, Row, Text } from '@/ui/components';
 import { useTools } from '@/ui/components/ActionComponent';
 import { AddressTypeCard2 } from '@/ui/components/AddressTypeCard';
 import { FooterButtonContainer } from '@/ui/components/FooterButtonContainer';
-import { ContextData, UpdateContextDataParams } from '@/ui/pages/Account/createHDWalletComponents/types';
-import { RouteTypes, useNavigate } from '@/ui/pages/MainRoute';
-import { useCreateAccountCallback } from '@/ui/state/global/hooks';
+import { ContextData, TabType, UpdateContextDataParams } from '@/ui/pages/Account/createHDWalletComponents/types';
 import { satoshisToAmount, useWallet } from '@/ui/utils';
 import { LoadingOutlined } from '@ant-design/icons';
+import { usePrivacyModeEnabled } from '@/ui/hooks/useAppConfig';
+import { useCreateAccountCallback } from '@/ui/state/global/hooks';
+import { RouteTypes, useNavigate } from '@/ui/pages/routeTypes';
 
 export function Step2({
     contextData,
@@ -23,6 +25,9 @@ export function Step2({
 }) {
     const wallet = useWallet();
     const tools = useTools();
+    const navigate = useNavigate();
+    const createAccount = useCreateAccountCallback();
+    const privacyModeEnabled = usePrivacyModeEnabled();
 
     const hdPathOptions = useMemo(() => {
         const restoreWallet = RESTORE_WALLETS[contextData.restoreWalletType];
@@ -83,9 +88,8 @@ export function Step2({
     const [error, setError] = useState('');
     const [pathError, setPathError] = useState('');
     const [loading, setLoading] = useState(false);
+    const [creatingWallet, setCreatingWallet] = useState(false);
 
-    const createAccount = useCreateAccountCallback();
-    const navigate = useNavigate();
 
     const [pathText, setPathText] = useState(contextData.customHdPath);
 
@@ -225,28 +229,49 @@ export function Step2({
     }, [error, pathError]);
 
     const onNext = async () => {
-        try {
-            if (scannedGroups.length > 0) {
-                const option = allHdPathOptions[contextData.addressTypeIndex];
-                const hdPath = contextData.customHdPath || option.hdPath;
-                const selected = scannedGroups[contextData.addressTypeIndex];
+        // Store the selected hdPath in context for the next step
+        let hdPath: string;
+        if (scannedGroups.length > 0) {
+            const option = allHdPathOptions[contextData.addressTypeIndex];
+            hdPath = contextData.customHdPath || option.hdPath;
+            updateContextData({ hdPath });
+        } else {
+            const option = hdPathOptions[contextData.addressTypeIndex];
+            hdPath = contextData.customHdPath || option.hdPath;
+            updateContextData({ hdPath });
+        }
 
+        // For XVerse imports, always show the warning step first
+        if (contextData.isRestore && contextData.restoreWalletType === RestoreWalletType.XVERSE) {
+            updateContextData({ tabType: TabType.STEP5 });
+            return;
+        }
+
+        // If privacy mode is disabled, create wallet directly with standard mode
+        if (!privacyModeEnabled) {
+            setCreatingWallet(true);
+            try {
                 await createAccount(
                     contextData.mnemonics,
                     hdPath,
                     contextData.passphrase,
                     contextData.addressType,
-                    selected.address_arr.length
+                    1,
+                    false // rotationModeEnabled = false (standard mode)
                 );
-            } else {
-                const option = hdPathOptions[contextData.addressTypeIndex];
-                const hdPath = contextData.customHdPath || option.hdPath;
-                await createAccount(contextData.mnemonics, hdPath, contextData.passphrase, contextData.addressType, 1);
+                navigate(RouteTypes.MainScreen);
+            } catch (e) {
+                tools.toastError((e as Error).message);
+            } finally {
+                setCreatingWallet(false);
             }
-            navigate(RouteTypes.MainScreen);
-        } catch (e) {
-            tools.toastError((e as Error).message);
+            return;
         }
+
+        // Navigate to rotation mode selection step
+        // For create flow: STEP3, for import flow: STEP4
+        const nextStep = contextData.isRestore ? TabType.STEP4 : TabType.STEP3;
+        updateContextData({ tabType: nextStep });
     };
 
     const scanVaultAddress = async () => {
@@ -408,7 +433,12 @@ export function Step2({
             />
 
             <FooterButtonContainer>
-                <Button text="Continue" preset="primary" onClick={onNext} disabled={disabled} />
+                <Button
+                    text={creatingWallet ? 'Creating Wallet...' : 'Continue'}
+                    preset="primary"
+                    onClick={onNext}
+                    disabled={disabled || creatingWallet}
+                />
             </FooterButtonContainer>
 
             {loading && (

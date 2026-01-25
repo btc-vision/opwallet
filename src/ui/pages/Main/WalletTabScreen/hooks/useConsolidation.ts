@@ -1,15 +1,21 @@
 import { UTXO_CONFIG } from '@/shared/config';
+import { Action, Features, SendBitcoinParameters, SourceType } from '@/shared/interfaces/RawTxParameters';
 import { BitcoinBalance } from '@/shared/types';
 import { useCurrentAccount } from '@/ui/state/accounts/hooks';
 import { useResetUiTxCreateScreen } from '@/ui/state/ui/hooks';
 import { useWallet } from '@/ui/utils';
 import { useCallback } from 'react';
-import { RouteTypes, useNavigate } from '../../../MainRoute';
+import { RouteTypes, useNavigate } from '../../../routeTypes';
 
 /**
  * Type of account for UTXO consolidation
  */
 export type ConsolidationType = 'unspent' | 'csv75' | 'csv2' | 'csv1' | 'p2wda';
+
+/**
+ * Optimization status for the wallet
+ */
+export type OptimizationStatus = 'needs_split' | 'needs_consolidate' | 'optimized';
 
 /**
  * Result of UTXO limit check
@@ -32,8 +38,24 @@ export interface UTXOWarningStatus {
 }
 
 /**
- * Hook to manage UTXO consolidation logic
- * Handles checking limits and navigating to consolidation screen
+ * Result of wallet optimization status check
+ */
+export interface OptimizationStatusResult {
+    /** Current optimization status */
+    status: OptimizationStatus;
+    /** Combined UTXO count (csv1 unlocked + main wallet unspent) */
+    utxoCount: number;
+    /** Split threshold */
+    splitThreshold: number;
+    /** Consolidate threshold */
+    consolidateThreshold: number;
+    /** Available balance in satoshis for splitting */
+    availableBalance: bigint;
+}
+
+/**
+ * Hook to manage UTXO consolidation and optimization logic
+ * Handles checking limits and navigating to consolidation/split screens
  */
 export function useConsolidation() {
     const wallet = useWallet();
@@ -52,6 +74,8 @@ export function useConsolidation() {
             accountBalance.unspent_utxos_count >= warningThreshold ||
             accountBalance.csv75_locked_utxos_count >= warningThreshold ||
             accountBalance.csv75_unlocked_utxos_count >= warningThreshold ||
+            accountBalance.csv2_locked_utxos_count >= warningThreshold ||
+            accountBalance.csv2_unlocked_utxos_count >= warningThreshold ||
             accountBalance.csv1_locked_utxos_count >= warningThreshold ||
             accountBalance.csv1_unlocked_utxos_count >= warningThreshold ||
             accountBalance.p2wda_utxos_count >= warningThreshold ||
@@ -89,6 +113,44 @@ export function useConsolidation() {
     }, []);
 
     /**
+     * Check wallet optimization status
+     * Combines csv1 unlocked UTXOs + main wallet unspent UTXOs for the count
+     */
+    const checkOptimizationStatus = useCallback((accountBalance: BitcoinBalance): OptimizationStatusResult => {
+        const splitThreshold = UTXO_CONFIG.SPLIT_THRESHOLD;
+        const consolidateThreshold = UTXO_CONFIG.CONSOLIDATE_THRESHOLD;
+
+        // Combined UTXO count: csv1 unlocked + main wallet unspent
+        const utxoCount = accountBalance.csv1_unlocked_utxos_count + accountBalance.unspent_utxos_count;
+
+        // Available balance for splitting (csv1 unlocked + main wallet confirmed)
+        const csv1UnlockedAmount = BigInt(
+            Math.floor(parseFloat(accountBalance.csv1_unlocked_amount || '0') * 1e8)
+        );
+        const mainConfirmedAmount = BigInt(
+            Math.floor(parseFloat(accountBalance.btc_confirm_amount || '0') * 1e8)
+        );
+        const availableBalance = csv1UnlockedAmount + mainConfirmedAmount;
+
+        let status: OptimizationStatus;
+        if (utxoCount < splitThreshold) {
+            status = 'needs_split';
+        } else if (utxoCount > consolidateThreshold) {
+            status = 'needs_consolidate';
+        } else {
+            status = 'optimized';
+        }
+
+        return {
+            status,
+            utxoCount,
+            splitThreshold,
+            consolidateThreshold,
+            availableBalance
+        };
+    }, []);
+
+    /**
      * Determine which account type has the most UTXOs available for consolidation
      * Priority order (in case of equality): unspent > csv1 > csv2 > p2wda > csv75
      */
@@ -100,11 +162,11 @@ export function useConsolidation() {
             count: number;
         } => {
             const consolidationCounts = {
-                unspent: freshBalance.consolidation_unspent_count,
-                csv75: freshBalance.consolidation_csv75_unlocked_count,
-                csv2: freshBalance.consolidation_csv2_unlocked_count,
-                csv1: freshBalance.consolidation_csv1_unlocked_count,
-                p2wda: freshBalance.consolidation_p2wda_unspent_count
+                unspent: freshBalance.unspent_utxos_count,
+                csv75: freshBalance.csv75_unlocked_utxos_count,
+                csv2: freshBalance.csv2_unlocked_utxos_count,
+                csv1: freshBalance.csv1_unlocked_utxos_count,
+                p2wda: freshBalance.p2wda_utxos_count
             };
 
             // Find the type with the most UTXOs
@@ -167,9 +229,77 @@ export function useConsolidation() {
         });
     }, [wallet, currentAccount, resetUiTxCreateScreen, navigate, selectConsolidationType]);
 
+    /**
+     * Navigate directly to the confirmation screen with split parameters
+     */
+    const navigateToSplit = useCallback(
+        async (splitCount: number, feeRate: number) => {
+            resetUiTxCreateScreen();
+
+            // Fetch fresh balance to get accurate amount
+            const freshBalance = await wallet.getAddressBalance(currentAccount.address, currentAccount.pubkey);
+
+            // Use confirmed amount from main wallet for splitting
+            const splitAmount = freshBalance.btc_confirm_amount || '0';
+            const inputAmount = parseFloat(splitAmount);
+
+            if (inputAmount <= 0) {
+                throw new Error('No available balance to split');
+            }
+
+            // Build the transaction parameters
+            const txParams: SendBitcoinParameters = {
+                to: currentAccount.address, // Send to self
+                inputAmount: inputAmount,
+                feeRate: feeRate,
+                features: { [Features.rbf]: true, [Features.taproot]: true },
+                priorityFee: 0n,
+                header: 'Split UTXOs',
+                tokens: [],
+                action: Action.SendBitcoin,
+                note: `UTXO Split - Creating ${splitCount} UTXOs`,
+                from: currentAccount.address,
+                sourceType: SourceType.CURRENT,
+                optimize: true,
+                splitInputsInto: splitCount
+            };
+
+            // Navigate directly to confirmation screen
+            navigate(RouteTypes.TxOpnetConfirmScreen, { rawTxInfo: txParams });
+        },
+        [wallet, currentAccount, resetUiTxCreateScreen, navigate]
+    );
+
+    /**
+     * Validate if a split is possible with the given parameters
+     * @param totalAmount Total amount in satoshis to split
+     * @param splitCount Number of UTXOs to split into
+     * @returns Whether each output will be >= MIN_SPLIT_OUTPUT
+     */
+    const validateSplit = useCallback((totalAmount: bigint, splitCount: number): boolean => {
+        if (splitCount <= 0) return false;
+        const outputAmount = totalAmount / BigInt(splitCount);
+        return outputAmount >= BigInt(UTXO_CONFIG.MIN_SPLIT_OUTPUT);
+    }, []);
+
+    /**
+     * Calculate the maximum number of splits possible for a given amount
+     * @param totalAmount Total amount in satoshis
+     * @returns Maximum number of valid splits
+     */
+    const calculateMaxSplits = useCallback((totalAmount: bigint): number => {
+        const minOutput = BigInt(UTXO_CONFIG.MIN_SPLIT_OUTPUT);
+        if (totalAmount < minOutput) return 0;
+        return Number(totalAmount / minOutput);
+    }, []);
+
     return {
         checkUTXOLimit,
         checkUTXOWarning,
-        navigateToConsolidation
+        checkOptimizationStatus,
+        navigateToConsolidation,
+        navigateToSplit,
+        validateSplit,
+        calculateMaxSplits
     };
 }

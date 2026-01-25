@@ -1,6 +1,6 @@
 import React, { CSSProperties, useEffect } from 'react';
 
-import { routes } from '@/ui/pages/MainRoute';
+import { routePaths, RouteTypes } from '@/ui/pages/routeTypes';
 import { useBooted, useIsUnlocked } from '@/ui/state/global/hooks';
 
 import './index.less';
@@ -15,9 +15,10 @@ export function Layout(props: LayoutProps) {
     const isUnlocked = useIsUnlocked();
 
     useEffect(() => {
-        if (isBooted && !isUnlocked && !location.href.includes(routes.UnlockScreen.path)) {
+        const unlockPath = routePaths[RouteTypes.UnlockScreen];
+        if (isBooted && !isUnlocked && !location.href.includes(unlockPath)) {
             const basePath = location.href.split('#')[0];
-            location.href = `${basePath}#${routes.UnlockScreen.path}`;
+            location.href = `${basePath}#${unlockPath}`;
             return;
         }
     }, [isBooted, isUnlocked]);

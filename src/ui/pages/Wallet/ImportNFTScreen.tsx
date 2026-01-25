@@ -2,7 +2,7 @@ import Web3API from '@/shared/web3/Web3API';
 import { Column, Content, Header, Input, Layout, OPNetLoader } from '@/ui/components';
 import { AsyncImage } from '@/ui/components/AsyncImage';
 import { useTools } from '@/ui/components/ActionComponent';
-import { RouteTypes, useNavigate } from '@/ui/pages/MainRoute';
+import { RouteTypes, useNavigate } from '@/ui/pages/routeTypes';
 import { useCurrentAccount } from '@/ui/state/accounts/hooks';
 import { useChainType } from '@/ui/state/settings/hooks';
 import { PictureOutlined } from '@ant-design/icons';
@@ -40,7 +40,7 @@ interface RawNFTCollectionInfo extends NFTCollectionInfo {
 
 interface ParsedNFTCollectionInfo extends NFTCollectionInfo {
     totalSupply: bigint;
-    maximumSupply: bigint;
+    //maximumSupply: bigint;
 }
 
 export default function ImportNFTScreen() {
@@ -89,8 +89,7 @@ export default function ImportNFTScreen() {
                     icon: info.icon,
                     banner: info.banner,
                     description: info.description,
-                    totalSupply: info.totalSupply || 0n,
-                    maximumSupply: info.maximumSupply || 0n
+                    totalSupply: info.totalSupply || 0n
                 });
             }
         } catch (err) {
@@ -119,8 +118,8 @@ export default function ImportNFTScreen() {
 
             existingCollections.push({
                 ...collectionInfo,
-                totalSupply: collectionInfo.totalSupply,
-                maximumSupply: collectionInfo.maximumSupply
+                totalSupply: collectionInfo.totalSupply
+                //maximumSupply: collectionInfo.maximumSupply
             });
 
             localStorage.setItem(storageKey, JSON.stringify(existingCollections));
@@ -238,7 +237,7 @@ export default function ImportNFTScreen() {
                                         {collectionInfo.symbol}
                                     </div>
                                     <div style={{ fontSize: '12px', color: colors.textFaded, marginTop: '4px' }}>
-                                        Total Supply: {collectionInfo.maximumSupply.toString()}
+                                        Total Supply: {collectionInfo.totalSupply.toString()}
                                     </div>
                                     {collectionInfo.description && (
                                         <div style={{ fontSize: '11px', color: colors.textFaded, marginTop: '8px' }}>

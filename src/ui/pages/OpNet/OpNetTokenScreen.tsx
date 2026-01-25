@@ -23,7 +23,7 @@ import {
 } from '@ant-design/icons';
 import { Address, AddressMap } from '@btc-vision/transaction';
 
-import { RouteTypes, useNavigate } from '../MainRoute';
+import { RouteTypes, useNavigate } from '../routeTypes';
 
 interface LocationState {
     address: string;
@@ -208,7 +208,7 @@ export default function OpNetTokenScreen() {
     }, [account.pubkey, tokenSummary.address, tools, wallet]);
 
     const openExplorer = () => {
-        window.open(`https://opscan.org/address/${tokenSummary.address}`, '_blank', 'noopener noreferrer');
+        window.open(`https://opscan.org/accounts/${tokenSummary.address}`, '_blank', 'noopener noreferrer');
     };
 
     if (loading) {
@@ -324,11 +324,21 @@ export default function OpNetTokenScreen() {
                             marginBottom: 12,
                             textAlign: 'center'
                         }}>
-                        <div style={{ fontSize: 10, color: colors.textFaded, marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                        <div
+                            style={{
+                                fontSize: 10,
+                                color: colors.textFaded,
+                                marginBottom: 4,
+                                textTransform: 'uppercase',
+                                letterSpacing: 0.5
+                            }}>
                             Balance
                         </div>
                         <div style={{ fontSize: 20, fontWeight: 700, color: colors.text }}>
-                            {formattedBalance} <span style={{ fontSize: 14, fontWeight: 500, color: colors.textSecondary }}>{tokenSummary.symbol}</span>
+                            {formattedBalance}{' '}
+                            <span style={{ fontSize: 14, fontWeight: 500, color: colors.textSecondary }}>
+                                {tokenSummary.symbol}
+                            </span>
                         </div>
                     </div>
 
@@ -341,7 +351,14 @@ export default function OpNetTokenScreen() {
                             cursor: 'pointer'
                         }}
                         onClick={() => copy(tokenSummary.address)}>
-                        <div style={{ fontSize: 10, color: colors.textFaded, marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                        <div
+                            style={{
+                                fontSize: 10,
+                                color: colors.textFaded,
+                                marginBottom: 4,
+                                textTransform: 'uppercase',
+                                letterSpacing: 0.5
+                            }}>
                             Contract Address
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -379,51 +396,32 @@ export default function OpNetTokenScreen() {
                         Actions
                     </div>
                     <div style={{ display: 'flex', gap: 10 }}>
-                    <button
-                        style={{
-                            flex: 1,
-                            padding: '14px',
-                            background: enableTransfer ? colors.buttonPrimary : colors.buttonSecondary,
-                            border: 'none',
-                            borderRadius: 10,
-                            cursor: enableTransfer ? 'pointer' : 'not-allowed',
-                            opacity: enableTransfer ? 1 : 0.5,
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            gap: 8
-                        }}
-                        disabled={!enableTransfer}
-                        onClick={() => navigate(RouteTypes.SendOpNetScreen, tokenSummary)}>
-                        <SendOutlined style={{ fontSize: 15, color: '#fff' }} />
-                        <span style={{ fontSize: 14, fontWeight: 600, color: '#fff' }}>Send</span>
-                    </button>
-
-                    <button
-                        style={{
-                            flex: 1,
-                            padding: '14px',
-                            background: colors.buttonSecondary,
-                            border: `1px solid ${colors.border}`,
-                            borderRadius: 10,
-                            cursor: 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            gap: 8
-                        }}
-                        onClick={() => window.open('https://motoswap.org', '_blank', 'noopener noreferrer')}>
-                        <SwapOutlined style={{ fontSize: 15, color: colors.textSecondary }} />
-                        <span style={{ fontSize: 14, fontWeight: 600, color: colors.textSecondary }}>Swap</span>
-                    </button>
-
-                    {isOwner && (
                         <button
                             style={{
                                 flex: 1,
                                 padding: '14px',
-                                background: 'rgba(245, 158, 11, 0.1)',
-                                border: `1px solid rgba(245, 158, 11, 0.3)`,
+                                background: enableTransfer ? colors.buttonPrimary : colors.buttonSecondary,
+                                border: 'none',
+                                borderRadius: 10,
+                                cursor: enableTransfer ? 'pointer' : 'not-allowed',
+                                opacity: enableTransfer ? 1 : 0.5,
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: 8
+                            }}
+                            disabled={!enableTransfer}
+                            onClick={() => navigate(RouteTypes.SendOpNetScreen, tokenSummary)}>
+                            <SendOutlined style={{ fontSize: 15, color: '#fff' }} />
+                            <span style={{ fontSize: 14, fontWeight: 600, color: '#fff' }}>Send</span>
+                        </button>
+
+                        <button
+                            style={{
+                                flex: 1,
+                                padding: '14px',
+                                background: colors.buttonSecondary,
+                                border: `1px solid ${colors.border}`,
                                 borderRadius: 10,
                                 cursor: 'pointer',
                                 display: 'flex',
@@ -431,11 +429,30 @@ export default function OpNetTokenScreen() {
                                 justifyContent: 'center',
                                 gap: 8
                             }}
-                            onClick={() => navigate(RouteTypes.Mint, tokenSummary)}>
-                            <ToolOutlined style={{ fontSize: 15, color: colors.warning }} />
-                            <span style={{ fontSize: 14, fontWeight: 600, color: colors.warning }}>Mint</span>
+                            onClick={() => window.open('https://motoswap.org', '_blank', 'noopener noreferrer')}>
+                            <SwapOutlined style={{ fontSize: 15, color: colors.textSecondary }} />
+                            <span style={{ fontSize: 14, fontWeight: 600, color: colors.textSecondary }}>Swap</span>
                         </button>
-                    )}
+
+                        {isOwner && (
+                            <button
+                                style={{
+                                    flex: 1,
+                                    padding: '14px',
+                                    background: 'rgba(245, 158, 11, 0.1)',
+                                    border: `1px solid rgba(245, 158, 11, 0.3)`,
+                                    borderRadius: 10,
+                                    cursor: 'pointer',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    gap: 8
+                                }}
+                                onClick={() => navigate(RouteTypes.Mint, tokenSummary)}>
+                                <ToolOutlined style={{ fontSize: 15, color: colors.warning }} />
+                                <span style={{ fontSize: 14, fontWeight: 600, color: colors.warning }}>Mint</span>
+                            </button>
+                        )}
                     </div>
                 </div>
 
@@ -498,7 +515,13 @@ export default function OpNetTokenScreen() {
                         </div>
 
                         <div
-                            style={{ fontSize: 16, fontWeight: 600, color: colors.text, textAlign: 'center', marginBottom: 6 }}>
+                            style={{
+                                fontSize: 16,
+                                fontWeight: 600,
+                                color: colors.text,
+                                textAlign: 'center',
+                                marginBottom: 6
+                            }}>
                             Remove Token?
                         </div>
                         <div

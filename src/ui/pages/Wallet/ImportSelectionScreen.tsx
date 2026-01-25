@@ -1,5 +1,5 @@
 import { Column, Content, Header, Layout } from '@/ui/components';
-import { RouteTypes, useNavigate } from '@/ui/pages/MainRoute';
+import { RouteTypes, useNavigate } from '@/ui/pages/routeTypes';
 import { DollarOutlined, PictureOutlined } from '@ant-design/icons';
 import { useState } from 'react';
 
@@ -20,39 +20,23 @@ export enum ImportType {
     NFT = 'nft'
 }
 
-export default function ImportSelectionScreen() {
-    const navigate = useNavigate();
-    const [hoveredOption, setHoveredOption] = useState<ImportType | null>(null);
+interface ImportOptionProps {
+    type: ImportType;
+    icon: React.ReactNode;
+    title: string;
+    description: string;
+    isHovered: boolean;
+    onHover: (type: ImportType | null) => void;
+    onSelect: (type: ImportType) => void;
+}
 
-    const handleSelection = (type: ImportType) => {
-        if (type === ImportType.TOKEN) {
-            // Go back and trigger token import modal
-            navigate(RouteTypes.ImportTokenScreen);
-            /*setTimeout(() => {
-                const importBtn = document.querySelector('[data-import-token-trigger]');
-                if (importBtn) (importBtn as HTMLElement).click();
-            }, 100);*/
-        } else {
-            navigate(RouteTypes.ImportNFTScreen);
-        }
-    };
-
-    const ImportOption = ({
-        type,
-        icon,
-        title,
-        description
-    }: {
-        type: ImportType;
-        icon: React.ReactNode;
-        title: string;
-        description: string;
-    }) => (
+function ImportOption({ type, icon, title, description, isHovered, onHover, onSelect }: ImportOptionProps) {
+    return (
         <button
             style={{
                 width: '100%',
                 background: colors.containerBgFaded,
-                border: `1px solid ${hoveredOption === type ? colors.main : colors.containerBorder}`,
+                border: `1px solid ${isHovered ? colors.main : colors.containerBorder}`,
                 borderRadius: '14px',
                 padding: '20px',
                 cursor: 'pointer',
@@ -60,12 +44,12 @@ export default function ImportSelectionScreen() {
                 display: 'flex',
                 alignItems: 'center',
                 gap: '16px',
-                transform: hoveredOption === type ? 'translateY(-2px)' : 'translateY(0)',
-                boxShadow: hoveredOption === type ? `0 4px 12px ${colors.main}20` : 'none'
+                transform: isHovered ? 'translateY(-2px)' : 'translateY(0)',
+                boxShadow: isHovered ? `0 4px 12px ${colors.main}20` : 'none'
             }}
-            onClick={() => handleSelection(type)}
-            onMouseEnter={() => setHoveredOption(type)}
-            onMouseLeave={() => setHoveredOption(null)}>
+            onClick={() => onSelect(type)}
+            onMouseEnter={() => onHover(type)}
+            onMouseLeave={() => onHover(null)}>
             <div
                 style={{
                     width: '48px',
@@ -99,6 +83,19 @@ export default function ImportSelectionScreen() {
             </div>
         </button>
     );
+}
+
+export default function ImportSelectionScreen() {
+    const navigate = useNavigate();
+    const [hoveredOption, setHoveredOption] = useState<ImportType | null>(null);
+
+    const handleSelection = (type: ImportType) => {
+        if (type === ImportType.TOKEN) {
+            navigate(RouteTypes.ImportTokenScreen);
+        } else {
+            navigate(RouteTypes.ImportNFTScreen);
+        }
+    };
 
     return (
         <Layout>
@@ -130,6 +127,9 @@ export default function ImportSelectionScreen() {
                         icon={<DollarOutlined style={{ fontSize: '24px', color: colors.background }} />}
                         title="OP_20 Token"
                         description="Import fungible tokens like MOTO, PILL, etc."
+                        isHovered={hoveredOption === ImportType.TOKEN}
+                        onHover={setHoveredOption}
+                        onSelect={handleSelection}
                     />
 
                     <ImportOption
@@ -137,6 +137,9 @@ export default function ImportSelectionScreen() {
                         icon={<PictureOutlined style={{ fontSize: '24px', color: colors.background }} />}
                         title="OP_721 NFT Collection"
                         description="Import NFT collections to view and manage your NFTs"
+                        isHovered={hoveredOption === ImportType.NFT}
+                        onHover={setHoveredOption}
+                        onSelect={handleSelection}
                     />
                 </Column>
             </Content>

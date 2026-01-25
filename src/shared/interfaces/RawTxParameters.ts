@@ -44,7 +44,12 @@ export enum Action {
     Mint = 'mint',
     Swap = 'swap',
     SendNFT = 'SendNFT',
-    MintNFT = 'MintNFT'
+    MintNFT = 'MintNFT',
+    RegisterDomain = 'registerDomain',
+    PublishDomain = 'publishDomain',
+    InitiateDomainTransfer = 'initiateDomainTransfer',
+    AcceptDomainTransfer = 'acceptDomainTransfer',
+    CancelDomainTransfer = 'cancelDomainTransfer'
 }
 
 export interface BaseRawTxInfo<T extends Action> {
@@ -75,7 +80,10 @@ export enum SourceType {
     CSV75 = 'csv75',
     CSV2 = 'csv2',
     CSV1 = 'csv1',
-    P2WDA = 'p2wda'
+    P2WDA = 'p2wda',
+    COLD_STORAGE = 'cold_storage',
+    CONSOLIDATION = 'consolidation',
+    ROTATION_ALL = 'rotation_all' // Send from all rotation addresses (hot + cold)
 }
 
 export interface NFTMetadata {
@@ -109,6 +117,11 @@ export interface SendBitcoinParameters extends BaseRawTxInfo<Action.SendBitcoin>
     readonly from?: string;
     readonly sourceType?: SourceType;
     readonly optimize: boolean;
+    readonly splitInputsInto?: number; // Number of UTXOs to split into (opposite of consolidation)
+    readonly changeAddress?: string; // Custom change address (used for cold storage withdrawal)
+    // Consolidation-specific fields
+    readonly sourceAddresses?: string[]; // Multiple source addresses for consolidation
+    readonly sourcePubkeys?: string[]; // Pubkeys for each source address (for signer lookup)
 }
 
 export interface DeployContractParameters extends BaseRawTxInfo<Action.DeployContract> {
@@ -122,6 +135,30 @@ export interface MintParameters extends BaseRawTxInfo<Action.Mint> {
     readonly to: string;
 }
 
+export interface RegisterDomainParameters extends BaseRawTxInfo<Action.RegisterDomain> {
+    readonly domainName: string;
+    readonly price: bigint;
+    readonly treasuryAddress: string;
+}
+
+export interface PublishDomainParameters extends BaseRawTxInfo<Action.PublishDomain> {
+    readonly domainName: string;
+    readonly cid: string;
+}
+
+export interface InitiateDomainTransferParameters extends BaseRawTxInfo<Action.InitiateDomainTransfer> {
+    readonly domainName: string;
+    readonly newOwner: string; // The recipient's address (p2tr or other valid address)
+}
+
+export interface AcceptDomainTransferParameters extends BaseRawTxInfo<Action.AcceptDomainTransfer> {
+    readonly domainName: string;
+}
+
+export interface CancelDomainTransferParameters extends BaseRawTxInfo<Action.CancelDomainTransfer> {
+    readonly domainName: string;
+}
+
 export type RawTxInfo =
     | TransferParameters
     | AirdropParameters
@@ -129,4 +166,9 @@ export type RawTxInfo =
     | DeployContractParameters
     | MintParameters
     | SendNFTParameters
-    | MintNFTParameters;
+    | MintNFTParameters
+    | RegisterDomainParameters
+    | PublishDomainParameters
+    | InitiateDomainTransferParameters
+    | AcceptDomainTransferParameters
+    | CancelDomainTransferParameters;

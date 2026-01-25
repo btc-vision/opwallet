@@ -4,9 +4,14 @@ import { PreSignedTransactionData, SerializedPreSignedInteractionData } from '@/
 import { ConnectedSite } from '@/background/service/permission';
 import { AddressFlagType, ChainId, ChainType, CustomNetwork } from '@/shared/constant';
 import {
+    ConflictResolutionChoice,
+    DuplicationDetectionResult,
+    DuplicationState,
+    OnChainLinkageInfo
+} from '@/shared/types/Duplication';
+import {
     Account,
     AddressSummary,
-    AddressTypes,
     AppSummary,
     BitcoinBalance,
     DecodedPsbt,
@@ -21,9 +26,16 @@ import {
     WalletKeyring
 } from '@/shared/types';
 import { ApprovalData, ApprovalResponse } from '@/shared/types/Approval';
+import {
+    GatewayConfig,
+    GatewayHealth,
+    OpnetBrowserSettings,
+    OpnetCacheSettings,
+    OpnetCacheStats
+} from '@/shared/types/OpnetProtocol';
 import { TransactionHistoryFilter, TransactionHistoryItem } from '@/shared/types/TransactionHistory';
 import { Psbt } from '@btc-vision/bitcoin';
-import { InteractionParametersWithoutSigner } from '@btc-vision/transaction';
+import { AddressTypes, InteractionParametersWithoutSigner } from '@btc-vision/transaction';
 import { createContext, ReactNode, useContext } from 'react';
 
 export interface WalletController {
@@ -43,6 +55,8 @@ export interface WalletController {
     boot(password: string): Promise<void>;
 
     isBooted(): Promise<boolean>;
+
+    isKeyringRotationMode(): Promise<boolean>;
 
     getApproval(): Promise<ApprovalData | undefined>;
 
@@ -89,7 +103,7 @@ export interface WalletController {
 
     getInternalPrivateKey(account: { pubkey: string; type: string }): Promise<{ hex: string; wif: string }>;
 
-    getOPNetWallet(): Promise<[string, string, string]>;
+    getOPNetWallet(account?: { pubkey: string; type: string }): Promise<[string, string, string]>;
 
     getWalletAddress(): Promise<[string, string]>;
 
@@ -116,7 +130,8 @@ export interface WalletController {
         hdPath: string,
         passphrase: string,
         addressType: AddressTypes,
-        accountCount: number
+        accountCount: number,
+        rotationModeEnabled?: boolean
     ): Promise<{ address: string; type: string }[]>;
 
     createKeyringWithKeystone(
@@ -242,6 +257,10 @@ export interface WalletController {
 
     setShowSafeNotice(show: boolean): Promise<void>;
 
+    getMldsaBackupDismissed(pubkey: string): Promise<boolean>;
+
+    setMldsaBackupDismissed(pubkey: string, dismissed: boolean): Promise<void>;
+
     // address flag
     addAddressFlag(account: Account, flag: AddressFlagType): Promise<Account>;
 
@@ -284,6 +303,16 @@ export interface WalletController {
 
     setNotificationWindowMode(mode: 'auto' | 'popup' | 'fullscreen'): Promise<void>;
 
+    getUseSidePanel(): Promise<boolean>;
+
+    setUseSidePanel(useSidePanel: boolean): Promise<void>;
+
+    getExperienceMode(): Promise<'simple' | 'expert' | undefined>;
+
+    setExperienceMode(mode: 'simple' | 'expert' | undefined): Promise<void>;
+
+    isExperienceModeSet(): Promise<boolean>;
+
     setQuantumKey(quantumPrivateKey: string): Promise<void>;
 
     generateQuantumKey(): Promise<void>;
@@ -311,6 +340,92 @@ export interface WalletController {
     getPreSignedTxData(): Promise<PreSignedTransactionData | null>;
     setPreSignedTxData(data: PreSignedTransactionData): Promise<void>;
     clearPreSignedTxData(): Promise<void>;
+
+    // OPNet Browser / Protocol Methods
+    getOpnetBrowserSettings(): Promise<OpnetBrowserSettings>;
+    setOpnetBrowserSettings(settings: Partial<OpnetBrowserSettings>): Promise<void>;
+    getOpnetCacheSettings(): Promise<OpnetCacheSettings>;
+    updateOpnetCacheSettings(settings: Partial<OpnetCacheSettings>): Promise<void>;
+    getOpnetCacheStats(): Promise<OpnetCacheStats>;
+    clearOpnetCache(): Promise<void>;
+    getOpnetGateways(): Promise<{ config: GatewayConfig; health: GatewayHealth }[]>;
+    addOpnetGateway(url: string): Promise<void>;
+    removeOpnetGateway(url: string): Promise<void>;
+    refreshOpnetGateways(): Promise<void>;
+    resolveBtcDomain(domain: string): Promise<string | null>;
+    getBtcDomainInfo(domainName: string): Promise<{
+        exists: boolean;
+        owner: string | null;
+        price: bigint;
+        treasuryAddress: string;
+    }>;
+    uploadToIpfs(fileData: string, fileName: string): Promise<string>;
+    getTrackedDomains(): Promise<
+        Array<{
+            name: string;
+            registeredAt?: number;
+            lastVerified?: number;
+            isOwner: boolean;
+        }>
+    >;
+    addTrackedDomain(domainName: string): Promise<void>;
+    removeTrackedDomain(domainName: string): Promise<void>;
+    getPendingDomainTransfer(domainName: string): Promise<{ newOwner: string | null; initiatedAt: bigint }>;
+
+    // Duplication detection and resolution
+    checkForDuplicates(): Promise<DuplicationDetectionResult>;
+    getDuplicationState(): Promise<DuplicationState>;
+    shouldSkipDuplicateCheck(thresholdMs?: number): Promise<boolean>;
+    setDuplicateCheckDone(): Promise<void>;
+    createDuplicationBackup(password: string): Promise<boolean>;
+    exportDuplicationBackup(password: string): Promise<{ content: string; filename: string }>;
+    hasDuplicationBackup(): Promise<boolean>;
+    verifyAllOnChainLinkage(): Promise<Map<string, OnChainLinkageInfo>>;
+    resolveDuplicationConflict(choice: ConflictResolutionChoice): Promise<void>;
+    removeDuplicateWallet(keyringIndex: number): Promise<void>;
+    setDuplicationResolved(): Promise<void>;
+    resetDuplicationState(): Promise<void>;
+    importDuplicationBackup(
+        fileContent: string,
+        password: string
+    ): Promise<{ version: string; walletCount: number; createdAt: number }>;
+    restoreFromDuplicationBackup(password: string): Promise<{ restored: number; errors: string[] }>;
+
+    // [DEV/TEST] Conflict testing methods
+    createTestConflicts(): Promise<{ created: string[]; message: string }>;
+    clearTestConflicts(): Promise<void>;
+
+    // Address Rotation Methods
+    isRotationModeSupported(): Promise<boolean>;
+    isRotationModeEnabled(): Promise<boolean>;
+    enableRotationMode(): Promise<import('@/shared/types/AddressRotation').AddressRotationState>;
+    disableRotationMode(): Promise<void>;
+    getCurrentHotAddress(): Promise<import('@/shared/types/AddressRotation').RotatedAddress | null>;
+    rotateToNextAddress(): Promise<import('@/shared/types/AddressRotation').RotatedAddress>;
+    getRotationModeSummary(): Promise<import('@/shared/types/AddressRotation').RotationModeSummary | null>;
+    getRotationHistory(): Promise<import('@/shared/types/AddressRotation').RotatedAddress[]>;
+    getRotationModeBalance(): Promise<import('@/shared/types').BitcoinBalance>;
+    refreshRotationBalances(): Promise<void>;
+    prepareConsolidation(feeRate: number): Promise<import('@/shared/types/AddressRotation').ConsolidationParams>;
+    executeConsolidation(feeRate: number): Promise<{ success: boolean; txid?: string; error?: string }>;
+    updateRotationSettings(settings: { autoRotate?: boolean; rotationThreshold?: number }): Promise<void>;
+    getColdWalletAddress(): Promise<string>;
+    getNextUnusedRotationAddress(): Promise<string>;
+    // Get next unused rotation wallet with full data for signing
+    getNextUnusedRotationWallet(): Promise<{
+        address: string;
+        pubkey: string;
+        wif: string;
+        mldsaPrivateKey: string;
+        chainCode: string;
+        derivationIndex: number;
+    }>;
+    getColdStorageWallet(): Promise<[string, string, string, string]>;
+    registerColdStorageChangeAddress(): Promise<void>;
+    // Consolidation - returns wallet data for each source address: [wif, pubkey, mldsaPrivateKey, chainCode][]
+    getConsolidationWallets(sourcePubkeys: string[]): Promise<Array<[string, string, string, string]>>;
+    // Mark addresses as consolidated after successful broadcast
+    markAddressesConsolidated(addresses: string[], consolidatedAmount: string): Promise<void>;
 }
 
 const WalletContext = createContext<{

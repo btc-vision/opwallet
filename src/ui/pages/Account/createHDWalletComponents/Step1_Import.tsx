@@ -3,7 +3,8 @@ import * as bip39 from 'bip39';
 import { useEffect, useMemo, useState } from 'react';
 
 import { OW_HD_PATH } from '@/shared/constant';
-import { AddressTypes, RestoreWalletType } from '@/shared/types';
+import { RestoreWalletType } from '@/shared/types';
+import { AddressTypes } from '@btc-vision/transaction';
 import { isWalletError } from '@/shared/utils/errors';
 import { Button, Card, Column, Grid, Input, Row, Text } from '@/ui/components';
 import { useTools } from '@/ui/components/ActionComponent';
@@ -14,7 +15,7 @@ import {
     UpdateContextDataParams,
     WordsType
 } from '@/ui/pages/Account/createHDWalletComponents/types';
-import { RouteTypes, useNavigate } from '@/ui/pages/MainRoute';
+import { RouteTypes, useNavigate } from '@/ui/pages/routeTypes';
 import { useCreateAccountCallback } from '@/ui/state/global/hooks';
 
 const WORDS_12_ITEM = {
@@ -38,7 +39,6 @@ export function Step1_Import({
 }) {
     const [curInputIndex, setCurInputIndex] = useState(0);
     const [hover, setHover] = useState(999);
-    const [disabled, setDisabled] = useState(true);
 
     const wordsItems = useMemo(() => {
         if (contextData.restoreWalletType === RestoreWalletType.OW) {
@@ -75,23 +75,19 @@ export function Step1_Import({
         setKeys(newKeys);
     };
 
-    useEffect(() => {
-        setDisabled(true);
-
-        const hasEmpty =
-            keys.filter((key) => {
-                return key == '';
-            }).length > 0;
+    // Derive disabled state from keys instead of using useEffect
+    const disabled = useMemo(() => {
+        const hasEmpty = keys.some((key) => key === '');
         if (hasEmpty) {
-            return;
+            return true;
         }
 
         const mnemonic = keys.join(' ');
         if (!bip39.validateMnemonic(mnemonic)) {
-            return;
+            return true;
         }
 
-        setDisabled(false);
+        return false;
     }, [keys]);
 
     useEffect(() => {

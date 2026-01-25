@@ -1,12 +1,13 @@
+import { SafetyOutlined, WarningOutlined } from '@ant-design/icons';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { SafetyOutlined, WarningOutlined } from '@ant-design/icons';
 
 import { KEYRING_TYPE } from '@/shared/constant';
 import { Account } from '@/shared/types';
 import { isWalletError } from '@/shared/utils/errors';
 import { Button, Card, Column, Content, Header, Icon, Input, Layout, Row, Text } from '@/ui/components';
 import { useTools } from '@/ui/components/ActionComponent';
+import { WifExportWarningModal } from '@/ui/components/WifExportWarningModal';
 import { copyToClipboard, useLocationState, useWallet } from '@/ui/utils';
 
 type Status = '' | 'error' | 'warning' | undefined;
@@ -21,13 +22,17 @@ export default function ExportPrivateKeyScreen() {
     const { account } = useLocationState<LocationState>();
 
     const [password, setPassword] = useState('');
-    const [disabled, setDisabled] = useState(true);
+
+    // Derive disabled from password
+    const disabled = !password;
 
     const [privateKey, setPrivateKey] = useState({ hex: '', wif: '' });
     const [quantumPrivateKey, setQuantumPrivateKey] = useState('');
     const [isSimpleKeyring, setIsSimpleKeyring] = useState(false);
     const [status, setStatus] = useState<Status>('');
     const [error, setError] = useState('');
+    const [showWifWarning, setShowWifWarning] = useState(false);
+    const [pendingExport, setPendingExport] = useState(false);
     const wallet = useWallet();
     const tools = useTools();
 
@@ -45,6 +50,12 @@ export default function ExportPrivateKeyScreen() {
     }, [wallet]);
 
     const btnClick = async () => {
+        // For HD wallets (mnemonic-based), show warning before exporting WIF
+        if (!isSimpleKeyring && !pendingExport) {
+            setShowWifWarning(true);
+            return;
+        }
+
         try {
             const _res = await wallet.getPrivateKey(password, account);
             if (!_res) {
@@ -54,15 +65,14 @@ export default function ExportPrivateKeyScreen() {
             }
 
             setPrivateKey(_res);
+            setPendingExport(false); // Reset after successful export
 
-            // For Simple Keyrings, also try to get the quantum private key
-            if (isSimpleKeyring) {
-                try {
-                    const opnetWallet = await wallet.getOPNetWallet();
-                    setQuantumPrivateKey(opnetWallet[1]);
-                } catch (e) {
-                    console.error('Could not retrieve quantum private key:', e);
-                }
+            // Get the quantum private key for all wallet types
+            try {
+                const opnetWallet = await wallet.getOPNetWallet(account);
+                setQuantumPrivateKey(opnetWallet[1]);
+            } catch (e) {
+                console.error('Could not retrieve quantum private key:', e);
             }
         } catch (e) {
             setStatus('error');
@@ -81,11 +91,12 @@ export default function ExportPrivateKeyScreen() {
         }
     };
 
+    // Reset status and error when password changes
     useEffect(() => {
-        setDisabled(true);
         if (password) {
-            setDisabled(false);
+            // eslint-disable-next-line react-hooks/set-state-in-effect -- Clear errors on password change
             setStatus('');
+             
             setError('');
         }
     }, [password]);
@@ -94,6 +105,18 @@ export default function ExportPrivateKeyScreen() {
         void copyToClipboard(str);
         tools.toastSuccess('Copied');
     }
+
+    const handleWifExportConfirm = () => {
+        setShowWifWarning(false);
+        setPendingExport(true);
+        // Now call btnClick which will proceed past the warning check
+        void btnClick();
+    };
+
+    const handleWifExportCancel = () => {
+        setShowWifWarning(false);
+        setPendingExport(false);
+    };
 
     return (
         <Layout>
@@ -234,29 +257,43 @@ export default function ExportPrivateKeyScreen() {
                             </Column>
                         </Card>
 
-                        {/* Quantum Private Key Section - Only for Simple Keyrings */}
-                        {isSimpleKeyring && quantumPrivateKey && (
+                        {/* Quantum Private Key Section */}
+                        {quantumPrivateKey && (
                             <>
                                 <Card
                                     style={{
-                                        backgroundColor: 'rgba(239, 68, 68, 0.15)',
-                                        borderColor: 'rgba(239, 68, 68, 0.4)'
+                                        backgroundColor: isSimpleKeyring
+                                            ? 'rgba(239, 68, 68, 0.15)'
+                                            : 'rgba(243, 116, 19, 0.1)',
+                                        borderColor: isSimpleKeyring
+                                            ? 'rgba(239, 68, 68, 0.4)'
+                                            : 'rgba(243, 116, 19, 0.3)'
                                     }}>
                                     <Column gap="sm">
                                         <Row itemsCenter gap="sm">
-                                            <WarningOutlined style={{ fontSize: 18, color: '#ef4444' }} />
+                                            <WarningOutlined
+                                                style={{ fontSize: 18, color: isSimpleKeyring ? '#ef4444' : '#f37413' }}
+                                            />
                                             <Text
-                                                text="CRITICAL: Import BOTH Keys"
+                                                text={
+                                                    isSimpleKeyring
+                                                        ? 'CRITICAL: Import BOTH Keys'
+                                                        : 'Note: Import BOTH Keys for Private Key Import'
+                                                }
                                                 preset="bold"
                                                 size="sm"
-                                                color="red"
+                                                color={isSimpleKeyring ? 'red' : 'warning'}
                                             />
                                         </Row>
                                         <Text
-                                            text="When importing this wallet elsewhere, you MUST import BOTH the classical private key (WIF) AND the quantum private key below. If you only import the WIF key, you will NOT be able to use OPNet features!"
+                                            text={
+                                                isSimpleKeyring
+                                                    ? 'When importing this wallet elsewhere, you MUST import BOTH the classical private key (WIF) AND the quantum private key below. If you only import the WIF key, you will NOT be able to use OPNet features!'
+                                                    : 'If you import this account via private key (instead of seed phrase), you must import BOTH keys below for full OPNet functionality.'
+                                            }
                                             preset="sub"
                                             size="xs"
-                                            color="red"
+                                            color={isSimpleKeyring ? 'red' : undefined}
                                         />
                                     </Column>
                                 </Card>
@@ -273,7 +310,11 @@ export default function ExportPrivateKeyScreen() {
                                         </Row>
 
                                         <Text
-                                            text="This key is required for all OPNet transactions. Store it securely alongside your classical key."
+                                            text={
+                                                isSimpleKeyring
+                                                    ? 'This key is required for all OPNet transactions. Store it securely alongside your classical key.'
+                                                    : 'This key can also be derived from your seed phrase. Use this if you need to import just this account elsewhere.'
+                                            }
                                             preset="sub"
                                             size="xs"
                                             style={{ opacity: 0.7 }}
@@ -302,24 +343,16 @@ export default function ExportPrivateKeyScreen() {
                                 </Card>
                             </>
                         )}
-
-                        {/* Note for HD wallets */}
-                        {!isSimpleKeyring && (
-                            <Card style={{ backgroundColor: 'rgba(0, 0, 0, 0.2)' }}>
-                                <Row itemsCenter gap="sm">
-                                    <SafetyOutlined style={{ fontSize: 14, color: 'rgba(255,255,255,0.6)' }} />
-                                    <Text
-                                        text="Quantum keys are automatically derived from your seed phrase. No additional backup needed."
-                                        preset="sub"
-                                        size="xs"
-                                        style={{ opacity: 0.7 }}
-                                    />
-                                </Row>
-                            </Card>
-                        )}
                     </Column>
                 )}
             </Content>
+
+            {/* WIF Export Warning Modal for HD Wallets */}
+            <WifExportWarningModal
+                open={showWifWarning}
+                onConfirm={handleWifExportConfirm}
+                onCancel={handleWifExportCancel}
+            />
         </Layout>
     );
 }

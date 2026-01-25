@@ -9,13 +9,15 @@ import { DecodedCalldata } from '@/ui/pages/OpNet/decoded/DecodedCalldata';
 import { useBTCUnit } from '@/ui/state/settings/hooks';
 import { useApproval } from '@/ui/utils/hooks';
 import { useWallet } from '@/ui/utils/WalletContext';
-import { CodeOutlined, DownOutlined, EditOutlined, RightOutlined, ThunderboltOutlined, WarningOutlined } from '@ant-design/icons';
+import { ClockCircleOutlined, CodeOutlined, DownOutlined, EditOutlined, RightOutlined, ThunderboltOutlined, WarningOutlined } from '@ant-design/icons';
 import { Address } from '@btc-vision/transaction';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Decoded } from '../../OpNet/decoded/DecodedTypes';
 import { InteractionHeader } from './Headers/InteractionHeader';
 import { ChangeFeeRate } from './SignInteraction/ChangeFeeRate';
 import { ChangePriorityFee } from './SignInteraction/ChangePriorityFee';
+
+const APPROVAL_TIMEOUT_SECONDS = 120; // 2 minutes
 
 const colors = {
     main: '#f37413',
@@ -55,9 +57,49 @@ export default function SignInteraction(props: Props) {
     const [preSignedData, setPreSignedData] = useState<DeserializedPreSignedData | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [userAddresses, setUserAddresses] = useState<Set<string>>(new Set());
-    const [isTxFlowExpanded, setIsTxFlowExpanded] = useState(true);
+    const [isTxFlowExpanded, setIsTxFlowExpanded] = useState(false);
+    const [timeRemaining, setTimeRemaining] = useState(APPROVAL_TIMEOUT_SECONDS);
+    const [btcPrice, setBtcPrice] = useState<number>(0);
+    const hasTimedOut = useRef(false);
 
-    // Fetch all user addresses (main, csv75, csv2, csv1, p2wda, p2tr) for change detection
+    // Auto-timeout after 2 minutes
+    const handleTimeout = useCallback(async () => {
+        if (hasTimedOut.current) return;
+        hasTimedOut.current = true;
+        await rejectApproval('Request timed out. Please try again.');
+    }, [rejectApproval]);
+
+    useEffect(() => {
+        if (timeRemaining <= 0) {
+            handleTimeout();
+            return;
+        }
+
+        const timer = setInterval(() => {
+            setTimeRemaining((prev) => {
+                if (prev <= 1) {
+                    clearInterval(timer);
+                    return 0;
+                }
+                return prev - 1;
+            });
+        }, 1000);
+
+        return () => clearInterval(timer);
+    }, [timeRemaining, handleTimeout]);
+
+    // Fetch BTC price for USD estimation
+    useEffect(() => {
+        wallet.getBtcPrice().then((price) => {
+            if (price > 0) setBtcPrice(price);
+        }).catch(() => {
+            // Silently fail - USD will just not be shown
+        });
+    }, [wallet]);
+
+    // Fetch all user addresses for change detection
+    // Includes: main address, all CSV variants, p2wda, p2tr, p2wpkh (segwit), p2pkh (legacy), p2shp2wpkh (nested segwit)
+    // Also includes rotation addresses and cold wallet when rotation mode is enabled
     useEffect(() => {
         const fetchUserAddresses = async () => {
             try {
@@ -72,7 +114,7 @@ export default function SignInteraction(props: Props) {
                     const zeroHash = '0x0000000000000000000000000000000000000000000000000000000000000000';
                     const addressInst = Address.fromString(zeroHash, account.pubkey);
 
-                    // Add all derived addresses - CSV, p2wda, and p2tr
+                    // Add CSV addresses (return objects with .address property)
                     try {
                         addresses.add(addressInst.toCSV(75, Web3API.network).address.toLowerCase());
                     } catch { /* ignore if derivation fails */ }
@@ -82,14 +124,50 @@ export default function SignInteraction(props: Props) {
                     try {
                         addresses.add(addressInst.toCSV(1, Web3API.network).address.toLowerCase());
                     } catch { /* ignore if derivation fails */ }
+
+                    // Add p2wda address (returns object with .address property)
                     try {
                         addresses.add(addressInst.p2wda(Web3API.network).address.toLowerCase());
                     } catch { /* ignore if derivation fails */ }
+
+                    // Add p2tr (taproot) address - returns string directly
                     try {
-                        // Also add p2tr (taproot) address
                         addresses.add(addressInst.p2tr(Web3API.network).toLowerCase());
                     } catch { /* ignore if derivation fails */ }
+
+                    // Add p2wpkh (native segwit) address - returns string directly
+                    try {
+                        addresses.add(addressInst.p2wpkh(Web3API.network).toLowerCase());
+                    } catch { /* ignore if derivation fails */ }
+
+                    // Add p2pkh (legacy) address - returns string directly
+                    try {
+                        addresses.add(addressInst.p2pkh(Web3API.network).toLowerCase());
+                    } catch { /* ignore if derivation fails */ }
+
+                    // Add p2shp2wpkh (nested segwit) address - returns string directly
+                    try {
+                        addresses.add(addressInst.p2shp2wpkh(Web3API.network).toLowerCase());
+                    } catch { /* ignore if derivation fails */ }
                 }
+
+                // Add rotation addresses when rotation mode is enabled
+                try {
+                    const isRotationEnabled = await wallet.isRotationModeEnabled();
+                    if (isRotationEnabled) {
+                        // Add all rotation (hot) addresses
+                        const rotationHistory = await wallet.getRotationHistory();
+                        for (const rotatedAddr of rotationHistory) {
+                            addresses.add(rotatedAddr.address.toLowerCase());
+                        }
+
+                        // Add cold wallet address
+                        try {
+                            const coldAddress = await wallet.getColdWalletAddress();
+                            addresses.add(coldAddress.toLowerCase());
+                        } catch { /* ignore if cold wallet derivation fails */ }
+                    }
+                } catch { /* ignore if rotation check fails */ }
 
                 setUserAddresses(addresses);
             } catch (e) {
@@ -152,11 +230,10 @@ export default function SignInteraction(props: Props) {
     const priorityFee = interactionParameters.priorityFee;
 
     // Analyze outputs: identify which go to user (change) vs external (payments/fees)
-    // SECURITY: We must check against ALL user addresses (main, csv75, csv2, csv1, p2wda)
+    // We must check against ALL user addresses (main, all CSV variants, p2wda, p2tr, p2wpkh, p2pkh, p2shp2wpkh)
     // because inputs can come from any source and change can go to any user address
     const outputAnalysis = useMemo(() => {
         if (!preSignedData || userAddresses.size === 0) {
-            // Fallback estimate when pre-signed data not available
             const optionalOutputsTotal = (optionalOutputs ?? []).reduce(
                 (sum, output) => sum + BigInt(output.value),
                 0n
@@ -178,19 +255,34 @@ export default function SignInteraction(props: Props) {
         const fundingTx = preSignedData.fundingTx;
         const interactionTx = preSignedData.interactionTx;
 
-        // Total inputs = funding tx inputs (what user is spending)
-        // Values are now properly deserialized as BigInt
+        // Total inputs from funding tx (what user is actually spending from their wallet)
         const totalInputs = fundingTx ? fundingTx.totalInputValue : interactionTx.totalInputValue;
-
-        // Analyze all outputs (skip first which is epoch miner)
-        const outputs = interactionTx.outputs.slice(1).filter((o) => !o.isOpReturn);
 
         const changeOutputs: ParsedTxOutput[] = [];
         const externalOutputs: ParsedTxOutput[] = [];
         let totalChange = 0n;
         let totalExternal = 0n;
 
-        for (const output of outputs) {
+        // Analyze FUNDING TX outputs first
+        if (fundingTx) {
+            for (const output of fundingTx.outputs) {
+                if (output.isOpReturn) continue;
+                const outputAddr = output.address?.toLowerCase();
+                const isUserAddress = outputAddr ? userAddresses.has(outputAddr) : false;
+
+                if (isUserAddress) {
+                    changeOutputs.push(output);
+                    totalChange += output.value;
+                }
+                // Don't add funding tx non-user outputs to externalOutputs -
+                // those go to the interaction tx, not external parties
+            }
+        }
+
+        // Analyze interaction tx outputs (skip first which is epoch miner, skip OP_RETURN)
+        const interactionOutputs = interactionTx.outputs.slice(1).filter((o) => !o.isOpReturn);
+
+        for (const output of interactionOutputs) {
             const outputAddr = output.address?.toLowerCase();
             const isUserAddress = outputAddr ? userAddresses.has(outputAddr) : false;
 
@@ -203,7 +295,7 @@ export default function SignInteraction(props: Props) {
             }
         }
 
-        // Total cost = inputs - change going back to user
+        // Total cost = inputs - all change going back to user (from both txs)
         const totalCost = Number(totalInputs - totalChange);
 
         return {
@@ -262,7 +354,39 @@ export default function SignInteraction(props: Props) {
                 />
             )}
 
-            <Content style={{ padding: '12px', overflowY: 'auto' }}>
+            <Content style={{ padding: '12px', overflowY: 'auto', position: 'relative' }}>
+                {/* Timeout Counter - Top Right */}
+                <div
+                    style={{
+                        position: 'absolute',
+                        top: '8px',
+                        right: '12px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '4px',
+                        padding: '4px 8px',
+                        background: timeRemaining <= 30 ? '#ef444420' : colors.containerBgFaded,
+                        border: `1px solid ${timeRemaining <= 30 ? '#ef4444' : colors.containerBorder}`,
+                        borderRadius: '6px',
+                        zIndex: 10
+                    }}>
+                    <ClockCircleOutlined
+                        style={{
+                            fontSize: 12,
+                            color: timeRemaining <= 30 ? '#ef4444' : colors.textFaded
+                        }}
+                    />
+                    <span
+                        style={{
+                            fontSize: '12px',
+                            fontWeight: 600,
+                            fontFamily: 'monospace',
+                            color: timeRemaining <= 30 ? '#ef4444' : colors.text
+                        }}>
+                        {Math.floor(timeRemaining / 60)}:{(timeRemaining % 60).toString().padStart(2, '0')}
+                    </span>
+                </div>
+
                 {/* Contract Header */}
                 <InteractionHeader contract={to} contractInfo={contractInfo} />
 
@@ -484,6 +608,11 @@ export default function SignInteraction(props: Props) {
                         </div>
                         <div style={{ fontSize: '20px', fontWeight: 700, color: colors.main }}>
                             {(outputAnalysis.totalCost / 1e8).toFixed(8).replace(/\.?0+$/, '')} {unitBtc}
+                            {btcPrice > 0 && (
+                                <span style={{ fontSize: '12px', color: colors.textFaded, marginLeft: '8px', fontWeight: 500 }}>
+                                    (${((outputAnalysis.totalCost / 1e8) * btcPrice).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USD)
+                                </span>
+                            )}
                         </div>
                     </div>
 

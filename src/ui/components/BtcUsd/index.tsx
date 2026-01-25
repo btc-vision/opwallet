@@ -1,6 +1,6 @@
 import { Spin } from 'antd';
 import { BigNumber } from 'bignumber.js';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo } from 'react';
 
 import { ChainType } from '@/shared/constant';
 import { Text } from '@/ui/components';
@@ -23,21 +23,18 @@ export function BtcUsd(
     const chainType = useChainType();
     const chain = useChain();
 
-    const [shown, setShown] = useState(false);
-    const [showNoValue, setShowNoValue] = useState(false);
-
-    useEffect(() => {
-        setShown(chainType === ChainType.BITCOIN_MAINNET);
-        setShowNoValue(
+    const shown = useMemo(() => chainType === ChainType.BITCOIN_MAINNET, [chainType]);
+    const showNoValue = useMemo(
+        () =>
             chainType === ChainType.BITCOIN_TESTNET ||
-                chainType === ChainType.BITCOIN_SIGNET ||
-                chainType === ChainType.BITCOIN_REGTEST
-        );
-    }, [chainType]);
+            chainType === ChainType.BITCOIN_SIGNET ||
+            chainType === ChainType.BITCOIN_REGTEST,
+        [chainType]
+    );
 
     useEffect(() => {
         refreshBtcPrice();
-    }, []);
+    }, [refreshBtcPrice]);
 
     const usd = useMemo(() => {
         if (isNaN(sats)) {

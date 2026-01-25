@@ -2,7 +2,7 @@ import React from 'react';
 
 import { satoshisToAmount, shortAddress } from '@/ui/utils';
 
-import { TxInput, TxOutput } from './index';
+import { TxInput, TxOutput } from './types';
 
 export interface TooltipPosition {
     x: number;

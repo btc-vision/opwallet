@@ -1,13 +1,16 @@
 import { SignDeploymentApprovalParams } from '@/shared/types/Approval';
+import Web3API from '@/shared/web3/Web3API';
 import { Button, Card, Column, Content, Footer, Header, Layout, Row, Text } from '@/ui/components';
 import { AddressText } from '@/ui/components/AddressText';
 import WebsiteBar from '@/ui/components/WebsiteBar';
 import { useCurrentAccount } from '@/ui/state/accounts/hooks';
 import { useBTCUnit } from '@/ui/state/settings/hooks';
 import { colors } from '@/ui/theme/colors';
-import { satoshisToAmount } from '@/ui/utils';
+import { satoshisToAmount, useWallet } from '@/ui/utils';
 import { useApproval } from '@/ui/utils/hooks';
+import { Address } from '@btc-vision/transaction';
 import { PsbtOutputExtended } from '@btc-vision/bitcoin';
+import { useEffect, useState } from 'react';
 
 export interface Props {
     params: SignDeploymentApprovalParams;
@@ -38,6 +41,73 @@ export default function SignDeployment(props: Props) {
     } = props;
 
     const { resolveApproval, rejectApproval } = useApproval();
+    const wallet = useWallet();
+
+    // State to hold all user addresses for accurate output detection
+    const [userAddresses, setUserAddresses] = useState<Set<string>>(new Set());
+
+    // Fetch all user addresses for accurate change/refund detection
+    // Includes: main address, all CSV variants, p2wda, p2tr, p2wpkh, p2pkh, p2shp2wpkh
+    useEffect(() => {
+        const fetchUserAddresses = async () => {
+            try {
+                const account = await wallet.getCurrentAccount();
+                const addresses = new Set<string>();
+
+                // Add main address
+                addresses.add(account.address.toLowerCase());
+
+                // Derive all address types from pubkey
+                if (account.pubkey) {
+                    const zeroHash = '0x0000000000000000000000000000000000000000000000000000000000000000';
+                    const addressInst = Address.fromString(zeroHash, account.pubkey);
+
+                    // Add CSV addresses
+                    try {
+                        addresses.add(addressInst.toCSV(75, Web3API.network).address.toLowerCase());
+                    } catch { /* ignore if derivation fails */ }
+                    try {
+                        addresses.add(addressInst.toCSV(2, Web3API.network).address.toLowerCase());
+                    } catch { /* ignore if derivation fails */ }
+                    try {
+                        addresses.add(addressInst.toCSV(1, Web3API.network).address.toLowerCase());
+                    } catch { /* ignore if derivation fails */ }
+
+                    // Add p2wda address
+                    try {
+                        addresses.add(addressInst.p2wda(Web3API.network).address.toLowerCase());
+                    } catch { /* ignore if derivation fails */ }
+
+                    // Add p2tr (taproot) address
+                    try {
+                        addresses.add(addressInst.p2tr(Web3API.network).toLowerCase());
+                    } catch { /* ignore if derivation fails */ }
+
+                    // Add p2wpkh (native segwit) address
+                    try {
+                        addresses.add(addressInst.p2wpkh(Web3API.network).toLowerCase());
+                    } catch { /* ignore if derivation fails */ }
+
+                    // Add p2pkh (legacy) address
+                    try {
+                        addresses.add(addressInst.p2pkh(Web3API.network).toLowerCase());
+                    } catch { /* ignore if derivation fails */ }
+
+                    // Add p2shp2wpkh (nested segwit) address
+                    try {
+                        addresses.add(addressInst.p2shp2wpkh(Web3API.network).toLowerCase());
+                    } catch { /* ignore if derivation fails */ }
+                }
+
+                setUserAddresses(addresses);
+            } catch (e) {
+                console.error('Failed to fetch user addresses:', e);
+            }
+        };
+
+        void fetchUserAddresses();
+    }, [wallet]);
+
     const handleCancel = async () => {
         await rejectApproval('User rejected the request.');
     };
@@ -104,7 +174,10 @@ export default function SignDeployment(props: Props) {
                         <Card>
                             <Column full justifyCenter gap="lg">
                                 {optionalOutputs.map((v, index) => {
-                                    const isMyAddress = v.address == currentAccount.address;
+                                    // Check against ALL user addresses (main, CSV variants, p2wda, p2tr, etc.)
+                                    const isMyAddress = v.address
+                                        ? userAddresses.has(v.address.toLowerCase())
+                                        : false;
 
                                     return (
                                         <Column

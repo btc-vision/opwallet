@@ -18,7 +18,7 @@ import { AddressTypes, AddressVerificator } from '@btc-vision/transaction';
 import BigNumber from 'bignumber.js';
 import { BitcoinUtils } from 'opnet';
 import { useCallback, useEffect, useState } from 'react';
-import { RouteTypes, useNavigate } from '../MainRoute';
+import { RouteTypes, useNavigate } from '../routeTypes';
 
 BigNumber.config({ EXPONENTIAL_AT: 256 });
 

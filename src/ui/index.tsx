@@ -6,7 +6,8 @@ import { Provider } from 'react-redux';
 
 import { EVENTS } from '@/shared/constant';
 import eventBus from '@/shared/eventBus';
-import { Message } from '@/shared/utils';
+// Import PortMessage directly to avoid circular dependency issues with events shim
+import PortMessage from '@/shared/utils/message/portMessage';
 import { PriceProvider } from '@/ui/provider/PriceProvider';
 import AccountUpdater from '@/ui/state/accounts/updater';
 import browser from 'webextension-polyfill';
@@ -61,8 +62,6 @@ if (
         }
     });
 }
-
-const { PortMessage } = Message;
 
 const portMessageChannel = new PortMessage();
 

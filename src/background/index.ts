@@ -1,46 +1,64 @@
 import { EVENTS, MANIFEST_VERSION } from '@/shared/constant';
 import eventBus from '@/shared/eventBus';
 import { ProviderControllerRequest, RequestParams } from '@/shared/types/Request.js';
-import { Message } from '@/shared/utils';
-import { openExtensionInTab } from '@/ui/features/browser/tabs';
+import { openExtensionInTab } from '@/shared/utils/browser-tabs';
 import 'reflect-metadata';
 
+import * as ecc from 'tiny-secp256k1';
 import { SessionEvent, SessionEventPayload } from '@/shared/interfaces/SessionEvent';
 import { customNetworksManager } from '@/shared/utils/CustomNetworksManager';
-import { initEccLib } from '@btc-vision/bitcoin';
-import * as ecc from 'tiny-secp256k1';
 import { Runtime } from 'webextension-polyfill';
 import { providerController, walletController } from './controller';
+import addressRotationService from './service/addressRotation';
 import contactBookService from './service/contactBook';
 import keyringService, { StoredData } from './service/keyring';
-import openapiService from './service/openapi';
+import opnetApi from './service/opnetApi';
+import opnetProtocolService from './service/opnetProtocol';
 import permissionService from './service/permission';
 import preferenceService from './service/preference';
 import sessionService from './service/session';
-import { isOpenapiServiceMethod, isWalletControllerMethod } from './utils/controller';
+import { isWalletControllerMethod } from './utils/controller';
 import { storage } from './webapi';
 import browser, { browserRuntimeOnConnect, browserRuntimeOnInstalled } from './webapi/browser';
+import { initEccLib } from '@btc-vision/bitcoin';
+// Import PortMessage directly to avoid circular dependency issues with events shim
+import PortMessage from '@/shared/utils/message/portMessage';
 
-initEccLib(ecc);
+// Lazy-load tiny-secp256k1 to avoid top-level await in service worker
+let eccInitialized = false;
 
-const { PortMessage } = Message;
+function ensureEccLib(): void {
+    if (!eccInitialized) {
+        initEccLib(ecc); // ecc is already imported, just not initialized
+        eccInitialized = true;
+    }
+}
 
 let appStoreLoaded = false;
+let appStoreLoadPromise: Promise<void> | null = null;
 
 async function restoreAppState() {
+    ensureEccLib();
+
     const keyringState = await storage.get<StoredData>('keyringState');
     keyringService.loadStore(keyringState ?? { booted: '', vault: '' });
     keyringService.store.subscribe((value) => storage.set('keyringState', value));
 
     await preferenceService.init();
 
-    await openapiService.init();
+    await opnetApi.init();
 
     await permissionService.init();
 
     await contactBookService.init();
 
     await customNetworksManager.reload();
+
+    // Initialize OPNet protocol service
+    await opnetProtocolService.init();
+
+    // Initialize address rotation service
+    await addressRotationService.init();
 
     chrome.storage.onChanged.addListener(async (changes, areaName) => {
         if (areaName === 'local' && changes['custom_networks']) {
@@ -50,37 +68,33 @@ async function restoreAppState() {
         }
     });
 
+    // Apply side panel preference (default is false = popup mode)
+    if (chrome.sidePanel) {
+        const useSidePanel = preferenceService.getUseSidePanel();
+
+        chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: useSidePanel }).catch(console.error);
+    }
+
     appStoreLoaded = true;
 }
 
-void restoreAppState();
+appStoreLoadPromise = restoreAppState();
 
 // for page provider
 browserRuntimeOnConnect((port: Runtime.Port) => {
     if (port.name === 'popup' || port.name === 'notification' || port.name === 'tab') {
         const pm = new PortMessage(port);
-        pm.listen((data: RequestParams) => {
+        pm.listen(async (data: RequestParams) => {
+            // Wait for app store to be initialized before processing any requests
+            if (!appStoreLoaded && appStoreLoadPromise) {
+                await appStoreLoadPromise;
+            }
+
             if (data?.type) {
                 switch (data.type) {
                     case 'broadcast':
                         eventBus.emit(data.method, data.params);
                         return Promise.resolve();
-                    case 'openapi':
-                        // TODO (typing): Check this again as it's not the most ideal solution.
-                        // However, the problem is that we have a general type like RequestParams for
-                        // incoming request data as we have different handlers. So, we assumed that
-                        // the params are passed correctly for each method for now
-                        if (isOpenapiServiceMethod(data.method)) {
-                            const method = walletController.openapi[data.method];
-                            const params = Array.isArray(data.params) ? data.params : [];
-                            return Promise.resolve(
-                                (method as (...args: unknown[]) => unknown).apply(walletController.openapi, params)
-                            );
-                        } else {
-                            const errorMsg = `Method ${data.method} not found in openapi`;
-                            console.error(errorMsg);
-                            return Promise.reject(new Error(errorMsg));
-                        }
                     case 'controller':
                     default:
                         // TODO (typing): Check this again as it's not the most ideal solution.
@@ -130,9 +144,22 @@ browserRuntimeOnConnect((port: Runtime.Port) => {
     }
 
     const pm = new PortMessage(port);
+
+    // SECURITY: Get the verified origin from the browser, not from the page
+    // This prevents origin spoofing attacks where a malicious page claims to be a trusted site
+    let verifiedOrigin = '';
+    if (port.sender?.url) {
+        try {
+            verifiedOrigin = new URL(port.sender.url).origin;
+        } catch {
+            // Invalid URL, leave origin empty
+        }
+    }
+
     pm.listen(async (data) => {
-        if (!appStoreLoaded) {
-            // todo
+        // Wait for app store to be initialized before processing any requests
+        if (!appStoreLoaded && appStoreLoadPromise) {
+            await appStoreLoadPromise;
         }
 
         const sessionId = port.sender?.tab?.id;
@@ -141,6 +168,12 @@ browserRuntimeOnConnect((port: Runtime.Port) => {
         }
 
         const session = sessionService.getOrCreateSession(sessionId);
+
+        // SECURITY: Always set origin from browser-verified source, never trust page-provided origin
+        if (verifiedOrigin && session.origin !== verifiedOrigin) {
+            session.origin = verifiedOrigin;
+        }
+
         const req: ProviderControllerRequest = { data, session };
 
         // for background push to respective page
@@ -205,3 +238,91 @@ if (MANIFEST_VERSION === 'mv3') {
         }
     }, 5000);
 }
+
+// Intercept .btc domain navigation and redirect to resolver
+const setupBtcDomainInterception = () => {
+    // Listen for navigation to .btc domains
+    chrome.webNavigation.onBeforeNavigate.addListener(
+        async (details) => {
+            // Only intercept main frame navigations
+            if (details.frameId !== 0) return;
+
+            try {
+                const url = new URL(details.url);
+
+                // Check if it's a .btc domain
+                if (url.hostname.endsWith('.btc')) {
+                    // Build opnet URL
+                    const opnetUrl = `opnet://${url.hostname}${url.pathname}${url.search}${url.hash}`;
+                    const resolverUrl = chrome.runtime.getURL(
+                        `opnet-resolver.html?url=${encodeURIComponent(opnetUrl)}`
+                    );
+
+                    // Redirect to resolver
+                    await chrome.tabs.update(details.tabId, { url: resolverUrl });
+                }
+            } catch {
+                // Invalid URL, ignore
+            }
+        },
+        {
+            url: [{ hostSuffix: '.btc' }]
+        }
+    );
+};
+
+// Initialize .btc domain interception
+setupBtcDomainInterception();
+
+// OPNet Protocol message handler for resolver page
+const opnetMessageHandler = (
+    message: unknown,
+    _sender: Runtime.MessageSender,
+    sendResponse: (response: unknown) => void
+): boolean | undefined => {
+    const msg = message as { type?: string; params?: unknown[] } | undefined;
+
+    // Handle isOpnetBrowserEnabled check (used by search redirect banner)
+    if (msg?.type === 'isOpnetBrowserEnabled') {
+        const settings = opnetProtocolService.getBrowserSettings();
+        sendResponse({ enabled: settings.enabled });
+        return true;
+    }
+
+    if (msg && msg.type?.startsWith('opnetProtocol:')) {
+        const method = msg.type.replace('opnetProtocol:', '');
+        const params = msg.params || [];
+
+        const handleMessage = async () => {
+            try {
+                switch (method) {
+                    case 'parseUrl':
+                        return opnetProtocolService.parseUrl(params[0] as string);
+                    case 'resolveDomain':
+                        return await opnetProtocolService.resolveDomain(params[0] as string);
+                    case 'fetchContent':
+                        return await opnetProtocolService.fetchContent(
+                            params[0] as string,
+                            params[1] as number,
+                            params[2] as string
+                        );
+                    default:
+                        throw new Error(`Unknown OPNet protocol method: ${method}`);
+                }
+            } catch (error) {
+                console.error('OPNet protocol error:', error);
+                throw error;
+            }
+        };
+
+        handleMessage()
+            .then((result) => sendResponse(result))
+            .catch((error: unknown) => sendResponse({ error: (error as Error).message }));
+
+        return true; // Keep the message channel open for async response
+    }
+    return undefined;
+};
+browser.runtime.onMessage.addListener(
+    opnetMessageHandler as Parameters<typeof browser.runtime.onMessage.addListener>[0]
+);

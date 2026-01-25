@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 
 import { getUiType, useApproval, useWallet } from '@/ui/utils';
 
-import { RouteTypes, useNavigate } from '../MainRoute';
+import { RouteTypes, useNavigate } from '../routeTypes';
 
 export default function BoostScreen() {
     const navigate = useNavigate();
@@ -55,6 +55,11 @@ export default function BoostScreen() {
         } else if (approval) {
             navigate(RouteTypes.ApprovalScreen);
         } else {
+            const experienceModeSet = await wallet.isExperienceModeSet();
+            if (!experienceModeSet) {
+                navigate(RouteTypes.UserExperienceModeScreen, { isSetup: true });
+                return;
+            }
             navigate(RouteTypes.MainScreen);
             return;
         }

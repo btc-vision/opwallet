@@ -1,9 +1,12 @@
-import { AddressType, RestoreWalletType } from '@/shared/types';
+import { RestoreWalletType } from '@/shared/types';
+import { AddressTypes } from '@btc-vision/transaction';
 
 export enum TabType {
     STEP1 = 'STEP1',
     STEP2 = 'STEP2',
-    STEP3 = 'STEP3'
+    STEP3 = 'STEP3',
+    STEP4 = 'STEP4', // Rotation mode selection (import flow)
+    STEP5 = 'STEP5' // XVerse warning step
 }
 
 export enum WordsType {
@@ -15,7 +18,7 @@ export interface ContextData {
     mnemonics: string;
     hdPath: string;
     passphrase: string;
-    addressType: AddressType;
+    addressType: AddressTypes;
     step1Completed: boolean;
     tabType: TabType;
     restoreWalletType: RestoreWalletType;
@@ -24,13 +27,14 @@ export interface ContextData {
     customHdPath: string;
     addressTypeIndex: number;
     wordsType: WordsType;
+    rotationModeEnabled: boolean; // Privacy mode - permanent choice
 }
 
 export interface UpdateContextDataParams {
     mnemonics?: string;
     hdPath?: string;
     passphrase?: string;
-    addressType?: AddressType;
+    addressType?: AddressTypes;
     step1Completed?: boolean;
     tabType?: TabType;
     restoreWalletType?: RestoreWalletType;
@@ -38,4 +42,5 @@ export interface UpdateContextDataParams {
     customHdPath?: string;
     addressTypeIndex?: number;
     wordsType?: WordsType;
+    rotationModeEnabled?: boolean;
 }
