@@ -144,7 +144,7 @@ class DuplicationBackupService {
                     addressType: addressType.toString(),
                     mnemonic: serialized.mnemonic,
                     passphrase: serialized.passphrase,
-                    hdPath: undefined, // HD path is derived from addressType in wallet-sdk 2.0
+                    hdPath: serialized.hdPath, // Custom HD path for different wallet types (XVerse, Unisat, etc.)
                     activeIndexes: serialized.activeIndexes ? [...serialized.activeIndexes] : undefined,
                     accounts: accountsData
                 });
@@ -284,7 +284,7 @@ class DuplicationBackupService {
                     // Restore HD wallet
                     await keyringService.createKeyringWithMnemonics(
                         keyringData.mnemonic,
-                        '', // hdPath (ignored in wallet-sdk 2.0)
+                        keyringData.hdPath || '', // Custom HD path for different wallet types
                         keyringData.passphrase || '',
                         addressType,
                         keyringData.activeIndexes?.length || 1

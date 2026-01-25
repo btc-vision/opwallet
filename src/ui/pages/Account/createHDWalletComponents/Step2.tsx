@@ -2,6 +2,7 @@ import bitcore from 'bitcore-lib';
 import { useEffect, useMemo, useState } from 'react';
 
 import { ADDRESS_TYPES, RESTORE_WALLETS } from '@/shared/constant';
+import { RestoreWalletType } from '@/shared/types';
 import { AddressTypes } from '@btc-vision/transaction';
 import Web3API from '@/shared/web3/Web3API';
 import { Button, Column, Icon, Input, Row, Text } from '@/ui/components';
@@ -238,6 +239,12 @@ export function Step2({
             const option = hdPathOptions[contextData.addressTypeIndex];
             hdPath = contextData.customHdPath || option.hdPath;
             updateContextData({ hdPath });
+        }
+
+        // For XVerse imports, always show the warning step first
+        if (contextData.isRestore && contextData.restoreWalletType === RestoreWalletType.XVERSE) {
+            updateContextData({ tabType: TabType.STEP5 });
+            return;
         }
 
         // If privacy mode is disabled, create wallet directly with standard mode

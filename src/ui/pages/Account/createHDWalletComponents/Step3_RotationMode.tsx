@@ -47,20 +47,19 @@ const privacyOptions: PrivacyOption[] = [
             'Single receiving address',
             'Simple and familiar',
             'Good for basic usage'
-        ]
+        ],
+        recommended: true
     },
     {
         id: 'privacy',
         icon: <SafetyCertificateOutlined style={{ fontSize: 32, color: colors.privacyBlue }} />,
         title: 'Privacy Wallet',
-        subtitle: 'Maximum privacy protection',
+        subtitle: 'ALPHA - Experimental feature',
         features: [
             'Auto-rotating addresses',
             'Hidden cold storage',
-            'One-time use addresses',
-            'Like using cash'
-        ],
-        recommended: true
+            'One-time use addresses'
+        ]
     }
 ];
 
@@ -75,7 +74,7 @@ export function Step3_RotationMode({
     const navigate = useNavigate();
     const createAccount = useCreateAccountCallback();
 
-    const [selectedOption, setSelectedOption] = useState<'standard' | 'privacy'>('privacy');
+    const [selectedOption, setSelectedOption] = useState<'standard' | 'privacy'>('standard');
     const [loading, setLoading] = useState(false);
 
     const handleContinue = async () => {
@@ -236,7 +235,7 @@ function OptionCard({
                         position: 'absolute',
                         top: -10,
                         right: 12,
-                        background: colors.privacyBlue,
+                        background: option.id === 'privacy' ? colors.privacyBlue : colors.main,
                         color: 'white',
                         fontSize: 10,
                         fontWeight: 600,

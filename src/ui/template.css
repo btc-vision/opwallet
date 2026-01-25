@@ -446,3 +446,10 @@
 @utility animate-slide-down {
     animation: slidedown 1s cubic-bezier(0.19, 1, 0.22, 1) forwards infinite;
 }
+
+/* Remove default browser focus outline from inputs */
+input:focus,
+input:focus-visible {
+    outline: none !important;
+    box-shadow: none !important;
+}

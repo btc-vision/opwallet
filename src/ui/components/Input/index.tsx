@@ -62,8 +62,8 @@ const $baseContainerStyle: CSSProperties = {
 const $baseInputStyle: CSSProperties = Object.assign({}, $textPresets.regular, {
     display: 'flex',
     flex: 1,
-    borderWidth: 0,
-    outlineWidth: 0,
+    border: 'none',
+    outline: 'none',
     backgroundColor: 'rgba(0,0,0,0)',
     alignSelf: 'stretch'
 });

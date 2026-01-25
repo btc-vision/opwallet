@@ -9,6 +9,7 @@ import { Step1_Create } from '@/ui/pages/Account/createHDWalletComponents/Step1_
 import { Step1_Import } from '@/ui/pages/Account/createHDWalletComponents/Step1_Import';
 import { Step2 } from '@/ui/pages/Account/createHDWalletComponents/Step2';
 import { Step3_RotationMode } from '@/ui/pages/Account/createHDWalletComponents/Step3_RotationMode';
+import { Step3_XVerseWarning } from '@/ui/pages/Account/createHDWalletComponents/Step3_XVerseWarning';
 import {
     ContextData,
     TabType,
@@ -83,6 +84,39 @@ export default function CreateHDWalletScreen() {
                         children: <Step1_Import contextData={contextData} updateContextData={updateContextData} />
                     }
                 ];
+            } else if (contextData.restoreWalletType === RestoreWalletType.XVERSE) {
+                // XVerse import: Type → Import → Address → Warning → (Privacy Mode if enabled)
+                const steps = [
+                    {
+                        key: TabType.STEP1,
+                        label: 'Type',
+                        children: <Step0 contextData={contextData} updateContextData={updateContextData} />
+                    },
+                    {
+                        key: TabType.STEP2,
+                        label: 'Import',
+                        children: <Step1_Import contextData={contextData} updateContextData={updateContextData} />
+                    },
+                    {
+                        key: TabType.STEP3,
+                        label: 'Address',
+                        children: <Step2 contextData={contextData} updateContextData={updateContextData} />
+                    },
+                    {
+                        key: TabType.STEP5,
+                        label: 'Notice',
+                        children: <Step3_XVerseWarning contextData={contextData} updateContextData={updateContextData} />
+                    }
+                ];
+                // Only add privacy step if feature is enabled
+                if (privacyModeEnabled) {
+                    steps.push({
+                        key: TabType.STEP4,
+                        label: 'Privacy',
+                        children: <Step3_RotationMode contextData={contextData} updateContextData={updateContextData} />
+                    });
+                }
+                return steps;
             } else {
                 // Standard import: Type → Import → Address → (Privacy Mode if enabled)
                 const steps = [
