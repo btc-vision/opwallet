@@ -8,15 +8,14 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-
-    permissions:
-      contents: write
-      id-token: write
-      attestations: write
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chrome, firefox, brave, edge, opera]
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
@@ -46,19 +45,31 @@ jobs:
         if: steps.install-cache.outputs.cache-hit != 'true'
         run: npm ci --force
 
-      - name: Get Version Name
-        id: get-version
-        run: |
-          VERSION="${{ github.ref_name }}"
-          echo "version=${VERSION#v}" >> $GITHUB_OUTPUT
+      - name: Build ${{ matrix.browser }} extension
+        run: npm run build:${{ matrix.browser }}
 
-      - name: Build Extensions
-        run: |
-          npm run build:firefox
-          npm run build:brave
-          npm run build:edge
-          npm run build:opera
-          npm run build:chrome
+      - name: Upload ${{ matrix.browser }} artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: opwallet-${{ matrix.browser }}
+          path: dist/opwallet-${{ matrix.browser }}-*.zip
+          retention-days: 1
+
+  attest:
+    runs-on: ubuntu-latest
+    needs: build
+
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
+
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
 
       - name: Generate SHA256 checksums
         run: |
@@ -73,16 +84,23 @@ jobs:
             dist/*.zip
             dist/SHA256SUMS.txt
 
+      - name: Upload attested artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist-with-checksums
+          path: dist/
+          retention-days: 1
+
   release:
     runs-on: ubuntu-latest
-    needs: build
+    needs: attest
 
     permissions:
       contents: write
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
@@ -92,44 +110,11 @@ jobs:
           VERSION="${{ github.ref_name }}"
           echo "version=${VERSION#v}" >> $GITHUB_OUTPUT
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - name: Download attested artifacts
+        uses: actions/download-artifact@v4
         with:
-          node-version: 'latest'
-          registry-url: 'https://registry.npmjs.org'
-
-      - name: Setup .npmrc for FontAwesome
-        run: |
-          echo "@fortawesome:registry=https://npm.fontawesome.com/" >> .npmrc
-          echo "//npm.fontawesome.com/:_authToken=${{ secrets.FONTAWESOME_TOKEN }}" >> .npmrc
-          echo "always-auth=true" >> .npmrc
-
-      - name: Move .npmrc to home
-        run: cp .npmrc ~/.npmrc
-
-      - name: Cache node modules
-        uses: actions/cache@v4
-        id: install-cache
-        with:
-          path: node_modules/
-          key: ${{ runner.os }}-install-${{ hashFiles('**/package-lock.json') }}
-
-      - name: Install dependencies
-        if: steps.install-cache.outputs.cache-hit != 'true'
-        run: npm ci --force
-
-      - name: Build Extensions
-        run: |
-          npm run build:firefox
-          npm run build:brave
-          npm run build:edge
-          npm run build:opera
-          npm run build:chrome
-
-      - name: Generate SHA256 checksums
-        run: |
-          cd dist
-          sha256sum *.zip > SHA256SUMS.txt
+          name: dist-with-checksums
+          path: dist
 
       - name: Generate changelog
         id: changelog
