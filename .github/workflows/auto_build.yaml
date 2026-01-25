@@ -1,125 +1,281 @@
-name: Create Release
+name: CI for OPWallet
 
 on:
-    push:
-        tags:
-            - v*
+  push:
+    tags:
+      - 'v*'
 
 jobs:
-    build:
-        runs-on: ubuntu-latest
-        steps:
-            - name: Checkout the code
-              uses: actions/checkout@v4
+  build:
+    runs-on: ubuntu-latest
 
-            - uses: actions/setup-node@v4
-              with:
-                  node-version: latest
-                  registry-url: https://registry.npmjs.org
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
 
-            - name: Setup .npmrc for FontAwesome
-              run: |
-                  echo "@fortawesome:registry=https://npm.fontawesome.com/" >> .npmrc
-                  echo "//npm.fontawesome.com/:_authToken=${{ secrets.FONTAWESOME_TOKEN }}" >> .npmrc
-                  echo "always-auth=true" >> .npmrc
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-            - name: Move .npmrc to home
-              run: cp .npmrc ~/.npmrc
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 'latest'
+          registry-url: 'https://registry.npmjs.org'
 
-            - name: Debug npm registry requests
-              run: npm config set loglevel http
+      - name: Setup .npmrc for FontAwesome
+        run: |
+          echo "@fortawesome:registry=https://npm.fontawesome.com/" >> .npmrc
+          echo "//npm.fontawesome.com/:_authToken=${{ secrets.FONTAWESOME_TOKEN }}" >> .npmrc
+          echo "always-auth=true" >> .npmrc
 
-            - uses: actions/cache@v3
-              id: install-cache
-              with:
-                  path: node_modules/
-                  key: ${{ runner.os }}-install-${{ hashFiles('**/package-lock.json') }}
+      - name: Move .npmrc to home
+        run: cp .npmrc ~/.npmrc
 
-            - if: steps.install-cache.outputs.cache-hit != 'true'
-              run: npm ci --force
-              shell: bash
+      - name: Cache node modules
+        uses: actions/cache@v4
+        id: install-cache
+        with:
+          path: node_modules/
+          key: ${{ runner.os }}-install-${{ hashFiles('**/package-lock.json') }}
 
-            - uses: gradle/gradle-build-action@v2
+      - name: Install dependencies
+        if: steps.install-cache.outputs.cache-hit != 'true'
+        run: npm ci --force
 
-            - name: Get Version Name
-              uses: actions/github-script@v3
-              id: get-version
-              with:
-                  script: |
-                      const str=process.env.GITHUB_REF;
-                      return str.substring(str.indexOf("v") + 1);
-                  result-encoding: string
+      - name: Get Version Name
+        id: get-version
+        run: |
+          VERSION="${{ github.ref_name }}"
+          echo "version=${VERSION#v}" >> $GITHUB_OUTPUT
 
-            - name: Build Extension
-              run: |
-                  npm run build:firefox
-                  npm run build:brave
-                  npm run build:edge
-                  npm run build:opera
-                  npm run build:chrome
+      - name: Build Extensions
+        run: |
+          npm run build:firefox
+          npm run build:brave
+          npm run build:edge
+          npm run build:opera
+          npm run build:chrome
 
-            - name: Create Release
-              id: create_release
-              uses: actions/create-release@v1
-              env:
-                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-              with:
-                  tag_name: ${{ github.ref }}
-                  release_name: ${{ github.ref }}
-                  draft: false
-                  prerelease: false
+      - name: Generate SHA256 checksums
+        run: |
+          cd dist
+          sha256sum *.zip > SHA256SUMS.txt
+          cat SHA256SUMS.txt
 
-            - name: Upload Firefox Asset
-              id: upload_firefox
-              uses: actions/upload-release-asset@v1
-              env:
-                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-              with:
-                  upload_url: ${{ steps.create_release.outputs.upload_url }}
-                  asset_path: dist/opwallet-firefox-v${{steps.get-version.outputs.result}}.zip
-                  asset_name: opwallet-firefox-v${{steps.get-version.outputs.result}}.zip
-                  asset_content_type: application/zip
+      - name: Attest build provenance
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: |
+            dist/*.zip
+            dist/SHA256SUMS.txt
 
-            - name: Upload Brave Asset
-              id: upload_brave
-              uses: actions/upload-release-asset@v1
-              env:
-                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-              with:
-                  upload_url: ${{ steps.create_release.outputs.upload_url }}
-                  asset_path: dist/opwallet-brave-v${{steps.get-version.outputs.result}}.zip
-                  asset_name: opwallet-brave-v${{steps.get-version.outputs.result}}.zip
-                  asset_content_type: application/zip
+  release:
+    runs-on: ubuntu-latest
+    needs: build
 
-            - name: Upload Edge Asset
-              id: upload_edge
-              uses: actions/upload-release-asset@v1
-              env:
-                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-              with:
-                  upload_url: ${{ steps.create_release.outputs.upload_url }}
-                  asset_path: dist/opwallet-edge-v${{steps.get-version.outputs.result}}.zip
-                  asset_name: opwallet-edge-v${{steps.get-version.outputs.result}}.zip
-                  asset_content_type: application/zip
+    permissions:
+      contents: write
 
-            - name: Upload Opera Asset
-              id: upload_opera
-              uses: actions/upload-release-asset@v1
-              env:
-                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-              with:
-                  upload_url: ${{ steps.create_release.outputs.upload_url }}
-                  asset_path: dist/opwallet-opera-v${{steps.get-version.outputs.result}}.zip
-                  asset_name: opwallet-opera-v${{steps.get-version.outputs.result}}.zip
-                  asset_content_type: application/zip
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-            - name: Upload Chrome Asset
-              id: upload_chrome
-              uses: actions/upload-release-asset@v1
-              env:
-                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-              with:
-                  upload_url: ${{ steps.create_release.outputs.upload_url }}
-                  asset_path: dist/opwallet-chrome-v${{steps.get-version.outputs.result}}.zip
-                  asset_name: opwallet-chrome-v${{steps.get-version.outputs.result}}.zip
-                  asset_content_type: application/zip
+      - name: Get Version Name
+        id: get-version
+        run: |
+          VERSION="${{ github.ref_name }}"
+          echo "version=${VERSION#v}" >> $GITHUB_OUTPUT
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 'latest'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Setup .npmrc for FontAwesome
+        run: |
+          echo "@fortawesome:registry=https://npm.fontawesome.com/" >> .npmrc
+          echo "//npm.fontawesome.com/:_authToken=${{ secrets.FONTAWESOME_TOKEN }}" >> .npmrc
+          echo "always-auth=true" >> .npmrc
+
+      - name: Move .npmrc to home
+        run: cp .npmrc ~/.npmrc
+
+      - name: Cache node modules
+        uses: actions/cache@v4
+        id: install-cache
+        with:
+          path: node_modules/
+          key: ${{ runner.os }}-install-${{ hashFiles('**/package-lock.json') }}
+
+      - name: Install dependencies
+        if: steps.install-cache.outputs.cache-hit != 'true'
+        run: npm ci --force
+
+      - name: Build Extensions
+        run: |
+          npm run build:firefox
+          npm run build:brave
+          npm run build:edge
+          npm run build:opera
+          npm run build:chrome
+
+      - name: Generate SHA256 checksums
+        run: |
+          cd dist
+          sha256sum *.zip > SHA256SUMS.txt
+
+      - name: Generate changelog
+        id: changelog
+        uses: mikepenz/release-changelog-builder-action@v5
+        with:
+          configurationJson: |
+            {
+              "categories": [
+                {
+                  "title": "### Breaking Changes",
+                  "labels": ["breaking", "breaking-change", "BREAKING-CHANGE"]
+                },
+                {
+                  "title": "### Features",
+                  "labels": ["feature", "feat", "enhancement"]
+                },
+                {
+                  "title": "### Bug Fixes",
+                  "labels": ["bug", "fix", "bugfix"]
+                },
+                {
+                  "title": "### Performance",
+                  "labels": ["performance", "perf"]
+                },
+                {
+                  "title": "### Security",
+                  "labels": ["security"]
+                },
+                {
+                  "title": "### Documentation",
+                  "labels": ["documentation", "docs"]
+                },
+                {
+                  "title": "### Dependencies",
+                  "labels": ["dependencies", "deps"]
+                },
+                {
+                  "title": "### Other Changes",
+                  "labels": []
+                }
+              ],
+              "sort": {
+                "order": "ASC",
+                "on_property": "mergedAt"
+              },
+              "template": "#{{CHANGELOG}}",
+              "pr_template": "- #{{TITLE}} ([##{{NUMBER}}](#{{URL}})) by @#{{AUTHOR}}",
+              "empty_template": "- No changes",
+              "max_tags_to_fetch": 200,
+              "max_pull_requests": 200,
+              "max_back_track_time_days": 365,
+              "tag_resolver": {
+                "method": "semver"
+              }
+            }
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Update CHANGELOG.md
+        env:
+          CHANGELOG_CONTENT: ${{ steps.changelog.outputs.changelog }}
+        run: |
+          TAG="${{ github.ref_name }}"
+          DATE=$(date +%Y-%m-%d)
+          NEW_HEADER="## [$TAG] - $DATE"
+
+          # Write changelog content to temp file using env var (avoids shell escaping)
+          printf '%s\n' "$CHANGELOG_CONTENT" > /tmp/new_entry.md
+
+          if [ -f CHANGELOG.md ]; then
+            # Create new file with entry inserted after header line
+            {
+              head -n 1 CHANGELOG.md
+              echo ""
+              echo "$NEW_HEADER"
+              echo ""
+              cat /tmp/new_entry.md
+              echo ""
+              tail -n +2 CHANGELOG.md
+            } > /tmp/CHANGELOG_NEW.md
+            mv /tmp/CHANGELOG_NEW.md CHANGELOG.md
+          else
+            # Create new CHANGELOG.md
+            {
+              echo "# Changelog"
+              echo ""
+              echo "All notable changes to this project will be documented in this file."
+              echo ""
+              echo "This changelog is automatically generated from merged pull requests."
+              echo ""
+              echo "$NEW_HEADER"
+              echo ""
+              cat /tmp/new_entry.md
+            } > CHANGELOG.md
+          fi
+
+          rm -f /tmp/new_entry.md
+
+      - name: Commit changelog
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add CHANGELOG.md
+          git diff --staged --quiet || git commit -m "docs: update CHANGELOG.md for ${{ github.ref_name }}"
+          git push origin HEAD:master || echo "No changes to push or push failed"
+
+      - name: Determine if prerelease
+        id: prerelease
+        run: |
+          VERSION="${{ github.ref_name }}"
+          if [[ "$VERSION" == *"-alpha"* ]] || [[ "$VERSION" == *"-beta"* ]] || [[ "$VERSION" == *"-rc"* ]]; then
+            echo "is_prerelease=true" >> $GITHUB_OUTPUT
+          else
+            echo "is_prerelease=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: OPWallet ${{ github.ref_name }}
+          body: |
+            ## OPWallet ${{ github.ref_name }}
+
+            ${{ steps.changelog.outputs.changelog }}
+
+            ## Installation
+
+            Download the extension for your browser:
+            - **Chrome**: `opwallet-chrome-v${{ steps.get-version.outputs.version }}.zip`
+            - **Firefox**: `opwallet-firefox-v${{ steps.get-version.outputs.version }}.zip`
+            - **Brave**: `opwallet-brave-v${{ steps.get-version.outputs.version }}.zip`
+            - **Edge**: `opwallet-edge-v${{ steps.get-version.outputs.version }}.zip`
+            - **Opera**: `opwallet-opera-v${{ steps.get-version.outputs.version }}.zip`
+
+            ### Verify Downloads
+
+            Verify the integrity of your download using the SHA256 checksums in `SHA256SUMS.txt`.
+          prerelease: ${{ steps.prerelease.outputs.is_prerelease == 'true' }}
+          generate_release_notes: false
+          files: |
+            dist/opwallet-chrome-v${{ steps.get-version.outputs.version }}.zip
+            dist/opwallet-firefox-v${{ steps.get-version.outputs.version }}.zip
+            dist/opwallet-brave-v${{ steps.get-version.outputs.version }}.zip
+            dist/opwallet-edge-v${{ steps.get-version.outputs.version }}.zip
+            dist/opwallet-opera-v${{ steps.get-version.outputs.version }}.zip
+            dist/SHA256SUMS.txt
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

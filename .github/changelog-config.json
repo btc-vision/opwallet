@@ -1,0 +1,49 @@
+{
+  "categories": [
+    {
+      "title": "### Breaking Changes",
+      "labels": ["breaking", "breaking-change", "BREAKING-CHANGE"]
+    },
+    {
+      "title": "### Features",
+      "labels": ["feature", "feat", "enhancement"]
+    },
+    {
+      "title": "### Bug Fixes",
+      "labels": ["bug", "fix", "bugfix"]
+    },
+    {
+      "title": "### Performance",
+      "labels": ["performance", "perf"]
+    },
+    {
+      "title": "### Security",
+      "labels": ["security"]
+    },
+    {
+      "title": "### Documentation",
+      "labels": ["documentation", "docs"]
+    },
+    {
+      "title": "### Dependencies",
+      "labels": ["dependencies", "deps"]
+    },
+    {
+      "title": "### Other Changes",
+      "labels": []
+    }
+  ],
+  "sort": {
+    "order": "ASC",
+    "on_property": "mergedAt"
+  },
+  "template": "#{{CHANGELOG}}",
+  "pr_template": "- #{{TITLE}} ([##{{NUMBER}}](#{{URL}})) by @#{{AUTHOR}}",
+  "empty_template": "- No changes",
+  "max_tags_to_fetch": 200,
+  "max_pull_requests": 200,
+  "max_back_track_time_days": 365,
+  "tag_resolver": {
+    "method": "semver"
+  }
+}

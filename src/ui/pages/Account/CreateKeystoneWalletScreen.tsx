@@ -1,7 +1,9 @@
-import bitcore from 'bitcore-lib';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { ADDRESS_TYPES } from '@/shared/constant';
+
+/** BIP32 path validation regex from @btc-vision/bip32 */
+const BIP32_PATH_REGEX = /^(m\/)?(\d+'?\/)*\d+'?$/;
 import { Button, Card, Column, Content, Footer, Header, Input, Layout, Row, Text } from '@/ui/components';
 import { useTools } from '@/ui/components/ActionComponent';
 import { AddressTypeCard2 } from '@/ui/components/AddressTypeCard';
@@ -342,7 +344,7 @@ function Step3({
         setPathError('');
         setPathText(text);
         if (text !== '') {
-            const isValid = new bitcore.HDPrivateKey(text);
+            const isValid = BIP32_PATH_REGEX.test(text);
             if (!isValid) {
                 setPathError('Invalid derivation path.');
                 return;

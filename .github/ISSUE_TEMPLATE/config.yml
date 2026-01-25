@@ -1,0 +1,11 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Security Vulnerability
+    url: https://github.com/btc-vision/opwallet/security/advisories/new
+    about: Report a security vulnerability privately. DO NOT create a public issue for security vulnerabilities.
+  - name: OPNet Website
+    url: https://opnet.org/
+    about: Visit the OPNet homepage for documentation and support.
+  - name: OPNet Documentation
+    url: https://docs.opnet.org/
+    about: Read the OPNet documentation for guides and API reference.

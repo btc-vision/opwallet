@@ -1,7 +1,9 @@
-import bitcore from 'bitcore-lib';
 import { useEffect, useMemo, useState } from 'react';
 
 import { ADDRESS_TYPES, RESTORE_WALLETS } from '@/shared/constant';
+
+/** BIP32 path validation regex from @btc-vision/bip32 */
+const BIP32_PATH_REGEX = /^(m\/)?(\d+'?\/)*\d+'?$/;
 import { RestoreWalletType } from '@/shared/types';
 import { AddressTypes } from '@btc-vision/transaction';
 import Web3API from '@/shared/web3/Web3API';
@@ -204,12 +206,7 @@ export function Step2({
         setPathError('');
         setPathText(text);
         if (text !== '') {
-            // TODO (typing): HDPrivateKey class is extended later and isValidPath does not exist in the type definitions
-            // given in https://github.com/DefinitelyTyped/DefinitelyTyped/blob/master/types/bitcore-lib/index.d.ts. That's why
-            // eslint is disabled here.
-            // @ts-expect-error DOES EXIST JUST BAD TYPING.
-            // eslint-disable-next-line @typescript-eslint/no-unsafe-call
-            const isValid = bitcore.HDPrivateKey.isValidPath(text) as boolean;
+            const isValid = BIP32_PATH_REGEX.test(text);
             if (!isValid) {
                 setPathError('Invalid derivation path.');
                 return;
