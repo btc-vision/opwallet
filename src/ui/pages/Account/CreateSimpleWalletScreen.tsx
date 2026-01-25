@@ -755,7 +755,12 @@ function Step3({
                     return;
                 }
 
-                quantumKey = Wallet.generate(bitcoinNetwork, MLDSASecurityLevel.LEVEL2).quantumPrivateKeyHex;
+                try {
+                    quantumKey = Wallet.generate(bitcoinNetwork, MLDSASecurityLevel.LEVEL2).quantumPrivateKeyHex;
+                } catch (genErr) {
+                    console.error('Wallet.generate() error:', genErr);
+                    throw genErr;
+                }
             } else if (quantumKeyInput) {
                 // Validate format
                 if (!validateQuantumKey(quantumKeyInput)) {
