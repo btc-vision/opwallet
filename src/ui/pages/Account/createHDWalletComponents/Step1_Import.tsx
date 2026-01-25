@@ -54,7 +54,10 @@ export function Step1_Import({
 
     const handleEventPaste = (event: React.ClipboardEvent<HTMLInputElement>, index: number) => {
         const copyText = event.clipboardData?.getData('text/plain');
-        const textArr = copyText.trim().split(' ');
+        // Split by spaces, commas, newlines, or tabs and filter empty strings
+        const textArr = copyText
+            .trim()
+            .filter((word) => word.length > 0);
         const newKeys = [...keys];
         if (textArr) {
             for (let i = 0; i < keys.length - index; i++) {
