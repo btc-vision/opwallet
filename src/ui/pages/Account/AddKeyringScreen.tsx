@@ -1,13 +1,13 @@
 import { Column, Content, Header, Layout } from '@/ui/components';
-import { useExtensionIsInTab } from '@/ui/features/browser/tabs';
+// import { useExtensionIsInTab } from '@/ui/features/browser/tabs'; // Hidden: Hardware wallet support
 import {
     CheckCircleOutlined,
     FileTextOutlined,
-    ImportOutlined,
+    // ImportOutlined, // Hidden: Ethereum private key import
     KeyOutlined,
     PlusCircleOutlined,
     SafetyOutlined,
-    UsbOutlined,
+    // UsbOutlined, // Hidden: Hardware wallet support
     WarningOutlined
 } from '@ant-design/icons';
 
@@ -32,7 +32,7 @@ const colors = {
 
 export default function AddKeyringScreen() {
     const navigate = useNavigate();
-    const isInTab = useExtensionIsInTab();
+    // const isInTab = useExtensionIsInTab(); // Hidden: Hardware wallet support
 
     return (
         <Layout>
@@ -258,7 +258,9 @@ export default function AddKeyringScreen() {
                             </div>
                         </button>
 
-                        {/* Ethereum Private Key */}
+                    </div>
+
+                    {/* Ethereum Private Key - Hidden: OPWallet doesn't support ETH private keys
                         <button
                             onClick={() => navigate(RouteTypes.CreateSimpleWalletScreen)}
                             style={{
@@ -316,78 +318,79 @@ export default function AddKeyringScreen() {
                                 </div>
                             </div>
                         </button>
-                    </div>
+                    */}
 
-                    {/* Hardware Wallets */}
-                    <div style={{ marginBottom: '12px' }}>
-                        <div
-                            style={{
-                                fontSize: '11px',
-                                fontWeight: 600,
-                                color: colors.textFaded,
-                                textTransform: 'uppercase',
-                                letterSpacing: '0.5px',
-                                marginBottom: '8px',
-                                paddingLeft: '4px',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '6px'
-                            }}>
-                            <UsbOutlined style={{ fontSize: 12 }} />
-                            Hardware
-                        </div>
+                    {/* Hardware Wallets - Hidden: OPWallet doesn't support hardware wallets ATM
+                        <div style={{ marginBottom: '12px' }}>
+                            <div
+                                style={{
+                                    fontSize: '11px',
+                                    fontWeight: 600,
+                                    color: colors.textFaded,
+                                    textTransform: 'uppercase',
+                                    letterSpacing: '0.5px',
+                                    marginBottom: '8px',
+                                    paddingLeft: '4px',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '6px'
+                                }}>
+                                <UsbOutlined style={{ fontSize: 12 }} />
+                                Hardware
+                            </div>
 
-                        <button
-                            onClick={() => {
-                                if (isInTab) {
-                                    navigate(RouteTypes.CreateKeystoneWalletScreen);
-                                } else {
-                                    window.open('#/account/create-keystone-wallet');
-                                }
-                            }}
-                            style={{
-                                width: '100%',
-                                padding: '14px',
-                                background: colors.containerBgFaded,
-                                border: `1px solid ${colors.containerBorder}`,
-                                borderRadius: '12px',
-                                cursor: 'pointer',
-                                textAlign: 'left',
-                                transition: 'all 0.2s'
-                            }}
-                            onMouseEnter={(e) => {
-                                e.currentTarget.style.borderColor = colors.main;
-                                e.currentTarget.style.transform = 'translateY(-1px)';
-                            }}
-                            onMouseLeave={(e) => {
-                                e.currentTarget.style.borderColor = colors.containerBorder;
-                                e.currentTarget.style.transform = 'translateY(0)';
-                            }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                <div
-                                    style={{
-                                        width: '40px',
-                                        height: '40px',
-                                        borderRadius: '10px',
-                                        background: `${colors.main}15`,
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        flexShrink: 0
-                                    }}>
-                                    <UsbOutlined style={{ fontSize: 20, color: colors.main }} />
-                                </div>
-                                <div style={{ flex: 1 }}>
-                                    <span style={{ fontSize: '14px', fontWeight: 600, color: colors.text }}>
-                                        Keystone
-                                    </span>
-                                    <div style={{ fontSize: '12px', color: colors.textFaded }}>
-                                        Connect via QR code
+                            <button
+                                onClick={() => {
+                                    if (isInTab) {
+                                        navigate(RouteTypes.CreateKeystoneWalletScreen);
+                                    } else {
+                                        window.open('#/account/create-keystone-wallet');
+                                    }
+                                }}
+                                style={{
+                                    width: '100%',
+                                    padding: '14px',
+                                    background: colors.containerBgFaded,
+                                    border: `1px solid ${colors.containerBorder}`,
+                                    borderRadius: '12px',
+                                    cursor: 'pointer',
+                                    textAlign: 'left',
+                                    transition: 'all 0.2s'
+                                }}
+                                onMouseEnter={(e) => {
+                                    e.currentTarget.style.borderColor = colors.main;
+                                    e.currentTarget.style.transform = 'translateY(-1px)';
+                                }}
+                                onMouseLeave={(e) => {
+                                    e.currentTarget.style.borderColor = colors.containerBorder;
+                                    e.currentTarget.style.transform = 'translateY(0)';
+                                }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                    <div
+                                        style={{
+                                            width: '40px',
+                                            height: '40px',
+                                            borderRadius: '10px',
+                                            background: `${colors.main}15`,
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            flexShrink: 0
+                                        }}>
+                                        <UsbOutlined style={{ fontSize: 20, color: colors.main }} />
+                                    </div>
+                                    <div style={{ flex: 1 }}>
+                                        <span style={{ fontSize: '14px', fontWeight: 600, color: colors.text }}>
+                                            Keystone
+                                        </span>
+                                        <div style={{ fontSize: '12px', color: colors.textFaded }}>
+                                            Connect via QR code
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
-                        </button>
-                    </div>
+                            </button>
+                        </div>
+                    */}
 
                     {/* Info Note */}
                     <div

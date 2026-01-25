@@ -951,7 +951,8 @@ export class WalletController {
             activeIndexes,
             passphrase,
             addressType,
-            network
+            network,
+            hdPath
         });
 
         const displayedKeyring = keyringService.displayForKeyring(originKeyring, addressType, -1);

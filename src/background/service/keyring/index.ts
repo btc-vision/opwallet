@@ -24,6 +24,7 @@ export interface HdKeyringSerializedOptions {
     securityLevel?: MLDSASecurityLevel;
     activeIndexes?: number[];
     addressType?: AddressTypes;
+    hdPath?: string; // HD derivation path for different wallet types (XVerse, Unisat, Leather, OKX, etc.)
     rotationModeEnabled?: boolean; // Privacy mode - permanent choice at wallet creation
 }
 
@@ -266,11 +267,12 @@ class KeyringService extends EventEmitter {
 
     /**
      * Create HD keyring from mnemonic with quantum support
+     * @param hdPath - HD derivation path for different wallet types (XVerse, Unisat, Leather, OKX, etc.)
      * @param rotationModeEnabled - If true, enables address rotation (privacy) mode for this keyring
      */
     createKeyringWithMnemonics = async (
         seed: string,
-        _hdPath: string,
+        hdPath: string,
         passphrase: string,
         addressType: AddressTypes,
         accountCount: number,
@@ -297,7 +299,8 @@ class KeyringService extends EventEmitter {
             network,
             securityLevel: MLDSASecurityLevel.LEVEL2,
             activeIndexes,
-            addressType
+            addressType,
+            hdPath
         });
 
         const tempAccounts = tempKeyring.getAccounts();
@@ -346,6 +349,7 @@ class KeyringService extends EventEmitter {
                 network,
                 securityLevel: MLDSASecurityLevel.LEVEL2,
                 addressType,
+                hdPath,
                 rotationModeEnabled
             } as HdKeyringSerializedOptions,
             addressType
@@ -460,7 +464,8 @@ class KeyringService extends EventEmitter {
                 network: hdOpts.network,
                 securityLevel: hdOpts.securityLevel || MLDSASecurityLevel.LEVEL2,
                 activeIndexes: hdOpts.activeIndexes,
-                addressType: hdOpts.addressType || addressType
+                addressType: hdOpts.addressType || addressType,
+                hdPath: hdOpts.hdPath
             });
         } else if (type === KEYRING_TYPE.SimpleKeyring) {
             const simpleOpts = opts as SimpleKeyringSerializedOptions;
@@ -488,7 +493,8 @@ class KeyringService extends EventEmitter {
                 network: hdOpts.network,
                 securityLevel: hdOpts.securityLevel || MLDSASecurityLevel.LEVEL2,
                 activeIndexes: hdOpts.activeIndexes,
-                addressType: hdOpts.addressType
+                addressType: hdOpts.addressType,
+                hdPath: hdOpts.hdPath
             });
         } else if (type === KEYRING_TYPE.SimpleKeyring && opts) {
             const simpleOpts = opts as SimpleKeyringSerializedOptions;
@@ -883,7 +889,8 @@ ${hasSalvageableData ? `║  Salvageable Fields: ${salvageableFields.join(', ').
                 network,
                 securityLevel: hdData.securityLevel || MLDSASecurityLevel.LEVEL2,
                 activeIndexes: hdData.activeIndexes || legacyData.activeIndexes,
-                addressType: hdData.addressType || addressType
+                addressType: hdData.addressType || addressType,
+                hdPath: hdData.hdPath || legacyData.hdPath
             });
 
             const accounts = keyring.getAccounts();

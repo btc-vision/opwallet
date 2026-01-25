@@ -5,7 +5,8 @@ export enum TabType {
     STEP1 = 'STEP1',
     STEP2 = 'STEP2',
     STEP3 = 'STEP3',
-    STEP4 = 'STEP4' // Rotation mode selection
+    STEP4 = 'STEP4', // Rotation mode selection (import flow)
+    STEP5 = 'STEP5' // XVerse warning step
 }
 
 export enum WordsType {
