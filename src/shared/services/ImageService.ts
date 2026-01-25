@@ -101,9 +101,13 @@ class ImageService {
             }
 
             // For IPFS URLs that are already on opnet, return modified format
-            if (url.startsWith('https://ipfs.opnet.org')) {
-                const imgSplit = url.split('https://ipfs.opnet.org/');
-                return `https://images.opnet.org/500/500/${imgSplit[1]}`;
+            if (isHostMatch(url, 'ipfs.opnet.org')) {
+                try {
+                    const parsedUrl = new URL(url);
+                    return `https://images.opnet.org/500/500${parsedUrl.pathname}`;
+                } catch {
+                    return url;
+                }
             }
 
             // For other URLs, encode them with base58
