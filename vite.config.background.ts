@@ -7,7 +7,8 @@ import wasm from 'vite-plugin-wasm';
 import tsconfigPaths from 'vite-tsconfig-paths';
 
 const packageJson = JSON.parse(fs.readFileSync('./package.json', 'utf-8'));
-const version = packageJson.version.split('-beta')[0];
+// Strip prerelease suffixes (-alpha, -beta, -rc) for valid extension version
+const version = packageJson.version.replace(/-(alpha|beta|rc).*$/, '');
 
 // Service worker polyfill - injected at the start of the bundle
 function serviceWorkerPolyfillPlugin() {
