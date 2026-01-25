@@ -5,18 +5,18 @@ import {
 } from '@/shared/types/OpnetProtocol';
 import contenthashCacheService from './contenthashCache';
 
-const HEALTH_CHECK_INTERVAL = 60000; // 1 minute
 const HEALTH_CHECK_TIMEOUT = 5000; // 5 seconds
+const HEALTH_CHECK_STALE_MS = 5 * 60 * 1000; // Consider health data stale after 5 minutes
 const TEST_CID = 'QmYwAPJzv5CZsnA625s3Xf2nemtYgPpHdWEz79ojWnPbdG'; // IPFS readme
 
 class GatewayManager {
     private gateways: GatewayConfig[] = [];
     private healthStatus: Map<string, GatewayHealth> = new Map();
-    private healthCheckTimer: ReturnType<typeof setInterval> | null = null;
     private localNodeUrl: string | null = null;
     private initialized = false;
+    private lastHealthCheck = 0;
 
-    async init(): Promise<void> {
+    init(): void {
         if (this.initialized) return;
 
         const settings = contenthashCacheService.getSettings();
@@ -46,7 +46,7 @@ class GatewayManager {
             });
         }
 
-        // Initialize health status
+        // Initialize health status - assume healthy until checked on-demand
         this.gateways.forEach((g) => {
             this.healthStatus.set(g.url, {
                 url: g.url,
@@ -58,26 +58,31 @@ class GatewayManager {
             });
         });
 
-        // Start health checking
-        await this.checkAllGateways();
-        this.startHealthCheckTimer();
-
         this.initialized = true;
     }
 
-    private startHealthCheckTimer(): void {
-        if (this.healthCheckTimer) {
-            clearInterval(this.healthCheckTimer);
+    /**
+     * Check if health data is stale and needs refreshing
+     */
+    isHealthDataStale(): boolean {
+        return Date.now() - this.lastHealthCheck > HEALTH_CHECK_STALE_MS;
+    }
+
+    /**
+     * Ensure gateways have been health-checked recently before fetching
+     * This is called on-demand before fetches or from settings page
+     */
+    async ensureHealthChecked(): Promise<void> {
+        if (this.isHealthDataStale()) {
+            await this.checkAllGateways();
         }
-        this.healthCheckTimer = setInterval(() => {
-            this.checkAllGateways();
-        }, HEALTH_CHECK_INTERVAL);
     }
 
     async checkAllGateways(): Promise<void> {
         const checks = this.gateways.map((g) => this.checkGateway(g.url));
         await Promise.allSettled(checks);
         this.sortGatewaysByHealth();
+        this.lastHealthCheck = Date.now();
     }
 
     private async checkGateway(url: string): Promise<void> {
@@ -247,6 +252,12 @@ class GatewayManager {
     }
 
     async fetchFromGateway(cid: string, path?: string): Promise<Response> {
+        // Ensure we have up-to-date gateway health before fetching
+        // This prevents timeouts by prioritizing responsive gateways
+        if (this.isHealthDataStale()) {
+            await this.checkAllGateways();
+        }
+
         const gateways = this.getOrderedGateways();
         const fullPath = path ? `${cid}${path}` : cid;
 
@@ -338,10 +349,7 @@ class GatewayManager {
     }
 
     cleanup(): void {
-        if (this.healthCheckTimer) {
-            clearInterval(this.healthCheckTimer);
-            this.healthCheckTimer = null;
-        }
+        // Nothing to clean up - health checks are on-demand only
     }
 }
 

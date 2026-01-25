@@ -116,6 +116,9 @@ export interface TransactionHistoryItem {
 
     /** Number of status check attempts */
     statusCheckAttempts: number;
+
+    /** Transaction is finalized (3+ confirmations) - no more polling needed */
+    finalized?: boolean;
 }
 
 /**

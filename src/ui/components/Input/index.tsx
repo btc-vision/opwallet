@@ -104,16 +104,14 @@ function AmountInput(props: InputProps) {
         decimalPlaces,
         enableMax,
         onMaxClick,
+        value: propValue,
         ...rest
     } = props;
 
-    const [inputValue, setInputValue] = useState(props.value ?? '');
-
-    useEffect(() => {
-        if (props.value !== undefined && props.value !== inputValue) {
-            setInputValue(props.value);
-        }
-    }, [props.value, inputValue]);
+    // Use controlled value from props if provided, otherwise use internal state
+    const [internalValue, setInternalValue] = useState('');
+    const isControlled = propValue !== undefined;
+    const inputValue = isControlled ? propValue : internalValue;
 
     if (!onAmountInputChange) {
         return <div />;
@@ -123,14 +121,18 @@ function AmountInput(props: InputProps) {
         const value = e.target.value;
         if (disableDecimal) {
             if (/^[1-9]\d*$/.test(value) || value === '') {
-                setInputValue(value);
+                if (!isControlled) {
+                    setInternalValue(value);
+                }
                 onAmountInputChange(value);
             }
         } else {
             const maxDecimals = decimalPlaces ?? 8;
             const decimalRegex = new RegExp(`^\\d*\\.?\\d{0,${maxDecimals}}$`);
             if (decimalRegex.test(value) || value === '') {
-                setInputValue(value);
+                if (!isControlled) {
+                    setInternalValue(value);
+                }
                 onAmountInputChange(value);
             }
         }
@@ -163,43 +165,46 @@ function AmountInput(props: InputProps) {
 export const AddressInput = (props: InputProps) => {
     const { placeholder, onAddressInputChange, addressInputData, style: $inputStyleOverride, ...rest } = props;
 
-    const [validAddress, setValidAddress] = useState(addressInputData?.address ?? '');
-    const [parseAddress, setParseAddress] = useState(addressInputData?.domain ? addressInputData.address : '');
+    const [inputVal, setInputVal] = useState(addressInputData?.domain || addressInputData?.address || '');
+    const [parseAddress, setParseAddress] = useState('');
     const [parseError, setParseError] = useState('');
     const [formatError, setFormatError] = useState('');
-    const [inputVal, setInputVal] = useState(addressInputData?.domain || addressInputData?.address || '');
     const [parseName, setParseName] = useState('');
     const [searching, setSearching] = useState(false);
     const wallet = useWallet();
     const tools = useTools();
     const btcDomainsEnabled = useBtcDomainsEnabled();
 
-    useEffect(() => {
-        if (addressInputData?.address !== undefined && addressInputData.address !== validAddress) {
-            setValidAddress(addressInputData.address);
-            setInputVal(addressInputData.domain || addressInputData.address || '');
+    // Expose a reset method via callback when parent needs to clear
+    const handleReset = React.useCallback(() => {
+        setInputVal('');
+        setParseError('');
+        setParseAddress('');
+        setFormatError('');
+        setParseName('');
+    }, []);
+
+    // Check if parent is signaling a reset (address cleared externally)
+    const prevAddressRef = React.useRef(addressInputData?.address);
+    React.useEffect(() => {
+        const prevAddress = prevAddressRef.current;
+        const currentAddress = addressInputData?.address;
+        prevAddressRef.current = currentAddress;
+
+        // Only reset if parent explicitly cleared the address (not on initial mount)
+        if (prevAddress && prevAddress !== '' && currentAddress === '') {
+            handleReset();
         }
-    }, [addressInputData?.address, addressInputData?.domain, validAddress]);
+    }, [addressInputData?.address, handleReset]);
 
     if (!addressInputData || !onAddressInputChange) {
         return <div />;
     }
 
     const resetState = () => {
-        if (parseError) {
-            setParseError('');
-        }
-        if (parseAddress) {
-            setParseAddress('');
-        }
-        if (formatError) {
-            setFormatError('');
-        }
-
-        if (validAddress) {
-            setValidAddress('');
-        }
-
+        setParseError('');
+        setParseAddress('');
+        setFormatError('');
         setParseName('');
     };
 
@@ -221,9 +226,9 @@ export const AddressInput = (props: InputProps) => {
                 setSearching(false);
 
                 if (resolvedAddress) {
-                    setValidAddress(resolvedAddress);
                     setParseAddress(resolvedAddress);
                     setParseName(inputAddress);
+                    onAddressInputChange({ address: resolvedAddress, domain: inputAddress });
                 } else {
                     setParseError(`Domain "${inputAddress}" not found or has no owner`);
                 }
@@ -241,7 +246,6 @@ export const AddressInput = (props: InputProps) => {
             return;
         }
 
-        setValidAddress(inputAddress);
         onAddressInputChange({ address: inputAddress, domain: '' });
     };
 
