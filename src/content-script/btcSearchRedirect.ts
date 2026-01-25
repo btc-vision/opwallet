@@ -116,11 +116,17 @@ function showRedirectBanner(domain: string): void {
             <path d="M46.66 0C20.89 0 0 20.89 0 46.66C0 72.43 20.89 93.32 46.66 93.32C72.43 93.32 93.32 72.43 93.32 46.66C93.32 20.89 72.43 0 46.66 0ZM46.66 64.05C37.06 64.05 29.27 56.26 29.27 46.66C29.27 37.06 37.06 29.27 46.66 29.27C56.26 29.27 64.05 37.06 64.05 46.66C64.05 56.26 56.26 64.05 46.66 64.05Z" fill="white"/>
         </svg>
         <div class="opnet-text">
-            Navigate to <span class="opnet-domain">${domain}</span>?
+            Navigate to <span class="opnet-domain"></span>?
         </div>
         <button class="opnet-btn" id="opnet-go-btn">Open in OPNet Browser</button>
         <button class="opnet-close" id="opnet-close-btn">&times;</button>
     `;
+
+    // Set domain text safely using textContent to prevent XSS
+    const domainSpan = banner.querySelector('.opnet-domain');
+    if (domainSpan) {
+        domainSpan.textContent = domain;
+    }
 
     document.body.appendChild(banner);
 

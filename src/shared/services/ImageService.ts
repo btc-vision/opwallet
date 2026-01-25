@@ -17,6 +17,21 @@ interface QueuedImage {
 const BASE58 = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz-.,';
 const bs58 = base(BASE58);
 
+/**
+ * Safely check if a URL's hostname matches or ends with the given domain.
+ * This prevents attacks like evil.com/images.opnet.org or images.opnet.org.evil.com
+ */
+function isHostMatch(url: string, domain: string): boolean {
+    try {
+        const parsedUrl = new URL(url);
+        const hostname = parsedUrl.hostname.toLowerCase();
+        const targetDomain = domain.toLowerCase();
+        return hostname === targetDomain || hostname.endsWith('.' + targetDomain);
+    } catch {
+        return false;
+    }
+}
+
 class ImageService {
     private static instance: ImageService;
 
@@ -65,13 +80,13 @@ class ImageService {
                 url = url.replace('ipfs://', 'https://ipfs.opnet.org/ipfs/');
             }
 
-            if (url.includes('ipfs.io')) {
+            if (isHostMatch(url, 'ipfs.io')) {
                 url = url.replace('https://ipfs.io/', 'https://ipfs.opnet.org/');
-            } else if (url.includes('ipfs.moralis.io:2053')) {
+            } else if (isHostMatch(url, 'ipfs.moralis.io')) {
                 url = url.replace('https://ipfs.moralis.io:2053/', 'https://ipfs.opnet.org/');
-            } else if (url.includes('gateway.pinata.cloud')) {
+            } else if (isHostMatch(url, 'gateway.pinata.cloud')) {
                 url = url.replace('https://gateway.pinata.cloud/', 'https://ipfs.opnet.org/');
-            } else if (url.includes('niftylabs.mypinata.cloud')) {
+            } else if (isHostMatch(url, 'niftylabs.mypinata.cloud')) {
                 url = url.replace('https://niftylabs.mypinata.cloud/', 'https://ipfs.opnet.org/');
             }
 
@@ -404,8 +419,9 @@ class ImageService {
         if (!src) return false;
         if (src === 'undefined' || src === 'null') return false;
         if (src === '/' || src === '/index' || src === 'index') return false;
-        if (src.includes('google.com')) return false;
-        return !src.includes('raritysniffer.com/index');
+        if (isHostMatch(src, 'google.com')) return false;
+        if (isHostMatch(src, 'raritysniffer.com')) return false;
+        return true;
     }
 
     /**
@@ -441,13 +457,13 @@ class ImageService {
         }
 
         // Already optimized
-        if (originalUrl.includes('images.opnet.org')) {
+        if (isHostMatch(originalUrl, 'images.opnet.org')) {
             return originalUrl;
         }
 
-        // Handle IPFS
-        if (originalUrl.includes('ipfs.')) {
-            const ipfsHash = originalUrl.split('/ipfs/')[1] || originalUrl.split('ipfs.')[1];
+        // Handle IPFS - check for /ipfs/ path segment which is safe
+        if (originalUrl.includes('/ipfs/')) {
+            const ipfsHash = originalUrl.split('/ipfs/')[1];
             if (ipfsHash) {
                 return `${this.IMAGE_SERVER}/${width}/${height}/ipfs/${ipfsHash}`;
             }
