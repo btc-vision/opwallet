@@ -1,0 +1,86 @@
+name: Feature Request
+description: Suggest a new feature for OPWallet
+title: "[Feature]: "
+labels: ["enhancement", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for suggesting a feature for OPWallet.
+
+        Please note that features affecting wallet security require extensive review and testing.
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Feature Description
+      description: A clear and concise description of the feature you'd like.
+      placeholder: Describe the feature...
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem Statement
+      description: What problem does this feature solve? What use case does it address?
+      placeholder: I'm always frustrated when...
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed Solution
+      description: How do you envision this feature working?
+      placeholder: Describe your ideal solution...
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives Considered
+      description: Have you considered any alternative solutions or workarounds?
+      placeholder: I've also considered...
+
+  - type: dropdown
+    id: category
+    attributes:
+      label: Feature Category
+      description: What area of the wallet does this feature affect?
+      options:
+        - "UI/UX - Visual or interaction improvements"
+        - "Wallet Management - Account/key management"
+        - "Transactions - Sending/receiving Bitcoin"
+        - "OPNet - Smart contract interactions"
+        - "Security - Security enhancements"
+        - "Performance - Speed/efficiency improvements"
+        - "Integration - dApp or external service integration"
+        - "Other"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: impact
+    attributes:
+      label: Security Impact
+      description: Does this feature affect wallet security?
+      options:
+        - "No - UI/UX only"
+        - "No - Internal optimization only"
+        - "Potentially - Needs security review"
+        - "Yes - Affects key management"
+        - "Yes - Affects transaction signing"
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: terms
+    attributes:
+      label: Checklist
+      options:
+        - label: I have searched existing issues to ensure this feature hasn't been requested
+          required: true
+        - label: I understand that security-affecting features require extensive review
+          required: true
