@@ -57,6 +57,7 @@ export function Step1_Import({
         // Split by spaces, commas, newlines, or tabs and filter empty strings
         const textArr = copyText
             .trim()
+            .split(/[\s,]+/)
             .filter((word) => word.length > 0);
         const newKeys = [...keys];
         if (textArr) {
