@@ -113,6 +113,29 @@ jobs:
           VERSION="${{ github.ref_name }}"
           echo "version=${VERSION#v}" >> $GITHUB_OUTPUT
 
+      - name: Determine changelog range
+        id: changelog-range
+        run: |
+          CURRENT_TAG="${{ github.ref_name }}"
+
+          # Check if this is a stable release (no prerelease suffix)
+          if [[ "$CURRENT_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "is_stable=true" >> $GITHUB_OUTPUT
+            # Find the previous stable release (excluding alpha, beta, rc)
+            PREV_STABLE=$(git tag -l 'v*' | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | grep -v "^${CURRENT_TAG}$" | sort -V | tail -1)
+            if [ -n "$PREV_STABLE" ]; then
+              echo "from_tag=$PREV_STABLE" >> $GITHUB_OUTPUT
+              echo "Found previous stable release: $PREV_STABLE"
+            else
+              echo "from_tag=" >> $GITHUB_OUTPUT
+              echo "No previous stable release found"
+            fi
+          else
+            echo "is_stable=false" >> $GITHUB_OUTPUT
+            echo "from_tag=" >> $GITHUB_OUTPUT
+            echo "Prerelease detected, using default tag comparison"
+          fi
+
       - name: Download attested artifacts
         uses: actions/download-artifact@v4
         with:
@@ -123,6 +146,8 @@ jobs:
         id: changelog
         uses: mikepenz/release-changelog-builder-action@v5
         with:
+          fromTag: ${{ steps.changelog-range.outputs.from_tag }}
+          toTag: ${{ github.ref_name }}
           configurationJson: |
             {
               "categories": [

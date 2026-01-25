@@ -1,6 +1,6 @@
 {
     "name": "opwallet",
-    "version": "1.8.0-rc.0",
+    "version": "1.8.0",
     "private": true,
     "type": "module",
     "homepage": "https://github.com/btc-vision/opwallet#readme",
