@@ -37,7 +37,7 @@ class OpnetProtocolService {
             // Initialize sub-services
             await contenthashCacheService.init();
             await contentCacheService.init();
-            await gatewayManager.init();
+            gatewayManager.init(); // Sync init - health checks are on-demand
 
             // Load browser settings
             const data = await browser.storage.local.get(BROWSER_SETTINGS_KEY);

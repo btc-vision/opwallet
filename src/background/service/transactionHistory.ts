@@ -249,6 +249,69 @@ class TransactionHistoryService {
     }
 
     /**
+     * Get all transactions that need confirmation tracking (pending OR confirmed but not finalized)
+     * Returns array of { chainType, pubkey, transaction }
+     */
+    async getTransactionsNeedingConfirmationTracking(): Promise<
+        Array<{ chainType: ChainType; pubkey: string; transaction: TransactionHistoryItem }>
+    > {
+        const results: Array<{ chainType: ChainType; pubkey: string; transaction: TransactionHistoryItem }> = [];
+
+        const allKeys = await this.getAllHistoryKeys();
+
+        for (const key of allKeys) {
+            const match = key.match(/^txHistory_(.+)_(.+)$/);
+            if (!match) continue;
+
+            const chainType = match[1] as ChainType;
+            const pubkey = match[2];
+
+            const store = await this.getStore(chainType, pubkey);
+            // Get pending transactions OR confirmed but not yet finalized
+            const needsTracking = store.transactions.filter(
+                (tx) =>
+                    tx.status === TransactionStatus.PENDING ||
+                    (tx.status === TransactionStatus.CONFIRMED && !tx.finalized)
+            );
+
+            for (const tx of needsTracking) {
+                results.push({ chainType, pubkey, transaction: tx });
+            }
+        }
+
+        return results;
+    }
+
+    /**
+     * Mark a transaction as finalized (3+ confirmations, no more polling needed)
+     */
+    async markTransactionFinalized(chainType: ChainType, pubkey: string, txid: string): Promise<void> {
+        const store = await this.getStore(chainType, pubkey);
+        const transaction = store.transactions.find((tx) => tx.txid === txid);
+
+        if (transaction) {
+            transaction.finalized = true;
+            await this.saveStore(chainType, pubkey, store);
+        }
+    }
+
+    /**
+     * Check if there are any recent unfinalized transactions (within last 10 minutes)
+     * Used to optimize UTXO polling frequency
+     */
+    async hasRecentUnfinalizedTransactions(chainType: ChainType, pubkey: string): Promise<boolean> {
+        const store = await this.getStore(chainType, pubkey);
+        const tenMinutesAgo = Date.now() - 10 * 60 * 1000;
+
+        return store.transactions.some(
+            (tx) =>
+                !tx.finalized &&
+                tx.timestamp > tenMinutesAgo &&
+                (tx.status === TransactionStatus.PENDING || tx.status === TransactionStatus.CONFIRMED)
+        );
+    }
+
+    /**
      * Get all history storage keys
      */
     private async getAllHistoryKeys(): Promise<string[]> {
