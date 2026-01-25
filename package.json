@@ -1,13 +1,12 @@
 {
     "name": "opwallet",
-    "version": "1.8.0-beta.0",
+    "version": "1.8.0",
     "private": true,
     "type": "module",
     "homepage": "https://github.com/unisat-wallet/extension#readme",
     "bugs": {
         "url": "https://github.com/unisat-wallet/extension/issues"
     },
-    "license": "Apache-2.0",
     "repository": {
         "type": "git",
         "url": "https://github.com/unisat-wallet/extension.git"
@@ -92,7 +91,6 @@
         "buffer": "^6.0.3",
         "compare-versions": "^6.1.1",
         "cross-env": "^10.1.0",
-        "crypto-browserify": "^3.12.1",
         "debounce": "^3.0.0",
         "dotenv": "^17.2.3",
         "dotenv-expand": "^12.0.3",
