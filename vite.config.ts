@@ -307,11 +307,6 @@ export default defineConfig(({ mode }) => {
                     },
                     //inlineDynamicImports: true,
                     manualChunks(id) {
-                        // crypto-browserify has internal circular deps - don't split it
-                        // Let it bundle with the main code
-                        if (id.includes('crypto-browserify') || id.includes('randombytes')) {
-                            return undefined; // Don't put in separate chunk
-                        }
                         if (id.includes('node_modules')) {
                             // Noble crypto libraries - shared across packages
                             if (id.includes('@noble/curves')) return 'noble-curves';
@@ -372,12 +367,12 @@ export default defineConfig(({ mode }) => {
                     global: true,
                     process: true
                 },
-                // Use native crypto where available
                 overrides: {
-                    crypto: 'crypto-browserify',
                     // Use our ESM events shim instead of CJS polyfill
                     events: resolve(__dirname, 'src/shims/events-browser.js')
-                }
+                },
+                // Don't polyfill crypto - use native Web Crypto API
+                exclude: ['crypto']
             }),
 
             // Fix for @btc-vision/wallet-sdk imports
@@ -546,7 +541,7 @@ export default defineConfig(({ mode }) => {
                 'bitcore-lib',
                 'bip-schnorr'
             ],
-            exclude: ['@btc-vision/transaction', 'crypto-browserify']
+            exclude: ['@btc-vision/transaction']
         },
 
         worker: {

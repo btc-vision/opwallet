@@ -116,8 +116,6 @@ export default defineConfig(({ mode }) => {
             alias: [
                 { find: '@', replacement: resolve(__dirname, './src') },
                 { find: 'events', replacement: resolve(__dirname, 'src/shims/events-browser.js') },
-
-                { find: 'crypto', replacement: resolve(__dirname, 'crypto-browserify.js') },
                 { find: 'vm', replacement: resolve(__dirname, 'vm-browserify') },
                 { find: '@protobufjs/inquire', replacement: resolve(__dirname, 'src/shims/inquire-browser.js') },
                 { find: 'moment', replacement: 'dayjs' }
