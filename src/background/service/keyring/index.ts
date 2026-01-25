@@ -193,26 +193,28 @@ class KeyringService extends EventEmitter {
     ) => {
         privateKey = privateKey.replace('0x', '');
 
-        // If quantum private key is provided, check for duplicates before importing
-        if (quantumPrivateKey) {
-            // Create temporary keyring to get the MLDSA hash
-            const tempKeyring = new SimpleKeyring({
+// Create temporary keyring to check for duplicates before adding
+        const tmpKeyring = this.createTmpKeyring(
+            KEYRING_TYPE.SimpleKeyring, {
                 privateKey,
                 quantumPrivateKey,
                 network,
                 securityLevel: MLDSASecurityLevel.LEVEL2
-            });
+            } as SimpleKeyringSerializedOptions
+        );
 
-            // Check for duplicate MLDSA keys
-            if (tempKeyring.hasQuantumKey()) {
-                const existingMldsaHashes = this.getAllQuantumKeyHashes();
-                const newHash = tempKeyring.getQuantumPublicKeyHash();
+        const newAccounts = tmpKeyring.getAccounts();
+        this.checkForDuplicate(KEYRING_TYPE.SimpleKeyring, newAccounts);
 
-                if (newHash && existingMldsaHashes.includes(newHash.toLowerCase()))
-                    throw new Error(
-                        'This MLDSA key is already associated with another wallet. Each wallet must have a unique MLDSA key.'
-                    );
-            }
+        // Check for duplicate MLDSA keys
+        if (tmpKeyring instanceof SimpleKeyring && tmpKeyring.hasQuantumKey()) {
+            const existingMldsaHashes = this.getAllQuantumKeyHashes();
+            const newHash = tmpKeyring.getQuantumPublicKeyHash();
+
+            if (newHash && existingMldsaHashes.includes(newHash.toLowerCase()))
+                throw new Error(
+                    'This MLDSA key is already associated with another wallet. Each wallet must have a unique MLDSA key.'
+                );
         }
 
         await this.persistAllKeyrings();
@@ -292,49 +294,44 @@ class KeyringService extends EventEmitter {
             activeIndexes.push(i);
         }
 
-        // Create a temporary keyring to check for duplicates before adding
-        const tempKeyring = new HdKeyring({
-            mnemonic: seed,
-            passphrase,
-            network,
-            securityLevel: MLDSASecurityLevel.LEVEL2,
-            activeIndexes,
-            addressType,
-            hdPath
-        });
+// Create temporary keyring to check for duplicates before adding
+        const tmpKeyring = this.createTmpKeyring(
+            KEYRING_TYPE.HdKeyring, {
+                mnemonic: seed,
+                activeIndexes,
+                passphrase,
+                network,
+                securityLevel: MLDSASecurityLevel.LEVEL2,
+                addressType,
+                hdPath
+            } as HdKeyringSerializedOptions);
 
-        const tempAccounts = tempKeyring.getAccounts();
-        if (!tempAccounts[0]) throw new Error('KeyringController - Failed to derive accounts from mnemonic.');
+        const newAccounts = tmpKeyring.getAccounts();
+        if (!newAccounts[0]) throw new Error('KeyringController - Failed to derive accounts from mnemonic.');
 
-        // Check for duplicate addresses
-        const existingAccounts = this.getAllPubkeys();
-        for (const pubkey of tempAccounts) {
-            const duplicate = existingAccounts.find((acc) => acc.pubkey === pubkey);
-            if (duplicate)
-                throw new Error(
-                    'This wallet has already been imported. The mnemonic derives the same addresses as an existing wallet.'
-                );
-        }
+        this.checkForDuplicate(KEYRING_TYPE.HdKeyring, newAccounts);
 
         // Check for duplicate MLDSA keys
-        const existingMldsaHashes = this.getAllQuantumKeyHashes();
-        for (const pubkey of tempAccounts) {
-            try {
-                const wallet = tempKeyring.getWallet(pubkey);
-                if (wallet?.mldsaKeypair) {
-                    const mldsaHash = wallet.address.toHex().replace('0x', '').toLowerCase();
-                    if (existingMldsaHashes.includes(mldsaHash)) {
-                        throw new Error(
-                            'This wallet has already been imported. The mnemonic derives MLDSA keys that are already in use.'
-                        );
+        if (tmpKeyring instanceof HdKeyring) {
+            const existingMldsaHashes = this.getAllQuantumKeyHashes();
+            for (const pubkey of newAccounts) {
+                try {
+                    const wallet = tmpKeyring.getWallet(pubkey);
+                    if (wallet?.mldsaKeypair) {
+                        const mldsaHash = wallet.address.toHex().replace('0x', '').toLowerCase();
+                        if (existingMldsaHashes.includes(mldsaHash)) {
+                            throw new Error(
+                                'This wallet has already been imported. The mnemonic derives MLDSA keys that are already in use.'
+                            );
+                        }
                     }
+                } catch (e) {
+                    // If error is about duplicate, rethrow it
+                    if (e instanceof Error && e.message.includes('already been imported')) {
+                        throw e;
+                    }
+                    // Otherwise ignore - MLDSA key might not be available yet
                 }
-            } catch (e) {
-                // If error is about duplicate, rethrow it
-                if (e instanceof Error && e.message.includes('already been imported')) {
-                    throw e;
-                }
-                // Otherwise ignore - MLDSA key might not be available yet
             }
         }
 
