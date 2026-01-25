@@ -1,15 +1,15 @@
 {
     "name": "opwallet",
-    "version": "1.8.0",
+    "version": "1.8.0-beta.0",
     "private": true,
     "type": "module",
-    "homepage": "https://github.com/unisat-wallet/extension#readme",
+    "homepage": "https://github.com/btc-vision/opwallet#readme",
     "bugs": {
-        "url": "https://github.com/unisat-wallet/extension/issues"
+        "url": "https://github.com/btc-vision/opwallet/issues"
     },
     "repository": {
         "type": "git",
-        "url": "https://github.com/unisat-wallet/extension.git"
+        "url": "https://github.com/btc-vision/opwallet.git"
     },
     "scripts": {
         "build:content": "vite build --config vite.config.content.ts",
