@@ -2,9 +2,7 @@ import { Radio } from 'antd';
 import * as bip39 from 'bip39';
 import { useEffect, useMemo, useState } from 'react';
 
-import { OW_HD_PATH } from '@/shared/constant';
 import { RestoreWalletType } from '@/shared/types';
-import { AddressTypes } from '@btc-vision/transaction';
 import { isWalletError } from '@/shared/utils/errors';
 import { Button, Card, Column, Grid, Input, Row, Text } from '@/ui/components';
 import { useTools } from '@/ui/components/ActionComponent';
@@ -15,8 +13,6 @@ import {
     UpdateContextDataParams,
     WordsType
 } from '@/ui/pages/Account/createHDWalletComponents/types';
-import { RouteTypes, useNavigate } from '@/ui/pages/routeTypes';
-import { useCreateAccountCallback } from '@/ui/state/global/hooks';
 
 const WORDS_12_ITEM = {
     key: WordsType.WORDS_12,
@@ -41,9 +37,7 @@ export function Step1_Import({
     const [hover, setHover] = useState(999);
 
     const wordsItems = useMemo(() => {
-        if (contextData.restoreWalletType === RestoreWalletType.OW) {
-            return [WORDS_12_ITEM];
-        } else if (contextData.restoreWalletType === RestoreWalletType.XVERSE) {
+        if (contextData.restoreWalletType === RestoreWalletType.XVERSE) {
             return [WORDS_12_ITEM];
         } else {
             return [WORDS_12_ITEM, WORDS_24_ITEM];
@@ -98,18 +92,11 @@ export function Step1_Import({
         //todo
     }, [hover]);
 
-    const createAccount = useCreateAccountCallback();
-    const navigate = useNavigate();
     const tools = useTools();
     const onNext = async () => {
         try {
             const mnemonics = keys.join(' ');
-            if (contextData.restoreWalletType === RestoreWalletType.OW) {
-                await createAccount(mnemonics, OW_HD_PATH, '', AddressTypes.P2TR, 1);
-                navigate(RouteTypes.MainScreen);
-            } else {
-                updateContextData({ mnemonics, tabType: TabType.STEP3 });
-            }
+            updateContextData({ mnemonics, tabType: TabType.STEP3 });
         } catch (e) {
             if (isWalletError(e)) {
                 tools.toastError(e.message);

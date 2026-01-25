@@ -1,3 +1,8 @@
+import { Buffer } from 'buffer';
+if (typeof window !== 'undefined') {
+    (window as unknown as { Buffer: typeof Buffer }).Buffer = Buffer;
+}
+
 import en from 'antd/es/locale/en_US';
 import { message } from 'antd';
 import ReactDOM from 'react-dom/client';

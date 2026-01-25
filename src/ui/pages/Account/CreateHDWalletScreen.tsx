@@ -70,21 +70,7 @@ export default function CreateHDWalletScreen() {
 
     const items = useMemo(() => {
         if (contextData.isRestore) {
-            if (contextData.restoreWalletType === RestoreWalletType.OW) {
-                // OW import skips rotation mode (uses standard mode)
-                return [
-                    {
-                        key: TabType.STEP1,
-                        label: 'Type',
-                        children: <Step0 contextData={contextData} updateContextData={updateContextData} />
-                    },
-                    {
-                        key: TabType.STEP2,
-                        label: 'Import',
-                        children: <Step1_Import contextData={contextData} updateContextData={updateContextData} />
-                    }
-                ];
-            } else if (contextData.restoreWalletType === RestoreWalletType.XVERSE) {
+            if (contextData.restoreWalletType === RestoreWalletType.XVERSE) {
                 // XVerse import: Type → Import → Address → Warning → (Privacy Mode if enabled)
                 const steps = [
                     {

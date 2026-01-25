@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Buffer } from 'buffer';
 
 import { ADDRESS_TYPES } from '@/shared/constant';
 import { AddressAssets } from '@/shared/types';
