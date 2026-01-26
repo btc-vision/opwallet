@@ -650,9 +650,10 @@ export class WalletController {
      * @param accountInfo Optional account info (pubkey, type). If not provided, uses current account.
      * @throws WalletControllerError if keys cannot be retrieved
      */
-    public getOPNetWallet = async (
-        accountInfo?: { pubkey: string; type: string }
-    ): Promise<[string, string, string]> => {
+    public getOPNetWallet = async (accountInfo?: {
+        pubkey: string;
+        type: string;
+    }): Promise<[string, string, string]> => {
         let pubkey: string;
         let type: string;
 
@@ -2461,7 +2462,7 @@ export class WalletController {
      * Fetch UTXOs for a given address.
      */
     public getAddressUtxo = async (address: string): Promise<UTXO[]> => {
-        const utxos = await Web3API.getAllUTXOsForAddresses([address]);
+        const utxos = await Web3API.getAllUTXOsForAddresses([address], undefined, undefined, false);
         return utxos.map((utxo) => ({
             txid: utxo.transactionId,
             vout: utxo.outputIndex,
@@ -2692,7 +2693,7 @@ export class WalletController {
      */
     public getAddressSummary = async (address: string): Promise<AddressSummary> => {
         // Get balance from Web3API
-        const utxos = await Web3API.getAllUTXOsForAddresses([address]);
+        const utxos = await Web3API.getAllUTXOsForAddresses([address], undefined, undefined, false);
         const totalSatoshis = utxos.reduce((sum, utxo) => sum + Number(utxo.value), 0);
 
         return {
@@ -3884,8 +3885,8 @@ export class WalletController {
             const allAddresses = [coldAddress, ...hotAddresses];
 
             const [allUTXOs, unspentUTXOs] = await Promise.all([
-                Web3API.getAllUTXOsForAddresses(allAddresses),
-                Web3API.getUnspentUTXOsForAddresses(allAddresses)
+                Web3API.getAllUTXOsForAddresses(allAddresses, undefined, undefined, false),
+                Web3API.getUnspentUTXOsForAddresses(allAddresses, undefined, undefined, true)
             ]);
 
             const totalAll = allUTXOs.reduce((sum, u) => sum + u.value, 0n);
@@ -3994,7 +3995,7 @@ export class WalletController {
             // Fetch UTXOs from all source addresses
             const addressList = sourceAddresses.map((a) => a.address);
             await Web3API.setNetwork(this.getChainType());
-            const allUtxos = await Web3API.getAllUTXOsForAddresses(addressList);
+            const allUtxos = await Web3API.getAllUTXOsForAddresses(addressList, undefined, undefined, true);
 
             if (allUtxos.length === 0) {
                 throw new WalletControllerError('No UTXOs found to consolidate');
@@ -4391,8 +4392,8 @@ export class WalletController {
             if (!csv75Address || !csv2Address || !csv1Address || !p2wdaAddress) {
                 // Simple balance fetch for non-CSV addresses
                 const [allUTXOs, unspentUTXOs] = await Promise.all([
-                    Web3API.getAllUTXOsForAddresses([address]),
-                    Web3API.getUnspentUTXOsForAddresses([address])
+                    Web3API.getAllUTXOsForAddresses([address], undefined, undefined, false),
+                    Web3API.getUnspentUTXOsForAddresses([address], undefined, undefined, true)
                 ]);
 
                 const totalAll = allUTXOs.reduce((sum, u) => sum + u.value, 0n);
@@ -4416,7 +4417,7 @@ export class WalletController {
                     // Silently fail - USD value will remain 0.00
                 }
 
-                const result = {
+                return {
                     btc_total_amount: BitcoinUtils.formatUnits(totalAll, 8),
                     btc_confirm_amount: BitcoinUtils.formatUnits(totalUnspent, 8),
                     btc_pending_amount: BitcoinUtils.formatUnits(pendingAmount, 8),
@@ -4438,7 +4439,7 @@ export class WalletController {
 
                     consolidation_amount: BitcoinUtils.formatUnits(consolidationUnspentAmount, 8),
                     consolidation_unspent_amount: BitcoinUtils.formatUnits(consolidationUnspentAmount, 8),
-                    consolidation_unspent_count: consolidatableUnspentUTXOs.length,
+                    // consolidation_unspent_count: consolidatableUnspentUTXOs.length,
                     consolidation_csv75_unlocked_amount: '0',
                     consolidation_csv2_unlocked_amount: '0',
                     consolidation_csv1_unlocked_amount: '0',
@@ -4457,18 +4458,17 @@ export class WalletController {
                     p2wda_utxos_count: 0,
                     unspent_p2wda_utxos_count: 0
                 };
-                return result;
             }
 
             // Full balance fetch with CSV addresses - using Promise.allSettled for better error handling
             const results = await Promise.allSettled([
-                Web3API.getAllUTXOsForAddresses([address]),
-                Web3API.getUnspentUTXOsForAddresses([address]),
+                Web3API.getAllUTXOsForAddresses([address], undefined, undefined, false),
+                Web3API.getUnspentUTXOsForAddresses([address], undefined, undefined, true),
                 Web3API.getTotalLockedAndUnlockedUTXOs(csv75Address, 'csv75'),
                 Web3API.getTotalLockedAndUnlockedUTXOs(csv2Address, 'csv2'),
                 Web3API.getTotalLockedAndUnlockedUTXOs(csv1Address, 'csv1'),
-                Web3API.getAllUTXOsForAddresses([p2wdaAddress]),
-                Web3API.getUnspentUTXOsForAddresses([p2wdaAddress])
+                Web3API.getAllUTXOsForAddresses([p2wdaAddress], undefined, undefined, false),
+                Web3API.getUnspentUTXOsForAddresses([p2wdaAddress], undefined, undefined, true)
             ]);
 
             // Extract results with fallbacks

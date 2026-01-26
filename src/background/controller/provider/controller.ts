@@ -1,10 +1,8 @@
 import notificationService from '@/background/service/notification';
 import permissionService from '@/background/service/permission';
-import sessionService from '@/background/service/session';
+import sessionService, { Session } from '@/background/service/session';
 import { CHAINS, CHAINS_MAP, ChainType, NETWORK_TYPES, VERSION } from '@/shared/constant';
 import { TransactionOrigin } from '@/shared/types/TransactionHistory';
-
-import { Session } from '@/background/service/session';
 import { SessionEvent } from '@/shared/interfaces/SessionEvent';
 import { providerErrors } from '@/shared/lib/bitcoin-rpc-errors/errors';
 import { NetworkType, networkTypeToOPNet } from '@/shared/types';
@@ -636,7 +634,7 @@ export class ProviderController {
         try {
             const account = await wallet.getCurrentAccount();
             if (!account) return [];
-            return await Web3API.getAllUTXOsForAddresses([account.address]);
+            return await Web3API.getAllUTXOsForAddresses([account.address], undefined, undefined, false);
         } catch (e) {
             console.error(e);
             return [];

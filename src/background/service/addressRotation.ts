@@ -3,7 +3,6 @@ import { EventEmitter } from 'events';
 import { HdKeyring, publicKeyToAddressWithNetworkType } from '@btc-vision/wallet-sdk';
 import { AddressTypes, MLDSASecurityLevel } from '@btc-vision/transaction';
 import { Network, networks } from '@btc-vision/bitcoin';
-import * as bip39 from 'bip39';
 
 import browser from '../webapi/browser';
 import keyringService, { HdKeyringSerializedOptions } from './keyring';
@@ -11,23 +10,22 @@ import preferenceService from './preference';
 import Web3API from '@/shared/web3/Web3API';
 import {
     AddressRotationState,
+    ColdWalletInfo,
+    ConsolidationParams,
+    DEFAULT_ROTATION_STATE,
     RotatedAddress,
     RotatedAddressStatus,
     RotationModeSettings,
-    RotationModeSummary,
-    ColdWalletInfo,
-    ConsolidationParams,
-    DEFAULT_ROTATION_STATE
+    RotationModeSummary
 } from '@/shared/types/AddressRotation';
 import {
-    ROTATION_STORAGE_KEY,
-    ROTATION_GAP_LIMIT,
+    COLD_WALLET_INDEX,
     DEFAULT_ROTATION_SETTINGS,
     MAX_CONSOLIDATION_UTXOS,
-    COLD_WALLET_INDEX
+    ROTATION_STORAGE_KEY
 } from '@/shared/constant/addressRotation';
-import { KEYRING_TYPE, ChainType } from '@/shared/constant';
-import { networkTypeToOPNet, NetworkType } from '@/shared/types';
+import { ChainType, KEYRING_TYPE } from '@/shared/constant';
+import { networkTypeToOPNet } from '@/shared/types';
 
 interface RotationStore {
     settings: RotationModeSettings;
@@ -53,17 +51,6 @@ class AddressRotationService extends EventEmitter {
             console.error('[AddressRotationService] Failed to initialize:', error);
             this.store = { settings: {} };
             this.initialized = true;
-        }
-    };
-
-    /**
-     * Persist state to browser storage
-     */
-    private persist = async (): Promise<void> => {
-        try {
-            await browser.storage.local.set({ [ROTATION_STORAGE_KEY]: this.store });
-        } catch (error) {
-            console.error('[AddressRotationService] Failed to persist:', error);
         }
     };
 
@@ -122,12 +109,7 @@ class AddressRotationService extends EventEmitter {
         };
 
         // Derive the first hot address
-        const firstAddress = this.deriveRotationAddress(
-            serialized.mnemonic,
-            serialized.passphrase || '',
-            0,
-            network
-        );
+        const firstAddress = this.deriveRotationAddress(serialized.mnemonic, serialized.passphrase || '', 0, network);
 
         state.rotatedAddresses.push({
             address: firstAddress.address,
@@ -141,11 +123,7 @@ class AddressRotationService extends EventEmitter {
         });
 
         // Initialize cold wallet info (derive but don't store the address)
-        const coldWallet = this.deriveColdWalletInfo(
-            serialized.mnemonic,
-            serialized.passphrase || '',
-            network
-        );
+        const coldWallet = this.deriveColdWalletInfo(serialized.mnemonic, serialized.passphrase || '', network);
         state.coldWallet = coldWallet;
 
         // Store state
@@ -177,9 +155,7 @@ class AddressRotationService extends EventEmitter {
         if (!state?.enabled) return null;
 
         // Find the active address (should be at currentIndex)
-        const activeAddress = state.rotatedAddresses.find(
-            (addr) => addr.status === RotatedAddressStatus.ACTIVE
-        );
+        const activeAddress = state.rotatedAddresses.find((addr) => addr.status === RotatedAddressStatus.ACTIVE);
 
         return activeAddress || null;
     };
@@ -208,9 +184,7 @@ class AddressRotationService extends EventEmitter {
         }
 
         // Mark current active address as received (if it has balance) or archived
-        const currentActive = state.rotatedAddresses.find(
-            (addr) => addr.status === RotatedAddressStatus.ACTIVE
-        );
+        const currentActive = state.rotatedAddresses.find((addr) => addr.status === RotatedAddressStatus.ACTIVE);
         if (currentActive) {
             if (BigInt(currentActive.currentBalance) > 0n) {
                 currentActive.status = RotatedAddressStatus.RECEIVED;
@@ -252,9 +226,7 @@ class AddressRotationService extends EventEmitter {
         if (state.rotatedAddresses.length > DEFAULT_ROTATION_SETTINGS.maxHistoryAddresses) {
             // Keep the most recent addresses, remove archived ones with 0 balance
             state.rotatedAddresses = state.rotatedAddresses.filter(
-                (addr) =>
-                    addr.status !== RotatedAddressStatus.ARCHIVED ||
-                    BigInt(addr.currentBalance) > 0n
+                (addr) => addr.status !== RotatedAddressStatus.ARCHIVED || BigInt(addr.currentBalance) > 0n
             );
         }
 
@@ -268,10 +240,7 @@ class AddressRotationService extends EventEmitter {
      * Get cold wallet address (INTERNAL USE ONLY - never expose to user)
      * Returns the actual cold wallet address for transaction building
      */
-    getColdWalletAddress = (
-        keyringIndex: number,
-        network: Network = networks.bitcoin
-    ): string => {
+    getColdWalletAddress = (keyringIndex: number, network: Network = networks.bitcoin): string => {
         const keyring = keyringService.keyrings[keyringIndex];
         if (!keyring || keyring.type !== KEYRING_TYPE.HdKeyring) {
             throw new Error('Invalid HD keyring');
@@ -367,10 +336,7 @@ class AddressRotationService extends EventEmitter {
         const newBalance = BigInt(amount);
 
         if (newBalance > prevBalance) {
-            rotatedAddr.totalReceived = (
-                BigInt(rotatedAddr.totalReceived) +
-                (newBalance - prevBalance)
-            ).toString();
+            rotatedAddr.totalReceived = (BigInt(rotatedAddr.totalReceived) + (newBalance - prevBalance)).toString();
         }
         rotatedAddr.currentBalance = amount;
 
@@ -398,27 +364,20 @@ class AddressRotationService extends EventEmitter {
     /**
      * Update all rotation address balances from chain
      */
-    refreshAddressBalances = async (
-        accountPubkey: string,
-        chainType: ChainType
-    ): Promise<void> => {
+    refreshAddressBalances = async (accountPubkey: string, chainType: ChainType): Promise<void> => {
         const state = this.store.settings[accountPubkey];
         if (!state?.enabled) return;
 
         // Get addresses that need balance checking
         const addressesToCheck = state.rotatedAddresses
-            .filter(
-                (a) =>
-                    a.status === RotatedAddressStatus.ACTIVE ||
-                    a.status === RotatedAddressStatus.RECEIVED
-            )
+            .filter((a) => a.status === RotatedAddressStatus.ACTIVE || a.status === RotatedAddressStatus.RECEIVED)
             .map((a) => a.address);
 
         if (addressesToCheck.length === 0) return;
 
         try {
             await Web3API.setNetwork(chainType);
-            const utxos = await Web3API.getAllUTXOsForAddresses(addressesToCheck);
+            const utxos = await Web3API.getAllUTXOsForAddresses(addressesToCheck, undefined, undefined, false);
 
             // Group UTXOs by address
             const balancesByAddress = new Map<string, { balance: bigint; utxoCount: number }>();
@@ -463,10 +422,7 @@ class AddressRotationService extends EventEmitter {
 
             // Check if any received addresses are now empty -> mark as consolidated/archived
             for (const rotatedAddr of state.rotatedAddresses) {
-                if (
-                    rotatedAddr.status === RotatedAddressStatus.RECEIVED &&
-                    rotatedAddr.currentBalance === '0'
-                ) {
+                if (rotatedAddr.status === RotatedAddressStatus.RECEIVED && rotatedAddr.currentBalance === '0') {
                     rotatedAddr.status = RotatedAddressStatus.CONSOLIDATED;
                     rotatedAddr.consolidatedAt = Date.now();
                 }
@@ -488,8 +444,7 @@ class AddressRotationService extends EventEmitter {
 
         return state.rotatedAddresses.filter(
             (a) =>
-                (a.status === RotatedAddressStatus.RECEIVED ||
-                    a.status === RotatedAddressStatus.ACTIVE) &&
+                (a.status === RotatedAddressStatus.RECEIVED || a.status === RotatedAddressStatus.ACTIVE) &&
                 BigInt(a.currentBalance) > 0n
         );
     };
@@ -497,11 +452,7 @@ class AddressRotationService extends EventEmitter {
     /**
      * Prepare consolidation transaction parameters
      */
-    prepareConsolidation = (
-        keyringIndex: number,
-        accountPubkey: string,
-        feeRate: number
-    ): ConsolidationParams => {
+    prepareConsolidation = (keyringIndex: number, accountPubkey: string, feeRate: number): ConsolidationParams => {
         const addressesWithBalance = this.getAddressesForConsolidation(accountPubkey);
 
         if (addressesWithBalance.length === 0) {
@@ -511,10 +462,7 @@ class AddressRotationService extends EventEmitter {
         // Limit number of inputs
         const limitedAddresses = addressesWithBalance.slice(0, MAX_CONSOLIDATION_UTXOS);
 
-        const totalAmount = limitedAddresses.reduce(
-            (sum, a) => sum + BigInt(a.currentBalance),
-            0n
-        );
+        const totalAmount = limitedAddresses.reduce((sum, a) => sum + BigInt(a.currentBalance), 0n);
 
         const totalUtxoCount = limitedAddresses.reduce((sum, a) => sum + a.utxoCount, 0);
 
@@ -542,11 +490,7 @@ class AddressRotationService extends EventEmitter {
      * Create an HdKeyring configured to sign for consolidation addresses
      * Returns a keyring with all rotation address indices that have balance
      */
-    getConsolidationKeyring = (
-        keyringIndex: number,
-        accountPubkey: string,
-        network: Network
-    ): HdKeyring => {
+    getConsolidationKeyring = (keyringIndex: number, accountPubkey: string, network: Network): HdKeyring => {
         const addressesWithBalance = this.getAddressesForConsolidation(accountPubkey);
         if (addressesWithBalance.length === 0) {
             throw new Error('No addresses to consolidate');
@@ -580,10 +524,7 @@ class AddressRotationService extends EventEmitter {
      * Get the cold wallet keyring for signing withdrawals
      * Returns a keyring configured to sign from the cold wallet address
      */
-    getColdWalletKeyring = (
-        keyringIndex: number,
-        network: Network = networks.bitcoin
-    ): HdKeyring => {
+    getColdWalletKeyring = (keyringIndex: number, network: Network = networks.bitcoin): HdKeyring => {
         const keyring = keyringService.keyrings[keyringIndex];
         if (!keyring || keyring.type !== KEYRING_TYPE.HdKeyring) {
             throw new Error('Invalid HD keyring');
@@ -728,9 +669,7 @@ class AddressRotationService extends EventEmitter {
         }
 
         // Update cold wallet balance
-        state.coldWallet.totalBalance = (
-            BigInt(state.coldWallet.totalBalance) + BigInt(consolidatedAmount)
-        ).toString();
+        state.coldWallet.totalBalance = (BigInt(state.coldWallet.totalBalance) + BigInt(consolidatedAmount)).toString();
         state.coldWallet.consolidationCount += 1;
         state.coldWallet.lastConsolidation = Date.now();
 
@@ -759,29 +698,20 @@ class AddressRotationService extends EventEmitter {
         const currentHot = this.getCurrentHotAddress(accountPubkey);
         if (!currentHot) return null;
 
-        const addressesWithBalance = state.rotatedAddresses.filter(
-            (a) => BigInt(a.currentBalance) > 0n
-        );
+        const addressesWithBalance = state.rotatedAddresses.filter((a) => BigInt(a.currentBalance) > 0n);
 
-        const totalHotBalance = state.rotatedAddresses.reduce(
-            (sum, a) => sum + BigInt(a.currentBalance),
-            0n
-        );
+        const totalHotBalance = state.rotatedAddresses.reduce((sum, a) => sum + BigInt(a.currentBalance), 0n);
 
         const pendingConsolidation = state.rotatedAddresses
-            .filter(
-                (a) =>
-                    a.status === RotatedAddressStatus.RECEIVED && BigInt(a.currentBalance) > 0n
-            )
+            .filter((a) => a.status === RotatedAddressStatus.RECEIVED && BigInt(a.currentBalance) > 0n)
             .reduce((sum, a) => sum + BigInt(a.currentBalance), 0n);
 
         // Find the last rotation timestamp
-        const receivedAddresses = state.rotatedAddresses
-            .filter((a): a is RotatedAddress & { receivedAt: number } => typeof a.receivedAt === 'number');
+        const receivedAddresses = state.rotatedAddresses.filter(
+            (a): a is RotatedAddress & { receivedAt: number } => typeof a.receivedAt === 'number'
+        );
         const lastRotation =
-            receivedAddresses.length > 0
-                ? Math.max(...receivedAddresses.map((a) => a.receivedAt))
-                : undefined;
+            receivedAddresses.length > 0 ? Math.max(...receivedAddresses.map((a) => a.receivedAt)) : undefined;
 
         return {
             enabled: true,
@@ -801,10 +731,7 @@ class AddressRotationService extends EventEmitter {
     /**
      * Update rotation settings
      */
-    updateRotationState = async (
-        accountPubkey: string,
-        updates: Partial<AddressRotationState>
-    ): Promise<void> => {
+    updateRotationState = async (accountPubkey: string, updates: Partial<AddressRotationState>): Promise<void> => {
         const state = this.store.settings[accountPubkey];
         if (!state) return;
 
@@ -832,6 +759,17 @@ class AddressRotationService extends EventEmitter {
 
         // Update balance and potentially auto-rotate
         return this.markAddressReceived(accountPubkey, address, amount, keyringIndex, network);
+    };
+
+    /**
+     * Persist state to browser storage
+     */
+    private persist = async (): Promise<void> => {
+        try {
+            await browser.storage.local.set({ [ROTATION_STORAGE_KEY]: this.store });
+        } catch (error) {
+            console.error('[AddressRotationService] Failed to persist:', error);
+        }
     };
 
     // ==================== Private Helper Methods ====================
@@ -870,11 +808,7 @@ class AddressRotationService extends EventEmitter {
 
         // Get the taproot address
         const networkType = preferenceService.store.networkType;
-        const address = publicKeyToAddressWithNetworkType(
-            pubkey,
-            AddressTypes.P2TR,
-            networkTypeToOPNet(networkType)
-        );
+        const address = publicKeyToAddressWithNetworkType(pubkey, AddressTypes.P2TR, networkTypeToOPNet(networkType));
 
         return { address, pubkey };
     };
@@ -882,11 +816,7 @@ class AddressRotationService extends EventEmitter {
     /**
      * Derive cold wallet info (but not the actual address for security)
      */
-    private deriveColdWalletInfo = (
-        mnemonic: string,
-        passphrase: string,
-        network: Network
-    ): ColdWalletInfo => {
+    private deriveColdWalletInfo = (mnemonic: string, passphrase: string, network: Network): ColdWalletInfo => {
         // Create a temporary keyring for cold wallet using the dedicated high index
         const coldKeyring = new HdKeyring({
             mnemonic,
