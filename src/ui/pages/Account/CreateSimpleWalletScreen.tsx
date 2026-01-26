@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Buffer } from 'buffer';
 
 import { ADDRESS_TYPES } from '@/shared/constant';
 import { AddressAssets } from '@/shared/types';
@@ -754,7 +755,12 @@ function Step3({
                     return;
                 }
 
-                quantumKey = Wallet.generate(bitcoinNetwork, MLDSASecurityLevel.LEVEL2).quantumPrivateKeyHex;
+                try {
+                    quantumKey = Wallet.generate(bitcoinNetwork, MLDSASecurityLevel.LEVEL2).quantumPrivateKeyHex;
+                } catch (genErr) {
+                    console.error('Wallet.generate() error:', genErr);
+                    throw genErr;
+                }
             } else if (quantumKeyInput) {
                 // Validate format
                 if (!validateQuantumKey(quantumKeyInput)) {

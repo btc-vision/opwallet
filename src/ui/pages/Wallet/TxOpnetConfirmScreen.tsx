@@ -1,4 +1,8 @@
-import { ParsedTransaction, ParsedTxOutput, PRESIGNED_DATA_EXPIRATION_MS, PreSignedTransactionData } from '@/background/service/notification';
+import {
+    ParsedTxOutput,
+    PRESIGNED_DATA_EXPIRATION_MS,
+    PreSignedTransactionData
+} from '@/background/service/notification';
 import {
     AcceptDomainTransferParameters,
     Action,
@@ -16,7 +20,7 @@ import {
     TransferParameters
 } from '@/shared/interfaces/RawTxParameters';
 import { RecordTransactionInput, TransactionType } from '@/shared/types/TransactionHistory';
-import { decodeBitcoinTransfer, decodeSignedInteractionReceipt, DecodedPreSignedData } from '@/shared/utils/txDecoder';
+import { decodeBitcoinTransfer, DecodedPreSignedData, decodeSignedInteractionReceipt } from '@/shared/utils/txDecoder';
 import Web3API from '@/shared/web3/Web3API';
 import { Column, Content, Footer, Header, Layout, OPNetTxFlowPreview, Text } from '@/ui/components';
 import { ContextType, useTools } from '@/ui/components/ActionComponent';
@@ -29,8 +33,8 @@ import {
     CloseCircleOutlined,
     CloudUploadOutlined,
     CopyOutlined,
-    DownOutlined,
     DollarOutlined,
+    DownOutlined,
     FileTextOutlined,
     GiftOutlined,
     GlobalOutlined,
@@ -220,14 +224,46 @@ export default function TxOpnetConfirmScreen() {
                     const zeroHash = '0x0000000000000000000000000000000000000000000000000000000000000000';
                     const addressInst = Address.fromString(zeroHash, account.pubkey);
 
-                    try { addresses.add(addressInst.toCSV(75, Web3API.network).address.toLowerCase()); } catch { /* ignore */ }
-                    try { addresses.add(addressInst.toCSV(2, Web3API.network).address.toLowerCase()); } catch { /* ignore */ }
-                    try { addresses.add(addressInst.toCSV(1, Web3API.network).address.toLowerCase()); } catch { /* ignore */ }
-                    try { addresses.add(addressInst.p2wda(Web3API.network).address.toLowerCase()); } catch { /* ignore */ }
-                    try { addresses.add(addressInst.p2tr(Web3API.network).toLowerCase()); } catch { /* ignore */ }
-                    try { addresses.add(addressInst.p2wpkh(Web3API.network).toLowerCase()); } catch { /* ignore */ }
-                    try { addresses.add(addressInst.p2pkh(Web3API.network).toLowerCase()); } catch { /* ignore */ }
-                    try { addresses.add(addressInst.p2shp2wpkh(Web3API.network).toLowerCase()); } catch { /* ignore */ }
+                    try {
+                        addresses.add(addressInst.toCSV(75, Web3API.network).address.toLowerCase());
+                    } catch {
+                        /* ignore */
+                    }
+                    try {
+                        addresses.add(addressInst.toCSV(2, Web3API.network).address.toLowerCase());
+                    } catch {
+                        /* ignore */
+                    }
+                    try {
+                        addresses.add(addressInst.toCSV(1, Web3API.network).address.toLowerCase());
+                    } catch {
+                        /* ignore */
+                    }
+                    try {
+                        addresses.add(addressInst.p2wda(Web3API.network).address.toLowerCase());
+                    } catch {
+                        /* ignore */
+                    }
+                    try {
+                        addresses.add(addressInst.p2tr(Web3API.network).toLowerCase());
+                    } catch {
+                        /* ignore */
+                    }
+                    try {
+                        addresses.add(addressInst.p2wpkh(Web3API.network).toLowerCase());
+                    } catch {
+                        /* ignore */
+                    }
+                    try {
+                        addresses.add(addressInst.p2pkh(Web3API.network).toLowerCase());
+                    } catch {
+                        /* ignore */
+                    }
+                    try {
+                        addresses.add(addressInst.p2shp2wpkh(Web3API.network).toLowerCase());
+                    } catch {
+                        /* ignore */
+                    }
                 }
 
                 // Add rotation addresses when rotation mode is enabled
@@ -244,9 +280,13 @@ export default function TxOpnetConfirmScreen() {
                         try {
                             const coldAddress = await wallet.getColdWalletAddress();
                             addresses.add(coldAddress.toLowerCase());
-                        } catch { /* ignore if cold wallet derivation fails */ }
+                        } catch {
+                            /* ignore if cold wallet derivation fails */
+                        }
                     }
-                } catch { /* ignore if rotation check fails */ }
+                } catch {
+                    /* ignore if rotation check fails */
+                }
 
                 setUserAddresses(addresses);
             } catch (e) {
@@ -258,11 +298,14 @@ export default function TxOpnetConfirmScreen() {
 
     // Fetch BTC price for USD estimation
     useEffect(() => {
-        wallet.getBtcPrice().then((price) => {
-            if (price > 0) setBtcPrice(price);
-        }).catch(() => {
-            // Silently fail - USD will just not be shown
-        });
+        wallet
+            .getBtcPrice()
+            .then((price) => {
+                if (price > 0) setBtcPrice(price);
+            })
+            .catch(() => {
+                // Silently fail - USD will just not be shown
+            });
     }, [wallet]);
 
     // Analyze outputs to calculate total cost and identify change/external outputs
@@ -274,7 +317,8 @@ export default function TxOpnetConfirmScreen() {
             // Fallback to estimate
             const miningFee = Number(rawTxInfo.priorityFee);
             const gasFee = Number(rawTxInfo.gasSatFee ?? 0);
-            const domainPrice = rawTxInfo.action === Action.RegisterDomain && 'price' in rawTxInfo ? Number(rawTxInfo.price) : 0;
+            const domainPrice =
+                rawTxInfo.action === Action.RegisterDomain && 'price' in rawTxInfo ? Number(rawTxInfo.price) : 0;
             return {
                 totalCost: miningFee + gasFee + domainPrice,
                 changeOutputs: [] as { address: string; value: bigint }[],
@@ -368,7 +412,17 @@ export default function TxOpnetConfirmScreen() {
     // Pre-sign OPNet interaction transactions on mount
     useEffect(() => {
         // Only pre-sign for OPNet interactions (Transfer, Mint, Airdrop, SendNFT, RegisterDomain, PublishDomain, DomainTransfer actions)
-        const supportedActions = [Action.Transfer, Action.Mint, Action.Airdrop, Action.SendNFT, Action.RegisterDomain, Action.PublishDomain, Action.InitiateDomainTransfer, Action.AcceptDomainTransfer, Action.CancelDomainTransfer];
+        const supportedActions = [
+            Action.Transfer,
+            Action.Mint,
+            Action.Airdrop,
+            Action.SendNFT,
+            Action.RegisterDomain,
+            Action.PublishDomain,
+            Action.InitiateDomainTransfer,
+            Action.AcceptDomainTransfer,
+            Action.CancelDomainTransfer
+        ];
         if (!supportedActions.includes(rawTxInfo.action)) return;
         if (preSigningRef.current) return;
         preSigningRef.current = true;
@@ -424,7 +478,8 @@ export default function TxOpnetConfirmScreen() {
                         const address = await getPubKey(rawTxInfo.to);
                         // Ensure inputAmount is bigint (navigation state may serialize it as string)
                         const inputAmountRaw = rawTxInfo.inputAmount;
-                        const transferAmount = typeof inputAmountRaw === 'bigint' ? inputAmountRaw : BigInt(inputAmountRaw);
+                        const transferAmount =
+                            typeof inputAmountRaw === 'bigint' ? inputAmountRaw : BigInt(inputAmountRaw);
                         simulation = await contract.safeTransfer(address, transferAmount, new Uint8Array());
                         const symbolResult = await contract.symbol();
                         symbol = symbolResult.properties.symbol;
@@ -438,7 +493,10 @@ export default function TxOpnetConfirmScreen() {
                             Web3API.network,
                             userWallet.address
                         );
-                        const value = BitcoinUtils.expandToDecimals(rawTxInfo.inputAmount, rawTxInfo.tokens[0].divisibility);
+                        const value = BitcoinUtils.expandToDecimals(
+                            rawTxInfo.inputAmount,
+                            rawTxInfo.tokens[0].divisibility
+                        );
                         simulation = await contract.mint(Address.fromString(rawTxInfo.to), value);
                         symbol = rawTxInfo.tokens[0].symbol;
                         break;
@@ -633,18 +691,23 @@ export default function TxOpnetConfirmScreen() {
                     decodedData = decodeSignedInteractionReceipt(
                         signedTx.fundingTransactionRaw,
                         signedTx.interactionTransactionRaw,
-                        signedTx.fundingInputUtxos,  // Input UTXOs consumed by funding tx
-                        signedTx.fundingUTXOs,       // Output UTXOs from funding tx (inputs for interaction)
+                        signedTx.fundingInputUtxos, // Input UTXOs consumed by funding tx
+                        signedTx.fundingUTXOs, // Output UTXOs from funding tx (inputs for interaction)
                         Web3API.network
                     );
 
                     // Build PreSignedTransactionData for OPNetTxFlowPreview
                     // Note: domain_registration and domain_publish use 'interaction' as the base type
-                    const txType = rawTxInfo.action === Action.Transfer ? 'token_transfer'
-                        : rawTxInfo.action === Action.Mint ? 'mint'
-                        : rawTxInfo.action === Action.Airdrop ? 'airdrop'
-                        : rawTxInfo.action === Action.SendNFT ? 'nft_transfer'
-                        : 'interaction';
+                    const txType =
+                        rawTxInfo.action === Action.Transfer
+                            ? 'token_transfer'
+                            : rawTxInfo.action === Action.Mint
+                              ? 'mint'
+                              : rawTxInfo.action === Action.Airdrop
+                                ? 'airdrop'
+                                : rawTxInfo.action === Action.SendNFT
+                                  ? 'nft_transfer'
+                                  : 'interaction';
 
                     preSignedTxData = {
                         type: txType,
@@ -705,7 +768,8 @@ export default function TxOpnetConfirmScreen() {
                 const parameters = rawTxInfo;
                 // Ensure inputAmount is a number (navigation state may serialize it as string)
                 const inputAmountValue = parameters.inputAmount;
-                const btcInputAmount = typeof inputAmountValue === 'number' ? inputAmountValue : Number(inputAmountValue);
+                const btcInputAmount =
+                    typeof inputAmountValue === 'number' ? inputAmountValue : Number(inputAmountValue);
 
                 // Determine source address and get UTXOs
                 // When rotation mode is enabled, change should go to the next rotation address
@@ -728,16 +792,21 @@ export default function TxOpnetConfirmScreen() {
                 const sourceType = parameters.sourceType;
                 const isConsolidation = sourceType === SourceType.CONSOLIDATION;
                 const isRotationAll = sourceType === SourceType.ROTATION_ALL;
-                const hasSpecialSourceType = sourceType &&
-                    (isConsolidation || isRotationAll ||
-                     (parameters.from && sourceType !== SourceType.CURRENT));
+                const hasSpecialSourceType =
+                    sourceType &&
+                    (isConsolidation || isRotationAll || (parameters.from && sourceType !== SourceType.CURRENT));
 
                 console.log('[SendBitcoin] sourceType:', parameters.sourceType, 'type:', typeof parameters.sourceType);
                 console.log('[SendBitcoin] from:', parameters.from);
                 console.log('[SendBitcoin] isConsolidation:', isConsolidation);
                 console.log('[SendBitcoin] isRotationAll:', isRotationAll);
                 console.log('[SendBitcoin] hasSpecialSourceType:', hasSpecialSourceType);
-                console.log('[SendBitcoin] inputAmount:', parameters.inputAmount, 'type:', typeof parameters.inputAmount);
+                console.log(
+                    '[SendBitcoin] inputAmount:',
+                    parameters.inputAmount,
+                    'type:',
+                    typeof parameters.inputAmount
+                );
 
                 if (hasSpecialSourceType) {
                     const zeroHash = '0x0000000000000000000000000000000000000000000000000000000000000000';
@@ -833,7 +902,11 @@ export default function TxOpnetConfirmScreen() {
                         let preSignedTxData: PreSignedTransactionData | null = null;
 
                         try {
-                            decodedData = decodeBitcoinTransfer(coldSignedTx.tx, coldSignedTx.inputUtxos, Web3API.network);
+                            decodedData = decodeBitcoinTransfer(
+                                coldSignedTx.tx,
+                                coldSignedTx.inputUtxos,
+                                Web3API.network
+                            );
                             preSignedTxData = {
                                 type: 'bitcoin_transfer',
                                 createdAt: Date.now(),
@@ -881,17 +954,11 @@ export default function TxOpnetConfirmScreen() {
                             parameters.sourceAddresses,
                             undefined,
                             undefined,
-                            true // optimize
+                            true
                         );
 
                         if (!utxos || utxos.length === 0) {
                             throw new Error('No UTXOs available for consolidation');
-                        }
-
-                        // Debug: Log UTXO details
-                        console.log('[Consolidation] Fetched', utxos.length, 'UTXOs');
-                        for (let i = 0; i < Math.min(utxos.length, 5); i++) {
-                            console.log(`[Consolidation] UTXO[${i}] value:`, utxos[i].value, 'type:', typeof utxos[i].value);
                         }
 
                         // Calculate total input value - ensure each value is a bigint
@@ -975,7 +1042,9 @@ export default function TxOpnetConfirmScreen() {
                         // CRITICAL: Validate amount is reasonable before passing to library
                         const FOUR_HUNDRED_MILLION_BTC = 40_000_000_000_000_000n;
                         if (outputAmount >= FOUR_HUNDRED_MILLION_BTC) {
-                            throw new Error(`CRITICAL BUG: outputAmount=${outputAmount} is impossibly large! totalInputValue=${totalInputValue}, feeBuffer=${feeBuffer}`);
+                            throw new Error(
+                                `CRITICAL BUG: outputAmount=${outputAmount} is impossibly large! totalInputValue=${totalInputValue}, feeBuffer=${feeBuffer}`
+                            );
                         }
 
                         // Build consolidation transaction
@@ -1003,7 +1072,11 @@ export default function TxOpnetConfirmScreen() {
                         let preSignedTxData: PreSignedTransactionData | null = null;
 
                         try {
-                            decodedData = decodeBitcoinTransfer(consolidationTx.tx, consolidationTx.inputUtxos, Web3API.network);
+                            decodedData = decodeBitcoinTransfer(
+                                consolidationTx.tx,
+                                consolidationTx.inputUtxos,
+                                Web3API.network
+                            );
                             preSignedTxData = {
                                 type: 'bitcoin_transfer',
                                 createdAt: Date.now(),
@@ -1057,12 +1130,7 @@ export default function TxOpnetConfirmScreen() {
                         }
 
                         // Fetch UTXOs from all rotation addresses
-                        utxos = await Web3API.getAllUTXOsForAddresses(
-                            allSourceAddresses,
-                            undefined,
-                            undefined,
-                            true
-                        );
+                        utxos = await Web3API.getAllUTXOsForAddresses(allSourceAddresses, undefined, undefined, false);
 
                         if (!utxos || utxos.length === 0) {
                             throw new Error('No UTXOs available in rotation addresses');
@@ -1477,7 +1545,10 @@ export default function TxOpnetConfirmScreen() {
             // Clear cached transaction
             setCachedSignedTx(null);
 
-            navigate(RouteTypes.TxSuccessScreen, { txid: sendTransaction.transactionId, contractAddress: contractAddress });
+            navigate(RouteTypes.TxSuccessScreen, {
+                txid: sendTransaction.transactionId,
+                contractAddress: contractAddress
+            });
         } catch (e) {
             const error = e as Error;
             console.error(e);
@@ -1604,7 +1675,12 @@ export default function TxOpnetConfirmScreen() {
             const deployPriorityFee = typeof priorityFeeRaw === 'bigint' ? priorityFeeRaw : BigInt(priorityFeeRaw);
             const deployGasSatFee = typeof gasSatFeeRaw === 'bigint' ? gasSatFeeRaw : BigInt(gasSatFeeRaw);
 
-            const utxos: UTXO[] = await Web3API.getAllUTXOsForAddresses([currentWalletAddress.address], 1_000_000n); // maximum fee a contract can pay
+            const utxos: UTXO[] = await Web3API.getAllUTXOsForAddresses(
+                [currentWalletAddress.address],
+                200_000n,
+                undefined,
+                true
+            ); // maximum fee a contract can pay
 
             const arrayBuffer = await parameters.file.arrayBuffer();
             const uint8Array = new Uint8Array(arrayBuffer);
@@ -1702,7 +1778,8 @@ export default function TxOpnetConfirmScreen() {
             const currentWalletAddress = await wallet.getCurrentAccount();
             // Ensure inputAmount is a number (navigation state may serialize it as string)
             const mintInputAmountRaw = parameters.inputAmount;
-            const mintInputAmount = typeof mintInputAmountRaw === 'number' ? mintInputAmountRaw : Number(mintInputAmountRaw);
+            const mintInputAmount =
+                typeof mintInputAmountRaw === 'number' ? mintInputAmountRaw : Number(mintInputAmountRaw);
 
             // Check if we have a cached pre-signed transaction
             if (!cachedSignedTx) {
@@ -2345,7 +2422,9 @@ export default function TxOpnetConfirmScreen() {
                             {isTxFlowExpanded && (
                                 <div style={{ padding: '0 12px 12px 12px' }}>
                                     <OPNetTxFlowPreview
-                                        preSignedData={cachedSignedTx?.preSignedTxData || cachedBtcTx?.preSignedTxData || null}
+                                        preSignedData={
+                                            cachedSignedTx?.preSignedTxData || cachedBtcTx?.preSignedTxData || null
+                                        }
                                         isLoading={false}
                                         width={316}
                                         showTooltip={true}
@@ -2380,10 +2459,8 @@ export default function TxOpnetConfirmScreen() {
                                 <DollarOutlined style={{ fontSize: 14, color: colors.main }} />
                                 Fee Breakdown
                             </div>
-                            {(cachedSignedTx?.decodedData || cachedBtcTx?.decodedData) ? (
-                                <span style={{ fontSize: '9px', color: colors.success, fontWeight: 500 }}>
-                                    ACTUAL
-                                </span>
+                            {cachedSignedTx?.decodedData || cachedBtcTx?.decodedData ? (
+                                <span style={{ fontSize: '9px', color: colors.success, fontWeight: 500 }}>ACTUAL</span>
                             ) : (
                                 <span style={{ fontSize: '9px', color: colors.warning, fontWeight: 500 }}>
                                     {isSigning ? 'CALCULATING...' : 'ESTIMATE'}
@@ -2417,7 +2494,10 @@ export default function TxOpnetConfirmScreen() {
                                         style={{
                                             fontSize: '14px',
                                             fontWeight: 600,
-                                            color: (cachedSignedTx?.decodedData || cachedBtcTx?.decodedData) ? colors.success : colors.text
+                                            color:
+                                                cachedSignedTx?.decodedData || cachedBtcTx?.decodedData
+                                                    ? colors.success
+                                                    : colors.text
                                         }}>
                                         {cachedSignedTx?.decodedData
                                             ? cachedSignedTx.decodedData.totalMiningFee.toString()
@@ -2436,7 +2516,17 @@ export default function TxOpnetConfirmScreen() {
                                 </div>
                                 {btcPrice > 0 && (
                                     <div style={{ fontSize: '10px', color: colors.textFaded }}>
-                                        ${(Number(cachedSignedTx?.decodedData?.totalMiningFee ?? cachedBtcTx?.decodedData?.totalMiningFee ?? rawTxInfo.priorityFee) / 1e8 * btcPrice).toFixed(2)} USD
+                                        $
+                                        {(
+                                            (Number(
+                                                cachedSignedTx?.decodedData?.totalMiningFee ??
+                                                    cachedBtcTx?.decodedData?.totalMiningFee ??
+                                                    rawTxInfo.priorityFee
+                                            ) /
+                                                1e8) *
+                                            btcPrice
+                                        ).toFixed(2)}{' '}
+                                        USD
                                     </div>
                                 )}
                             </div>
@@ -2473,7 +2563,7 @@ export default function TxOpnetConfirmScreen() {
                                             }}>
                                             {cachedSignedTx?.decodedData
                                                 ? cachedSignedTx.decodedData.opnetGasFee.toString()
-                                                : rawTxInfo.gasSatFee?.toString() ?? '0'}
+                                                : (rawTxInfo.gasSatFee?.toString() ?? '0')}
                                         </span>
                                         <span
                                             style={{
@@ -2486,7 +2576,15 @@ export default function TxOpnetConfirmScreen() {
                                     </div>
                                     {btcPrice > 0 && (
                                         <div style={{ fontSize: '10px', color: colors.textFaded }}>
-                                            ${(Number(cachedSignedTx?.decodedData?.opnetGasFee ?? rawTxInfo.gasSatFee ?? 0) / 1e8 * btcPrice).toFixed(2)} USD
+                                            $
+                                            {(
+                                                (Number(
+                                                    cachedSignedTx?.decodedData?.opnetGasFee ?? rawTxInfo.gasSatFee ?? 0
+                                                ) /
+                                                    1e8) *
+                                                btcPrice
+                                            ).toFixed(2)}{' '}
+                                            USD
                                         </div>
                                     )}
                                 </div>
@@ -2535,20 +2633,52 @@ export default function TxOpnetConfirmScreen() {
                                 border: `1px solid ${colors.main}30`,
                                 borderRadius: '8px'
                             }}>
-                            <div style={{ textAlign: 'center', marginBottom: outputAnalysis.changeOutputs.length > 0 || outputAnalysis.externalOutputs.length > 0 ? '10px' : '0' }}>
-                                <div style={{ fontSize: '11px', color: colors.textFaded, marginBottom: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+                            <div
+                                style={{
+                                    textAlign: 'center',
+                                    marginBottom:
+                                        outputAnalysis.changeOutputs.length > 0 ||
+                                        outputAnalysis.externalOutputs.length > 0
+                                            ? '10px'
+                                            : '0'
+                                }}>
+                                <div
+                                    style={{
+                                        fontSize: '11px',
+                                        color: colors.textFaded,
+                                        marginBottom: '4px',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        gap: '6px'
+                                    }}>
                                     Total Transaction Cost
                                     {outputAnalysis.isActual ? (
-                                        <span style={{ fontSize: '9px', color: colors.success, fontWeight: 600 }}>ACTUAL</span>
+                                        <span style={{ fontSize: '9px', color: colors.success, fontWeight: 600 }}>
+                                            ACTUAL
+                                        </span>
                                     ) : (
-                                        <span style={{ fontSize: '9px', color: colors.warning, fontWeight: 600 }}>~EST</span>
+                                        <span style={{ fontSize: '9px', color: colors.warning, fontWeight: 600 }}>
+                                            ~EST
+                                        </span>
                                     )}
                                 </div>
                                 <div style={{ fontSize: '20px', fontWeight: 700, color: colors.main }}>
                                     {(outputAnalysis.totalCost / 1e8).toFixed(8).replace(/\.?0+$/, '')} {btcUnit}
                                     {btcPrice > 0 && (
-                                        <span style={{ fontSize: '12px', color: colors.textFaded, marginLeft: '8px', fontWeight: 500 }}>
-                                            (${(outputAnalysis.totalCost / 1e8 * btcPrice).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USD)
+                                        <span
+                                            style={{
+                                                fontSize: '12px',
+                                                color: colors.textFaded,
+                                                marginLeft: '8px',
+                                                fontWeight: 500
+                                            }}>
+                                            ($
+                                            {((outputAnalysis.totalCost / 1e8) * btcPrice).toLocaleString(undefined, {
+                                                minimumFractionDigits: 2,
+                                                maximumFractionDigits: 2
+                                            })}{' '}
+                                            USD)
                                         </span>
                                     )}
                                 </div>
@@ -2584,10 +2714,13 @@ export default function TxOpnetConfirmScreen() {
                                                     fontWeight: 500
                                                 }}
                                                 title={output.address}>
-                                                {output.address.length > 16 ? `${output.address.slice(0, 8)}...${output.address.slice(-8)}` : output.address}
+                                                {output.address.length > 16
+                                                    ? `${output.address.slice(0, 8)}...${output.address.slice(-8)}`
+                                                    : output.address}
                                             </span>
                                             <span style={{ fontSize: '11px', color: colors.success, fontWeight: 600 }}>
-                                                +{(Number(output.value) / 1e8).toFixed(8).replace(/\.?0+$/, '')} {btcUnit}
+                                                +{(Number(output.value) / 1e8).toFixed(8).replace(/\.?0+$/, '')}{' '}
+                                                {btcUnit}
                                             </span>
                                         </div>
                                     ))}
@@ -2613,7 +2746,8 @@ export default function TxOpnetConfirmScreen() {
                                             gap: '4px'
                                         }}>
                                         <WarningOutlined style={{ fontSize: 10 }} />
-                                        External output{outputAnalysis.externalOutputs.length > 1 ? 's' : ''} (not your address)
+                                        External output{outputAnalysis.externalOutputs.length > 1 ? 's' : ''} (not your
+                                        address)
                                     </div>
                                     {outputAnalysis.externalOutputs.map((output, idx) => (
                                         <div
@@ -2632,10 +2766,13 @@ export default function TxOpnetConfirmScreen() {
                                                     fontWeight: 500
                                                 }}
                                                 title={output.address}>
-                                                {output.address.length > 16 ? `${output.address.slice(0, 8)}...${output.address.slice(-8)}` : output.address}
+                                                {output.address.length > 16
+                                                    ? `${output.address.slice(0, 8)}...${output.address.slice(-8)}`
+                                                    : output.address}
                                             </span>
                                             <span style={{ fontSize: '11px', color: '#fbbf24', fontWeight: 600 }}>
-                                                -{(Number(output.value) / 1e8).toFixed(8).replace(/\.?0+$/, '')} {btcUnit}
+                                                -{(Number(output.value) / 1e8).toFixed(8).replace(/\.?0+$/, '')}{' '}
+                                                {btcUnit}
                                             </span>
                                         </div>
                                     ))}
@@ -2770,7 +2907,12 @@ export default function TxOpnetConfirmScreen() {
                             opacity: disabled || isSigning || signingError ? 0.5 : 1,
                             transition: 'all 0.15s'
                         }}
-                        disabled={disabled || isSigning || !!signingError || (rawTxInfo.action === Action.SendBitcoin && !cachedBtcTx)}
+                        disabled={
+                            disabled ||
+                            isSigning ||
+                            !!signingError ||
+                            (rawTxInfo.action === Action.SendBitcoin && !cachedBtcTx)
+                        }
                         onClick={async () => {
                             setDisabled(true);
                             switch (rawTxInfo.action) {

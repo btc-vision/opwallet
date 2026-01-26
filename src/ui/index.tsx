@@ -1,3 +1,4 @@
+import { Buffer } from 'buffer';
 import en from 'antd/es/locale/en_US';
 import { message } from 'antd';
 import ReactDOM from 'react-dom/client';
@@ -6,6 +7,7 @@ import { Provider } from 'react-redux';
 
 import { EVENTS } from '@/shared/constant';
 import eventBus from '@/shared/eventBus';
+
 // Import PortMessage directly to avoid circular dependency issues with events shim
 import PortMessage from '@/shared/utils/message/portMessage';
 import { PriceProvider } from '@/ui/provider/PriceProvider';
@@ -23,6 +25,10 @@ import ChainUpdater from './state/settings/updater';
 import '@/ui/styles/global.less';
 import './template.css';
 import '../opnet/styles.css';
+
+if (typeof window !== 'undefined') {
+    (window as unknown as { Buffer: typeof Buffer }).Buffer = Buffer;
+}
 
 message.config({
     maxCount: 1
