@@ -4371,6 +4371,9 @@ export class WalletController {
      * @throws WalletControllerError
      */
     private getOpNetBalance = async (address: string, pubKey: string): Promise<BitcoinBalance> => {
+        // Ensure network is set before deriving addresses
+        await Web3API.setNetwork(this.getChainType());
+
         let csv75Address = '';
         let csv2Address = '';
         let csv1Address = '';
