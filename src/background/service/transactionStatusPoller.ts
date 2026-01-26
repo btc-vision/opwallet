@@ -1,11 +1,14 @@
 import { ChainType } from '@/shared/constant';
 import { TransactionHistoryItem, TransactionStatus } from '@/shared/types/TransactionHistory';
-import { RotatedAddressStatus } from '@/shared/types/AddressRotation';
-import Web3API, { getBitcoinLibJSNetwork } from '@/shared/web3/Web3API';
+import { RotatedAddressStatus, AddressRotationState } from '@/shared/types/AddressRotation';
+import Web3API from '@/shared/web3/Web3API';
+import { getBitcoinLibJSNetwork } from '@/shared/web3/Web3API';
+import { NetworkType } from '@/shared/types';
 
 import addressRotationService from './addressRotation';
 import preferenceService from './preference';
 import transactionHistoryService from './transactionHistory';
+import keyringService from './keyring';
 
 const POLL_INTERVAL_MS = 30000; // 30 seconds
 const MAX_STATUS_CHECK_ATTEMPTS = 50; // ~25 minutes then stop checking individual tx
@@ -55,23 +58,6 @@ class TransactionStatusPoller {
     }
 
     /**
-     * Force an immediate poll (useful after sending a transaction)
-     * Resets the UTXO check cooldown to ensure incoming transactions are detected
-     */
-    async pollNow(): Promise<void> {
-        this.lastUtxoCheck = 0; // Reset cooldown to force UTXO check
-        await this.poll();
-    }
-
-    /**
-     * Reset block height cache (useful when switching networks)
-     */
-    resetBlockHeightCache(): void {
-        this.cachedBlockHeight = null;
-        this.cachedBlockHeightTimestamp = 0;
-    }
-
-    /**
      * Main polling function
      */
     private async poll(): Promise<void> {
@@ -103,9 +89,14 @@ class TransactionStatusPoller {
 
     /**
      * Check status of all transactions that need tracking (pending or confirmed but not finalized)
+     * Only checks transactions for the CURRENT chain to avoid network switching race conditions
      */
     private async pollTransactionsNeedingTracking(): Promise<void> {
-        const txsNeedingTracking = await transactionHistoryService.getTransactionsNeedingConfirmationTracking();
+        const currentChainType = preferenceService.getChainType();
+        const allTxsNeedingTracking = await transactionHistoryService.getTransactionsNeedingConfirmationTracking();
+
+        // Filter to only transactions on the current chain
+        const txsNeedingTracking = allTxsNeedingTracking.filter(tx => tx.chainType === currentChainType);
 
         if (txsNeedingTracking.length === 0) {
             return;
@@ -273,10 +264,8 @@ class TransactionStatusPoller {
             const utxos = await Web3API.provider.utxoManager.getUTXOs({
                 address: currentAccount.address,
                 mergePendingUTXOs: true,
-                filterSpentUTXOs: true,
-                optimize: false
+                filterSpentUTXOs: true
             });
-
             if (!utxos || utxos.length === 0) {
                 return;
             }
@@ -339,7 +328,11 @@ class TransactionStatusPoller {
 
             // Get addresses that need balance checking
             const addressesToCheck = rotationState.rotatedAddresses
-                .filter((a) => a.status === RotatedAddressStatus.ACTIVE || a.status === RotatedAddressStatus.RECEIVED)
+                .filter(
+                    (a) =>
+                        a.status === RotatedAddressStatus.ACTIVE ||
+                        a.status === RotatedAddressStatus.RECEIVED
+                )
                 .map((a) => a.address);
 
             if (addressesToCheck.length === 0) {
@@ -347,7 +340,7 @@ class TransactionStatusPoller {
             }
 
             // Fetch UTXOs for all rotation addresses
-            const utxos = await Web3API.getAllUTXOsForAddresses(addressesToCheck, undefined, undefined, true);
+            const utxos = await Web3API.getAllUTXOsForAddresses(addressesToCheck);
 
             // Group UTXOs by address
             const balancesByAddress = new Map<string, bigint>();
@@ -396,6 +389,23 @@ class TransactionStatusPoller {
         } catch (error) {
             console.error('[TransactionStatusPoller] Error checking rotation addresses:', error);
         }
+    }
+
+    /**
+     * Force an immediate poll (useful after sending a transaction)
+     * Resets the UTXO check cooldown to ensure incoming transactions are detected
+     */
+    async pollNow(): Promise<void> {
+        this.lastUtxoCheck = 0; // Reset cooldown to force UTXO check
+        await this.poll();
+    }
+
+    /**
+     * Reset block height cache (useful when switching networks)
+     */
+    resetBlockHeightCache(): void {
+        this.cachedBlockHeight = null;
+        this.cachedBlockHeightTimestamp = 0;
     }
 }
 
