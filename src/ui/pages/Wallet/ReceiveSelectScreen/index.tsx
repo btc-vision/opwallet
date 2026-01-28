@@ -110,7 +110,8 @@ function OptionCard({ option, address, loading, onCopy, onQRClick }: OptionCardP
                         transition: 'all 0.15s'
                     }}
                     onMouseEnter={(e) => {
-                        e.currentTarget.style.background = `${option.iconColor}20`;
+                        // Use configured hover background to support both hex and rgba colors
+                        e.currentTarget.style.background = option.hoverButtonBg ?? colors.bg3;
                     }}
                     onMouseLeave={(e) => {
                         e.currentTarget.style.background = colors.bg3;
@@ -136,7 +137,8 @@ function OptionCard({ option, address, loading, onCopy, onQRClick }: OptionCardP
                         transition: 'all 0.15s'
                     }}
                     onMouseEnter={(e) => {
-                        e.currentTarget.style.background = `${option.iconColor}20`;
+                        // Use configured hover background to support both hex and rgba colors
+                        e.currentTarget.style.background = option.hoverButtonBg ?? colors.bg3;
                     }}
                     onMouseLeave={(e) => {
                         e.currentTarget.style.background = colors.bg3;

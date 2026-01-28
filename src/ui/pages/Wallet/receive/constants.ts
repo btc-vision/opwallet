@@ -44,7 +44,9 @@ export const RECEIVE_OPTIONS = [
         /** Icon color - uses theme orange */
         iconColor: colors.warning,
         /** Icon background color (with transparency) */
-        iconBg: `${colors.warning}20`
+        iconBg: `${colors.warning}20`,
+        /** Hover background for action buttons */
+        hoverButtonBg: `${colors.warning}20`
     },
     {
         id: 'op20' as ReceiveType,
@@ -52,7 +54,9 @@ export const RECEIVE_OPTIONS = [
         description: 'Receive OPNet tokens via MLDSA address',
         icon: SafetyOutlined,
         iconColor: QUANTUM_COLOR,
-        iconBg: 'rgba(139, 92, 246, 0.12)' // ~12% opacity to match BTC's hex 20 suffix
+        iconBg: 'rgba(139, 92, 246, 0.12)', // ~12% opacity to match BTC's hex 20 suffix
+        /** Hover background for action buttons */
+        hoverButtonBg: 'rgba(139, 92, 246, 0.25)'
     }
 ] as const;
 
