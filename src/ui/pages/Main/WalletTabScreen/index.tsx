@@ -1,4 +1,4 @@
-import React, { CSSProperties, useCallback, useEffect, useMemo, useState } from 'react';
+import { CSSProperties, useCallback, useEffect, useMemo, useState } from 'react';
 
 import { UTXO_CONFIG } from '@/shared/config';
 import { AddressFlagType, KEYRING_TYPE } from '@/shared/constant';
@@ -25,7 +25,7 @@ import {
 import { accountActions } from '@/ui/state/accounts/reducer';
 import { useAppDispatch } from '@/ui/state/hooks';
 import { useCurrentKeyring } from '@/ui/state/keyrings/hooks';
-import { useRotationEnabled, useCurrentRotationAddress } from '@/ui/state/rotation/hooks';
+import { useCurrentRotationAddress, useRotationEnabled } from '@/ui/state/rotation/hooks';
 import {
     useBTCUnit,
     useChain,
@@ -37,6 +37,8 @@ import {
 import { useResetUiTxCreateScreen } from '@/ui/state/ui/hooks';
 import { copyToClipboard, useWallet } from '@/ui/utils';
 
+import { BTCDomainModal, TOS_DOMAIN_ACCEPTED_KEY } from "@/ui/components/AcceptModals/btcDomainTermsModal";
+import { TermsOfServiceModal, TOS_ACCEPTED_KEY } from "@/ui/components/AcceptModals/TermsModal";
 import { useTools } from '@/ui/components/ActionComponent';
 import ParticleField from '@/ui/components/ParticleField/ParticleField';
 import { useBtcDomainsEnabled, usePrivacyModeEnabled } from '@/ui/hooks/useAppConfig';
@@ -62,10 +64,8 @@ import { Tooltip } from 'antd';
 import ActionButton from '../../../components/ActionButton/index';
 import { RouteTypes, useNavigate } from '../../routeTypes';
 import { SwitchChainModal } from '../../Settings/network/SwitchChainModal';
-import { OPNetList } from './OPNetList';
 import { useConsolidation } from './hooks';
-import {BTCDomainModal, TOS_DOMAIN_ACCEPTED_KEY} from "@/ui/components/AcceptModals/btcDomainTermsModal";
-import {TermsOfServiceModal, TOS_ACCEPTED_KEY} from "@/ui/components/AcceptModals/TermsModal";
+import { OPNetList } from './OPNetList';
 
 const colors = {
     main: '#f37413',
@@ -947,7 +947,7 @@ export default function WalletTabScreen() {
                             <ActionButton
                                 label="Receive"
                                 icon={<QrcodeOutlined style={{ fontSize: 18, color: colors.text }} />}
-                                onClick={() => navigate(RouteTypes.ReceiveScreen)}
+                                onClick={() => navigate(RouteTypes.ReceiveSelectScreen)}
                             />
 
                             <ActionButton

@@ -1,16 +1,44 @@
-import { QRCodeSVG } from 'qrcode.react';
-import { useCallback, useEffect, useState } from 'react';
+/**
+ * ReceiveScreen - Address display and QR code screen for receiving assets
+ * 
+ * This screen displays:
+ * - QR code for the receive address
+ * - Copyable address text
+ * - History button linking to transaction history
+ * 
+ * MODES:
+ * - BTC Mode: Shows Bitcoin address with type selector (P2TR/P2WPKH/P2PKH)
+ * - OP_20 Mode: Shows MLDSA address for OPNet tokens
+ * 
+ * ARCHITECTURE:
+ * - Config-driven using RECEIVE_CONFIG from constants.ts
+ * - Receives 'type' param from ReceiveSelectScreen via navigation state
+ * - Reuses same QR card UI for both modes (DRY principle)
+ * - Defaults to 'btc' for backwards compatibility if accessed directly
+ * 
+ * TO ADD NEW ASSET TYPE:
+ * 1. Add to RECEIVE_CONFIG in constants.ts
+ * 2. Add address fetching logic in useEffect
+ * 3. Update getDisplayAddress() helper
+ */
+
 import {
     CheckCircleFilled,
     CopyOutlined,
     DownOutlined,
+    HistoryOutlined,
+    InfoCircleOutlined,
     RightOutlined,
-    SafetyOutlined,
     SwapOutlined
 } from '@ant-design/icons';
+import { QRCodeSVG } from 'qrcode.react';
+import { useCallback, useEffect, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 
+import { getBitcoinLibJSNetwork } from '@/shared/web3/Web3API';
 import { Column, Content, Header, Icon, Layout, Row, Text } from '@/ui/components';
 import { useTools } from '@/ui/components/ActionComponent';
+import { RouteTypes, useNavigate } from '@/ui/pages/routeTypes';
 import { useAccountAddress, useCurrentAccount } from '@/ui/state/accounts/hooks';
 import { useCurrentKeyring } from '@/ui/state/keyrings/hooks';
 import {
@@ -20,24 +48,20 @@ import {
     useRotationEnabled
 } from '@/ui/state/rotation/hooks';
 import { useChain } from '@/ui/state/settings/hooks';
+// COLORS: Import directly from theme
+import { colors } from '@/ui/theme/colors';
+import { sizes } from '@/ui/theme/spacing';
 import { copyToClipboard, useWallet } from '@/ui/utils';
-import { RouteTypes, useNavigate } from '@/ui/pages/routeTypes';
 import { Address, AddressTypes } from '@btc-vision/transaction';
-import { getBitcoinLibJSNetwork } from '@/shared/web3/Web3API';
 
-const colors = {
-    main: '#f37413',
-    text: '#dbdbdb',
-    textFaded: 'rgba(219, 219, 219, 0.7)',
-    containerBg: '#434343',
-    containerBorder: '#303030',
-    cardBg: '#2a2a2a',
-    recommended: '#00AA00',
-    quantum: 'rgba(139, 92, 246)'
-};
+// Config from shared constants (only QUANTUM_COLOR is receive-specific)
+import { QUANTUM_COLOR, RECEIVE_CONFIG, ReceiveType } from '@/ui/pages/Wallet/Receive/constants';
 
-const COMPACT_QR_SIZE = 140;
+// =============================================================================
+// TYPES
+// =============================================================================
 
+/** BTC address type option for dropdown selector */
 interface AddressTypeOption {
     value: AddressTypes;
     name: string;
@@ -45,8 +69,13 @@ interface AddressTypeOption {
     address: string;
 }
 
+// =============================================================================
+// MAIN COMPONENT
+// =============================================================================
+
 export default function ReceiveScreen() {
     const navigate = useNavigate();
+    const location = useLocation();
     const currentAccount = useCurrentAccount();
     const baseAddress = useAccountAddress();
     const chain = useChain();
@@ -54,27 +83,58 @@ export default function ReceiveScreen() {
     const tools = useTools();
     const currentKeyring = useCurrentKeyring();
 
+    // Address rotation hooks (BTC only feature)
     const rotationEnabled = useRotationEnabled();
     const currentRotationAddress = useCurrentRotationAddress();
     const refreshRotation = useRefreshRotation();
     const { isKeyringRotationMode } = useKeyringRotationMode();
 
+    // =========================================================================
+    // READ RECEIVE TYPE FROM NAVIGATION STATE
+    // =========================================================================
+    // Passed from ReceiveSelectScreen when user selects BTC or OP_20
+    // Defaults to 'btc' for backwards compatibility if accessed directly via URL
+    const receiveType: ReceiveType = (location.state as { type?: ReceiveType })?.type || 'btc';
+    
+    // GET CONFIG for current receive type (config-driven approach)
+    // This replaces scattered isOP20 checks throughout the code
+    const config = RECEIVE_CONFIG[receiveType];
+    
+    // Helper boolean for conditional logic (more readable than receiveType === 'op20')
+    const isOP20 = receiveType === 'op20';
+
+    // =========================================================================
+    // STATE
+    // =========================================================================
+    // BTC-specific state
     const [showAddressTypeDropdown, setShowAddressTypeDropdown] = useState(false);
     const [addressTypes, setAddressTypes] = useState<AddressTypeOption[]>([]);
     const [selectedAddressType, setSelectedAddressType] = useState<AddressTypeOption | null>(null);
+    
+    // OP_20-specific state
     const [quantumPublicKeyHash, setQuantumPublicKeyHash] = useState<string>('');
     const [loadingQuantum, setLoadingQuantum] = useState(true);
 
-    const address = rotationEnabled && currentRotationAddress ? currentRotationAddress.address : baseAddress;
+    // Computed BTC address (considering rotation)
+    const btcAddress = rotationEnabled && currentRotationAddress ? currentRotationAddress.address : baseAddress;
 
-    const hideQuantumSection = isKeyringRotationMode && rotationEnabled;
-
+    // =========================================================================
+    // EFFECTS
+    // =========================================================================
+    
+    // Refresh rotation status on mount
     useEffect(() => {
         void refreshRotation();
     }, [refreshRotation]);
 
-    // Load address types
+    /**
+     * Load BTC address types (P2TR, P2WPKH, P2PKH)
+     * Only runs in BTC mode - skipped for OP_20
+     */
     const loadAddressTypes = useCallback(async () => {
+        // Skip for OP_20 mode - no address type selection needed
+        if (isOP20) return;
+        
         try {
             if (!currentAccount.quantumPublicKeyHash || !currentAccount.pubkey) {
                 return;
@@ -86,6 +146,7 @@ export default function ReceiveScreen() {
 
             const addr = Address.fromString(currentAccount.quantumPublicKeyHash, currentAccount.pubkey);
 
+            // Generate addresses for each type
             const types: AddressTypeOption[] = [
                 {
                     value: AddressTypes.P2TR,
@@ -109,7 +170,7 @@ export default function ReceiveScreen() {
 
             setAddressTypes(types);
 
-            // Set current address type as selected
+            // Set current keyring's address type as selected
             const currentType = types.find((t) => t.value === currentKeyring.addressType);
             if (currentType) {
                 setSelectedAddressType(currentType);
@@ -119,13 +180,23 @@ export default function ReceiveScreen() {
         } catch (error) {
             console.error('Failed to load address types:', error);
         }
-    }, [currentAccount, wallet, currentKeyring.addressType]);
+    }, [currentAccount, wallet, currentKeyring.addressType, isOP20]);
 
     useEffect(() => {
         void loadAddressTypes();
     }, [loadAddressTypes]);
 
+    /**
+     * Fetch MLDSA/quantum address for OP_20 mode
+     * Only runs in OP_20 mode - skipped for BTC
+     */
     useEffect(() => {
+        // Skip for BTC mode - no MLDSA address needed
+        if (!isOP20) {
+            setLoadingQuantum(false);
+            return;
+        }
+
         const fetchQuantumInfo = async () => {
             setLoadingQuantum(true);
             try {
@@ -141,10 +212,15 @@ export default function ReceiveScreen() {
         };
 
         void fetchQuantumInfo();
-    }, [wallet]);
+    }, [wallet, isOP20]);
 
+    // =========================================================================
+    // HANDLERS
+    // =========================================================================
+
+    /** Copy current display address to clipboard */
     const handleCopyAddress = () => {
-        const addressToCopy = selectedAddressType?.address || address;
+        const addressToCopy = getDisplayAddress();
         if (addressToCopy) {
             copyToClipboard(addressToCopy).then(() => {
                 tools.toastSuccess('Address copied to clipboard');
@@ -152,20 +228,52 @@ export default function ReceiveScreen() {
         }
     };
 
-    const handleCopyQuantumKey = () => {
-        if (quantumPublicKeyHash) {
-            copyToClipboard(quantumPublicKeyHash).then(() => {
-                tools.toastSuccess('OPNet address copied');
-            });
-        }
-    };
-
+    /** Handle BTC address type selection from dropdown */
     const handleAddressTypeSelect = (type: AddressTypeOption) => {
         setSelectedAddressType(type);
         setShowAddressTypeDropdown(false);
     };
 
-    const displayAddress = selectedAddressType?.address || address;
+    // =========================================================================
+    // COMPUTED VALUES (using config-driven approach)
+    // =========================================================================
+
+    /**
+     * Get the address to display based on receive type
+     * BTC: Uses selected address type or rotation address
+     * OP_20: Uses MLDSA quantum public key hash
+     */
+    const getDisplayAddress = (): string => {
+        if (isOP20) {
+            return quantumPublicKeyHash;
+        }
+        return selectedAddressType?.address || btcAddress;
+    };
+
+    /**
+     * Get address label for display
+     * BTC: Dynamic based on selected address type (e.g., "Taproot Address")
+     * OP_20: Fixed "MLDSA Address" from config
+     */
+    const getAddressLabel = (): string => {
+        if (isOP20) {
+            return config.addressLabel;
+        }
+        return selectedAddressType ? `${selectedAddressType.name} Address` : 'Address';
+    };
+
+    // Values from config
+    const displayAddress = getDisplayAddress();
+    const addressLabel = getAddressLabel();
+    const { headerTitle, accentColor, showRotation: configShowRotation, showAddressSelector } = config;
+
+    // Conditional display flags
+    const showRotation = configShowRotation && rotationEnabled && currentRotationAddress;
+    const hideAddressTypeSelector = !showAddressSelector || (isKeyringRotationMode && rotationEnabled);
+
+    // =========================================================================
+    // RENDER
+    // =========================================================================
 
     return (
         <Layout>
@@ -173,131 +281,107 @@ export default function ReceiveScreen() {
                 onBack={() => {
                     window.history.go(-1);
                 }}
-                title="Receive"
+                title={headerTitle} // From RECEIVE_CONFIG
             />
-            <Content style={{ padding: '12px' }}>
-                <Column gap="sm">
-                    {/* OPNet Receive Address - Compact */}
-                    {!hideQuantumSection && (
-                        <div
-                            onClick={quantumPublicKeyHash ? handleCopyQuantumKey : undefined}
-                            style={{
-                                width: '100%',
-                                backgroundColor: 'rgba(139, 92, 246, 0.1)',
-                                borderRadius: 10,
-                                padding: '10px 12px',
-                                display: 'flex',
-                                flexDirection: 'row',
-                                alignItems: 'center',
-                                gap: 10,
-                                border: '1px solid rgba(139, 92, 246, 0.3)',
-                                cursor: quantumPublicKeyHash ? 'pointer' : 'default'
-                            }}>
-                            <SafetyOutlined style={{ fontSize: 14, color: colors.quantum, flexShrink: 0 }} />
-                            <div style={{ flex: 1, minWidth: 0 }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                                    <Text
-                                        text="OPNet Address"
-                                        style={{ fontSize: 11, fontWeight: 600, color: colors.text }}
-                                    />
-                                    <Text text="(OP20)" style={{ fontSize: 9, color: colors.textFaded }} />
-                                </div>
-                                {loadingQuantum ? (
-                                    <Text text="Loading..." style={{ fontSize: 10, color: colors.textFaded }} />
-                                ) : quantumPublicKeyHash ? (
-                                    <Text
-                                        text={quantumPublicKeyHash}
-                                        style={{
-                                            fontSize: 10,
-                                            color: colors.textFaded,
-                                            fontFamily: 'monospace',
-                                            overflow: 'hidden',
-                                            textOverflow: 'ellipsis',
-                                            whiteSpace: 'nowrap'
-                                        }}
-                                    />
-                                ) : (
-                                    <Text
-                                        text="Available after first OPNet transaction"
-                                        style={{ fontSize: 10, color: colors.textFaded, opacity: 0.7 }}
-                                    />
-                                )}
-                            </div>
-                            {quantumPublicKeyHash && (
-                                <CopyOutlined style={{ fontSize: 14, color: colors.quantum, flexShrink: 0 }} />
-                            )}
-                        </div>
-                    )}
-
-                    {/* Main Card - Compact */}
+            <Content style={{ padding: '16px' }}>
+                <Column gap="md">
+                    {/* ============================================================= */}
+                    {/* QR CODE CARD - Reused for both BTC and OP_20 modes */}
+                    {/* ============================================================= */}
                     <div
                         style={{
-                            backgroundColor: colors.cardBg,
-                            borderRadius: 12,
-                            padding: '14px',
+                            backgroundColor: colors.bg2,
+                            borderRadius: 16,
+                            padding: 24,
                             display: 'flex',
                             flexDirection: 'column',
                             alignItems: 'center',
-                            gap: 12,
-                            border: `1px solid ${colors.containerBorder}`
+                            gap: 20,
+                            border: `1px solid ${colors.border}`
                         }}>
-                        {/* User Name + Address Type in one row */}
-                        <div
-                            style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'space-between',
-                                width: '100%'
-                            }}>
-                            <Row style={{ gap: 6, alignItems: 'center' }}>
-                                <Icon icon="user" size={14} />
-                                <Text
-                                    text={currentAccount?.alianName}
-                                    style={{ fontSize: 13, fontWeight: 600, color: colors.text }}
-                                />
-                            </Row>
+                        
+                        {/* --------------------------------------------------------- */}
+                        {/* ADDRESS TYPE SELECTOR - BTC mode only */}
+                        {/* Allows switching between P2TR, P2WPKH, P2PKH */}
+                        {/* Hidden for OP_20 mode (showAddressSelector = false) */}
+                        {/* --------------------------------------------------------- */}
+                        {!hideAddressTypeSelector && (
                             <div
                                 onClick={() => setShowAddressTypeDropdown(!showAddressTypeDropdown)}
                                 style={{
                                     display: 'flex',
+                                    flexDirection: 'row',
                                     alignItems: 'center',
-                                    gap: 4,
-                                    padding: '4px 8px',
-                                    borderRadius: 6,
-                                    border: `1px solid ${colors.containerBg}`,
+                                    border: `1px solid ${colors.bg3}`,
+                                    paddingLeft: 16,
+                                    paddingRight: 16,
+                                    paddingTop: 12,
+                                    paddingBottom: 12,
+                                    borderRadius: 12,
+                                    gap: 8,
+                                    width: '100%',
                                     cursor: 'pointer',
                                     position: 'relative'
                                 }}>
-                                <Text
-                                    text={selectedAddressType?.label || '...'}
-                                    style={{ fontSize: 11, color: colors.textFaded }}
-                                />
-                                {selectedAddressType?.value === AddressTypes.P2TR && (
-                                    <span
+                                <div style={{ flex: 1 }}>
+                                    <Text
+                                        text={`${chain.label || 'Bitcoin'} Address`}
                                         style={{
-                                            fontSize: 8,
-                                            color: colors.recommended,
-                                            fontWeight: 600
-                                        }}>
-                                        *
-                                    </span>
-                                )}
-                                <DownOutlined style={{ fontSize: 10, color: colors.textFaded }} />
+                                            fontSize: 12,
+                                            fontWeight: 600,
+                                            color: colors.textDim,
+                                            textTransform: 'uppercase',
+                                            letterSpacing: 0.5
+                                        }}
+                                    />
+                                    <div style={{ display: 'flex', alignItems: 'center' }}>
+                                        <Text
+                                            text={
+                                                selectedAddressType
+                                                    ? `${selectedAddressType.name} (${selectedAddressType.label})`
+                                                    : 'Loading...'
+                                            }
+                                            style={{
+                                                fontSize: 12,
+                                                fontWeight: 600,
+                                                color: colors.textDim
+                                            }}
+                                        />
+                                        {/* Recommended badge for Taproot (P2TR) */}
+                                        {selectedAddressType?.value === AddressTypes.P2TR && (
+                                            <span
+                                                style={{
+                                                    marginLeft: 12,
+                                                    borderRadius: 5,
+                                                    border: `1px solid ${colors.green_dark}`,
+                                                    fontSize: 9,
+                                                    color: `${colors.text}A0`,
+                                                    paddingTop: 2,
+                                                    paddingBottom: 2,
+                                                    paddingLeft: 4,
+                                                    paddingRight: 4
+                                                }}>
+                                                Recommended
+                                            </span>
+                                        )}
+                                    </div>
+                                </div>
+                                <DownOutlined style={{ fontSize: 16, color: colors.textDim }} />
 
-                                {/* Dropdown */}
+                                {/* Dropdown menu for address type selection */}
                                 {showAddressTypeDropdown && (
                                     <div
                                         style={{
                                             position: 'absolute',
                                             top: '100%',
+                                            left: 0,
                                             right: 0,
-                                            backgroundColor: colors.containerBg,
-                                            borderRadius: 8,
-                                            border: `1px solid ${colors.containerBorder}`,
+                                            backgroundColor: colors.bg3,
+                                            borderRadius: 12,
+                                            border: `1px solid ${colors.border}`,
                                             marginTop: 4,
                                             zIndex: 100,
-                                            overflow: 'hidden',
-                                            minWidth: 140
+                                            overflow: 'hidden'
                                         }}>
                                         {addressTypes.map((type) => (
                                             <div
@@ -307,116 +391,270 @@ export default function ReceiveScreen() {
                                                     handleAddressTypeSelect(type);
                                                 }}
                                                 style={{
-                                                    padding: '8px 12px',
+                                                    padding: '12px 16px',
                                                     cursor: 'pointer',
                                                     backgroundColor:
                                                         selectedAddressType?.value === type.value
-                                                            ? `${colors.main}20`
+                                                            ? `${colors.warning}20`
                                                             : 'transparent',
                                                     display: 'flex',
                                                     alignItems: 'center',
                                                     justifyContent: 'space-between'
                                                 }}>
-                                                <Text
-                                                    text={`${type.name} (${type.label})`}
-                                                    style={{ fontSize: 11, color: colors.text }}
-                                                />
+                                                <div>
+                                                    <Text
+                                                        text={`${type.name} (${type.label})`}
+                                                        style={{ fontSize: 13, color: colors.text }}
+                                                    />
+                                                </div>
                                                 {selectedAddressType?.value === type.value && (
-                                                    <CheckCircleFilled style={{ fontSize: 12, color: colors.main }} />
+                                                    <CheckCircleFilled style={{ fontSize: 14, color: colors.warning }} />
                                                 )}
                                             </div>
                                         ))}
                                     </div>
                                 )}
                             </div>
-                        </div>
+                        )}
 
-                        {/* QR Code - Smaller */}
-                        <div
-                            style={{
-                                padding: 12,
-                                backgroundColor: 'white',
-                                borderRadius: 12
-                            }}>
-                            <QRCodeSVG
-                                value={displayAddress || ''}
-                                size={COMPACT_QR_SIZE}
-                                imageRendering={chain.icon}
-                                imageSettings={{
-                                    src: chain.icon,
-                                    width: 24,
-                                    height: 24,
-                                    excavate: true
-                                }}
-                            />
-                        </div>
-
-                        {/* Rotation Badge - Compact inline */}
-                        {rotationEnabled && currentRotationAddress && (
+                        {/* --------------------------------------------------------- */}
+                        {/* OP_20 HEADER - OP_20 mode only */}
+                        {/* Shows "OPNet MLDSA Address" label */}
+                        {/* --------------------------------------------------------- */}
+                        {isOP20 && config.headerLabel && (
                             <div
-                                onClick={() => navigate(RouteTypes.AddressRotationScreen)}
                                 style={{
                                     display: 'flex',
+                                    flexDirection: 'row',
                                     alignItems: 'center',
-                                    gap: 6,
-                                    padding: '6px 10px',
-                                    borderRadius: 6,
-                                    background: `${colors.main}15`,
-                                    border: `1px solid ${colors.main}30`,
-                                    cursor: 'pointer'
+                                    gap: 8,
+                                    width: '100%',
+                                    justifyContent: 'center'
                                 }}>
-                                <SwapOutlined style={{ color: colors.main, fontSize: 12 }} />
                                 <Text
-                                    text={`One-Time #${currentRotationAddress.derivationIndex + 1}`}
-                                    style={{ fontSize: 10, color: colors.main }}
+                                    text={config.headerLabel}
+                                    style={{
+                                        fontSize: 14,
+                                        fontWeight: 600,
+                                        color: QUANTUM_COLOR,
+                                        textTransform: 'uppercase',
+                                        letterSpacing: 0.5
+                                    }}
                                 />
-                                <RightOutlined style={{ fontSize: 8, color: colors.main, opacity: 0.6 }} />
                             </div>
                         )}
 
-                        {/* Address Display - Compact */}
+                        {/* --------------------------------------------------------- */}
+                        {/* QR CODE SECTION */}
+                        {/* Shows loading, error, or QR code based on state */}
+                        {/* --------------------------------------------------------- */}
+                        {/* Loading state - OP_20 mode while fetching MLDSA */}
+                        {loadingQuantum && isOP20 ? (
+                            <div
+                                style={{
+                                    padding: 20,
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    minHeight: sizes.qrcode
+                                }}>
+                                <Text text="Loading..." preset="sub" />
+                            </div>
+                        ) : /* Error state - MLDSA not available */ !displayAddress && isOP20 ? (
+                            <div
+                                style={{
+                                    padding: 20,
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    minHeight: sizes.qrcode,
+                                    gap: 12
+                                }}>
+                                <InfoCircleOutlined style={{ fontSize: 32, color: colors.textDim }} />
+                                <Text
+                                    text="MLDSA address not available"
+                                    style={{ fontSize: 14, color: colors.textDim, textAlign: 'center' }}
+                                />
+                                <Text
+                                    text="Quantum migration may be required"
+                                    style={{ fontSize: 12, color: colors.textDim, opacity: 0.7 }}
+                                />
+                            </div>
+                        ) : (
+                            /* Success state - Show QR code */
+                            <div
+                                style={{
+                                    padding: 20,
+                                    backgroundColor: 'white',
+                                    borderRadius: 16,
+                                    border: `2px solid ${colors.border}`
+                                }}>
+                                <QRCodeSVG
+                                    value={displayAddress || ''}
+                                    size={sizes.qrcode}
+                                    imageSettings={
+                                        // Show chain icon only for BTC mode (from config)
+                                        config.showChainIcon && chain.icon
+                                            ? {
+                                                  src: chain.icon,
+                                                  width: 30,
+                                                  height: 30,
+                                                  excavate: true
+                                              }
+                                            : undefined
+                                    }
+                                />
+                            </div>
+                        )}
+
+                        {/* --------------------------------------------------------- */}
+                        {/* USER NAME DISPLAY */}
+                        {/* --------------------------------------------------------- */}
+                        <Row justifyCenter>
+                            <Icon icon="user" />
+                            <Text preset="regular-bold" text={currentAccount?.alianName} />
+                        </Row>
+
+                        {/* --------------------------------------------------------- */}
+                        {/* ADDRESS ROTATION BADGE - BTC mode only */}
+                        {/* Shows when rotation is enabled (privacy feature) */}
+                        {/* Hidden for OP_20 mode (showRotation = false in config) */}
+                        {/* --------------------------------------------------------- */}
+                        {showRotation && (
+                            <div
+                                style={{
+                                    background: `linear-gradient(135deg, ${colors.warning}15 0%, ${colors.warning}08 100%)`,
+                                    border: `1px solid ${colors.warning}40`,
+                                    borderRadius: 12,
+                                    padding: '12px 16px',
+                                    width: '100%'
+                                }}>
+                                <Row style={{ justifyContent: 'space-between', alignItems: 'center' }}>
+                                    <Row style={{ gap: 8, alignItems: 'center' }}>
+                                        <SwapOutlined style={{ color: colors.warning, fontSize: 16 }} />
+                                        <Column style={{ gap: 2 }}>
+                                            <Text
+                                                text="One-Time Address"
+                                                style={{ fontSize: 12, fontWeight: 600, color: colors.warning }}
+                                            />
+                                            <Text
+                                                text={`Rotation #${currentRotationAddress.derivationIndex + 1}`}
+                                                style={{ fontSize: 10, color: colors.textDim }}
+                                            />
+                                        </Column>
+                                    </Row>
+                                    <div
+                                        onClick={() => navigate(RouteTypes.AddressRotationScreen)}
+                                        style={{
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: 4,
+                                            cursor: 'pointer',
+                                            padding: '4px 8px',
+                                            borderRadius: 6,
+                                            background: 'rgba(255,255,255,0.05)'
+                                        }}>
+                                        <Text text="Manage" style={{ fontSize: 11, color: colors.textDim }} />
+                                        <RightOutlined style={{ fontSize: 10, color: colors.textDim }} />
+                                    </div>
+                                </Row>
+                                <Text
+                                    text="This address is for one-time use. A new address will be generated after receiving funds."
+                                    style={{
+                                        fontSize: 10,
+                                        color: colors.textDim,
+                                        marginTop: 8,
+                                        lineHeight: 1.4
+                                    }}
+                                />
+                            </div>
+                        )}
+
+                        {/* --------------------------------------------------------- */}
+                        {/* ADDRESS DISPLAY BOX */}
+                        {/* Shows address text and copy button */}
+                        {/* Accent color changes based on mode (orange/purple) */}
+                        {/* --------------------------------------------------------- */}
                         <div
                             style={{
                                 width: '100%',
-                                backgroundColor: colors.containerBg,
-                                borderRadius: 8,
-                                padding: '10px 12px',
-                                border: `1px solid ${colors.containerBorder}`
+                                backgroundColor: colors.bg3,
+                                borderRadius: 12,
+                                padding: 16,
+                                gap: 12,
+                                display: 'flex',
+                                flexDirection: 'column',
+                                border: `1px solid ${colors.border}`
                             }}>
                             <Text
-                                text={displayAddress}
+                                text={addressLabel}
                                 style={{
-                                    fontSize: 11,
-                                    color: colors.text,
-                                    fontFamily: 'monospace',
-                                    lineHeight: '16px',
-                                    wordBreak: 'break-all',
-                                    textAlign: 'center'
+                                    fontSize: 12,
+                                    fontWeight: 600,
+                                    color: colors.textDim,
+                                    textTransform: 'uppercase',
+                                    letterSpacing: 0.5
                                 }}
                             />
-                        </div>
-
-                        {/* Copy Button - Compact */}
-                        <div
-                            onClick={handleCopyAddress}
-                            style={{
-                                display: 'flex',
-                                flexDirection: 'row',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                gap: 6,
-                                backgroundColor: colors.main,
-                                borderRadius: 8,
-                                padding: '10px 20px',
-                                cursor: 'pointer',
-                                width: '100%'
-                            }}>
-                            <CopyOutlined style={{ fontSize: 14, color: colors.text }} />
                             <Text
-                                text="Copy Address"
-                                style={{ fontSize: 13, fontWeight: 600, color: colors.text }}
+                                text={displayAddress || 'Loading...'}
+                                style={{
+                                    fontSize: 13,
+                                    color: colors.text,
+                                    fontFamily: 'monospace',
+                                    lineHeight: '20px',
+                                    wordBreak: 'break-all'
+                                }}
                             />
+                            {/* Copy button - uses accentColor from config */}
+                            <div
+                                onClick={handleCopyAddress}
+                                style={{
+                                    display: 'flex',
+                                    flexDirection: 'row',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    gap: 8,
+                                    backgroundColor: accentColor, // From RECEIVE_CONFIG (orange for BTC, purple for OP_20)
+                                    borderRadius: 10,
+                                    padding: 12,
+                                    marginTop: 4,
+                                    cursor: 'pointer'
+                                }}>
+                                <CopyOutlined style={{ fontSize: 18, color: colors.text }} />
+                                <Text
+                                    text="Copy Address"
+                                    style={{ fontSize: 14, fontWeight: 600, color: colors.text }}
+                                />
+                            </div>
                         </div>
+                    </div>
+
+                    {/* ============================================================= */}
+                    {/* HISTORY BUTTON */}
+                    {/* Links to full transaction history screen */}
+                    {/* Shown for both BTC and OP_20 modes */}
+                    {/* ============================================================= */}
+                    <div
+                        onClick={() => navigate(RouteTypes.HistoryScreen)}
+                        style={{
+                            display: 'flex',
+                            flexDirection: 'row',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: 8,
+                            backgroundColor: colors.bg2,
+                            border: `1px solid ${colors.border}`,
+                            borderRadius: 12,
+                            padding: 14,
+                            cursor: 'pointer'
+                        }}>
+                        <HistoryOutlined style={{ fontSize: 16, color: colors.textDim }} />
+                        <Text
+                            text="View Transaction History"
+                            style={{ fontSize: 14, color: colors.textDim }}
+                        />
                     </div>
                 </Column>
             </Content>
