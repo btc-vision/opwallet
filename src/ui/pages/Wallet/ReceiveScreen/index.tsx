@@ -26,7 +26,6 @@ import {
     CheckCircleFilled,
     CopyOutlined,
     DownOutlined,
-    HistoryOutlined,
     InfoCircleOutlined,
     RightOutlined,
     SwapOutlined
@@ -54,8 +53,8 @@ import { sizes } from '@/ui/theme/spacing';
 import { copyToClipboard, useWallet } from '@/ui/utils';
 import { Address, AddressTypes } from '@btc-vision/transaction';
 
-// Config from shared constants (only QUANTUM_COLOR is receive-specific)
-import { QUANTUM_COLOR, RECEIVE_CONFIG, ReceiveType } from '@/ui/pages/Wallet/Receive/constants';
+// Config from shared constants
+import { RECEIVE_CONFIG, ReceiveType } from '@/ui/pages/Wallet/Receive/constants';
 
 // =============================================================================
 // TYPES
@@ -292,11 +291,11 @@ export default function ReceiveScreen() {
                         style={{
                             backgroundColor: colors.bg2,
                             borderRadius: 16,
-                            padding: 24,
+                            padding: 20,
                             display: 'flex',
                             flexDirection: 'column',
                             alignItems: 'center',
-                            gap: 20,
+                            gap: 16,
                             border: `1px solid ${colors.border}`
                         }}>
                         
@@ -313,12 +312,12 @@ export default function ReceiveScreen() {
                                     flexDirection: 'row',
                                     alignItems: 'center',
                                     border: `1px solid ${colors.bg3}`,
-                                    paddingLeft: 16,
-                                    paddingRight: 16,
-                                    paddingTop: 12,
-                                    paddingBottom: 12,
-                                    borderRadius: 12,
-                                    gap: 8,
+                                    paddingLeft: 12,
+                                    paddingRight: 12,
+                                    paddingTop: 8,
+                                    paddingBottom: 8,
+                                    borderRadius: 10,
+                                    gap: 6,
                                     width: '100%',
                                     cursor: 'pointer',
                                     position: 'relative'
@@ -436,7 +435,7 @@ export default function ReceiveScreen() {
                                     style={{
                                         fontSize: 14,
                                         fontWeight: 600,
-                                        color: QUANTUM_COLOR,
+                                        color: colors.purple,
                                         textTransform: 'uppercase',
                                         letterSpacing: 0.5
                                     }}
@@ -485,7 +484,7 @@ export default function ReceiveScreen() {
                             /* Success state - Show QR code */
                             <div
                                 style={{
-                                    padding: 20,
+                                    padding: 16,
                                     backgroundColor: 'white',
                                     borderRadius: 16,
                                     border: `2px solid ${colors.border}`
@@ -588,8 +587,8 @@ export default function ReceiveScreen() {
                                 width: '100%',
                                 backgroundColor: colors.bg3,
                                 borderRadius: 12,
-                                padding: 16,
-                                gap: 12,
+                                padding: 14,
+                                gap: 10,
                                 display: 'flex',
                                 flexDirection: 'column',
                                 border: `1px solid ${colors.border}`
@@ -625,8 +624,8 @@ export default function ReceiveScreen() {
                                     gap: 8,
                                     backgroundColor: accentColor, // From RECEIVE_CONFIG (orange for BTC, purple for OP_20)
                                     borderRadius: 10,
-                                    padding: 12,
-                                    marginTop: 4,
+                                    padding: 10,
+                                    marginTop: 2,
                                     cursor: 'pointer'
                                 }}>
                                 <CopyOutlined style={{ fontSize: 18, color: colors.text }} />
@@ -638,31 +637,6 @@ export default function ReceiveScreen() {
                         </div>
                     </div>
 
-                    {/* ============================================================= */}
-                    {/* HISTORY BUTTON */}
-                    {/* Links to full transaction history screen */}
-                    {/* Shown for both BTC and OP_20 modes */}
-                    {/* ============================================================= */}
-                    <div
-                        onClick={() => navigate(RouteTypes.HistoryScreen)}
-                        style={{
-                            display: 'flex',
-                            flexDirection: 'row',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            gap: 8,
-                            backgroundColor: colors.bg2,
-                            border: `1px solid ${colors.border}`,
-                            borderRadius: 12,
-                            padding: 14,
-                            cursor: 'pointer'
-                        }}>
-                        <HistoryOutlined style={{ fontSize: 16, color: colors.textDim }} />
-                        <Text
-                            text="View Transaction History"
-                            style={{ fontSize: 14, color: colors.textDim }}
-                        />
-                    </div>
                 </Column>
             </Content>
         </Layout>

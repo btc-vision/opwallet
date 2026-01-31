@@ -15,12 +15,6 @@ import { SafetyOutlined, WalletOutlined } from '@ant-design/icons';
 import { colors } from '@/ui/theme/colors';
 
 // =============================================================================
-// RECEIVE-SPECIFIC COLOR (only one not in theme)
-// =============================================================================
-/** Quantum/OP_20 accent color (purple) - unique to OPNet */
-export const QUANTUM_COLOR = 'rgba(139, 92, 246, 1)';
-
-// =============================================================================
 // RECEIVE TYPE DEFINITION
 // =============================================================================
 // Union type for all supported receive types
@@ -53,10 +47,10 @@ export const RECEIVE_OPTIONS = [
         title: 'OP_20',
         description: 'Receive OPNet tokens via MLDSA address',
         icon: SafetyOutlined,
-        iconColor: QUANTUM_COLOR,
-        iconBg: 'rgba(139, 92, 246, 0.12)'
+        iconColor: colors.purple,
+        iconBg: `${colors.purple}20`,
         /** Hover background for action buttons */
-        hoverButtonBg: 'rgba(139, 92, 246, 0.25)'
+        hoverButtonBg: `${colors.purple}40`
     }
 ] as const;
 
@@ -94,7 +88,7 @@ export const RECEIVE_CONFIG: Record<ReceiveType, {
     op20: {
         headerTitle: 'Receive OP_20',
         addressLabel: 'MLDSA Address',
-        accentColor: QUANTUM_COLOR, // OP_20 purple
+        accentColor: colors.purple, // OP_20 purple
         showRotation: false,
         showAddressSelector: false,
         showChainIcon: false,
