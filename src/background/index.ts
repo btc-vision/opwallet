@@ -4,8 +4,8 @@ import { ProviderControllerRequest, RequestParams } from '@/shared/types/Request
 import { openExtensionInTab } from '@/shared/utils/browser-tabs';
 import 'reflect-metadata';
 
-import * as ecc from 'tiny-secp256k1';
 import { SessionEvent, SessionEventPayload } from '@/shared/interfaces/SessionEvent';
+import { eccBackend } from '@/shared/crypto/backend';
 import { customNetworksManager } from '@/shared/utils/CustomNetworksManager';
 import { Runtime } from 'webextension-polyfill';
 import { providerController, walletController } from './controller';
@@ -24,12 +24,12 @@ import { initEccLib } from '@btc-vision/bitcoin';
 // Import PortMessage directly to avoid circular dependency issues with events shim
 import PortMessage from '@/shared/utils/message/portMessage';
 
-// Lazy-load tiny-secp256k1 to avoid top-level await in service worker
+// Lazy-load ECC backend to avoid top-level await in service worker
 let eccInitialized = false;
 
 function ensureEccLib(): void {
     if (!eccInitialized) {
-        initEccLib(ecc); // ecc is already imported, just not initialized
+        initEccLib(eccBackend);
         eccInitialized = true;
     }
 }

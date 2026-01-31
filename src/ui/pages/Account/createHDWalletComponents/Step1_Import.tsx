@@ -1,5 +1,6 @@
 import { Radio } from 'antd';
-import * as bip39 from 'bip39';
+import { validateMnemonic } from '@scure/bip39';
+import { wordlist } from '@scure/bip39/wordlists/english.js';
 import { useEffect, useMemo, useState } from 'react';
 
 import { RestoreWalletType } from '@/shared/types';
@@ -81,7 +82,7 @@ export function Step1_Import({
         }
 
         const mnemonic = keys.join(' ');
-        if (!bip39.validateMnemonic(mnemonic)) {
+        if (!validateMnemonic(mnemonic, wordlist)) {
             return true;
         }
 
@@ -93,7 +94,7 @@ export function Step1_Import({
     }, [hover]);
 
     const tools = useTools();
-    const onNext = async () => {
+    const onNext = () => {
         try {
             const mnemonics = keys.join(' ');
             updateContextData({ mnemonics, tabType: TabType.STEP3 });

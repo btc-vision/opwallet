@@ -6,7 +6,7 @@ import {
     InteractionTypeNativeSwap,
     isInteractionType
 } from '@/shared/types/InteractionType';
-import { Buffer } from 'buffer';
+import { fromHex, toHex } from '@btc-vision/bitcoin';
 import { Decoded } from './DecodedTypes';
 import { decodeAddLiquidityMotoswap } from '@/ui/pages/OpNet/decoded/motoswap/AddLiquidityDecodedInfo';
 import {
@@ -42,12 +42,12 @@ import { decodeSwapTokensMotoswap } from './motoswap/SwapTokensDecodedInfo';
  * Reads the first 4 bytes to get the selector, then dispatches to the correct decode method.
  */
 export function decodeCallData(calldata: string): Decoded | null {
-    const data = Buffer.from(calldata.replace(/^0x/, ''), 'hex');
+    const data = fromHex(calldata.replace(/^0x/, ''));
     if (data.length < 4) {
         return null;
     }
 
-    const selector = data.subarray(0, 4).toString('hex');
+    const selector = toHex(data.subarray(0, 4));
     if (!isInteractionType(selector)) {
         return null;
     }

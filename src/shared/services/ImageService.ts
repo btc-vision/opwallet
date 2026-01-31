@@ -1,4 +1,5 @@
 import base from 'base-x';
+import { fromUtf8 } from '@btc-vision/bitcoin';
 
 interface LoadedImage {
     element: HTMLElement;
@@ -117,7 +118,7 @@ class ImageService {
             const finalUriData = str.replace(uriA, ''); // Path part
 
             // Encode the domain part with base58
-            const encodedDomain = bs58.encode(Buffer.from(uriA));
+            const encodedDomain = bs58.encode(fromUtf8(uriA));
 
             // Return the full encoded URL
             return `https://images.opnet.org/v2/500/500/${encodedDomain}${finalUriData}`;

@@ -22,32 +22,14 @@ const patchFile = async (filePath, searchValue, replaceValue) => {
     }
 };
 
-const fixWindowError2 = async () => {
-    const file = './node_modules/tiny-secp256k1/lib/rand.browser.js';
-    await patchFile(file, 'window.crypto', 'crypto');
-};
-
-const fixWindowError3 = async () => {
-    const file = './node_modules/@btc-vision/bitcoin/build/payments/p2tr.js';
-    const searchValue = 'signature: types_1.typeforce.maybe(types_1.typeforce.BufferN(64))';
-    const replaceValue = 'signature: types_1.typeforce.maybe(types_1.typeforce.Buffer)';
-    await patchFile(file, searchValue, replaceValue);
-};
-
-const fixMinifiedGlobalThisCrypto = async () => {
-    const file = './node_modules/@btc-vision/transaction/browser/index.js';
-    const searchValue = `if(fa&&"function"==typeof fa.getRandomValues){var r=new Uint8Array(t);return fa.getRandomValues(r),la.from(r)}`;
-    const replaceValue = `if(globalThis.crypto&&"function"==typeof globalThis.crypto.getRandomValues){var r=new Uint8Array(t);return globalThis.crypto.getRandomValues(r),la.from(r)}`;
-    await patchFile(file, searchValue, replaceValue);
-};
-
 const run = async () => {
     console.log('Starting patching process...');
     let success = true;
     try {
-        await fixWindowError2();
-        await fixWindowError3();
-        await fixMinifiedGlobalThisCrypto();
+        // All previous patches (tiny-secp256k1, p2tr.js, transaction crypto) have been
+        // removed as they are no longer needed with @btc-vision/bitcoin v7,
+        // @btc-vision/ecpair v4, and @btc-vision/transaction v1.8.
+        console.log('No patches needed for current package versions.');
     } catch (error) {
         console.error('Error during patching:', error.message);
         success = false;

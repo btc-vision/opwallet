@@ -127,16 +127,26 @@ import { RecordTransactionInput, TransactionOrigin, TransactionType } from '@/sh
 import { customNetworksManager } from '@/shared/utils/CustomNetworksManager';
 import {
     address as bitcoinAddress,
+    alloc,
+    concat,
+    fromHex,
     payments,
     Psbt,
     PsbtOutputExtended,
-    PsbtOutputExtendedAddress,
     PsbtOutputExtendedScript,
+    reverseCopy,
+    toHex,
     toXOnly,
+    fromUtf8,
     Transaction
 } from '@btc-vision/bitcoin';
-import { Buffer } from 'buffer';
-import { ECPairInterface } from 'ecpair';
+import { fromBase64 } from '@/shared/crypto/encoding';
+import type { UniversalSigner } from '@btc-vision/ecpair';
+import { createPublicKey, createSatoshi } from '@btc-vision/ecpair';
+
+// PsbtOutputExtendedAddress is not re-exported from the main index
+type PsbtOutputExtendedAddress = Extract<PsbtOutputExtended, { address: string }>;
+
 import { ContactBookItem, ContactBookStore } from '../service/contactBook';
 import { ConnectedSite } from '../service/permission';
 
@@ -184,7 +194,7 @@ function parseTransactionForPreview(
 
     // Map inputs to their values from UTXOs
     const inputs = tx.ins.map((input) => {
-        const inputTxid = Buffer.from(input.hash).reverse().toString('hex').toLowerCase();
+        const inputTxid = toHex(reverseCopy(input.hash)).toLowerCase();
         const vout = input.index;
         const key = `${inputTxid}:${vout}`;
         const value = utxoMap.get(key) ?? 0n;
@@ -198,7 +208,7 @@ function parseTransactionForPreview(
 
     // Parse outputs
     const outputs: ParsedTxOutput[] = tx.outs.map((output) => {
-        const script = output.script.toString('hex');
+        const script = toHex(output.script);
         const isOpReturn = output.script[0] === 0x6a; // OP_RETURN
 
         let address: string | null = null;
@@ -605,7 +615,7 @@ export class WalletController {
         const networkType = this.getNetworkType();
         const network = toNetwork(networkTypeToOPNet(networkType));
 
-        const wif = EcKeyPair.fromPrivateKey(Buffer.from(privateKey, 'hex'), network).toWIF();
+        const wif = EcKeyPair.fromPrivateKey(fromHex(privateKey), network).toWIF();
         return {
             hex: privateKey,
             wif
@@ -637,7 +647,7 @@ export class WalletController {
         const networkType = this.getNetworkType();
         const network = toNetwork(networkTypeToOPNet(networkType));
 
-        const wif = EcKeyPair.fromPrivateKey(Buffer.from(privateKey, 'hex'), network).toWIF();
+        const wif = EcKeyPair.fromPrivateKey(fromHex(privateKey), network).toWIF();
         return {
             hex: privateKey,
             wif
@@ -696,7 +706,7 @@ export class WalletController {
             privateKey,
             Web3API.network,
             MLDSASecurityLevel.LEVEL2,
-            Buffer.from(chainCode, 'hex')
+            fromHex(chainCode)
         );*/
     };
 
@@ -721,7 +731,7 @@ export class WalletController {
         }
 
         // Calculate SHA256 hash of the MLDSA public key
-        const mldsaHashPubKey = Buffer.from(MessageSigner.sha256(Buffer.from(quantumPublicKey, 'hex'))).toString('hex');
+        const mldsaHashPubKey = toHex(MessageSigner.sha256(fromHex(quantumPublicKey)));
 
         // Return [mldsaHashPubKey, legacyPublicKey]
         return [mldsaHashPubKey, account.pubkey];
@@ -808,13 +818,13 @@ export class WalletController {
             if (cleanData.length === 51 || cleanData.length === 52) {
                 keypair = EcKeyPair.fromWIF(data, network);
             } else {
-                keypair = EcKeyPair.fromPrivateKey(Buffer.from(cleanData, 'hex'), network);
+                keypair = EcKeyPair.fromPrivateKey(fromHex(cleanData), network);
             }
         } catch (e) {
             throw new WalletControllerError(`Invalid private key format: ${String(e)}`, { data, addressType });
         }
 
-        const pubkey = keypair.publicKey.toString('hex');
+        const pubkey = toHex(keypair.publicKey);
         const derivedAddress = publicKeyToAddressWithNetworkType(
             pubkey,
             addressType,
@@ -1148,7 +1158,7 @@ export class WalletController {
             const psbt = typeof _psbt === 'string' ? Psbt.fromHex(_psbt, { network: psbtNetwork }) : _psbt;
 
             psbt.data.inputs.forEach((v, idx) => {
-                let script: Buffer | null = null;
+                let script: Uint8Array | null = null;
                 if (v.witnessUtxo) {
                     script = v.witnessUtxo.script;
                 } else if (v.nonWitnessUtxo) {
@@ -1199,12 +1209,12 @@ export class WalletController {
             const lostInternalPubkey = !v.tapInternalKey;
 
             if (isNotSigned && isP2TR && lostInternalPubkey) {
-                const tapInternalKey = toXOnly(Buffer.from(account.pubkey, 'hex'));
+                const tapInternalKey = toXOnly(createPublicKey(fromHex(account.pubkey)));
                 const { output } = payments.p2tr({
                     internalPubkey: tapInternalKey,
                     network: psbtNetwork
                 });
-                if (v.witnessUtxo?.script.toString('hex') === output?.toString('hex')) {
+                if (output && v.witnessUtxo && toHex(v.witnessUtxo.script) === toHex(output)) {
                     v.tapInternalKey = tapInternalKey;
                 }
             }
@@ -1239,25 +1249,25 @@ export class WalletController {
      * The message is SHA256 hashed before signing.
      * @throws WalletControllerError
      */
-    public signMessage = async (message: string | Buffer): Promise<string> => {
+    public signMessage = async (message: string | Uint8Array): Promise<string> => {
         const account = await this.getCurrentAccount();
         if (!account) throw new WalletControllerError('No current account');
 
-        // Convert message to Buffer and hash it
-        const messageBuffer = typeof message === 'string' ? Buffer.from(message, 'utf8') : message;
+        // Convert message to Uint8Array and hash it
+        const messageBuffer = typeof message === 'string' ? fromUtf8(message) : message;
         const messageHash = MessageSigner.sha256(messageBuffer);
 
-        return keyringService.signData(account.pubkey, messageHash.toString('hex'), 'ecdsa');
+        return keyringService.signData(account.pubkey, toHex(messageHash), 'ecdsa');
     };
 
     /**
      * MLDSA (quantum) message signing using MessageSigner from @btc-vision/transaction.
-     * @param message The message to sign (string or Buffer)
+     * @param message The message to sign (string or Uint8Array)
      * @returns Object containing signature, message, publicKey (all as hex strings), and securityLevel
      * @throws WalletControllerError
      */
     public signMLDSAMessage = async (
-        message: string | Buffer
+        message: string | Uint8Array
     ): Promise<{
         signature: string;
         message: string;
@@ -1274,9 +1284,9 @@ export class WalletController {
         const signedMessage = MessageSigner.signMLDSAMessage(mldsaKeypair, message);
 
         return {
-            signature: Buffer.from(signedMessage.signature).toString('hex'),
-            message: Buffer.from(signedMessage.message).toString('hex'),
-            publicKey: Buffer.from(signedMessage.publicKey).toString('hex'),
+            signature: toHex(signedMessage.signature),
+            message: toHex(signedMessage.message),
+            publicKey: toHex(signedMessage.publicKey),
             securityLevel: signedMessage.securityLevel
         };
     };
@@ -1290,7 +1300,7 @@ export class WalletController {
      * @returns true if signature is valid, false otherwise
      */
     public verifyMLDSASignature = (
-        message: string | Buffer,
+        message: string | Uint8Array,
         signature: string,
         publicKey: string,
         securityLevel: MLDSASecurityLevel
@@ -1300,9 +1310,9 @@ export class WalletController {
 
         // Create a dummy chain code (32 bytes of zeros) for verification purposes
         // The chain code is not used for signature verification
-        const chainCode = Buffer.alloc(32);
-        const publicKeyBuffer = Buffer.from(publicKey, 'hex');
-        const signatureBuffer = Buffer.from(signature, 'hex');
+        const chainCode = alloc(32);
+        const publicKeyBuffer = fromHex(publicKey);
+        const signatureBuffer = fromHex(signature);
 
         const mldsaKeypair = QuantumBIP32Factory.fromPublicKey(publicKeyBuffer, chainCode, network, securityLevel);
 
@@ -1382,11 +1392,11 @@ export class WalletController {
 
             // Record transaction in history
             const calldata = interactionParameters.calldata
-                ? Buffer.isBuffer(interactionParameters.calldata)
-                    ? interactionParameters.calldata.toString('hex')
+                ? interactionParameters.calldata instanceof Uint8Array
+                    ? toHex(interactionParameters.calldata)
                     : typeof interactionParameters.calldata === 'string'
                       ? interactionParameters.calldata
-                      : Buffer.from(interactionParameters.calldata as Uint8Array).toString('hex')
+                      : toHex(new Uint8Array(interactionParameters.calldata as ArrayLike<number>))
                 : undefined;
 
             void this.recordTransaction(
@@ -1419,13 +1429,13 @@ export class WalletController {
 
         try {
             const utxos = params.utxos.map((u) => {
-                let nonWitnessUtxo: Buffer | undefined;
+                let nonWitnessUtxo: Uint8Array | undefined;
 
-                if (Buffer.isBuffer(u.nonWitnessUtxo)) {
+                if (u.nonWitnessUtxo instanceof Uint8Array) {
                     nonWitnessUtxo = u.nonWitnessUtxo;
                 } else if (typeof u.nonWitnessUtxo === 'string') {
                     try {
-                        nonWitnessUtxo = Buffer.from(u.nonWitnessUtxo, 'base64');
+                        nonWitnessUtxo = fromBase64(u.nonWitnessUtxo);
                     } catch {
                         nonWitnessUtxo = undefined;
                     }
@@ -1433,7 +1443,7 @@ export class WalletController {
                     try {
                         const raw = u.nonWitnessUtxo as Record<string, number>;
                         const len = Math.max(...Object.keys(raw).map((k) => +k)) + 1;
-                        const buf = Buffer.alloc(len);
+                        const buf = new Uint8Array(len);
                         for (const [k, v] of Object.entries(raw)) buf[+k] = v;
                         nonWitnessUtxo = buf;
                     } catch {
@@ -1450,13 +1460,13 @@ export class WalletController {
 
             const optionalInputs =
                 params.optionalInputs?.map((u) => {
-                    let nonWitnessUtxo: Buffer | undefined;
+                    let nonWitnessUtxo: Uint8Array | undefined;
 
-                    if (Buffer.isBuffer(u.nonWitnessUtxo)) {
+                    if (u.nonWitnessUtxo instanceof Uint8Array) {
                         nonWitnessUtxo = u.nonWitnessUtxo;
                     } else if (typeof u.nonWitnessUtxo === 'string') {
                         try {
-                            nonWitnessUtxo = Buffer.from(u.nonWitnessUtxo, 'base64');
+                            nonWitnessUtxo = fromBase64(u.nonWitnessUtxo);
                         } catch {
                             nonWitnessUtxo = undefined;
                         }
@@ -1464,7 +1474,7 @@ export class WalletController {
                         try {
                             const raw = u.nonWitnessUtxo as Record<string, number>;
                             const len = Math.max(...Object.keys(raw).map((k) => +k)) + 1;
-                            const buf = Buffer.alloc(len);
+                            const buf = new Uint8Array(len);
                             for (const [k, v] of Object.entries(raw)) buf[+k] = v;
                             nonWitnessUtxo = buf;
                         } catch {
@@ -1507,13 +1517,13 @@ export class WalletController {
 
         try {
             const utxos = params.utxos.map((u) => {
-                let nonWitnessUtxo: Buffer | undefined;
+                let nonWitnessUtxo: Uint8Array | undefined;
 
-                if (Buffer.isBuffer(u.nonWitnessUtxo)) {
+                if (u.nonWitnessUtxo instanceof Uint8Array) {
                     nonWitnessUtxo = u.nonWitnessUtxo;
                 } else if (typeof u.nonWitnessUtxo === 'string') {
                     try {
-                        nonWitnessUtxo = Buffer.from(u.nonWitnessUtxo, 'base64');
+                        nonWitnessUtxo = fromBase64(u.nonWitnessUtxo);
                     } catch {
                         nonWitnessUtxo = undefined;
                     }
@@ -1521,7 +1531,7 @@ export class WalletController {
                     try {
                         const raw = u.nonWitnessUtxo as Record<string, number>;
                         const len = Math.max(...Object.keys(raw).map((k) => +k)) + 1;
-                        const buf = Buffer.alloc(len);
+                        const buf = new Uint8Array(len);
                         for (const [k, v] of Object.entries(raw)) buf[+k] = v;
                         nonWitnessUtxo = buf;
                     } catch {
@@ -1538,13 +1548,13 @@ export class WalletController {
 
             const optionalInputs =
                 params.optionalInputs?.map((u) => {
-                    let nonWitnessUtxo: Buffer | undefined;
+                    let nonWitnessUtxo: Uint8Array | undefined;
 
-                    if (Buffer.isBuffer(u.nonWitnessUtxo)) {
+                    if (u.nonWitnessUtxo instanceof Uint8Array) {
                         nonWitnessUtxo = u.nonWitnessUtxo;
                     } else if (typeof u.nonWitnessUtxo === 'string') {
                         try {
-                            nonWitnessUtxo = Buffer.from(u.nonWitnessUtxo, 'base64');
+                            nonWitnessUtxo = fromBase64(u.nonWitnessUtxo);
                         } catch {
                             nonWitnessUtxo = undefined;
                         }
@@ -1552,7 +1562,7 @@ export class WalletController {
                         try {
                             const raw = u.nonWitnessUtxo as Record<string, number>;
                             const len = Math.max(...Object.keys(raw).map((k) => +k)) + 1;
-                            const buf = Buffer.alloc(len);
+                            const buf = new Uint8Array(len);
                             for (const [k, v] of Object.entries(raw)) buf[+k] = v;
                             nonWitnessUtxo = buf;
                         } catch {
@@ -1583,12 +1593,12 @@ export class WalletController {
                 priorityFee: BigInt((params.priorityFee as unknown as string) || 0n),
                 bytecode:
                     typeof params.bytecode === 'string'
-                        ? Buffer.from(params.bytecode, 'hex')
-                        : Buffer.from(params.bytecode),
+                        ? fromHex(params.bytecode)
+                        : new Uint8Array(params.bytecode),
                 calldata: params.calldata
                     ? typeof params.calldata === 'string'
-                        ? Buffer.from(params.calldata, 'hex')
-                        : Buffer.from(params.calldata)
+                        ? fromHex(params.calldata)
+                        : new Uint8Array(params.calldata)
                     : undefined,
                 optionalOutputs: params.optionalOutputs || [],
                 optionalInputs: optionalInputs,
@@ -1661,11 +1671,11 @@ export class WalletController {
 
         // Record transaction in history
         const calldata = interactionParameters.calldata
-            ? Buffer.isBuffer(interactionParameters.calldata)
-                ? interactionParameters.calldata.toString('hex')
+            ? interactionParameters.calldata instanceof Uint8Array
+                ? toHex(interactionParameters.calldata)
                 : typeof interactionParameters.calldata === 'string'
                   ? interactionParameters.calldata
-                  : Buffer.from(interactionParameters.calldata as Uint8Array).toString('hex')
+                  : toHex(new Uint8Array(interactionParameters.calldata as ArrayLike<number>))
             : undefined;
 
         // Extract txids from raw transactions
@@ -1897,7 +1907,7 @@ export class WalletController {
      * Sign a BIP322 message in "simple" mode (via a BIP322 PSBT).
      * @throws WalletControllerError
      */
-    public signBIP322Simple = async (message: string | Buffer): Promise<string> => {
+    public signBIP322Simple = async (message: string | Uint8Array): Promise<string> => {
         const account = await this.getCurrentAccount();
         if (!account) throw new WalletControllerError('No current account');
         const networkType = this.getNetworkType();
@@ -2260,9 +2270,7 @@ export class WalletController {
 
             if (quantumPublicKey) {
                 // Calculate SHA256 hash of quantum public key
-                quantumPublicKeyHash = Buffer.from(MessageSigner.sha256(Buffer.from(quantumPublicKey, 'hex'))).toString(
-                    'hex'
-                );
+                quantumPublicKeyHash = toHex(MessageSigner.sha256(fromHex(quantumPublicKey)));
                 quantumKeyStatus = QuantumKeyStatus.MIGRATED;
             } else if (type === KEYRING_TYPE.HdKeyring) {
                 // HD keyrings auto-derive quantum keys
@@ -2620,17 +2628,17 @@ export class WalletController {
             }
 
             return {
-                txid: Buffer.from(input.hash).reverse().toString('hex'),
+                txid: toHex(reverseCopy(input.hash)),
                 vout: input.index,
                 address,
-                value: inputData.witnessUtxo?.value || 0,
+                value: Number(inputData.witnessUtxo?.value ?? 0),
                 sighashType: inputData.sighashType
             };
         });
 
         const outputs = psbt.txOutputs.map((output) => ({
             address: output.address || 'unknown',
-            value: output.value
+            value: Number(output.value)
         }));
 
         const totalInputValue = inputs.reduce((sum, inp) => sum + inp.value, 0);
@@ -2732,14 +2740,14 @@ export class WalletController {
      * Sign data with MLDSA (post-quantum) signature.
      * @throws WalletControllerError
      */
-    public signMLDSA = async (data: string | Buffer): Promise<string> => {
+    public signMLDSA = async (data: string | Uint8Array): Promise<string> => {
         const account = await this.getCurrentAccount();
         if (!account) {
             throw new WalletControllerError('No current account');
         }
         try {
             const signature = keyringService.signMLDSA(account.pubkey, data);
-            return Buffer.from(signature).toString('hex');
+            return toHex(signature);
         } catch (err) {
             throw new WalletControllerError(`Failed to sign with MLDSA: ${String(err)}`);
         }
@@ -2755,7 +2763,7 @@ export class WalletController {
             throw new WalletControllerError('No current account');
         }
         const qpk = keyringService.getQuantumPublicKey(account.pubkey);
-        return qpk ? Buffer.from(qpk).toString('hex') : undefined;
+        return qpk || undefined;
     };
 
     /**
@@ -2765,7 +2773,7 @@ export class WalletController {
     public getQuantumPublicKeyHash = async (): Promise<string | undefined> => {
         const qpk = await this.getQuantumPublicKey();
         if (!qpk) return undefined;
-        return Buffer.from(MessageSigner.sha256(Buffer.from(qpk, 'hex'))).toString('hex');
+        return toHex(MessageSigner.sha256(fromHex(qpk)));
     };
 
     /**
@@ -3092,7 +3100,7 @@ export class WalletController {
             for (let i = 0; i < 20; i++) {
                 const randomBytes = new Uint8Array(32);
                 crypto.getRandomValues(randomBytes);
-                const randomKeyPair = EcKeyPair.fromPrivateKey(Buffer.from(randomBytes), currentNetwork);
+                const randomKeyPair = EcKeyPair.fromPrivateKey(randomBytes, currentNetwork);
                 testPrivateKeys.push(randomKeyPair.toWIF());
             }
 
@@ -3101,7 +3109,7 @@ export class WalletController {
                 // Create a temporary SimpleKeyring with a random WIF
                 const tempBytes = new Uint8Array(32);
                 crypto.getRandomValues(tempBytes);
-                const tempKeyPair = EcKeyPair.fromPrivateKey(Buffer.from(tempBytes), currentNetwork);
+                const tempKeyPair = EcKeyPair.fromPrivateKey(tempBytes, currentNetwork);
                 const tempWif = tempKeyPair.toWIF();
 
                 const tempKeyring = new SimpleKeyring({
@@ -3618,13 +3626,13 @@ export class WalletController {
     public uploadToIpfs = async (fileData: string, fileName: string): Promise<string> => {
         // Convert base64 data to binary
         const base64Data = fileData.split(',')[1] || fileData;
-        const binaryData = Buffer.from(base64Data, 'base64');
+        const binaryData = fromBase64(base64Data);
 
         // Use ipfs.opnet.org pinning endpoint
         const pinEndpoint = 'https://ipfs.opnet.org/api/v0/add';
 
         const formData = new FormData();
-        const blob = new Blob([binaryData], { type: 'text/html' });
+        const blob = new Blob([new Uint8Array(binaryData)], { type: 'text/html' });
         formData.append('file', blob, fileName);
 
         const response = await fetch(pinEndpoint, {
@@ -4012,7 +4020,7 @@ export class WalletController {
             );
 
             // Build signer map: address -> keypair for each source address
-            const signerPairs: Array<readonly [string, ECPairInterface]> = [];
+            const signerPairs: Array<readonly [string, UniversalSigner]> = [];
             let primaryWallet: Wallet | null = null;
 
             for (const addr of sourceAddresses) {
@@ -4166,8 +4174,8 @@ export class WalletController {
         }
 
         const wif = wallet.keypair.toWIF();
-        const mldsaPrivateKey = wallet.mldsaKeypair?.privateKey?.toString('hex') || '';
-        const chainCode = Buffer.from(wallet.chainCode).toString('hex');
+        const mldsaPrivateKey = wallet.mldsaKeypair?.privateKey ? toHex(wallet.mldsaKeypair.privateKey) : '';
+        const chainCode = toHex(wallet.chainCode);
 
         return [wif, mldsaPrivateKey, chainCode, coldAccounts[0]];
     };
@@ -4240,8 +4248,8 @@ export class WalletController {
             }
 
             const wif = wallet.keypair.toWIF();
-            const mldsaPrivateKey = wallet.mldsaKeypair?.privateKey?.toString('hex') || '';
-            const chainCode = Buffer.from(wallet.chainCode).toString('hex');
+            const mldsaPrivateKey = wallet.mldsaKeypair?.privateKey ? toHex(wallet.mldsaKeypair.privateKey) : '';
+            const chainCode = toHex(wallet.chainCode);
             results.push([wif, pubkey, mldsaPrivateKey, chainCode]);
         }
 
@@ -4306,7 +4314,7 @@ export class WalletController {
             data[1],
             Web3API.network,
             MLDSASecurityLevel.LEVEL2,
-            Buffer.from(data[2], 'hex')
+            fromHex(data[2])
         );
     }
 
@@ -4649,11 +4657,11 @@ export class WalletController {
         return 'hex';
     };
 
-    private convertToBuffer = (input: string | Buffer | Record<string, number> | undefined): Buffer | undefined => {
+    private convertToBuffer = (input: string | Uint8Array | Record<string, number> | undefined): Uint8Array | undefined => {
         if (!input) return undefined;
 
-        // Already a Buffer
-        if (Buffer.isBuffer(input)) {
+        // Already a Uint8Array
+        if (input instanceof Uint8Array) {
             return input;
         }
 
@@ -4662,12 +4670,11 @@ export class WalletController {
             const encoding = this.detectEncoding(input);
 
             try {
-                return Buffer.from(input, encoding);
+                return encoding === 'hex' ? fromHex(input) : fromBase64(input);
             } catch {
                 // If detected encoding fails, try the other one
-                const fallbackEncoding = encoding === 'hex' ? 'base64' : 'hex';
                 try {
-                    return Buffer.from(input, fallbackEncoding);
+                    return encoding === 'hex' ? fromBase64(input) : fromHex(input);
                 } catch {
                     return undefined;
                 }
@@ -4679,7 +4686,7 @@ export class WalletController {
             try {
                 const raw: Record<string, number> = input;
                 const len = Math.max(...Object.keys(raw).map((k) => +k)) + 1;
-                const buf = Buffer.alloc(len);
+                const buf = new Uint8Array(len);
                 for (const [k, v] of Object.entries(raw)) {
                     buf[+k] = v;
                 }
@@ -4696,8 +4703,8 @@ export class WalletController {
      * Converts UTXO fields to proper format
      */
     private processUTXOFields = (
-        utxo: TransactionUTXO & { raw?: string | Buffer }
-    ): TransactionUTXO & { raw?: string | Buffer } => {
+        utxo: TransactionUTXO & { raw?: string | Uint8Array }
+    ): TransactionUTXO & { raw?: string | Uint8Array } => {
         return {
             ...utxo,
             value: typeof utxo.value === 'bigint' ? utxo.value : BigInt(utxo.value as unknown as string),
@@ -4709,25 +4716,21 @@ export class WalletController {
     };
 
     private processOutputFields = (
-        output: PsbtOutputExtendedAddress | PsbtOutputExtendedScript
+        output: PsbtOutputExtended
     ): PsbtOutputExtended => {
-        const outputFinal: {
-            address?: string;
-            script?: Buffer;
-            value: number;
-        } = {
-            value: typeof output.value === 'number' ? output.value : Number(output.value as unknown as string)
-        };
+        const value = typeof output.value === 'bigint'
+            ? output.value
+            : createSatoshi(BigInt(output.value));
 
-        if ((output as PsbtOutputExtendedAddress).address) {
-            outputFinal.address = (output as PsbtOutputExtendedAddress).address;
+        if ('address' in output && output.address) {
+            return { address: output.address, value } as PsbtOutputExtended;
         }
 
-        if ((output as PsbtOutputExtendedScript).script) {
-            outputFinal.script = this.convertToBuffer((output as PsbtOutputExtendedScript).script) as Buffer;
+        if ('script' in output && output.script) {
+            return { script: this.convertToBuffer(output.script), value } as PsbtOutputExtended;
         }
 
-        return outputFinal as PsbtOutputExtended;
+        return { value } as PsbtOutputExtended;
     };
 
     private signInteractionInternal = async (
@@ -4777,7 +4780,7 @@ export class WalletController {
             feeRate: interactionParameters.feeRate,
             priorityFee: BigInt((interactionParameters.priorityFee as unknown as string) || 0n),
             gasSatFee: BigInt((interactionParameters.gasSatFee as unknown as string) || 330n),
-            calldata: Buffer.from(interactionParameters.calldata as unknown as string, 'hex'),
+            calldata: fromHex(interactionParameters.calldata as unknown as string),
             optionalInputs,
             optionalOutputs,
             contract: interactionParameters.contract,

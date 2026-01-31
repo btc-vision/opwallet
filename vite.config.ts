@@ -318,7 +318,7 @@ export default defineConfig(({ mode }) => {
                             if (id.includes('@btc-vision/transaction')) return 'btc-transaction';
                             if (id.includes('@btc-vision/bitcoin')) return 'btc-bitcoin';
                             if (id.includes('@btc-vision/bip32')) return 'btc-bip32';
-                            if (id.includes('@btc-vision/post-quantum')) return 'btc-post-quantum';
+                            if (id.includes('@btc-vision/ecpair')) return 'btc-ecpair';
                             if (id.includes('@btc-vision/wallet-sdk')) return 'btc-wallet-sdk';
                             if (id.includes('@btc-vision/logger')) return 'btc-logger';
                             if (id.includes('@btc-vision/passworder')) return 'btc-passworder';
@@ -327,8 +327,8 @@ export default defineConfig(({ mode }) => {
                             if (id.includes('node_modules/opnet')) return 'opnet';
 
                             // Bitcoin utilities
-                            if (id.includes('bip39')) return 'bip39';
-                            if (id.includes('ecpair') || id.includes('tiny-secp256k1')) return 'bitcoin-utils';
+                            if (id.includes('@scure/bip39') || id.includes('bip39')) return 'bip39';
+                            // Note: ecpair is now @btc-vision/ecpair (handled above)
                             if (id.includes('bitcore-lib')) return 'bitcore';
 
                             // UI libraries - react, react-dom, scheduler, and antd MUST be in same chunk
@@ -434,19 +434,6 @@ export default defineConfig(({ mode }) => {
                     find: 'events',
                     replacement: resolve(__dirname, 'src/shims/events-browser.js')
                 },
-                // Dedupe noble/scure packages to single version
-                {
-                    find: '@noble/curves',
-                    replacement: resolve(__dirname, 'node_modules/@noble/curves')
-                },
-                {
-                    find: '@noble/hashes',
-                    replacement: resolve(__dirname, 'node_modules/@noble/hashes')
-                },
-                {
-                    find: '@scure/base',
-                    replacement: resolve(__dirname, 'node_modules/@scure/base')
-                },
                 {
                     find: /^@btc-vision\/wallet-sdk\/(.*)/,
                     replacement: resolve(__dirname, 'node_modules/@btc-vision/wallet-sdk/$1')
@@ -458,7 +445,7 @@ export default defineConfig(({ mode }) => {
             ],
             extensions: ['.ts', '.tsx', '.js', '.jsx', '.json'],
             mainFields: ['module', 'main', 'browser'],
-            dedupe: ['@noble/curves', '@noble/hashes', '@scure/base', 'buffer', 'react', 'react-dom', 'scheduler']
+            dedupe: ['@btc-vision/ecpair', 'buffer', 'react', 'react-dom', 'scheduler']
         },
 
         define: {
@@ -540,7 +527,7 @@ export default defineConfig(({ mode }) => {
                 'process',
                 'stream-browserify',
                 'bitcore-lib',
-                'bip-schnorr'
+                '@btc-vision/ecpair'
             ],
             exclude: ['@btc-vision/transaction']
         },

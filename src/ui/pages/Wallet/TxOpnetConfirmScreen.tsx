@@ -62,7 +62,9 @@ import {
     UTXO,
     Wallet
 } from '@btc-vision/transaction';
-import { ECPairInterface } from 'ecpair';
+import { fromHex } from '@btc-vision/bitcoin';
+import type { UniversalSigner } from '@btc-vision/ecpair';
+import { createSatoshi } from '@btc-vision/ecpair';
 import BigNumber from 'bignumber.js';
 import {
     Airdrop,
@@ -399,7 +401,7 @@ export default function TxOpnetConfirmScreen() {
             data[1],
             Web3API.network,
             MLDSASecurityLevel.LEVEL2,
-            Buffer.from(data[2], 'hex')
+            fromHex(data[2])
         );
     }, [wallet]);
 
@@ -584,7 +586,7 @@ export default function TxOpnetConfirmScreen() {
                             extraOutputs: [
                                 {
                                     address: rawTxInfo.treasuryAddress,
-                                    value: Number(domainPrice)
+                                    value: createSatoshi(domainPrice)
                                 }
                             ]
                         };
@@ -784,7 +786,7 @@ export default function TxOpnetConfirmScreen() {
                 }
 
                 let utxos: UTXO[] = [];
-                let witnessScript: Buffer | undefined;
+                let witnessScript: Uint8Array | undefined;
                 const feeMin = 10_000n;
 
                 // Handle special source types (CONSOLIDATION and ROTATION_ALL don't require 'from')
@@ -858,7 +860,7 @@ export default function TxOpnetConfirmScreen() {
                         // Cold storage withdrawal - use cold wallet keypair
                         const coldWalletData = await wallet.getColdStorageWallet();
                         const [coldWif, coldMldsaPrivateKey, coldChainCodeHex] = coldWalletData;
-                        const coldChainCode = coldChainCodeHex ? Buffer.from(coldChainCodeHex, 'hex') : undefined;
+                        const coldChainCode = coldChainCodeHex ? fromHex(coldChainCodeHex) : undefined;
                         const coldWallet = Wallet.fromWif(
                             coldWif,
                             coldMldsaPrivateKey || '',
@@ -985,14 +987,14 @@ export default function TxOpnetConfirmScreen() {
                         const walletDataArray = await wallet.getConsolidationWallets(parameters.sourcePubkeys);
 
                         // Build signer map and create wallets
-                        const signerPairs: Array<readonly [string, ECPairInterface]> = [];
+                        const signerPairs: Array<readonly [string, UniversalSigner]> = [];
                         let primaryWallet: Wallet | null = null;
 
                         for (let i = 0; i < parameters.sourceAddresses.length; i++) {
                             const address = parameters.sourceAddresses[i];
                             const [wif, , mldsaPrivateKey, chainCodeHex] = walletDataArray[i];
 
-                            const chainCode = chainCodeHex ? Buffer.from(chainCodeHex, 'hex') : undefined;
+                            const chainCode = chainCodeHex ? fromHex(chainCodeHex) : undefined;
                             const addrWallet = Wallet.fromWif(
                                 wif,
                                 mldsaPrivateKey || '',
@@ -1156,7 +1158,7 @@ export default function TxOpnetConfirmScreen() {
                             opnetWalletData[1],
                             Web3API.network,
                             MLDSASecurityLevel.LEVEL2,
-                            Buffer.from(opnetWalletData[2], 'hex')
+                            fromHex(opnetWalletData[2])
                         );
 
                         // Get the main account's Bitcoin address (NOT the MLDSA hash)
@@ -1171,14 +1173,14 @@ export default function TxOpnetConfirmScreen() {
                         const coldWalletData = await wallet.getColdStorageWallet();
 
                         // Build signers for all addresses (for per-UTXO signing via addressRotation)
-                        const signerPairs: Array<readonly [string, ECPairInterface]> = [];
+                        const signerPairs: Array<readonly [string, UniversalSigner]> = [];
 
                         // Add hot wallet signers
                         for (let i = 0; i < addressesWithBalance.length; i++) {
                             const address = addressesWithBalance[i];
                             const [wif, , mldsaPrivateKey, chainCodeHex] = hotWalletData[i];
 
-                            const chainCode = chainCodeHex ? Buffer.from(chainCodeHex, 'hex') : undefined;
+                            const chainCode = chainCodeHex ? fromHex(chainCodeHex) : undefined;
                             const addrWallet = Wallet.fromWif(
                                 wif,
                                 mldsaPrivateKey || '',
@@ -1194,7 +1196,7 @@ export default function TxOpnetConfirmScreen() {
                         // getColdStorageWallet returns [wif, mldsaPrivateKey, chainCode, coldAddress]
                         if (coldWalletData) {
                             const [coldWif, coldMldsaPrivateKey, coldChainCodeHex] = coldWalletData;
-                            const coldChainCode = coldChainCodeHex ? Buffer.from(coldChainCodeHex, 'hex') : undefined;
+                            const coldChainCode = coldChainCodeHex ? fromHex(coldChainCodeHex) : undefined;
                             const coldWallet = Wallet.fromWif(
                                 coldWif,
                                 coldMldsaPrivateKey || '',
@@ -1209,7 +1211,7 @@ export default function TxOpnetConfirmScreen() {
                         // This properly rotates to a fresh address rather than reusing existing ones
                         const changeWalletData = await wallet.getNextUnusedRotationWallet();
                         const changeChainCode = changeWalletData.chainCode
-                            ? Buffer.from(changeWalletData.chainCode, 'hex')
+                            ? fromHex(changeWalletData.chainCode)
                             : undefined;
                         const changeWallet = Wallet.fromWif(
                             changeWalletData.wif,
@@ -1686,7 +1688,7 @@ export default function TxOpnetConfirmScreen() {
             const uint8Array = new Uint8Array(arrayBuffer);
 
             const challenge = await Web3API.provider.getChallenge();
-            const calldata = parameters.calldataHex ? Buffer.from(parameters.calldataHex, 'hex') : Buffer.from([]);
+            const calldata = parameters.calldataHex ? fromHex(parameters.calldataHex) : new Uint8Array();
 
             // TODO: Add calldata support
             const deploymentParameters: IDeploymentParameters = {
@@ -1699,7 +1701,7 @@ export default function TxOpnetConfirmScreen() {
                 priorityFee: deployPriorityFee,
                 gasSatFee: deployGasSatFee,
                 from: currentWalletAddress.address,
-                bytecode: Buffer.from(uint8Array),
+                bytecode: uint8Array,
                 calldata: calldata,
                 optionalInputs: [],
                 optionalOutputs: [],
