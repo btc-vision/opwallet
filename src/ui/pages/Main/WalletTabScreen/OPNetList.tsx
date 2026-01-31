@@ -450,6 +450,7 @@ export function OPNetList() {
             {/* Action Buttons */}
             <div
                 style={{
+                    position: 'relative',
                     display: 'flex',
                     gap: '8px',
                     width: 'calc(100% + 24px)',
@@ -459,39 +460,35 @@ export function OPNetList() {
                     margin: '0 -12px 12px -12px',
                     background: colors.headerBG
                 }}>
-                {!chain.opnetDisabled && (
-                    <button
-                        style={tokenButtonStyle}
-                        //onClick={() => setImportTokenBool(true)}
-                        onClick={() => navigate(RouteTypes.ImportSelectionScreen)}
-                        onMouseOver={(e) => (e.currentTarget.style.background = '#212121')}
-                        onMouseOut={(e) => (e.currentTarget.style.background = '#313131')}>
-                        <FontAwesomeIcon icon={faPlus} style={{ fontSize: 12 }} />
-                        <span>Import</span>
-                    </button>
-                )}
+                <button
+                    style={tokenButtonStyle}
+                    onClick={() => !chain.opnetDisabled && navigate(RouteTypes.ImportSelectionScreen)}
+                    onMouseOver={(e) => { if (!chain.opnetDisabled) e.currentTarget.style.background = '#212121'; }}
+                    onMouseOut={(e) => (e.currentTarget.style.background = '#313131')}>
+                    <FontAwesomeIcon icon={faPlus} style={{ fontSize: 12 }} />
+                    <span>Import</span>
+                </button>
 
-                {!chain.opnetDisabled && (
-                    <button
-                        style={tokenButtonStyle}
-                        onClick={async () => {
-                            await browser.tabs.create({
-                                url: browser.runtime.getURL('/index.html#/opnet/deploy-contract')
-                            });
-                        }}
-                        onMouseOver={(e) => (e.currentTarget.style.background = '#212121')}
-                        onMouseOut={(e) => (e.currentTarget.style.background = '#313131')}>
-                        <FontAwesomeIcon icon={faPencil} style={{ fontSize: 12 }} />
-                        <span>Deploy</span>
-                    </button>
-                )}
+                <button
+                    style={tokenButtonStyle}
+                    onClick={async () => {
+                        if (chain.opnetDisabled) return;
+                        await browser.tabs.create({
+                            url: browser.runtime.getURL('/index.html#/opnet/deploy-contract')
+                        });
+                    }}
+                    onMouseOver={(e) => { if (!chain.opnetDisabled) e.currentTarget.style.background = '#212121'; }}
+                    onMouseOut={(e) => (e.currentTarget.style.background = '#313131')}>
+                    <FontAwesomeIcon icon={faPencil} style={{ fontSize: 12 }} />
+                    <span>Deploy</span>
+                </button>
 
                 <button
                     style={tokenRefreshButtonStyle}
                     onClick={refreshCurrentPage}
-                    disabled={isLoading}
+                    disabled={isLoading || !!chain.opnetDisabled}
                     onMouseOver={(e) => {
-                        if (!isLoading) e.currentTarget.style.background = '#212121';
+                        if (!isLoading && !chain.opnetDisabled) e.currentTarget.style.background = '#212121';
                     }}
                     onMouseOut={(e) => (e.currentTarget.style.background = '#313131')}>
                     <FontAwesomeIcon
@@ -503,6 +500,24 @@ export function OPNetList() {
                         }}
                     />
                 </button>
+
+                {chain.opnetDisabled && (
+                    <div
+                        style={{
+                            position: 'absolute',
+                            inset: 0,
+                            background: 'rgba(33, 33, 33, 0.80)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            zIndex: 1,
+                            borderRadius: '0'
+                        }}>
+                        <span style={{ fontSize: '12px', color: colors.textFaded, fontWeight: 600 }}>
+                            OPNet is not enabled on this network yet.
+                        </span>
+                    </div>
+                )}
             </div>
 
             {/* Token List */}
@@ -631,6 +646,7 @@ export function OPNetList() {
             ) : (
                 <div
                     style={{
+                        position: 'relative',
                         background: colors.containerBgFaded,
                         borderRadius: '14px',
                         padding: '40px 20px',
@@ -639,6 +655,24 @@ export function OPNetList() {
                     }}>
                     <Text text="No tokens found" color="text" size="md" style={{ marginBottom: 8 }} />
                     <Text text="Import or deploy a token to get started" color="textDim" size="sm" />
+
+                    {chain.opnetDisabled && (
+                        <div
+                            style={{
+                                position: 'absolute',
+                                inset: 0,
+                                background: 'rgba(33, 33, 33, 0.80)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                zIndex: 1,
+                                borderRadius: '14px'
+                            }}>
+                            <span style={{ fontSize: '13px', color: colors.textFaded, fontWeight: 600 }}>
+                                OPNet is not enabled on this network yet.
+                            </span>
+                        </div>
+                    )}
                 </div>
             )}
 

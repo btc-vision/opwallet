@@ -23,6 +23,7 @@ import { RecordTransactionInput, TransactionType } from '@/shared/types/Transact
 import { decodeBitcoinTransfer, DecodedPreSignedData, decodeSignedInteractionReceipt } from '@/shared/utils/txDecoder';
 import Web3API from '@/shared/web3/Web3API';
 import { Column, Content, Footer, Header, Layout, OPNetTxFlowPreview, Text } from '@/ui/components';
+import { FeeRateBar } from '@/ui/components/FeeRateBar';
 import { ContextType, useTools } from '@/ui/components/ActionComponent';
 import { BottomModal } from '@/ui/components/BottomModal';
 import { useBTCUnit } from '@/ui/state/settings/hooks';
@@ -196,6 +197,9 @@ export default function TxOpnetConfirmScreen() {
     const wallet = useWallet();
     const tools = useTools();
 
+    // Editable fee rate state (initialized from navigation state, can be changed by user)
+    const [feeRate, setFeeRate] = useState<number>(rawTxInfo.feeRate);
+
     // Pre-signed transaction state
     const [isSigning, setIsSigning] = useState<boolean>(false);
     const [signingError, setSigningError] = useState<string | null>(null);
@@ -316,13 +320,9 @@ export default function TxOpnetConfirmScreen() {
         const decodedData = cachedSignedTx?.decodedData || cachedBtcTx?.decodedData;
 
         if (!decodedData) {
-            // Fallback to estimate
-            const miningFee = Number(rawTxInfo.priorityFee);
-            const gasFee = Number(rawTxInfo.gasSatFee ?? 0);
-            const domainPrice =
-                rawTxInfo.action === Action.RegisterDomain && 'price' in rawTxInfo ? Number(rawTxInfo.price) : 0;
+            // No actual data yet - don't show inaccurate estimates
             return {
-                totalCost: miningFee + gasFee + domainPrice,
+                totalCost: null as number | null,
                 changeOutputs: [] as { address: string; value: bigint }[],
                 externalOutputs: [] as { address: string; value: bigint }[],
                 totalChange: 0n,
@@ -405,6 +405,16 @@ export default function TxOpnetConfirmScreen() {
         );
     }, [wallet]);
 
+    // Handle fee rate change from FeeRateBar
+    const handleFeeRateChange = useCallback((newFeeRate: number) => {
+        if (newFeeRate === feeRate) return;
+        setFeeRate(newFeeRate);
+        setCachedSignedTx(null);
+        setCachedBtcTx(null);
+        preSigningRef.current = false;
+        setSigningError(null);
+    }, [feeRate]);
+
     // Check if pre-signed transaction is expired
     const isPreSignedExpired = useCallback(() => {
         if (!cachedSignedTx) return true;
@@ -459,7 +469,7 @@ export default function TxOpnetConfirmScreen() {
                     mldsaSigner: userWallet.mldsaKeypair,
                     refundTo: refundAddress,
                     maximumAllowedSatToSpend: basePriorityFee,
-                    feeRate: rawTxInfo.feeRate,
+                    feeRate: feeRate,
                     network: Web3API.network,
                     priorityFee: basePriorityFee,
                     note: rawTxInfo.note
@@ -750,7 +760,7 @@ export default function TxOpnetConfirmScreen() {
         };
 
         void preSignTransaction();
-    }, [rawTxInfo, wallet, getOPNetWallet]);
+    }, [rawTxInfo, wallet, getOPNetWallet, feeRate]);
 
     // Pre-sign Bitcoin transfer transactions on mount
     useEffect(() => {
@@ -888,7 +898,7 @@ export default function TxOpnetConfirmScreen() {
                             signer: coldWallet.keypair,
                             mldsaSigner: coldWallet.mldsaKeypair,
                             network: Web3API.network,
-                            feeRate: parameters.feeRate,
+                            feeRate: feeRate,
                             priorityFee: 0n,
                             gasSatFee: 0n,
                             to: parameters.to,
@@ -1019,7 +1029,7 @@ export default function TxOpnetConfirmScreen() {
 
                         // Estimate fees: ~68 vbytes per P2TR input, ~43 vbytes for output, ~12 overhead
                         const estimatedVSize = BigInt(12 + utxos.length * 68 + 43);
-                        const estimatedFee = estimatedVSize * BigInt(parameters.feeRate);
+                        const estimatedFee = estimatedVSize * BigInt(feeRate);
 
                         // Calculate output amount (total - estimated fees with buffer)
                         // Add 20% buffer to fee estimate to ensure tx succeeds
@@ -1059,7 +1069,7 @@ export default function TxOpnetConfirmScreen() {
                             signer: primaryWallet.keypair,
                             mldsaSigner: primaryWallet.mldsaKeypair,
                             network: Web3API.network,
-                            feeRate: parameters.feeRate,
+                            feeRate: feeRate,
                             priorityFee: 0n,
                             gasSatFee: 0n,
                             to: parameters.to,
@@ -1234,7 +1244,7 @@ export default function TxOpnetConfirmScreen() {
 
                         // Calculate output amount
                         const estimatedVSize = BigInt(12 + utxos.length * 68 + 43);
-                        const estimatedFee = estimatedVSize * BigInt(parameters.feeRate);
+                        const estimatedFee = estimatedVSize * BigInt(feeRate);
                         const feeBuffer = (estimatedFee * 120n) / 100n;
                         const outputAmount = totalInputValue - feeBuffer;
 
@@ -1264,7 +1274,7 @@ export default function TxOpnetConfirmScreen() {
                             signer: changeSigner, // Signer for change output (matches from address)
                             mldsaSigner: reservedMldsaWallet.mldsaKeypair, // MLDSA signer for quantum linkage
                             network: Web3API.network,
-                            feeRate: parameters.feeRate,
+                            feeRate: feeRate,
                             priorityFee: 0n,
                             gasSatFee: 0n,
                             to: parameters.to,
@@ -1337,7 +1347,7 @@ export default function TxOpnetConfirmScreen() {
                     signer: userWallet.keypair,
                     mldsaSigner: userWallet.mldsaKeypair,
                     network: Web3API.network,
-                    feeRate: parameters.feeRate,
+                    feeRate: feeRate,
                     priorityFee: 0n,
                     gasSatFee: 0n,
                     to: parameters.to,
@@ -1396,7 +1406,7 @@ export default function TxOpnetConfirmScreen() {
         };
 
         void preSignBitcoinTransfer();
-    }, [rawTxInfo, wallet, getOPNetWallet]);
+    }, [rawTxInfo, wallet, getOPNetWallet, feeRate]);
 
     const handleCancel = () => {
         // Clear cached pre-signed transaction on cancel
@@ -1480,7 +1490,7 @@ export default function TxOpnetConfirmScreen() {
                 tokenAddress: parameters.contractAddress,
                 contractAddress: parameters.contractAddress,
                 fee: Number(parameters.priorityFee || 0),
-                feeRate: parameters.feeRate
+                feeRate: feeRate
             };
             void wallet.recordTransaction(txRecord);
 
@@ -1539,7 +1549,7 @@ export default function TxOpnetConfirmScreen() {
                 contractAddress: contractAddress,
                 contractMethod: 'airdrop',
                 fee: Number(parameters.priorityFee || 0),
-                feeRate: parameters.feeRate,
+                feeRate: feeRate,
                 note: `Airdrop to ${addressCount} addresses`
             };
             void wallet.recordTransaction(txRecord);
@@ -1616,7 +1626,7 @@ export default function TxOpnetConfirmScreen() {
                 amount: BitcoinUtils.expandToDecimals(btcInputAmount, 8).toString(),
                 amountDisplay: `${btcInputAmount} BTC`,
                 fee: Number(actualFee),
-                feeRate: parameters.feeRate
+                feeRate: feeRate
             };
             void wallet.recordTransaction(txRecord);
 
@@ -1697,7 +1707,7 @@ export default function TxOpnetConfirmScreen() {
                 signer: userWallet.keypair,
                 mldsaSigner: userWallet.mldsaKeypair,
                 network: Web3API.network,
-                feeRate: parameters.feeRate,
+                feeRate: feeRate,
                 priorityFee: deployPriorityFee,
                 gasSatFee: deployGasSatFee,
                 from: currentWalletAddress.address,
@@ -1752,7 +1762,7 @@ export default function TxOpnetConfirmScreen() {
                     from: currentWalletAddress.address,
                     contractAddress: sendTransact.contractAddress,
                     fee: Number(parameters.priorityFee || 0),
-                    feeRate: parameters.feeRate
+                    feeRate: feeRate
                 };
                 void wallet.recordTransaction(txRecord);
 
@@ -1819,7 +1829,7 @@ export default function TxOpnetConfirmScreen() {
                 contractAddress: parameters.contractAddress,
                 contractMethod: 'mint',
                 fee: Number(parameters.priorityFee || 0),
-                feeRate: parameters.feeRate
+                feeRate: feeRate
             };
             void wallet.recordTransaction(txRecord);
 
@@ -1874,7 +1884,7 @@ export default function TxOpnetConfirmScreen() {
                 contractAddress: parameters.collectionAddress,
                 contractMethod: 'safeTransferFrom',
                 fee: Number(parameters.priorityFee || 0),
-                feeRate: parameters.feeRate,
+                feeRate: feeRate,
                 note: `NFT #${parameters.tokenId} from ${parameters.collectionName}`
             };
             void wallet.recordTransaction(txRecord);
@@ -1936,7 +1946,7 @@ export default function TxOpnetConfirmScreen() {
                 from: currentWalletAddress.address,
                 contractMethod: 'registerDomain',
                 fee: Number(parameters.priorityFee || 0),
-                feeRate: parameters.feeRate,
+                feeRate: feeRate,
                 note: `Register domain ${parameters.domainName}.btc`
             };
             void wallet.recordTransaction(txRecord);
@@ -1993,7 +2003,7 @@ export default function TxOpnetConfirmScreen() {
                 from: currentWalletAddress.address,
                 contractMethod: 'setContenthash',
                 fee: Number(parameters.priorityFee || 0),
-                feeRate: parameters.feeRate,
+                feeRate: feeRate,
                 note: `Publish to ${parameters.domainName}.btc: ${parameters.cid.slice(0, 20)}...`
             };
             void wallet.recordTransaction(txRecord);
@@ -2047,7 +2057,7 @@ export default function TxOpnetConfirmScreen() {
                 from: currentWalletAddress.address,
                 contractMethod: 'initiateTransfer',
                 fee: Number(parameters.priorityFee || 0),
-                feeRate: parameters.feeRate,
+                feeRate: feeRate,
                 note: `Initiate transfer of ${parameters.domainName}.btc to ${parameters.newOwner.slice(0, 10)}...`
             };
             void wallet.recordTransaction(txRecord);
@@ -2104,7 +2114,7 @@ export default function TxOpnetConfirmScreen() {
                 from: currentWalletAddress.address,
                 contractMethod: 'acceptTransfer',
                 fee: Number(parameters.priorityFee || 0),
-                feeRate: parameters.feeRate,
+                feeRate: feeRate,
                 note: `Accept transfer of ${parameters.domainName}.btc`
             };
             void wallet.recordTransaction(txRecord);
@@ -2158,7 +2168,7 @@ export default function TxOpnetConfirmScreen() {
                 from: currentWalletAddress.address,
                 contractMethod: 'cancelTransfer',
                 fee: Number(parameters.priorityFee || 0),
-                feeRate: parameters.feeRate,
+                feeRate: feeRate,
                 note: `Cancel transfer of ${parameters.domainName}.btc`
             };
             void wallet.recordTransaction(txRecord);
@@ -2461,81 +2471,72 @@ export default function TxOpnetConfirmScreen() {
                                 <DollarOutlined style={{ fontSize: 14, color: colors.main }} />
                                 Fee Breakdown
                             </div>
-                            {cachedSignedTx?.decodedData || cachedBtcTx?.decodedData ? (
+                            {(cachedSignedTx?.decodedData || cachedBtcTx?.decodedData) && (
                                 <span style={{ fontSize: '9px', color: colors.success, fontWeight: 500 }}>ACTUAL</span>
-                            ) : (
-                                <span style={{ fontSize: '9px', color: colors.warning, fontWeight: 500 }}>
-                                    {isSigning ? 'CALCULATING...' : 'ESTIMATE'}
-                                </span>
                             )}
                         </div>
 
-                        {/* Mining Fee (inputs - outputs) - Actual value when available */}
-                        <div
-                            style={{
-                                display: 'flex',
-                                justifyContent: 'space-between',
-                                alignItems: 'center',
-                                padding: '10px',
-                                background: colors.inputBg,
-                                borderRadius: '8px',
-                                marginBottom: '8px'
-                            }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                <ThunderboltOutlined style={{ fontSize: 14, color: colors.warning }} />
-                                <div>
-                                    <span style={{ fontSize: '13px', color: colors.text }}>Mining Fee</span>
-                                    <div style={{ fontSize: '9px', color: colors.textFaded }}>
-                                        Paid to Bitcoin miners
+                        {/* Mining Fee - Only shown when actual data is available */}
+                        {(cachedSignedTx?.decodedData || cachedBtcTx?.decodedData) && (
+                            <div
+                                style={{
+                                    display: 'flex',
+                                    justifyContent: 'space-between',
+                                    alignItems: 'center',
+                                    padding: '10px',
+                                    background: colors.inputBg,
+                                    borderRadius: '8px',
+                                    marginBottom: '8px'
+                                }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    <ThunderboltOutlined style={{ fontSize: 14, color: colors.warning }} />
+                                    <div>
+                                        <span style={{ fontSize: '13px', color: colors.text }}>Mining Fee</span>
+                                        <div style={{ fontSize: '9px', color: colors.textFaded }}>
+                                            Paid to Bitcoin miners
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
-                            <div style={{ textAlign: 'right' }}>
-                                <div>
-                                    <span
-                                        style={{
-                                            fontSize: '14px',
-                                            fontWeight: 600,
-                                            color:
-                                                cachedSignedTx?.decodedData || cachedBtcTx?.decodedData
-                                                    ? colors.success
-                                                    : colors.text
-                                        }}>
-                                        {cachedSignedTx?.decodedData
-                                            ? cachedSignedTx.decodedData.totalMiningFee.toString()
-                                            : cachedBtcTx?.decodedData
-                                              ? cachedBtcTx.decodedData.totalMiningFee.toString()
-                                              : rawTxInfo.priorityFee.toString()}
-                                    </span>
-                                    <span
-                                        style={{
-                                            fontSize: '11px',
-                                            color: colors.textFaded,
-                                            marginLeft: '4px'
-                                        }}>
-                                        sat
-                                    </span>
-                                </div>
-                                {btcPrice > 0 && (
-                                    <div style={{ fontSize: '10px', color: colors.textFaded }}>
-                                        $
-                                        {(
-                                            (Number(
-                                                cachedSignedTx?.decodedData?.totalMiningFee ??
-                                                    cachedBtcTx?.decodedData?.totalMiningFee ??
-                                                    rawTxInfo.priorityFee
-                                            ) /
-                                                1e8) *
-                                            btcPrice
-                                        ).toFixed(2)}{' '}
-                                        USD
+                                <div style={{ textAlign: 'right' }}>
+                                    <div>
+                                        <span
+                                            style={{
+                                                fontSize: '14px',
+                                                fontWeight: 600,
+                                                color: colors.success
+                                            }}>
+                                            {(cachedSignedTx?.decodedData?.totalMiningFee ?? cachedBtcTx?.decodedData?.totalMiningFee ?? 0n).toString()}
+                                        </span>
+                                        <span
+                                            style={{
+                                                fontSize: '11px',
+                                                color: colors.textFaded,
+                                                marginLeft: '4px'
+                                            }}>
+                                            sat
+                                        </span>
                                     </div>
-                                )}
+                                    {btcPrice > 0 && (
+                                        <div style={{ fontSize: '10px', color: colors.textFaded }}>
+                                            $
+                                            {(
+                                                (Number(
+                                                    cachedSignedTx?.decodedData?.totalMiningFee ??
+                                                        cachedBtcTx?.decodedData?.totalMiningFee ??
+                                                        0n
+                                                ) /
+                                                    1e8) *
+                                                btcPrice
+                                            ).toFixed(2)}{' '}
+                                            USD
+                                        </div>
+                                    )}
+                                </div>
                             </div>
-                        </div>
+                        )}
 
-                        {/* OPNet Gas Fee (First output of interaction TX) - Actual value when available */}
-                        {(cachedSignedTx?.decodedData?.opnetGasFee || rawTxInfo.gasSatFee) && (
+                        {/* OPNet Gas Fee - Only shown when actual data is available */}
+                        {cachedSignedTx?.decodedData?.opnetGasFee && (
                             <div
                                 style={{
                                     display: 'flex',
@@ -2561,11 +2562,9 @@ export default function TxOpnetConfirmScreen() {
                                             style={{
                                                 fontSize: '14px',
                                                 fontWeight: 600,
-                                                color: cachedSignedTx?.decodedData ? colors.success : colors.text
+                                                color: colors.success
                                             }}>
-                                            {cachedSignedTx?.decodedData
-                                                ? cachedSignedTx.decodedData.opnetGasFee.toString()
-                                                : (rawTxInfo.gasSatFee?.toString() ?? '0')}
+                                            {cachedSignedTx.decodedData.opnetGasFee.toString()}
                                         </span>
                                         <span
                                             style={{
@@ -2580,10 +2579,7 @@ export default function TxOpnetConfirmScreen() {
                                         <div style={{ fontSize: '10px', color: colors.textFaded }}>
                                             $
                                             {(
-                                                (Number(
-                                                    cachedSignedTx?.decodedData?.opnetGasFee ?? rawTxInfo.gasSatFee ?? 0
-                                                ) /
-                                                    1e8) *
+                                                (Number(cachedSignedTx.decodedData.opnetGasFee) / 1e8) *
                                                 btcPrice
                                             ).toFixed(2)}{' '}
                                             USD
@@ -2596,37 +2592,20 @@ export default function TxOpnetConfirmScreen() {
                         {/* Fee Rate */}
                         <div
                             style={{
-                                display: 'flex',
-                                justifyContent: 'space-between',
-                                alignItems: 'center',
                                 padding: '10px',
                                 background: colors.inputBg,
                                 borderRadius: '8px'
                             }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                <span style={{ fontSize: '13px', color: colors.textFaded }}>Fee Rate</span>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                                <ThunderboltOutlined style={{ fontSize: 14, color: colors.main }} />
+                                <span style={{ fontSize: '13px', color: colors.text }}>Fee Rate</span>
+                                <span style={{ fontSize: '11px', color: colors.textFaded }}>({feeRate} sat/vB)</span>
                             </div>
-                            <div style={{ textAlign: 'right' }}>
-                                <span
-                                    style={{
-                                        fontSize: '14px',
-                                        fontWeight: 600,
-                                        color: colors.text
-                                    }}>
-                                    {rawTxInfo.feeRate}
-                                </span>
-                                <span
-                                    style={{
-                                        fontSize: '11px',
-                                        color: colors.textFaded,
-                                        marginLeft: '4px'
-                                    }}>
-                                    sat/vB
-                                </span>
-                            </div>
+                            <FeeRateBar onChange={handleFeeRateChange} />
                         </div>
 
-                        {/* Total Transaction Cost */}
+                        {/* Total Transaction Cost - Only shown when actual data is available */}
+                        {outputAnalysis.totalCost !== null && (
                         <div
                             style={{
                                 marginTop: '12px',
@@ -2655,15 +2634,9 @@ export default function TxOpnetConfirmScreen() {
                                         gap: '6px'
                                     }}>
                                     Total Transaction Cost
-                                    {outputAnalysis.isActual ? (
-                                        <span style={{ fontSize: '9px', color: colors.success, fontWeight: 600 }}>
-                                            ACTUAL
-                                        </span>
-                                    ) : (
-                                        <span style={{ fontSize: '9px', color: colors.warning, fontWeight: 600 }}>
-                                            ~EST
-                                        </span>
-                                    )}
+                                    <span style={{ fontSize: '9px', color: colors.success, fontWeight: 600 }}>
+                                        ACTUAL
+                                    </span>
                                 </div>
                                 <div style={{ fontSize: '20px', fontWeight: 700, color: colors.main }}>
                                     {(outputAnalysis.totalCost / 1e8).toFixed(8).replace(/\.?0+$/, '')} {btcUnit}
@@ -2781,6 +2754,7 @@ export default function TxOpnetConfirmScreen() {
                                 </div>
                             )}
                         </div>
+                        )}
                     </div>
 
                     {/* Features */}
