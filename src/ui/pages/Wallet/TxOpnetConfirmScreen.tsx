@@ -1027,44 +1027,12 @@ export default function TxOpnetConfirmScreen() {
                         // Create address rotation config
                         const addressRotation = createAddressRotation(signerPairs);
 
-                        // Estimate fees: ~68 vbytes per P2TR input, ~43 vbytes for output, ~12 overhead
-                        const estimatedVSize = BigInt(12 + utxos.length * 68 + 43);
-                        const estimatedFee = estimatedVSize * BigInt(feeRate);
-
-                        // Calculate output amount (total - estimated fees with buffer)
-                        // Add 20% buffer to fee estimate to ensure tx succeeds
-                        const feeBuffer = (estimatedFee * 120n) / 100n;
-                        const outputAmount = totalInputValue - feeBuffer;
-
-                        if (outputAmount <= 0n) {
-                            throw new Error('Consolidation amount too small to cover fees');
-                        }
-
-                        // Validate output amount is reasonable
-                        if (outputAmount > MAX_SATOSHIS) {
-                            console.error('[Consolidation] Output amount exceeds max:', outputAmount.toString());
-                            throw new Error(`Output amount ${outputAmount} exceeds maximum possible satoshis`);
-                        }
-
-                        console.log('[Consolidation] Building tx with amount:', outputAmount.toString(), 'satoshis');
-                        console.log('[Consolidation] Total input value:', totalInputValue.toString());
-                        console.log('[Consolidation] Fee buffer:', feeBuffer.toString());
-                        console.log('[Consolidation] UTXOs count:', utxos.length);
-
-                        // CRITICAL: Validate amount is reasonable before passing to library
-                        const FOUR_HUNDRED_MILLION_BTC = 40_000_000_000_000_000n;
-                        if (outputAmount >= FOUR_HUNDRED_MILLION_BTC) {
-                            throw new Error(
-                                `CRITICAL BUG: outputAmount=${outputAmount} is impossibly large! totalInputValue=${totalInputValue}, feeBuffer=${feeBuffer}`
-                            );
-                        }
-
                         // Build consolidation transaction
-                        // For consolidation, we send ALL funds minus fees to the cold wallet
+                        // Send ALL funds minus fees to the cold wallet
                         // 'from' must be set to an address matching the signer (first source address)
-                        // Any small change will go back to this address (though we calculate to minimize change)
                         const consolidationParams: IFundingTransactionParameters = {
-                            amount: outputAmount, // This must be bigint - calculated to minimize change
+                            amount: totalInputValue,
+                            autoAdjustAmount: true,
                             utxos: utxos,
                             signer: primaryWallet.keypair,
                             mldsaSigner: primaryWallet.mldsaKeypair,
@@ -1242,17 +1210,7 @@ export default function TxOpnetConfirmScreen() {
 
                         const addressRotation = createAddressRotation(signerPairs);
 
-                        // Calculate output amount
-                        const estimatedVSize = BigInt(12 + utxos.length * 68 + 43);
-                        const estimatedFee = estimatedVSize * BigInt(feeRate);
-                        const feeBuffer = (estimatedFee * 120n) / 100n;
-                        const outputAmount = totalInputValue - feeBuffer;
-
-                        if (outputAmount <= 0n) {
-                            throw new Error('Amount too small to cover fees');
-                        }
-
-                        console.log('[RotationAll] Building tx with amount:', outputAmount.toString(), 'satoshis');
+                        console.log('[RotationAll] Building tx with totalInputValue:', totalInputValue.toString(), 'satoshis');
                         console.log('[RotationAll] Destination (to):', parameters.to);
                         console.log('[RotationAll] Network:', Web3API.network);
                         console.log('[RotationAll] Signer pairs count:', signerPairs.length);
@@ -1269,7 +1227,8 @@ export default function TxOpnetConfirmScreen() {
                         // Set `from` to an existing rotation address (we have its signer) for any change
                         // The reserved address is exposed on-chain for MLDSA but should NEVER receive funds
                         const rotationAllParams: IFundingTransactionParameters = {
-                            amount: outputAmount,
+                            amount: totalInputValue,
+                            autoAdjustAmount: true,
                             utxos: utxos,
                             signer: changeSigner, // Signer for change output (matches from address)
                             mldsaSigner: reservedMldsaWallet.mldsaKeypair, // MLDSA signer for quantum linkage
