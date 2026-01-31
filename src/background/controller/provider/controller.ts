@@ -459,6 +459,11 @@ export class ProviderController {
         approvalRes: boolean;
         data: { params: IDeploymentParametersWithoutSigner };
     }) => {
+        const currentChain = CHAINS_MAP[wallet.getChainType()];
+        if (currentChain?.opnetDisabled) {
+            throw new Error('OPNet features are not yet available on this network.');
+        }
+
         const feeRate = await Web3API.provider.gasParameters();
         const minimumFeeRate = feeRate.bitcoin.recommended.low;
 

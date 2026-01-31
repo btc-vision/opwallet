@@ -4754,7 +4754,7 @@ export class WalletController {
                 const alreadyUsed = new Set<string>(utxos.map((u) => `${u.transactionId}:${u.outputIndex}`));
 
                 fetched
-                    .sort((a, b) => Number(b.value - a.value))
+                    .sort((a, b) => (b.value > a.value ? 1 : b.value < a.value ? -1 : 0))
                     .forEach((f) => {
                         if (alreadyUsed.has(`${f.transactionId}:${f.outputIndex}`)) return;
 

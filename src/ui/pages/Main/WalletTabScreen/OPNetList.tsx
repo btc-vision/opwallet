@@ -14,7 +14,7 @@ import { Column, OPNetLoader, Text } from '@/ui/components';
 import { useTools } from '@/ui/components/ActionComponent';
 import OpNetBalanceCard from '@/ui/components/OpNetBalanceCard';
 import { useCurrentAccount } from '@/ui/state/accounts/hooks';
-import { useChainType } from '@/ui/state/settings/hooks';
+import { useChain, useChainType } from '@/ui/state/settings/hooks';
 
 import { faEye, faEyeSlash, faPencil, faPlus, faRefresh, faTrash } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
@@ -80,6 +80,7 @@ export function OPNetList() {
     const navigate = useNavigate();
     const currentAccount = useCurrentAccount();
     const chainType = useChainType();
+    const chain = useChain();
     const tools = useTools();
 
     // Core state
@@ -458,28 +459,32 @@ export function OPNetList() {
                     margin: '0 -12px 12px -12px',
                     background: colors.headerBG
                 }}>
-                <button
-                    style={tokenButtonStyle}
-                    //onClick={() => setImportTokenBool(true)}
-                    onClick={() => navigate(RouteTypes.ImportSelectionScreen)}
-                    onMouseOver={(e) => (e.currentTarget.style.background = '#212121')}
-                    onMouseOut={(e) => (e.currentTarget.style.background = '#313131')}>
-                    <FontAwesomeIcon icon={faPlus} style={{ fontSize: 12 }} />
-                    <span>Import</span>
-                </button>
+                {!chain.opnetDisabled && (
+                    <button
+                        style={tokenButtonStyle}
+                        //onClick={() => setImportTokenBool(true)}
+                        onClick={() => navigate(RouteTypes.ImportSelectionScreen)}
+                        onMouseOver={(e) => (e.currentTarget.style.background = '#212121')}
+                        onMouseOut={(e) => (e.currentTarget.style.background = '#313131')}>
+                        <FontAwesomeIcon icon={faPlus} style={{ fontSize: 12 }} />
+                        <span>Import</span>
+                    </button>
+                )}
 
-                <button
-                    style={tokenButtonStyle}
-                    onClick={async () => {
-                        await browser.tabs.create({
-                            url: browser.runtime.getURL('/index.html#/opnet/deploy-contract')
-                        });
-                    }}
-                    onMouseOver={(e) => (e.currentTarget.style.background = '#212121')}
-                    onMouseOut={(e) => (e.currentTarget.style.background = '#313131')}>
-                    <FontAwesomeIcon icon={faPencil} style={{ fontSize: 12 }} />
-                    <span>Deploy</span>
-                </button>
+                {!chain.opnetDisabled && (
+                    <button
+                        style={tokenButtonStyle}
+                        onClick={async () => {
+                            await browser.tabs.create({
+                                url: browser.runtime.getURL('/index.html#/opnet/deploy-contract')
+                            });
+                        }}
+                        onMouseOver={(e) => (e.currentTarget.style.background = '#212121')}
+                        onMouseOut={(e) => (e.currentTarget.style.background = '#313131')}>
+                        <FontAwesomeIcon icon={faPencil} style={{ fontSize: 12 }} />
+                        <span>Deploy</span>
+                    </button>
+                )}
 
                 <button
                     style={tokenRefreshButtonStyle}

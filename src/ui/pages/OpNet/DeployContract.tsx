@@ -18,6 +18,7 @@ import {
 } from '@ant-design/icons';
 import React, { useEffect, useState } from 'react';
 import { RouteTypes, useNavigate } from '../routeTypes';
+import { useChain } from '@/ui/state/settings/hooks';
 
 const colors = {
     main: '#f37413',
@@ -40,6 +41,7 @@ export default function DeployContractOpnet() {
     const account = useCurrentAccount();
     const navigate = useNavigate();
     const tools = useTools();
+    const chain = useChain();
 
     const [wasmFile, setWasmFile] = useState<File | null>(null);
     const [feeRate, setFeeRate] = useState<number>(2);
@@ -96,6 +98,30 @@ export default function DeployContractOpnet() {
             }
         });
     };
+
+    if (chain.opnetDisabled) {
+        return (
+            <Layout>
+                <Header title="Deploy Smart Contract" onBack={() => navigate(RouteTypes.MainScreen)} />
+                <Content style={{ padding: '24px' }}>
+                    <div
+                        style={{
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            minHeight: '200px',
+                            textAlign: 'center',
+                            gap: '16px'
+                        }}>
+                        <p style={{ fontSize: '14px', color: colors.textFaded }}>
+                            OPNet features are not yet available on this network.
+                        </p>
+                    </div>
+                </Content>
+            </Layout>
+        );
+    }
 
     return (
         <Layout>
