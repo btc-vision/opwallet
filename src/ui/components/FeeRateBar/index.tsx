@@ -20,8 +20,9 @@ type BitcoinFees = {
     };
 };
 
-export function FeeRateBar({ readonly, onChange }: { readonly?: boolean; onChange?: (val: number) => void }) {
+export function FeeRateBar({ readonly, onChange, initialFeeRate }: { readonly?: boolean; onChange?: (val: number) => void; initialFeeRate?: number }) {
     const [feeOptions, setFeeOptions] = useState<{ title: string; desc?: string; feeRate: number }[]>([]);
+    const [initialized, setInitialized] = useState(false);
 
     const getData = useCallback(async () => {
         const gasParameters = await Web3API.provider.gasParameters();
@@ -59,8 +60,29 @@ export function FeeRateBar({ readonly, onChange }: { readonly?: boolean; onChang
         void getData();
     }, [getData]);
 
-    const [feeOptionIndex, setFeeOptionIndex] = useState(FeeRateType.AVG);
-    const [feeRateInputVal, setFeeRateInputVal] = useState('');
+    // When initialFeeRate is provided, default to CUSTOM with that value.
+    // Otherwise default to AVG (existing behavior for other callers).
+    const [feeOptionIndex, setFeeOptionIndex] = useState(
+        initialFeeRate != null ? FeeRateType.CUSTOM : FeeRateType.AVG
+    );
+    const [feeRateInputVal, setFeeRateInputVal] = useState(
+        initialFeeRate != null ? String(initialFeeRate) : ''
+    );
+
+    // After fee options load, check if initialFeeRate matches a preset (Slow/Medium/Fast).
+    // If so, select that preset instead of staying on Custom.
+    useEffect(() => {
+        if (initialized || feeOptions.length === 0 || initialFeeRate == null) return;
+        setInitialized(true);
+
+        for (let i = 0; i < feeOptions.length - 1; i++) {
+            if (feeOptions[i].feeRate === initialFeeRate) {
+                setFeeOptionIndex(i);
+                return;
+            }
+        }
+        // No match — stay on CUSTOM with the value pre-filled
+    }, [feeOptions, initialFeeRate, initialized]);
 
     useEffect(() => {
         const defaultOption = feeOptions[1];

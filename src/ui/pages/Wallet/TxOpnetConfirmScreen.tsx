@@ -405,15 +405,19 @@ export default function TxOpnetConfirmScreen() {
         );
     }, [wallet]);
 
-    // Handle fee rate change from FeeRateBar
+    // Track current feeRate in a ref so the callback stays stable
+    const feeRateRef = useRef(feeRate);
+    feeRateRef.current = feeRate;
+
+    // Handle fee rate change from FeeRateBar (stable callback - no deps)
     const handleFeeRateChange = useCallback((newFeeRate: number) => {
-        if (newFeeRate === feeRate) return;
+        if (newFeeRate === feeRateRef.current) return;
         setFeeRate(newFeeRate);
         setCachedSignedTx(null);
         setCachedBtcTx(null);
         preSigningRef.current = false;
         setSigningError(null);
-    }, [feeRate]);
+    }, []);
 
     // Check if pre-signed transaction is expired
     const isPreSignedExpired = useCallback(() => {
@@ -2560,7 +2564,7 @@ export default function TxOpnetConfirmScreen() {
                                 <span style={{ fontSize: '13px', color: colors.text }}>Fee Rate</span>
                                 <span style={{ fontSize: '11px', color: colors.textFaded }}>({feeRate} sat/vB)</span>
                             </div>
-                            <FeeRateBar onChange={handleFeeRateChange} />
+                            <FeeRateBar onChange={handleFeeRateChange} initialFeeRate={rawTxInfo.feeRate} />
                         </div>
 
                         {/* Total Transaction Cost - Only shown when actual data is available */}
