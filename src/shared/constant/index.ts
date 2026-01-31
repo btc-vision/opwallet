@@ -224,7 +224,7 @@ export const DEFAULT_CHAINS_MAP: { [key in ChainType]?: TypeChain<key> } = {
         mempoolSpaceUrl: 'https://mempool.space',
         faucetUrl: '',
         okxExplorerUrl: '',
-        disable: true,
+        disable: false,
         showPrice: true,
         defaultExplorer: 'mempool-space',
         contractAddresses: {}
