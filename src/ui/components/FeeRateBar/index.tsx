@@ -92,8 +92,8 @@ export function FeeRateBar({ readonly, onChange, initialFeeRate }: { readonly?: 
         } else if (feeOptions.length > 0) {
             val = feeOptions[feeOptionIndex].feeRate;
 
-            if (val < 5) {
-                val = 5;
+            if (val < 1) {
+                val = 1;
             }
         }
 

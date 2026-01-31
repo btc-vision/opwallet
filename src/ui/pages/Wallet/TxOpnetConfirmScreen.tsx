@@ -393,6 +393,25 @@ export default function TxOpnetConfirmScreen() {
         };
     }, [cachedSignedTx, cachedBtcTx, userAddresses, rawTxInfo]);
 
+    // Compute effective fee rate from decoded transaction data and detect mismatches
+    const feeRateCheck = useMemo(() => {
+        const decodedData = cachedSignedTx?.decodedData || cachedBtcTx?.decodedData;
+        if (!decodedData || decodedData.transactions.length === 0) {
+            return { effectiveRate: null, mismatch: false };
+        }
+
+        const totalVsize = decodedData.transactions.reduce((sum, tx) => sum + tx.vsize, 0);
+        if (totalVsize === 0) {
+            return { effectiveRate: null, mismatch: false };
+        }
+
+        const effectiveRate = Number(decodedData.totalMiningFee) / totalVsize;
+        // Allow 20% tolerance — transaction building may round or adjust slightly
+        const mismatch = Math.abs(effectiveRate - feeRate) / Math.max(feeRate, 1) > 0.2;
+
+        return { effectiveRate: Math.round(effectiveRate * 100) / 100, mismatch };
+    }, [cachedSignedTx, cachedBtcTx, feeRate]);
+
     const getOPNetWallet = useCallback(async () => {
         const data = await wallet.getOPNetWallet();
 
@@ -442,6 +461,8 @@ export default function TxOpnetConfirmScreen() {
         if (!supportedActions.includes(rawTxInfo.action)) return;
         if (preSigningRef.current) return;
         preSigningRef.current = true;
+
+        let cancelled = false;
 
         const preSignTransaction = async () => {
             setIsSigning(true);
@@ -746,24 +767,34 @@ export default function TxOpnetConfirmScreen() {
                 }
 
                 // Cache the signed transaction with timestamp
-                setCachedSignedTx({
-                    simulation,
-                    signedTx,
-                    createdAt: Date.now(),
-                    symbol,
-                    decodedData,
-                    preSignedTxData
-                });
+                if (!cancelled) {
+                    setCachedSignedTx({
+                        simulation,
+                        signedTx,
+                        createdAt: Date.now(),
+                        symbol,
+                        decodedData,
+                        preSignedTxData
+                    });
+                }
             } catch (e) {
-                const error = e as Error;
-                console.error('Pre-signing failed:', error);
-                setSigningError(error.message);
+                if (!cancelled) {
+                    const error = e as Error;
+                    console.error('Pre-signing failed:', error);
+                    setSigningError(error.message);
+                }
             } finally {
-                setIsSigning(false);
+                if (!cancelled) {
+                    setIsSigning(false);
+                }
             }
         };
 
         void preSignTransaction();
+
+        return () => {
+            cancelled = true;
+        };
     }, [rawTxInfo, wallet, getOPNetWallet, feeRate]);
 
     // Pre-sign Bitcoin transfer transactions on mount
@@ -771,6 +802,8 @@ export default function TxOpnetConfirmScreen() {
         if (rawTxInfo.action !== Action.SendBitcoin) return;
         if (preSigningRef.current) return;
         preSigningRef.current = true;
+
+        let cancelled = false;
 
         const preSignBitcoinTransfer = async () => {
             setIsSigning(true);
@@ -942,17 +975,18 @@ export default function TxOpnetConfirmScreen() {
                             console.warn('Failed to decode cold storage transfer:', decodeError);
                         }
 
-                        setCachedBtcTx({
-                            txHex: coldSignedTx.tx,
-                            utxos: utxos,
-                            nextUtxos: coldSignedTx.nextUTXOs,
-                            createdAt: Date.now(),
-                            decodedData,
-                            preSignedTxData,
-                            isColdStorage: true
-                        });
-
-                        setIsSigning(false);
+                        if (!cancelled) {
+                            setCachedBtcTx({
+                                txHex: coldSignedTx.tx,
+                                utxos: utxos,
+                                nextUtxos: coldSignedTx.nextUTXOs,
+                                createdAt: Date.now(),
+                                decodedData,
+                                preSignedTxData,
+                                isColdStorage: true
+                            });
+                            setIsSigning(false);
+                        }
                         return;
                     } else if (isConsolidation) {
                         // Consolidation - gather UTXOs from multiple hot addresses to cold storage
@@ -1080,17 +1114,18 @@ export default function TxOpnetConfirmScreen() {
                             console.warn('Failed to decode consolidation transfer:', decodeError);
                         }
 
-                        setCachedBtcTx({
-                            txHex: consolidationTx.tx,
-                            utxos: utxos,
-                            nextUtxos: consolidationTx.nextUTXOs,
-                            createdAt: Date.now(),
-                            decodedData,
-                            preSignedTxData,
-                            isConsolidation: true
-                        });
-
-                        setIsSigning(false);
+                        if (!cancelled) {
+                            setCachedBtcTx({
+                                txHex: consolidationTx.tx,
+                                utxos: utxos,
+                                nextUtxos: consolidationTx.nextUTXOs,
+                                createdAt: Date.now(),
+                                decodedData,
+                                preSignedTxData,
+                                isConsolidation: true
+                            });
+                            setIsSigning(false);
+                        }
                         return;
                     } else if (isRotationAll) {
                         // Send from all rotation addresses (hot + cold) to destination
@@ -1271,17 +1306,18 @@ export default function TxOpnetConfirmScreen() {
                             console.warn('Failed to decode rotation transfer:', decodeError);
                         }
 
-                        setCachedBtcTx({
-                            txHex: rotationTx.tx,
-                            utxos: utxos,
-                            nextUtxos: rotationTx.nextUTXOs,
-                            createdAt: Date.now(),
-                            decodedData,
-                            preSignedTxData,
-                            isRotationAll: true
-                        });
-
-                        setIsSigning(false);
+                        if (!cancelled) {
+                            setCachedBtcTx({
+                                txHex: rotationTx.tx,
+                                utxos: utxos,
+                                nextUtxos: rotationTx.nextUTXOs,
+                                createdAt: Date.now(),
+                                decodedData,
+                                preSignedTxData,
+                                isRotationAll: true
+                            });
+                            setIsSigning(false);
+                        }
                         return;
                     }
 
@@ -1351,24 +1387,34 @@ export default function TxOpnetConfirmScreen() {
                 }
 
                 // Cache the signed transaction
-                setCachedBtcTx({
-                    txHex: signedTx.tx,
-                    utxos: utxos,
-                    nextUtxos: signedTx.nextUTXOs,
-                    createdAt: Date.now(),
-                    decodedData,
-                    preSignedTxData
-                });
+                if (!cancelled) {
+                    setCachedBtcTx({
+                        txHex: signedTx.tx,
+                        utxos: utxos,
+                        nextUtxos: signedTx.nextUTXOs,
+                        createdAt: Date.now(),
+                        decodedData,
+                        preSignedTxData
+                    });
+                }
             } catch (e) {
-                const error = e as Error;
-                console.error('Pre-signing Bitcoin transfer failed:', error);
-                setSigningError(error.message);
+                if (!cancelled) {
+                    const error = e as Error;
+                    console.error('Pre-signing Bitcoin transfer failed:', error);
+                    setSigningError(error.message);
+                }
             } finally {
-                setIsSigning(false);
+                if (!cancelled) {
+                    setIsSigning(false);
+                }
             }
         };
 
         void preSignBitcoinTransfer();
+
+        return () => {
+            cancelled = true;
+        };
     }, [rawTxInfo, wallet, getOPNetWallet, feeRate]);
 
     const handleCancel = () => {
@@ -2565,6 +2611,24 @@ export default function TxOpnetConfirmScreen() {
                                 <span style={{ fontSize: '11px', color: colors.textFaded }}>({feeRate} sat/vB)</span>
                             </div>
                             <FeeRateBar onChange={handleFeeRateChange} initialFeeRate={rawTxInfo.feeRate} />
+                            {feeRateCheck.mismatch && feeRateCheck.effectiveRate !== null && (
+                                <div
+                                    style={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '6px',
+                                        marginTop: '8px',
+                                        padding: '6px 8px',
+                                        background: `${colors.warning}20`,
+                                        border: `1px solid ${colors.warning}50`,
+                                        borderRadius: '6px'
+                                    }}>
+                                    <WarningOutlined style={{ fontSize: 12, color: colors.warning }} />
+                                    <span style={{ fontSize: '11px', color: colors.warning }}>
+                                        Incorrect fee rate calculated (effective: {feeRateCheck.effectiveRate} sat/vB)
+                                    </span>
+                                </div>
+                            )}
                         </div>
 
                         {/* Total Transaction Cost - Only shown when actual data is available */}
