@@ -268,7 +268,7 @@ export default function ReceiveSelectScreen() {
                             color: colors.textDim,
                             lineHeight: '1.4'
                         }}>
-                        Copy address directly or tap QR to view full address with barcode. BTC uses your Bitcoin address, OP_20 uses MLDSA.
+                        Copy address directly or tap QR to view full address as a QR code. BTC uses your Bitcoin address, OP_20 uses MLDSA.
                     </div>
                 </div>
             </Content>

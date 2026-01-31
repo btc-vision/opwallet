@@ -54,7 +54,7 @@ export const RECEIVE_OPTIONS = [
         description: 'Receive OPNet tokens via MLDSA address',
         icon: SafetyOutlined,
         iconColor: QUANTUM_COLOR,
-        iconBg: 'rgba(139, 92, 246, 0.12)', // ~12% opacity to match BTC's hex 20 suffix
+        iconBg: 'rgba(139, 92, 246, 0.12)'
         /** Hover background for action buttons */
         hoverButtonBg: 'rgba(139, 92, 246, 0.25)'
     }
@@ -78,8 +78,10 @@ export const RECEIVE_CONFIG: Record<ReceiveType, {
     showRotation: boolean;
     /** Whether to show address type selector dropdown (BTC only) */
     showAddressSelector: boolean;
-    /** Whether to show chain icon in QR code */
+    /** Whether to show chain icon in QR code (uses chain.icon) */
     showChainIcon: boolean;
+    /** Custom icon for QR code center (used when showChainIcon is false) */
+    qrIcon?: string;
 }> = {
     btc: {
         headerTitle: 'Receive BTC',
@@ -95,7 +97,8 @@ export const RECEIVE_CONFIG: Record<ReceiveType, {
         accentColor: QUANTUM_COLOR, // OP_20 purple
         showRotation: false,
         showAddressSelector: false,
-        showChainIcon: false
+        showChainIcon: false,
+        qrIcon: './images/logo/logo@32x.png'
     }
 };
 

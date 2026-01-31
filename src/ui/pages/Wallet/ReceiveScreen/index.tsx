@@ -494,10 +494,17 @@ export default function ReceiveScreen() {
                                     value={displayAddress || ''}
                                     size={sizes.qrcode}
                                     imageSettings={
-                                        // Show chain icon only for BTC mode (from config)
+                                        // Show chain icon for BTC, custom qrIcon for OP_20
                                         config.showChainIcon && chain.icon
                                             ? {
                                                   src: chain.icon,
+                                                  width: 30,
+                                                  height: 30,
+                                                  excavate: true
+                                              }
+                                            : config.qrIcon
+                                            ? {
+                                                  src: config.qrIcon,
                                                   width: 30,
                                                   height: 30,
                                                   excavate: true
