@@ -504,7 +504,7 @@ export function OPNetList() {
                             justifyContent: 'center',
                             zIndex: 1
                         }}>
-                        <span style={{ fontSize: '13px', color: colors.textFaded, fontWeight: 600 }}>
+                        <span style={{ fontSize: '13px', color: colors.main, fontWeight: 600 }}>
                             OPNet is not enabled on this network yet.
                         </span>
                     </div>
