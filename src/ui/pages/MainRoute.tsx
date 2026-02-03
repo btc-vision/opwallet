@@ -8,6 +8,13 @@ import { RouteTypes, routePaths } from './routeTypes';
 export { RouteTypes, useNavigate } from './routeTypes';
 export type { UseNavigate } from './routeTypes';
 
+import HistoryScreen from '@/ui/pages/History/HistoryScreen';
+import TransactionDetailScreen from '@/ui/pages/History/TransactionDetailScreen';
+import NFTTabScreen from '@/ui/pages/Main/NFTTabScreen';
+import ImportNFTScreen from '@/ui/pages/Wallet/ImportNFTScreen';
+import ImportTokenScreen from '@/ui/pages/Wallet/ImportOP20Screen';
+import ImportSelectionScreen from '@/ui/pages/Wallet/ImportSelectionScreen';
+import NFTSendScreen from '@/ui/pages/Wallet/NFTSendScreen';
 import { Content, OPNetLoader } from '../components';
 import { accountActions } from '../state/accounts/reducer';
 import { useIsReady, useIsUnlocked } from '../state/global/hooks';
@@ -26,6 +33,7 @@ import SwitchKeyringScreen from './Account/SwitchKeyringScreen';
 import UnlockScreen from './Account/UnlockScreen';
 import ApprovalScreen from './Approval/ApprovalScreen';
 import ConnectedSitesScreen from './Approval/ConnectedSitesScreen';
+import BtcDomainScreen from './Domain/BtcDomainScreen';
 import AppTabScrren from './Main/AppTabScreen';
 import BoostScreen from './Main/BoostScreen';
 import SettingsTabScreen from './Main/SettingsTabScreen';
@@ -35,38 +43,31 @@ import DeployContract from './OpNet/DeployContract';
 import Mint from './OpNet/Mint';
 import OpNetTokenScreen from './OpNet/OpNetTokenScreen';
 import SendOpNetScreen from './OpNet/SendOpNetScreen';
+import AddressRotationScreen from './Settings/AddressRotationScreen';
 import AddressTypeScreen from './Settings/AddressTypeScreen';
 import AdvancedScreen from './Settings/AdvancedScreen';
 import ChangePasswordScreen from './Settings/ChangePasswordScreen';
+import ColdStorageWithdrawScreen from './Settings/ColdStorageWithdrawScreen';
+import ConsolidationScreen from './Settings/ConsolidationScreen';
+import DuplicationResolutionScreen from './Settings/DuplicationResolutionScreen';
 import EditAccountNameScreen from './Settings/EditAccountNameScreen';
 import EditWalletNameScreen from './Settings/EditWalletNameScreen';
 import ExportMnemonicsScreen from './Settings/ExportMnemonicsScreen';
 import ExportPrivateKeyScreen from './Settings/ExportPrivateKeyScreen';
 import NetworkTypeScreen from './Settings/NetworkTypeScreen';
 import OpnetBrowserScreen from './Settings/OpnetBrowserScreen';
-import BtcDomainScreen from './Domain/BtcDomainScreen';
-import DuplicationResolutionScreen from './Settings/DuplicationResolutionScreen';
 import QuantumMigrationScreen from './Settings/QuantumMigrationScreen';
-import AddressRotationScreen from './Settings/AddressRotationScreen';
 import RotationHistoryScreen from './Settings/RotationHistoryScreen';
-import ConsolidationScreen from './Settings/ConsolidationScreen';
-import ColdStorageWithdrawScreen from './Settings/ColdStorageWithdrawScreen';
-import UserExperienceModeScreen from './Settings/UserExperienceModeScreen';
 import UpgradeNoticeScreen from './Settings/UpgradeNoticeScreen';
+import UserExperienceModeScreen from './Settings/UserExperienceModeScreen';
 import ReceiveScreen from './Wallet/ReceiveScreen';
+import ReceiveSelectScreen from './Wallet/ReceiveSelectScreen';
 import TxConfirmScreen from './Wallet/TxConfirmScreen';
 import TxFailScreen from './Wallet/TxFailScreen';
 import TxOpnetConfirmScreen from './Wallet/TxOpnetConfirmScreen';
 import TxSuccessScreen from './Wallet/TxSuccessScreen';
 import UnavailableUtxoScreen from './Wallet/UnavailableUtxoScreen';
 import './index.module.less';
-import ImportNFTScreen from '@/ui/pages/Wallet/ImportNFTScreen';
-import NFTTabScreen from '@/ui/pages/Main/NFTTabScreen';
-import ImportSelectionScreen from '@/ui/pages/Wallet/ImportSelectionScreen';
-import NFTSendScreen from '@/ui/pages/Wallet/NFTSendScreen';
-import ImportTokenScreen from '@/ui/pages/Wallet/ImportOP20Screen';
-import HistoryScreen from '@/ui/pages/History/HistoryScreen';
-import TransactionDetailScreen from '@/ui/pages/History/TransactionDetailScreen';
 
 type Routes = {
     [key in RouteTypes]: {
@@ -123,6 +124,10 @@ export const routes: Routes = {
     [RouteTypes.ReceiveScreen]: {
         path: routePaths[RouteTypes.ReceiveScreen],
         element: <ReceiveScreen />
+    },
+    [RouteTypes.ReceiveSelectScreen]: {
+        path: routePaths[RouteTypes.ReceiveSelectScreen],
+        element: <ReceiveSelectScreen />
     },
     [RouteTypes.TxConfirmScreen]: {
         path: routePaths[RouteTypes.TxConfirmScreen],
