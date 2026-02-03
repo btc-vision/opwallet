@@ -1,27 +1,3 @@
-/**
- * ReceiveScreen - Address display and QR code screen for receiving assets
- * 
- * This screen displays:
- * - QR code for the receive address
- * - Copyable address text
- * - History button linking to transaction history
- * 
- * MODES:
- * - BTC Mode: Shows Bitcoin address with type selector (P2TR/P2WPKH/P2PKH)
- * - OP_20 Mode: Shows MLDSA address for OPNet tokens
- * 
- * ARCHITECTURE:
- * - Config-driven using RECEIVE_CONFIG from constants.ts
- * - Receives 'type' param from ReceiveSelectScreen via navigation state
- * - Reuses same QR card UI for both modes (DRY principle)
- * - Defaults to 'btc' for backwards compatibility if accessed directly
- * 
- * TO ADD NEW ASSET TYPE:
- * 1. Add to RECEIVE_CONFIG in constants.ts
- * 2. Add address fetching logic in useEffect
- * 3. Update getDisplayAddress() helper
- */
-
 import {
     CheckCircleFilled,
     CopyOutlined,
@@ -47,14 +23,11 @@ import {
     useRotationEnabled
 } from '@/ui/state/rotation/hooks';
 import { useChain } from '@/ui/state/settings/hooks';
-// COLORS: Import directly from theme
 import { colors } from '@/ui/theme/colors';
 import { sizes } from '@/ui/theme/spacing';
 import { copyToClipboard, useWallet } from '@/ui/utils';
 import { Address, AddressTypes } from '@btc-vision/transaction';
-
-// Config from shared constants
-import { RECEIVE_CONFIG, ReceiveType } from '@/ui/pages/Wallet/Receive/constants';
+import { RECEIVE_CONFIG, ReceiveType } from '@/ui/pages/Wallet/receive/constants.js';
 
 // =============================================================================
 // TYPES
@@ -94,11 +67,11 @@ export default function ReceiveScreen() {
     // Passed from ReceiveSelectScreen when user selects BTC or OP_20
     // Defaults to 'btc' for backwards compatibility if accessed directly via URL
     const receiveType: ReceiveType = (location.state as { type?: ReceiveType })?.type || 'btc';
-    
+
     // GET CONFIG for current receive type (config-driven approach)
     // This replaces scattered isOP20 checks throughout the code
     const config = RECEIVE_CONFIG[receiveType];
-    
+
     // Helper boolean for conditional logic (more readable than receiveType === 'op20')
     const isOP20 = receiveType === 'op20';
 
@@ -109,7 +82,7 @@ export default function ReceiveScreen() {
     const [showAddressTypeDropdown, setShowAddressTypeDropdown] = useState(false);
     const [addressTypes, setAddressTypes] = useState<AddressTypeOption[]>([]);
     const [selectedAddressType, setSelectedAddressType] = useState<AddressTypeOption | null>(null);
-    
+
     // OP_20-specific state
     const [quantumPublicKeyHash, setQuantumPublicKeyHash] = useState<string>('');
     const [loadingQuantum, setLoadingQuantum] = useState(true);
@@ -120,7 +93,7 @@ export default function ReceiveScreen() {
     // =========================================================================
     // EFFECTS
     // =========================================================================
-    
+
     // Refresh rotation status on mount
     useEffect(() => {
         void refreshRotation();
@@ -133,7 +106,7 @@ export default function ReceiveScreen() {
     const loadAddressTypes = useCallback(async () => {
         // Skip for OP_20 mode - no address type selection needed
         if (isOP20) return;
-        
+
         try {
             if (!currentAccount.quantumPublicKeyHash || !currentAccount.pubkey) {
                 return;
@@ -298,7 +271,6 @@ export default function ReceiveScreen() {
                             gap: 16,
                             border: `1px solid ${colors.border}`
                         }}>
-                        
                         {/* --------------------------------------------------------- */}
                         {/* ADDRESS TYPE SELECTOR - BTC mode only */}
                         {/* Allows switching between P2TR, P2WPKH, P2PKH */}
@@ -407,7 +379,9 @@ export default function ReceiveScreen() {
                                                     />
                                                 </div>
                                                 {selectedAddressType?.value === type.value && (
-                                                    <CheckCircleFilled style={{ fontSize: 14, color: colors.warning }} />
+                                                    <CheckCircleFilled
+                                                        style={{ fontSize: 14, color: colors.warning }}
+                                                    />
                                                 )}
                                             </div>
                                         ))}
@@ -502,13 +476,13 @@ export default function ReceiveScreen() {
                                                   excavate: true
                                               }
                                             : config.qrIcon
-                                            ? {
-                                                  src: config.qrIcon,
-                                                  width: 30,
-                                                  height: 30,
-                                                  excavate: true
-                                              }
-                                            : undefined
+                                              ? {
+                                                    src: config.qrIcon,
+                                                    width: 30,
+                                                    height: 30,
+                                                    excavate: true
+                                                }
+                                              : undefined
                                     }
                                 />
                             </div>
@@ -636,7 +610,6 @@ export default function ReceiveScreen() {
                             </div>
                         </div>
                     </div>
-
                 </Column>
             </Content>
         </Layout>
