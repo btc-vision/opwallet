@@ -1,17 +1,3 @@
-/**
- * ReceiveSelectScreen - Intermediary selection screen for receiving assets
- * 
- * UI PATTERN: Similar to MetaMask's "Receiving address" screen
- * - Shows asset name with truncated address
- * - Copy icon to copy address
- * - QR icon to view full address with QR code
- * 
- * ARCHITECTURE:
- * - Uses config-driven approach (RECEIVE_OPTIONS) for scalability
- * - Fetches addresses on mount for display
- * - Passes selected type to ReceiveScreen via navigation state
- */
-
 import { CopyOutlined, QrcodeOutlined } from '@ant-design/icons';
 import { useEffect, useState } from 'react';
 
@@ -22,7 +8,7 @@ import { useAccountAddress } from '@/ui/state/accounts/hooks';
 import { colors } from '@/ui/theme/colors';
 import { copyToClipboard, shortAddress, useWallet } from '@/ui/utils';
 
-import { RECEIVE_OPTIONS, ReceiveOption, ReceiveType } from '@/ui/pages/Wallet/Receive/constants';
+import { RECEIVE_OPTIONS, ReceiveOption, ReceiveType } from '@/ui/pages/Wallet/receive/constants.js';
 
 // =============================================================================
 // OPTION CARD COMPONENT
@@ -158,10 +144,10 @@ export default function ReceiveSelectScreen() {
     const navigate = useNavigate();
     const tools = useTools();
     const wallet = useWallet();
-    
+
     // BTC address from hook
     const btcAddress = useAccountAddress();
-    
+
     // OP_20 MLDSA address (fetched)
     const [mldsaAddress, setMldsaAddress] = useState<string>('');
     const [loadingMldsa, setLoadingMldsa] = useState(true);
@@ -268,7 +254,8 @@ export default function ReceiveSelectScreen() {
                             color: colors.textDim,
                             lineHeight: '1.4'
                         }}>
-                        Copy address directly or tap QR to view full address as a QR code. BTC uses your Bitcoin address, OP_20 uses MLDSA.
+                        Copy address directly or tap QR to view full address as a QR code. BTC uses your Bitcoin
+                        address, OP_20 uses MLDSA.
                     </div>
                 </div>
             </Content>
