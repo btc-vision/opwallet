@@ -5,7 +5,7 @@ import { Image } from '@/ui/components/Image';
 import { fontSizes } from '@/ui/theme/font';
 import { RouteTypes, useNavigate } from '@/ui/pages/routeTypes';
 import { useCurrentAccount } from '@/ui/state/accounts/hooks';
-import { useChainType } from '@/ui/state/settings/hooks';
+import { useChain, useChainType } from '@/ui/state/settings/hooks';
 import { DollarOutlined } from '@ant-design/icons';
 import { Address, AddressTypes, AddressVerificator } from '@btc-vision/transaction';
 import { useEffect, useState } from 'react';
@@ -44,6 +44,7 @@ export default function ImportTokenScreen() {
     const tools = useTools();
     const currentAccount = useCurrentAccount();
     const chainType = useChainType();
+    const chain = useChain();
 
     const [contractAddress, setContractAddress] = useState('');
     const [loading, setLoading] = useState(false);
@@ -191,6 +192,30 @@ export default function ImportTokenScreen() {
             console.error(err);
         }
     };
+
+    if (chain.opnetDisabled) {
+        return (
+            <Layout>
+                <Header title="Import OP_20 Token" onBack={() => navigate(RouteTypes.ImportSelectionScreen)} />
+                <Content style={{ padding: '16px' }}>
+                    <div
+                        style={{
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            minHeight: '200px',
+                            textAlign: 'center',
+                            gap: '16px'
+                        }}>
+                        <p style={{ fontSize: '14px', color: colors.textFaded }}>
+                            OPNet features are not yet available on this network.
+                        </p>
+                    </div>
+                </Content>
+            </Layout>
+        );
+    }
 
     return (
         <Layout>

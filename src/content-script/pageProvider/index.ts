@@ -1,5 +1,6 @@
 import { EventEmitter } from 'events';
 import { BroadcastedTransaction } from 'opnet';
+import { toHex } from '@btc-vision/bitcoin';
 
 import { SignPsbtOptions, TxType } from '@/shared/types';
 import { RequestParams } from '@/shared/types/Request.js';
@@ -401,7 +402,7 @@ export class OpnetProvider extends EventEmitter {
             params: {
                 interactionParameters: {
                     ...interactionParameters,
-                    calldata: interactionParameters.calldata.toString('hex')
+                    calldata: toHex(interactionParameters.calldata)
                 },
                 network: Web3API.chain,
                 contractInfo: contractInfo
@@ -421,7 +422,7 @@ export class OpnetProvider extends EventEmitter {
             params: {
                 interactionParameters: {
                     ...interactionParameters,
-                    calldata: interactionParameters.calldata.toString('hex')
+                    calldata: toHex(interactionParameters.calldata)
                 },
                 network: Web3API.chain,
                 contractInfo: contractInfo

@@ -131,7 +131,7 @@ export default function CancelTransaction(props: Props) {
 
         return data.optionalOutputs.map((output: PsbtOutputExtended) => ({
             address: 'address' in output && output.address ? output.address : '',
-            value: output.value || 0
+            value: Number(output.value || 0)
         }));
     }, [data.optionalOutputs]);
 

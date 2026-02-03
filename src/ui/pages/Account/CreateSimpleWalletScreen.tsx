@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Buffer } from 'buffer';
+import { fromHex, alloc, toHex } from '@btc-vision/bitcoin';
 
 import { ADDRESS_TYPES } from '@/shared/constant';
 import { AddressAssets } from '@/shared/types';
@@ -86,7 +86,7 @@ function Step1({ updateContextData }: { updateContextData: (params: UpdateContex
         // then try raw 32-byte hex (ethereum-style)
         if (!keyKind && isLikelyHexPriv(raw)) {
             try {
-                const buf = Buffer.from(raw.replace(/^0x/, ''), 'hex');
+                const buf = fromHex(raw.replace(/^0x/, ''));
                 keypair = EcKeyPair.fromPrivateKey(buf, bitcoinNetwork);
                 keyKind = 'rawHex';
             } catch (e) {
@@ -101,7 +101,7 @@ function Step1({ updateContextData }: { updateContextData: (params: UpdateContex
 
         // Check if this wallet is already imported by checking all address types
         const existingAccounts = await wallet.getAccounts();
-        const pubkey = keypair.publicKey.toString('hex');
+        const pubkey = toHex(keypair.publicKey);
 
         // Check all address types for this public key
         for (const addrType of ADDRESS_TYPES) {
@@ -381,7 +381,7 @@ function Step2({
                 contextData.keyKind === 'wif'
                     ? EcKeyPair.fromWIF(contextData.wif, bitcoinNetwork)
                     : EcKeyPair.fromPrivateKey(
-                          Buffer.from(contextData.wif.replace(/^0x/, '').trim(), 'hex'),
+                          fromHex(contextData.wif.replace(/^0x/, '').trim()),
                           bitcoinNetwork
                       );
 
@@ -632,7 +632,7 @@ function Step3({
                     contextData.keyKind === 'wif'
                         ? EcKeyPair.fromWIF(contextData.wif, bitcoinNetwork)
                         : EcKeyPair.fromPrivateKey(
-                              Buffer.from(contextData.wif.replace(/^0x/, '').trim(), 'hex'),
+                              fromHex(contextData.wif.replace(/^0x/, '').trim()),
                               bitcoinNetwork
                           );
 
@@ -649,7 +649,7 @@ function Step3({
 
                 setPreviewAddress(address);
 
-                const key = kp.publicKey.toString('hex');
+                const key = toHex(kp.publicKey);
 
                 // Query on-chain for existing MLDSA key linkage
                 const pubKeyInfo = await Web3API.provider.getPublicKeysInfoRaw(key);
@@ -712,20 +712,20 @@ function Step3({
 
             // Extract just the private key part (without chain code)
             const privateKeyOnly = quantumPrivateKeyHex.slice(0, EXPECTED_QUANTUM_KEY_HEX_CHARS);
-            const privateKeyBuffer = Buffer.from(privateKeyOnly, 'hex');
+            const privateKeyBuffer = fromHex(privateKeyOnly);
 
             // Import the key and get public key
             const qkp = QuantumBIP32Factory.fromPrivateKey(
                 privateKeyBuffer,
-                Buffer.alloc(32),
+                alloc(32),
                 bitcoinNetwork,
                 MLDSASecurityLevel.LEVEL2
             );
-            const publicKey = Buffer.from(qkp.publicKey);
+            const publicKey = new Uint8Array(qkp.publicKey);
 
             // Compute SHA256 hash
             const hash = bitcoinCrypto.sha256(publicKey);
-            return hash.toString('hex');
+            return toHex(hash);
         } catch (e) {
             console.error('Error computing public key hash:', e);
             return null;

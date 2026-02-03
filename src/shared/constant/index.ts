@@ -205,6 +205,7 @@ export interface TypeChain<T extends ChainType> {
     okxExplorerUrl: string;
     isViewTxHistoryInternally?: boolean;
     disable?: boolean;
+    opnetDisabled?: boolean;
     isFractal?: boolean;
     showPrice: boolean;
     defaultExplorer: 'mempool-space' | 'opnet-explorer';
@@ -224,7 +225,8 @@ export const DEFAULT_CHAINS_MAP: { [key in ChainType]?: TypeChain<key> } = {
         mempoolSpaceUrl: 'https://mempool.space',
         faucetUrl: '',
         okxExplorerUrl: '',
-        disable: true,
+        disable: false,
+        opnetDisabled: true,
         showPrice: true,
         defaultExplorer: 'mempool-space',
         contractAddresses: {}

@@ -1,4 +1,4 @@
-import { Transaction, address, Network } from '@btc-vision/bitcoin';
+import { Transaction, address, Network, toHex, reverseCopy } from '@btc-vision/bitcoin';
 import { ParsedTransaction, ParsedTxOutput } from '@/background/service/notification';
 import { UTXO } from '@btc-vision/transaction';
 
@@ -29,7 +29,7 @@ export function decodeTransaction(
     let totalInputValue = 0n;
 
     for (const input of tx.ins) {
-        const txidHex = Buffer.from(input.hash).reverse().toString('hex');
+        const txidHex = toHex(reverseCopy(input.hash));
         const vout = input.index;
         const key = `${txidHex}:${vout}`;
         const utxo = utxoMap.get(key);
@@ -69,7 +69,7 @@ export function decodeTransaction(
         outputs.push({
             address: outputAddress,
             value,
-            script: output.script.toString('hex'),
+            script: toHex(output.script),
             isOpReturn
         });
     }

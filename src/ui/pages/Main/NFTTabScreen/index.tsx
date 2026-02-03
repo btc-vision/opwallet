@@ -7,7 +7,7 @@ import { CopyableAddress } from '@/ui/components/CopyableAddress';
 import { NavTabBar } from '@/ui/components/NavTabBar';
 import { RouteTypes, useNavigate } from '@/ui/pages/routeTypes';
 import { useCurrentAccount } from '@/ui/state/accounts/hooks';
-import { useChainType } from '@/ui/state/settings/hooks';
+import { useChain, useChainType } from '@/ui/state/settings/hooks';
 import { LoadingOutlined, PlusOutlined } from '@ant-design/icons';
 import { Address } from '@btc-vision/transaction';
 import React, { useEffect, useState } from 'react';
@@ -87,6 +87,7 @@ export default function NFTTabScreen() {
     const navigate = useNavigate();
     const currentAccount = useCurrentAccount();
     const chainType = useChainType();
+    const chain = useChain();
 
     const [collections, setCollections] = useState<NFTCollection[]>([]);
     const [collectionCounts, setCollectionCounts] = useState<Record<string, number>>({});
@@ -234,39 +235,45 @@ export default function NFTTabScreen() {
                                 }}>
                                 <div>
                                     <div style={{ fontSize: '14px', color: colors.textFaded, marginBottom: '8px' }}>
-                                        No NFT collections imported
+                                        {chain.opnetDisabled
+                                            ? 'OPNet features are not yet available on this network.'
+                                            : 'No NFT collections imported'}
                                     </div>
-                                    <div style={{ fontSize: '12px', color: colors.textFaded }}>Import one now!</div>
+                                    {!chain.opnetDisabled && (
+                                        <div style={{ fontSize: '12px', color: colors.textFaded }}>Import one now!</div>
+                                    )}
                                 </div>
 
-                                <button
-                                    style={{
-                                        width: '80px',
-                                        height: '80px',
-                                        background: colors.containerBg,
-                                        border: `2px dashed ${colors.containerBorder}`,
-                                        borderRadius: '20px',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        cursor: 'pointer',
-                                        transition: 'all 0.2s',
-                                        fontSize: '36px',
-                                        color: colors.textFaded
-                                    }}
-                                    onClick={() => navigate(RouteTypes.ImportSelectionScreen)}
-                                    onMouseEnter={(e) => {
-                                        e.currentTarget.style.borderColor = colors.main;
-                                        e.currentTarget.style.transform = 'scale(1.1)';
-                                        e.currentTarget.style.color = colors.main;
-                                    }}
-                                    onMouseLeave={(e) => {
-                                        e.currentTarget.style.borderColor = colors.containerBorder;
-                                        e.currentTarget.style.transform = 'scale(1)';
-                                        e.currentTarget.style.color = colors.textFaded;
-                                    }}>
-                                    <PlusOutlined />
-                                </button>
+                                {!chain.opnetDisabled && (
+                                    <button
+                                        style={{
+                                            width: '80px',
+                                            height: '80px',
+                                            background: colors.containerBg,
+                                            border: `2px dashed ${colors.containerBorder}`,
+                                            borderRadius: '20px',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            cursor: 'pointer',
+                                            transition: 'all 0.2s',
+                                            fontSize: '36px',
+                                            color: colors.textFaded
+                                        }}
+                                        onClick={() => navigate(RouteTypes.ImportSelectionScreen)}
+                                        onMouseEnter={(e) => {
+                                            e.currentTarget.style.borderColor = colors.main;
+                                            e.currentTarget.style.transform = 'scale(1.1)';
+                                            e.currentTarget.style.color = colors.main;
+                                        }}
+                                        onMouseLeave={(e) => {
+                                            e.currentTarget.style.borderColor = colors.containerBorder;
+                                            e.currentTarget.style.transform = 'scale(1)';
+                                            e.currentTarget.style.color = colors.textFaded;
+                                        }}>
+                                        <PlusOutlined />
+                                    </button>
+                                )}
                             </div>
                         ) : (
                             <>
@@ -289,20 +296,22 @@ export default function NFTTabScreen() {
                                         }}>
                                         My Collections
                                     </span>
-                                    <button
-                                        style={{
-                                            padding: '6px 12px',
-                                            background: colors.main,
-                                            border: 'none',
-                                            borderRadius: '6px',
-                                            color: colors.background,
-                                            fontSize: '12px',
-                                            fontWeight: 600,
-                                            cursor: 'pointer'
-                                        }}
-                                        onClick={() => navigate(RouteTypes.ImportNFTScreen)}>
-                                        + Add
-                                    </button>
+                                    {!chain.opnetDisabled && (
+                                        <button
+                                            style={{
+                                                padding: '6px 12px',
+                                                background: colors.main,
+                                                border: 'none',
+                                                borderRadius: '6px',
+                                                color: colors.background,
+                                                fontSize: '12px',
+                                                fontWeight: 600,
+                                                cursor: 'pointer'
+                                            }}
+                                            onClick={() => navigate(RouteTypes.ImportNFTScreen)}>
+                                            + Add
+                                        </button>
+                                    )}
                                 </Row>
 
                                 <div

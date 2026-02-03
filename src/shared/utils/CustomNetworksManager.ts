@@ -63,8 +63,7 @@ class CustomNetworksManager {
                 label: 'Fractal',
                 icon: './images/artifacts/fractal-mainnet.svg',
                 items: [
-                    this.getChain(ChainType.FRACTAL_BITCOIN_MAINNET),
-                    this.getChain(ChainType.FRACTAL_BITCOIN_TESTNET)
+                    this.getChain(ChainType.FRACTAL_BITCOIN_MAINNET)
                 ].filter(Boolean) as ConcreteTypeChain[]
             },
             {

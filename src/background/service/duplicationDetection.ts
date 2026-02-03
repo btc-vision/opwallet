@@ -18,6 +18,7 @@ import {
     OnChainLinkageInfo
 } from '@/shared/types/Duplication';
 import { MessageSigner } from '@btc-vision/transaction';
+import { fromHex, fromUtf8, toHex } from '@btc-vision/bitcoin';
 import { HdKeyring, publicKeyToAddressWithNetworkType, SimpleKeyring } from '@btc-vision/wallet-sdk';
 
 import keyringService, { HdKeyringSerializedOptions, SimpleKeyringSerializedOptions } from './keyring';
@@ -250,9 +251,9 @@ class DuplicationDetectionService extends EventEmitter {
                     let localMldsaHash: string | undefined;
 
                     if (account.quantumPublicKey) {
-                        localMldsaHash = Buffer.from(
-                            MessageSigner.sha256(Buffer.from(account.quantumPublicKey, 'hex'))
-                        ).toString('hex');
+                        localMldsaHash = toHex(
+                            MessageSigner.sha256(fromHex(account.quantumPublicKey))
+                        );
                     }
 
                     results.set(account.pubkey, {
@@ -447,8 +448,8 @@ class DuplicationDetectionService extends EventEmitter {
      */
     private hashKey(key: string): string {
         try {
-            const buffer = Buffer.from(key, 'utf8');
-            return Buffer.from(MessageSigner.sha256(buffer)).toString('hex');
+            const buffer = fromUtf8(key);
+            return toHex(MessageSigner.sha256(buffer));
         } catch {
             // Fallback to simple hash if MessageSigner fails
             let hash = 0;

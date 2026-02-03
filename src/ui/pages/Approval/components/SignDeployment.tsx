@@ -122,7 +122,7 @@ export default function SignDeployment(props: Props) {
         value: number;
     }[] = (data.optionalOutputs ?? []).map((output: PsbtOutputExtended) => ({
         address: 'address' in output && output.address ? output.address : '',
-        value: output.value
+        value: Number(output.value)
     }));
 
     const btcUnit = useBTCUnit();

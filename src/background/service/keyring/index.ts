@@ -1,12 +1,13 @@
 /// Updated KeyringService for wallet-sdk 2.0 with MLDSA/quantum support
-import * as bip39 from 'bip39';
+import { generateMnemonic, validateMnemonic } from '@scure/bip39';
+import { wordlist } from '@scure/bip39/wordlists/english.js';
 import { EventEmitter } from 'events';
 import log from 'loglevel';
 
 import { KEYRING_TYPE } from '@/shared/constant';
 import { isLegacyAddressType, legacyToAddressTypes, storageToAddressTypes } from '@/shared/types';
 import { AddressTypes } from '@btc-vision/transaction';
-import { Network, networks, Psbt } from '@btc-vision/bitcoin';
+import { fromHex, Network, networks, Psbt, toHex } from '@btc-vision/bitcoin';
 import * as encryptor from '@btc-vision/passworder';
 import { MLDSASecurityLevel, QuantumBIP32Interface } from '@btc-vision/transaction';
 import { HdKeyring, SimpleKeyring } from '@btc-vision/wallet-sdk';
@@ -285,7 +286,7 @@ class KeyringService extends EventEmitter {
             throw new Error(i18n.t('account count must be greater than 0'));
         }
 
-        if (!bip39.validateMnemonic(seed)) {
+        if (!validateMnemonic(seed, wordlist)) {
             return Promise.reject(new Error(i18n.t('mnemonic phrase is invalid')));
         }
 
@@ -562,7 +563,7 @@ class KeyringService extends EventEmitter {
                 if (wallet) {
                     // Include chaincode at the end to match SimpleKeyring format
                     const privateKeyHex = wallet.quantumPrivateKeyHex;
-                    const chainCodeHex = Buffer.from(wallet.chainCode).toString('hex');
+                    const chainCodeHex = toHex(wallet.chainCode);
                     return privateKeyHex + chainCodeHex;
                 }
             }
@@ -652,18 +653,18 @@ class KeyringService extends EventEmitter {
     /**
      * Sign with MLDSA (quantum) signature
      */
-    signMLDSA = (publicKey: string, data: string | Buffer): Uint8Array => {
+    signMLDSA = (publicKey: string, data: string | Uint8Array): Uint8Array => {
         const keyring = this.getKeyringForAccount(publicKey);
-        const dataBuffer = typeof data === 'string' ? Buffer.from(data, 'hex') : data;
+        const dataBuffer = typeof data === 'string' ? fromHex(data) : data;
 
         if (keyring instanceof HdKeyring) {
             const wallet = keyring.getWallet(publicKey);
             const signature = wallet.mldsaKeypair.sign(dataBuffer);
-            return signature instanceof Buffer ? signature : Buffer.from(signature);
+            return signature instanceof Uint8Array ? signature : new Uint8Array(signature);
         } else if (keyring instanceof SimpleKeyring) {
             const quantumKeypair = keyring.getQuantumKeypair();
             const signature = quantumKeypair.sign(dataBuffer);
-            return signature instanceof Buffer ? signature : Buffer.from(signature);
+            return signature instanceof Uint8Array ? signature : new Uint8Array(signature);
         }
         throw new Error('Keyring does not support MLDSA signing');
     };
@@ -1425,7 +1426,7 @@ ${hasSalvageableData ? `║  Salvageable Fields: ${salvageableFields.join(', ').
     };
 
     private generateMnemonic = (): string => {
-        return bip39.generateMnemonic(128);
+        return generateMnemonic(wordlist, 128);
     };
 }
 

@@ -124,16 +124,12 @@ export default defineConfig(({ mode }) => {
             extensions: ['.ts', '.tsx', '.js', '.jsx', '.json'],
             mainFields: ['browser', 'module', 'main'],
             dedupe: [
-                '@noble/curves',
-                '@noble/hashes',
-                '@scure/base',
                 'buffer',
                 'valibot',
-                'bip39',
                 '@btc-vision/bitcoin',
                 '@btc-vision/bip32',
                 '@btc-vision/logger',
-                'tiny-secp256k1'
+                '@btc-vision/ecpair'
             ]
         },
 

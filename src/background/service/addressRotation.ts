@@ -2,8 +2,7 @@ import { EventEmitter } from 'events';
 
 import { HdKeyring, publicKeyToAddressWithNetworkType } from '@btc-vision/wallet-sdk';
 import { AddressTypes, MLDSASecurityLevel } from '@btc-vision/transaction';
-import { Network, networks } from '@btc-vision/bitcoin';
-import * as bip39 from 'bip39';
+import { Network, networks, toHex } from '@btc-vision/bitcoin';
 
 import browser from '../webapi/browser';
 import keyringService, { HdKeyringSerializedOptions } from './keyring';
@@ -693,8 +692,8 @@ class AddressRotationService extends EventEmitter {
         }
 
         const wif = wallet.keypair.toWIF();
-        const mldsaPrivateKey = wallet.mldsaKeypair?.privateKey?.toString('hex') || '';
-        const chainCode = Buffer.from(wallet.chainCode).toString('hex');
+        const mldsaPrivateKey = wallet.mldsaKeypair?.privateKey ? toHex(wallet.mldsaKeypair.privateKey) : '';
+        const chainCode = toHex(wallet.chainCode);
 
         return {
             address,

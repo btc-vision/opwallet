@@ -1,5 +1,6 @@
 import { Column, Content, Header, Layout } from '@/ui/components';
 import { RouteTypes, useNavigate } from '@/ui/pages/routeTypes';
+import { useChain } from '@/ui/state/settings/hooks';
 import { DollarOutlined, PictureOutlined } from '@ant-design/icons';
 import { useState } from 'react';
 
@@ -87,6 +88,7 @@ function ImportOption({ type, icon, title, description, isHovered, onHover, onSe
 
 export default function ImportSelectionScreen() {
     const navigate = useNavigate();
+    const chain = useChain();
     const [hoveredOption, setHoveredOption] = useState<ImportType | null>(null);
 
     const handleSelection = (type: ImportType) => {
@@ -96,6 +98,30 @@ export default function ImportSelectionScreen() {
             navigate(RouteTypes.ImportNFTScreen);
         }
     };
+
+    if (chain.opnetDisabled) {
+        return (
+            <Layout>
+                <Header title="Import Asset" onBack={() => navigate(RouteTypes.MainScreen)} />
+                <Content style={{ padding: '16px' }}>
+                    <div
+                        style={{
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            minHeight: '200px',
+                            textAlign: 'center',
+                            gap: '16px'
+                        }}>
+                        <p style={{ fontSize: '14px', color: colors.textFaded }}>
+                            OPNet features are not yet available on this network.
+                        </p>
+                    </div>
+                </Content>
+            </Layout>
+        );
+    }
 
     return (
         <Layout>

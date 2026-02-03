@@ -9,6 +9,7 @@ import { useWallet } from '@/ui/utils';
 import Web3API from '@/shared/web3/Web3API';
 import { FireOutlined, LoadingOutlined, PictureOutlined, ThunderboltOutlined } from '@ant-design/icons';
 import { Action, Features, MintNFTParameters } from '@/shared/interfaces/RawTxParameters';
+import { useChain } from '@/ui/state/settings/hooks';
 
 const colors = {
     main: '#f37413',
@@ -51,6 +52,7 @@ export default function NFTMintScreen() {
     const location = useLocation();
     const wallet = useWallet();
     const currentAccount = useCurrentAccount();
+    const chain = useChain();
 
     // Get collection from navigation state
     const { collection } = location.state as { collection: NFTCollection };
@@ -169,6 +171,30 @@ export default function NFTMintScreen() {
                 <Content style={{ padding: '16px' }}>
                     <div style={{ textAlign: 'center', padding: '40px' }}>
                         <p style={{ color: colors.error }}>Collection data not found</p>
+                    </div>
+                </Content>
+            </Layout>
+        );
+    }
+
+    if (chain.opnetDisabled) {
+        return (
+            <Layout>
+                <Header title="Mint NFT" onBack={() => window.history.go(-1)} />
+                <Content style={{ padding: '16px' }}>
+                    <div
+                        style={{
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            minHeight: '200px',
+                            textAlign: 'center',
+                            gap: '16px'
+                        }}>
+                        <p style={{ fontSize: '14px', color: colors.textFaded }}>
+                            OPNet features are not yet available on this network.
+                        </p>
                     </div>
                 </Content>
             </Layout>

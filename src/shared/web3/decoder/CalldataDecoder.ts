@@ -1,3 +1,4 @@
+import { fromHex, toHex } from '@btc-vision/bitcoin';
 import {
     InteractionMotoChef,
     InteractionMotoswap,
@@ -11,8 +12,8 @@ export function selectorToString(calldata: string): string {
         return 'Unknown Interaction';
     }
 
-    const data = Buffer.from(calldata, 'hex');
-    const selector = data.subarray(0, 4).toString('hex');
+    const data = fromHex(calldata);
+    const selector = toHex(data.subarray(0, 4));
 
     if (!isInteractionType(selector)) {
         return `Unknown Interaction : 0x${selector}`;

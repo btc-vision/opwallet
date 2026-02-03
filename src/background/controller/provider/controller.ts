@@ -452,13 +452,18 @@ export class ProviderController {
             // @ts-expect-error
             interactionParams.calldata = interactionParams.calldata
                 ? objToBuffer(interactionParams.calldata)
-                : Buffer.from([]);
+                : new Uint8Array();
         }
     ])
     deployContract = async (request: {
         approvalRes: boolean;
         data: { params: IDeploymentParametersWithoutSigner };
     }) => {
+        const currentChain = CHAINS_MAP[wallet.getChainType()];
+        if (currentChain?.opnetDisabled) {
+            throw new Error('OPNet features are not yet available on this network.');
+        }
+
         const feeRate = await Web3API.provider.gasParameters();
         const minimumFeeRate = feeRate.bitcoin.recommended.low;
 
@@ -498,14 +503,14 @@ export class ProviderController {
         },
         approvalRes
     }: {
-        data: { params: { message: string | Buffer; type: 'bip322-simple' | 'ecdsa' | 'schnorr' } };
+        data: { params: { message: string | Uint8Array; type: 'bip322-simple' | 'ecdsa' | 'schnorr' } };
         approvalRes: { signature: string };
     }) => {
         if (approvalRes?.signature) {
             return approvalRes.signature;
         }
-        if (typeof message === 'object' && message !== null) {
-            message = Buffer.from(Object.values(message));
+        if (typeof message === 'object' && message !== null && !(message instanceof Uint8Array)) {
+            message = new Uint8Array(Object.values(message));
         }
         if (type === 'bip322-simple') {
             return wallet.signBIP322Simple(message);

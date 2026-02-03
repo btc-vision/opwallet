@@ -14,7 +14,7 @@ import { Column, OPNetLoader, Text } from '@/ui/components';
 import { useTools } from '@/ui/components/ActionComponent';
 import OpNetBalanceCard from '@/ui/components/OpNetBalanceCard';
 import { useCurrentAccount } from '@/ui/state/accounts/hooks';
-import { useChainType } from '@/ui/state/settings/hooks';
+import { useChain, useChainType } from '@/ui/state/settings/hooks';
 
 import { faEye, faEyeSlash, faPencil, faPlus, faRefresh, faTrash } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
@@ -80,6 +80,7 @@ export function OPNetList() {
     const navigate = useNavigate();
     const currentAccount = useCurrentAccount();
     const chainType = useChainType();
+    const chain = useChain();
     const tools = useTools();
 
     // Core state
@@ -446,6 +447,70 @@ export function OPNetList() {
 
     return (
         <div>
+            {/* OPNet disabled overlay */}
+            {chain.opnetDisabled ? (
+                <div style={{ position: 'relative' }}>
+                    {/* Blurred content underneath */}
+                    <div
+                        style={{
+                            filter: 'blur(4px)',
+                            opacity: 0.4,
+                            pointerEvents: 'none',
+                            userSelect: 'none'
+                        }}>
+                        <div
+                            style={{
+                                display: 'flex',
+                                gap: '8px',
+                                width: 'calc(100% + 24px)',
+                                borderBottom: `1px solid ${colors.headerBorder}`,
+                                borderTop: `1px solid ${colors.headerBorder}`,
+                                padding: '12px',
+                                margin: '0 -12px 12px -12px',
+                                background: colors.headerBG
+                            }}>
+                            <button style={tokenButtonStyle}>
+                                <FontAwesomeIcon icon={faPlus} style={{ fontSize: 12 }} />
+                                <span>Import</span>
+                            </button>
+                            <button style={tokenButtonStyle}>
+                                <FontAwesomeIcon icon={faPencil} style={{ fontSize: 12 }} />
+                                <span>Deploy</span>
+                            </button>
+                            <button style={tokenRefreshButtonStyle}>
+                                <FontAwesomeIcon icon={faRefresh} style={{ fontSize: 14, color: 'white' }} />
+                            </button>
+                        </div>
+                        <div
+                            style={{
+                                background: colors.containerBgFaded,
+                                borderRadius: '14px',
+                                padding: '40px 20px',
+                                textAlign: 'center',
+                                marginBottom: '12px'
+                            }}>
+                            <Text text="No tokens found" color="text" size="md" style={{ marginBottom: 8 }} />
+                            <Text text="Import or deploy a token to get started" color="textDim" size="sm" />
+                        </div>
+                    </div>
+
+                    {/* Overlay text */}
+                    <div
+                        style={{
+                            position: 'absolute',
+                            inset: 0,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            zIndex: 1
+                        }}>
+                        <span style={{ fontSize: '13px', color: colors.main, fontWeight: 600 }}>
+                            OPNet is not enabled on this network yet.
+                        </span>
+                    </div>
+                </div>
+            ) : (
+            <>
             {/* Action Buttons */}
             <div
                 style={{
@@ -460,7 +525,6 @@ export function OPNetList() {
                 }}>
                 <button
                     style={tokenButtonStyle}
-                    //onClick={() => setImportTokenBool(true)}
                     onClick={() => navigate(RouteTypes.ImportSelectionScreen)}
                     onMouseOver={(e) => (e.currentTarget.style.background = '#212121')}
                     onMouseOut={(e) => (e.currentTarget.style.background = '#313131')}>
@@ -666,6 +730,9 @@ export function OPNetList() {
                     <FontAwesomeIcon icon={faEye} />
                     Show Hidden Tokens
                 </button>
+            )}
+
+            </>
             )}
 
             {/* Import Token Modal */}

@@ -23,6 +23,7 @@ import { RecordTransactionInput, TransactionType } from '@/shared/types/Transact
 import { decodeBitcoinTransfer, DecodedPreSignedData, decodeSignedInteractionReceipt } from '@/shared/utils/txDecoder';
 import Web3API from '@/shared/web3/Web3API';
 import { Column, Content, Footer, Header, Layout, OPNetTxFlowPreview, Text } from '@/ui/components';
+import { FeeRateBar } from '@/ui/components/FeeRateBar';
 import { ContextType, useTools } from '@/ui/components/ActionComponent';
 import { BottomModal } from '@/ui/components/BottomModal';
 import { useBTCUnit } from '@/ui/state/settings/hooks';
@@ -62,7 +63,9 @@ import {
     UTXO,
     Wallet
 } from '@btc-vision/transaction';
-import { ECPairInterface } from 'ecpair';
+import { fromHex } from '@btc-vision/bitcoin';
+import type { UniversalSigner } from '@btc-vision/ecpair';
+import { createSatoshi } from '@btc-vision/ecpair';
 import BigNumber from 'bignumber.js';
 import {
     Airdrop,
@@ -194,6 +197,9 @@ export default function TxOpnetConfirmScreen() {
     const wallet = useWallet();
     const tools = useTools();
 
+    // Editable fee rate state (initialized from navigation state, can be changed by user)
+    const [feeRate, setFeeRate] = useState<number>(rawTxInfo.feeRate);
+
     // Pre-signed transaction state
     const [isSigning, setIsSigning] = useState<boolean>(false);
     const [signingError, setSigningError] = useState<string | null>(null);
@@ -314,13 +320,9 @@ export default function TxOpnetConfirmScreen() {
         const decodedData = cachedSignedTx?.decodedData || cachedBtcTx?.decodedData;
 
         if (!decodedData) {
-            // Fallback to estimate
-            const miningFee = Number(rawTxInfo.priorityFee);
-            const gasFee = Number(rawTxInfo.gasSatFee ?? 0);
-            const domainPrice =
-                rawTxInfo.action === Action.RegisterDomain && 'price' in rawTxInfo ? Number(rawTxInfo.price) : 0;
+            // No actual data yet - don't show inaccurate estimates
             return {
-                totalCost: miningFee + gasFee + domainPrice,
+                totalCost: null as number | null,
                 changeOutputs: [] as { address: string; value: bigint }[],
                 externalOutputs: [] as { address: string; value: bigint }[],
                 totalChange: 0n,
@@ -391,6 +393,25 @@ export default function TxOpnetConfirmScreen() {
         };
     }, [cachedSignedTx, cachedBtcTx, userAddresses, rawTxInfo]);
 
+    // Compute effective fee rate from decoded transaction data and detect mismatches
+    const feeRateCheck = useMemo(() => {
+        const decodedData = cachedSignedTx?.decodedData || cachedBtcTx?.decodedData;
+        if (!decodedData || decodedData.transactions.length === 0) {
+            return { effectiveRate: null, mismatch: false };
+        }
+
+        const totalVsize = decodedData.transactions.reduce((sum, tx) => sum + tx.vsize, 0);
+        if (totalVsize === 0) {
+            return { effectiveRate: null, mismatch: false };
+        }
+
+        const effectiveRate = Number(decodedData.totalMiningFee) / totalVsize;
+        // Allow 20% tolerance — transaction building may round or adjust slightly
+        const mismatch = Math.abs(effectiveRate - feeRate) / Math.max(feeRate, 1) > 0.2;
+
+        return { effectiveRate: Math.round(effectiveRate * 100) / 100, mismatch };
+    }, [cachedSignedTx, cachedBtcTx, feeRate]);
+
     const getOPNetWallet = useCallback(async () => {
         const data = await wallet.getOPNetWallet();
 
@@ -399,9 +420,23 @@ export default function TxOpnetConfirmScreen() {
             data[1],
             Web3API.network,
             MLDSASecurityLevel.LEVEL2,
-            Buffer.from(data[2], 'hex')
+            fromHex(data[2])
         );
     }, [wallet]);
+
+    // Track current feeRate in a ref so the callback stays stable
+    const feeRateRef = useRef(feeRate);
+    feeRateRef.current = feeRate;
+
+    // Handle fee rate change from FeeRateBar (stable callback - no deps)
+    const handleFeeRateChange = useCallback((newFeeRate: number) => {
+        if (newFeeRate === feeRateRef.current) return;
+        setFeeRate(newFeeRate);
+        setCachedSignedTx(null);
+        setCachedBtcTx(null);
+        preSigningRef.current = false;
+        setSigningError(null);
+    }, []);
 
     // Check if pre-signed transaction is expired
     const isPreSignedExpired = useCallback(() => {
@@ -426,6 +461,8 @@ export default function TxOpnetConfirmScreen() {
         if (!supportedActions.includes(rawTxInfo.action)) return;
         if (preSigningRef.current) return;
         preSigningRef.current = true;
+
+        let cancelled = false;
 
         const preSignTransaction = async () => {
             setIsSigning(true);
@@ -457,7 +494,7 @@ export default function TxOpnetConfirmScreen() {
                     mldsaSigner: userWallet.mldsaKeypair,
                     refundTo: refundAddress,
                     maximumAllowedSatToSpend: basePriorityFee,
-                    feeRate: rawTxInfo.feeRate,
+                    feeRate: feeRate,
                     network: Web3API.network,
                     priorityFee: basePriorityFee,
                     note: rawTxInfo.note
@@ -584,7 +621,7 @@ export default function TxOpnetConfirmScreen() {
                             extraOutputs: [
                                 {
                                     address: rawTxInfo.treasuryAddress,
-                                    value: Number(domainPrice)
+                                    value: createSatoshi(domainPrice)
                                 }
                             ]
                         };
@@ -730,31 +767,43 @@ export default function TxOpnetConfirmScreen() {
                 }
 
                 // Cache the signed transaction with timestamp
-                setCachedSignedTx({
-                    simulation,
-                    signedTx,
-                    createdAt: Date.now(),
-                    symbol,
-                    decodedData,
-                    preSignedTxData
-                });
+                if (!cancelled) {
+                    setCachedSignedTx({
+                        simulation,
+                        signedTx,
+                        createdAt: Date.now(),
+                        symbol,
+                        decodedData,
+                        preSignedTxData
+                    });
+                }
             } catch (e) {
-                const error = e as Error;
-                console.error('Pre-signing failed:', error);
-                setSigningError(error.message);
+                if (!cancelled) {
+                    const error = e as Error;
+                    console.error('Pre-signing failed:', error);
+                    setSigningError(error.message);
+                }
             } finally {
-                setIsSigning(false);
+                if (!cancelled) {
+                    setIsSigning(false);
+                }
             }
         };
 
         void preSignTransaction();
-    }, [rawTxInfo, wallet, getOPNetWallet]);
+
+        return () => {
+            cancelled = true;
+        };
+    }, [rawTxInfo, wallet, getOPNetWallet, feeRate]);
 
     // Pre-sign Bitcoin transfer transactions on mount
     useEffect(() => {
         if (rawTxInfo.action !== Action.SendBitcoin) return;
         if (preSigningRef.current) return;
         preSigningRef.current = true;
+
+        let cancelled = false;
 
         const preSignBitcoinTransfer = async () => {
             setIsSigning(true);
@@ -784,7 +833,7 @@ export default function TxOpnetConfirmScreen() {
                 }
 
                 let utxos: UTXO[] = [];
-                let witnessScript: Buffer | undefined;
+                let witnessScript: Uint8Array | undefined;
                 const feeMin = 10_000n;
 
                 // Handle special source types (CONSOLIDATION and ROTATION_ALL don't require 'from')
@@ -858,7 +907,7 @@ export default function TxOpnetConfirmScreen() {
                         // Cold storage withdrawal - use cold wallet keypair
                         const coldWalletData = await wallet.getColdStorageWallet();
                         const [coldWif, coldMldsaPrivateKey, coldChainCodeHex] = coldWalletData;
-                        const coldChainCode = coldChainCodeHex ? Buffer.from(coldChainCodeHex, 'hex') : undefined;
+                        const coldChainCode = coldChainCodeHex ? fromHex(coldChainCodeHex) : undefined;
                         const coldWallet = Wallet.fromWif(
                             coldWif,
                             coldMldsaPrivateKey || '',
@@ -886,7 +935,7 @@ export default function TxOpnetConfirmScreen() {
                             signer: coldWallet.keypair,
                             mldsaSigner: coldWallet.mldsaKeypair,
                             network: Web3API.network,
-                            feeRate: parameters.feeRate,
+                            feeRate: feeRate,
                             priorityFee: 0n,
                             gasSatFee: 0n,
                             to: parameters.to,
@@ -926,17 +975,18 @@ export default function TxOpnetConfirmScreen() {
                             console.warn('Failed to decode cold storage transfer:', decodeError);
                         }
 
-                        setCachedBtcTx({
-                            txHex: coldSignedTx.tx,
-                            utxos: utxos,
-                            nextUtxos: coldSignedTx.nextUTXOs,
-                            createdAt: Date.now(),
-                            decodedData,
-                            preSignedTxData,
-                            isColdStorage: true
-                        });
-
-                        setIsSigning(false);
+                        if (!cancelled) {
+                            setCachedBtcTx({
+                                txHex: coldSignedTx.tx,
+                                utxos: utxos,
+                                nextUtxos: coldSignedTx.nextUTXOs,
+                                createdAt: Date.now(),
+                                decodedData,
+                                preSignedTxData,
+                                isColdStorage: true
+                            });
+                            setIsSigning(false);
+                        }
                         return;
                     } else if (isConsolidation) {
                         // Consolidation - gather UTXOs from multiple hot addresses to cold storage
@@ -985,14 +1035,14 @@ export default function TxOpnetConfirmScreen() {
                         const walletDataArray = await wallet.getConsolidationWallets(parameters.sourcePubkeys);
 
                         // Build signer map and create wallets
-                        const signerPairs: Array<readonly [string, ECPairInterface]> = [];
+                        const signerPairs: Array<readonly [string, UniversalSigner]> = [];
                         let primaryWallet: Wallet | null = null;
 
                         for (let i = 0; i < parameters.sourceAddresses.length; i++) {
                             const address = parameters.sourceAddresses[i];
                             const [wif, , mldsaPrivateKey, chainCodeHex] = walletDataArray[i];
 
-                            const chainCode = chainCodeHex ? Buffer.from(chainCodeHex, 'hex') : undefined;
+                            const chainCode = chainCodeHex ? fromHex(chainCodeHex) : undefined;
                             const addrWallet = Wallet.fromWif(
                                 wif,
                                 mldsaPrivateKey || '',
@@ -1015,49 +1065,17 @@ export default function TxOpnetConfirmScreen() {
                         // Create address rotation config
                         const addressRotation = createAddressRotation(signerPairs);
 
-                        // Estimate fees: ~68 vbytes per P2TR input, ~43 vbytes for output, ~12 overhead
-                        const estimatedVSize = BigInt(12 + utxos.length * 68 + 43);
-                        const estimatedFee = estimatedVSize * BigInt(parameters.feeRate);
-
-                        // Calculate output amount (total - estimated fees with buffer)
-                        // Add 20% buffer to fee estimate to ensure tx succeeds
-                        const feeBuffer = (estimatedFee * 120n) / 100n;
-                        const outputAmount = totalInputValue - feeBuffer;
-
-                        if (outputAmount <= 0n) {
-                            throw new Error('Consolidation amount too small to cover fees');
-                        }
-
-                        // Validate output amount is reasonable
-                        if (outputAmount > MAX_SATOSHIS) {
-                            console.error('[Consolidation] Output amount exceeds max:', outputAmount.toString());
-                            throw new Error(`Output amount ${outputAmount} exceeds maximum possible satoshis`);
-                        }
-
-                        console.log('[Consolidation] Building tx with amount:', outputAmount.toString(), 'satoshis');
-                        console.log('[Consolidation] Total input value:', totalInputValue.toString());
-                        console.log('[Consolidation] Fee buffer:', feeBuffer.toString());
-                        console.log('[Consolidation] UTXOs count:', utxos.length);
-
-                        // CRITICAL: Validate amount is reasonable before passing to library
-                        const FOUR_HUNDRED_MILLION_BTC = 40_000_000_000_000_000n;
-                        if (outputAmount >= FOUR_HUNDRED_MILLION_BTC) {
-                            throw new Error(
-                                `CRITICAL BUG: outputAmount=${outputAmount} is impossibly large! totalInputValue=${totalInputValue}, feeBuffer=${feeBuffer}`
-                            );
-                        }
-
                         // Build consolidation transaction
-                        // For consolidation, we send ALL funds minus fees to the cold wallet
+                        // Send ALL funds minus fees to the cold wallet
                         // 'from' must be set to an address matching the signer (first source address)
-                        // Any small change will go back to this address (though we calculate to minimize change)
                         const consolidationParams: IFundingTransactionParameters = {
-                            amount: outputAmount, // This must be bigint - calculated to minimize change
+                            amount: totalInputValue,
+                            autoAdjustAmount: true,
                             utxos: utxos,
                             signer: primaryWallet.keypair,
                             mldsaSigner: primaryWallet.mldsaKeypair,
                             network: Web3API.network,
-                            feeRate: parameters.feeRate,
+                            feeRate: feeRate,
                             priorityFee: 0n,
                             gasSatFee: 0n,
                             to: parameters.to,
@@ -1096,17 +1114,18 @@ export default function TxOpnetConfirmScreen() {
                             console.warn('Failed to decode consolidation transfer:', decodeError);
                         }
 
-                        setCachedBtcTx({
-                            txHex: consolidationTx.tx,
-                            utxos: utxos,
-                            nextUtxos: consolidationTx.nextUTXOs,
-                            createdAt: Date.now(),
-                            decodedData,
-                            preSignedTxData,
-                            isConsolidation: true
-                        });
-
-                        setIsSigning(false);
+                        if (!cancelled) {
+                            setCachedBtcTx({
+                                txHex: consolidationTx.tx,
+                                utxos: utxos,
+                                nextUtxos: consolidationTx.nextUTXOs,
+                                createdAt: Date.now(),
+                                decodedData,
+                                preSignedTxData,
+                                isConsolidation: true
+                            });
+                            setIsSigning(false);
+                        }
                         return;
                     } else if (isRotationAll) {
                         // Send from all rotation addresses (hot + cold) to destination
@@ -1156,7 +1175,7 @@ export default function TxOpnetConfirmScreen() {
                             opnetWalletData[1],
                             Web3API.network,
                             MLDSASecurityLevel.LEVEL2,
-                            Buffer.from(opnetWalletData[2], 'hex')
+                            fromHex(opnetWalletData[2])
                         );
 
                         // Get the main account's Bitcoin address (NOT the MLDSA hash)
@@ -1171,14 +1190,14 @@ export default function TxOpnetConfirmScreen() {
                         const coldWalletData = await wallet.getColdStorageWallet();
 
                         // Build signers for all addresses (for per-UTXO signing via addressRotation)
-                        const signerPairs: Array<readonly [string, ECPairInterface]> = [];
+                        const signerPairs: Array<readonly [string, UniversalSigner]> = [];
 
                         // Add hot wallet signers
                         for (let i = 0; i < addressesWithBalance.length; i++) {
                             const address = addressesWithBalance[i];
                             const [wif, , mldsaPrivateKey, chainCodeHex] = hotWalletData[i];
 
-                            const chainCode = chainCodeHex ? Buffer.from(chainCodeHex, 'hex') : undefined;
+                            const chainCode = chainCodeHex ? fromHex(chainCodeHex) : undefined;
                             const addrWallet = Wallet.fromWif(
                                 wif,
                                 mldsaPrivateKey || '',
@@ -1194,7 +1213,7 @@ export default function TxOpnetConfirmScreen() {
                         // getColdStorageWallet returns [wif, mldsaPrivateKey, chainCode, coldAddress]
                         if (coldWalletData) {
                             const [coldWif, coldMldsaPrivateKey, coldChainCodeHex] = coldWalletData;
-                            const coldChainCode = coldChainCodeHex ? Buffer.from(coldChainCodeHex, 'hex') : undefined;
+                            const coldChainCode = coldChainCodeHex ? fromHex(coldChainCodeHex) : undefined;
                             const coldWallet = Wallet.fromWif(
                                 coldWif,
                                 coldMldsaPrivateKey || '',
@@ -1209,7 +1228,7 @@ export default function TxOpnetConfirmScreen() {
                         // This properly rotates to a fresh address rather than reusing existing ones
                         const changeWalletData = await wallet.getNextUnusedRotationWallet();
                         const changeChainCode = changeWalletData.chainCode
-                            ? Buffer.from(changeWalletData.chainCode, 'hex')
+                            ? fromHex(changeWalletData.chainCode)
                             : undefined;
                         const changeWallet = Wallet.fromWif(
                             changeWalletData.wif,
@@ -1230,17 +1249,7 @@ export default function TxOpnetConfirmScreen() {
 
                         const addressRotation = createAddressRotation(signerPairs);
 
-                        // Calculate output amount
-                        const estimatedVSize = BigInt(12 + utxos.length * 68 + 43);
-                        const estimatedFee = estimatedVSize * BigInt(parameters.feeRate);
-                        const feeBuffer = (estimatedFee * 120n) / 100n;
-                        const outputAmount = totalInputValue - feeBuffer;
-
-                        if (outputAmount <= 0n) {
-                            throw new Error('Amount too small to cover fees');
-                        }
-
-                        console.log('[RotationAll] Building tx with amount:', outputAmount.toString(), 'satoshis');
+                        console.log('[RotationAll] Building tx with totalInputValue:', totalInputValue.toString(), 'satoshis');
                         console.log('[RotationAll] Destination (to):', parameters.to);
                         console.log('[RotationAll] Network:', Web3API.network);
                         console.log('[RotationAll] Signer pairs count:', signerPairs.length);
@@ -1257,12 +1266,13 @@ export default function TxOpnetConfirmScreen() {
                         // Set `from` to an existing rotation address (we have its signer) for any change
                         // The reserved address is exposed on-chain for MLDSA but should NEVER receive funds
                         const rotationAllParams: IFundingTransactionParameters = {
-                            amount: outputAmount,
+                            amount: totalInputValue,
+                            autoAdjustAmount: true,
                             utxos: utxos,
                             signer: changeSigner, // Signer for change output (matches from address)
                             mldsaSigner: reservedMldsaWallet.mldsaKeypair, // MLDSA signer for quantum linkage
                             network: Web3API.network,
-                            feeRate: parameters.feeRate,
+                            feeRate: feeRate,
                             priorityFee: 0n,
                             gasSatFee: 0n,
                             to: parameters.to,
@@ -1296,17 +1306,18 @@ export default function TxOpnetConfirmScreen() {
                             console.warn('Failed to decode rotation transfer:', decodeError);
                         }
 
-                        setCachedBtcTx({
-                            txHex: rotationTx.tx,
-                            utxos: utxos,
-                            nextUtxos: rotationTx.nextUTXOs,
-                            createdAt: Date.now(),
-                            decodedData,
-                            preSignedTxData,
-                            isRotationAll: true
-                        });
-
-                        setIsSigning(false);
+                        if (!cancelled) {
+                            setCachedBtcTx({
+                                txHex: rotationTx.tx,
+                                utxos: utxos,
+                                nextUtxos: rotationTx.nextUTXOs,
+                                createdAt: Date.now(),
+                                decodedData,
+                                preSignedTxData,
+                                isRotationAll: true
+                            });
+                            setIsSigning(false);
+                        }
                         return;
                     }
 
@@ -1335,7 +1346,7 @@ export default function TxOpnetConfirmScreen() {
                     signer: userWallet.keypair,
                     mldsaSigner: userWallet.mldsaKeypair,
                     network: Web3API.network,
-                    feeRate: parameters.feeRate,
+                    feeRate: feeRate,
                     priorityFee: 0n,
                     gasSatFee: 0n,
                     to: parameters.to,
@@ -1376,25 +1387,35 @@ export default function TxOpnetConfirmScreen() {
                 }
 
                 // Cache the signed transaction
-                setCachedBtcTx({
-                    txHex: signedTx.tx,
-                    utxos: utxos,
-                    nextUtxos: signedTx.nextUTXOs,
-                    createdAt: Date.now(),
-                    decodedData,
-                    preSignedTxData
-                });
+                if (!cancelled) {
+                    setCachedBtcTx({
+                        txHex: signedTx.tx,
+                        utxos: utxos,
+                        nextUtxos: signedTx.nextUTXOs,
+                        createdAt: Date.now(),
+                        decodedData,
+                        preSignedTxData
+                    });
+                }
             } catch (e) {
-                const error = e as Error;
-                console.error('Pre-signing Bitcoin transfer failed:', error);
-                setSigningError(error.message);
+                if (!cancelled) {
+                    const error = e as Error;
+                    console.error('Pre-signing Bitcoin transfer failed:', error);
+                    setSigningError(error.message);
+                }
             } finally {
-                setIsSigning(false);
+                if (!cancelled) {
+                    setIsSigning(false);
+                }
             }
         };
 
         void preSignBitcoinTransfer();
-    }, [rawTxInfo, wallet, getOPNetWallet]);
+
+        return () => {
+            cancelled = true;
+        };
+    }, [rawTxInfo, wallet, getOPNetWallet, feeRate]);
 
     const handleCancel = () => {
         // Clear cached pre-signed transaction on cancel
@@ -1478,7 +1499,7 @@ export default function TxOpnetConfirmScreen() {
                 tokenAddress: parameters.contractAddress,
                 contractAddress: parameters.contractAddress,
                 fee: Number(parameters.priorityFee || 0),
-                feeRate: parameters.feeRate
+                feeRate: feeRate
             };
             void wallet.recordTransaction(txRecord);
 
@@ -1537,7 +1558,7 @@ export default function TxOpnetConfirmScreen() {
                 contractAddress: contractAddress,
                 contractMethod: 'airdrop',
                 fee: Number(parameters.priorityFee || 0),
-                feeRate: parameters.feeRate,
+                feeRate: feeRate,
                 note: `Airdrop to ${addressCount} addresses`
             };
             void wallet.recordTransaction(txRecord);
@@ -1614,7 +1635,7 @@ export default function TxOpnetConfirmScreen() {
                 amount: BitcoinUtils.expandToDecimals(btcInputAmount, 8).toString(),
                 amountDisplay: `${btcInputAmount} BTC`,
                 fee: Number(actualFee),
-                feeRate: parameters.feeRate
+                feeRate: feeRate
             };
             void wallet.recordTransaction(txRecord);
 
@@ -1686,7 +1707,7 @@ export default function TxOpnetConfirmScreen() {
             const uint8Array = new Uint8Array(arrayBuffer);
 
             const challenge = await Web3API.provider.getChallenge();
-            const calldata = parameters.calldataHex ? Buffer.from(parameters.calldataHex, 'hex') : Buffer.from([]);
+            const calldata = parameters.calldataHex ? fromHex(parameters.calldataHex) : new Uint8Array();
 
             // TODO: Add calldata support
             const deploymentParameters: IDeploymentParameters = {
@@ -1695,11 +1716,11 @@ export default function TxOpnetConfirmScreen() {
                 signer: userWallet.keypair,
                 mldsaSigner: userWallet.mldsaKeypair,
                 network: Web3API.network,
-                feeRate: parameters.feeRate,
+                feeRate: feeRate,
                 priorityFee: deployPriorityFee,
                 gasSatFee: deployGasSatFee,
                 from: currentWalletAddress.address,
-                bytecode: Buffer.from(uint8Array),
+                bytecode: uint8Array,
                 calldata: calldata,
                 optionalInputs: [],
                 optionalOutputs: [],
@@ -1750,7 +1771,7 @@ export default function TxOpnetConfirmScreen() {
                     from: currentWalletAddress.address,
                     contractAddress: sendTransact.contractAddress,
                     fee: Number(parameters.priorityFee || 0),
-                    feeRate: parameters.feeRate
+                    feeRate: feeRate
                 };
                 void wallet.recordTransaction(txRecord);
 
@@ -1817,7 +1838,7 @@ export default function TxOpnetConfirmScreen() {
                 contractAddress: parameters.contractAddress,
                 contractMethod: 'mint',
                 fee: Number(parameters.priorityFee || 0),
-                feeRate: parameters.feeRate
+                feeRate: feeRate
             };
             void wallet.recordTransaction(txRecord);
 
@@ -1872,7 +1893,7 @@ export default function TxOpnetConfirmScreen() {
                 contractAddress: parameters.collectionAddress,
                 contractMethod: 'safeTransferFrom',
                 fee: Number(parameters.priorityFee || 0),
-                feeRate: parameters.feeRate,
+                feeRate: feeRate,
                 note: `NFT #${parameters.tokenId} from ${parameters.collectionName}`
             };
             void wallet.recordTransaction(txRecord);
@@ -1934,7 +1955,7 @@ export default function TxOpnetConfirmScreen() {
                 from: currentWalletAddress.address,
                 contractMethod: 'registerDomain',
                 fee: Number(parameters.priorityFee || 0),
-                feeRate: parameters.feeRate,
+                feeRate: feeRate,
                 note: `Register domain ${parameters.domainName}.btc`
             };
             void wallet.recordTransaction(txRecord);
@@ -1991,7 +2012,7 @@ export default function TxOpnetConfirmScreen() {
                 from: currentWalletAddress.address,
                 contractMethod: 'setContenthash',
                 fee: Number(parameters.priorityFee || 0),
-                feeRate: parameters.feeRate,
+                feeRate: feeRate,
                 note: `Publish to ${parameters.domainName}.btc: ${parameters.cid.slice(0, 20)}...`
             };
             void wallet.recordTransaction(txRecord);
@@ -2045,7 +2066,7 @@ export default function TxOpnetConfirmScreen() {
                 from: currentWalletAddress.address,
                 contractMethod: 'initiateTransfer',
                 fee: Number(parameters.priorityFee || 0),
-                feeRate: parameters.feeRate,
+                feeRate: feeRate,
                 note: `Initiate transfer of ${parameters.domainName}.btc to ${parameters.newOwner.slice(0, 10)}...`
             };
             void wallet.recordTransaction(txRecord);
@@ -2102,7 +2123,7 @@ export default function TxOpnetConfirmScreen() {
                 from: currentWalletAddress.address,
                 contractMethod: 'acceptTransfer',
                 fee: Number(parameters.priorityFee || 0),
-                feeRate: parameters.feeRate,
+                feeRate: feeRate,
                 note: `Accept transfer of ${parameters.domainName}.btc`
             };
             void wallet.recordTransaction(txRecord);
@@ -2156,7 +2177,7 @@ export default function TxOpnetConfirmScreen() {
                 from: currentWalletAddress.address,
                 contractMethod: 'cancelTransfer',
                 fee: Number(parameters.priorityFee || 0),
-                feeRate: parameters.feeRate,
+                feeRate: feeRate,
                 note: `Cancel transfer of ${parameters.domainName}.btc`
             };
             void wallet.recordTransaction(txRecord);
@@ -2459,81 +2480,72 @@ export default function TxOpnetConfirmScreen() {
                                 <DollarOutlined style={{ fontSize: 14, color: colors.main }} />
                                 Fee Breakdown
                             </div>
-                            {cachedSignedTx?.decodedData || cachedBtcTx?.decodedData ? (
+                            {(cachedSignedTx?.decodedData || cachedBtcTx?.decodedData) && (
                                 <span style={{ fontSize: '9px', color: colors.success, fontWeight: 500 }}>ACTUAL</span>
-                            ) : (
-                                <span style={{ fontSize: '9px', color: colors.warning, fontWeight: 500 }}>
-                                    {isSigning ? 'CALCULATING...' : 'ESTIMATE'}
-                                </span>
                             )}
                         </div>
 
-                        {/* Mining Fee (inputs - outputs) - Actual value when available */}
-                        <div
-                            style={{
-                                display: 'flex',
-                                justifyContent: 'space-between',
-                                alignItems: 'center',
-                                padding: '10px',
-                                background: colors.inputBg,
-                                borderRadius: '8px',
-                                marginBottom: '8px'
-                            }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                <ThunderboltOutlined style={{ fontSize: 14, color: colors.warning }} />
-                                <div>
-                                    <span style={{ fontSize: '13px', color: colors.text }}>Mining Fee</span>
-                                    <div style={{ fontSize: '9px', color: colors.textFaded }}>
-                                        Paid to Bitcoin miners
+                        {/* Mining Fee - Only shown when actual data is available */}
+                        {(cachedSignedTx?.decodedData || cachedBtcTx?.decodedData) && (
+                            <div
+                                style={{
+                                    display: 'flex',
+                                    justifyContent: 'space-between',
+                                    alignItems: 'center',
+                                    padding: '10px',
+                                    background: colors.inputBg,
+                                    borderRadius: '8px',
+                                    marginBottom: '8px'
+                                }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    <ThunderboltOutlined style={{ fontSize: 14, color: colors.warning }} />
+                                    <div>
+                                        <span style={{ fontSize: '13px', color: colors.text }}>Mining Fee</span>
+                                        <div style={{ fontSize: '9px', color: colors.textFaded }}>
+                                            Paid to Bitcoin miners
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
-                            <div style={{ textAlign: 'right' }}>
-                                <div>
-                                    <span
-                                        style={{
-                                            fontSize: '14px',
-                                            fontWeight: 600,
-                                            color:
-                                                cachedSignedTx?.decodedData || cachedBtcTx?.decodedData
-                                                    ? colors.success
-                                                    : colors.text
-                                        }}>
-                                        {cachedSignedTx?.decodedData
-                                            ? cachedSignedTx.decodedData.totalMiningFee.toString()
-                                            : cachedBtcTx?.decodedData
-                                              ? cachedBtcTx.decodedData.totalMiningFee.toString()
-                                              : rawTxInfo.priorityFee.toString()}
-                                    </span>
-                                    <span
-                                        style={{
-                                            fontSize: '11px',
-                                            color: colors.textFaded,
-                                            marginLeft: '4px'
-                                        }}>
-                                        sat
-                                    </span>
-                                </div>
-                                {btcPrice > 0 && (
-                                    <div style={{ fontSize: '10px', color: colors.textFaded }}>
-                                        $
-                                        {(
-                                            (Number(
-                                                cachedSignedTx?.decodedData?.totalMiningFee ??
-                                                    cachedBtcTx?.decodedData?.totalMiningFee ??
-                                                    rawTxInfo.priorityFee
-                                            ) /
-                                                1e8) *
-                                            btcPrice
-                                        ).toFixed(2)}{' '}
-                                        USD
+                                <div style={{ textAlign: 'right' }}>
+                                    <div>
+                                        <span
+                                            style={{
+                                                fontSize: '14px',
+                                                fontWeight: 600,
+                                                color: colors.success
+                                            }}>
+                                            {(cachedSignedTx?.decodedData?.totalMiningFee ?? cachedBtcTx?.decodedData?.totalMiningFee ?? 0n).toString()}
+                                        </span>
+                                        <span
+                                            style={{
+                                                fontSize: '11px',
+                                                color: colors.textFaded,
+                                                marginLeft: '4px'
+                                            }}>
+                                            sat
+                                        </span>
                                     </div>
-                                )}
+                                    {btcPrice > 0 && (
+                                        <div style={{ fontSize: '10px', color: colors.textFaded }}>
+                                            $
+                                            {(
+                                                (Number(
+                                                    cachedSignedTx?.decodedData?.totalMiningFee ??
+                                                        cachedBtcTx?.decodedData?.totalMiningFee ??
+                                                        0n
+                                                ) /
+                                                    1e8) *
+                                                btcPrice
+                                            ).toFixed(2)}{' '}
+                                            USD
+                                        </div>
+                                    )}
+                                </div>
                             </div>
-                        </div>
+                        )}
 
-                        {/* OPNet Gas Fee (First output of interaction TX) - Actual value when available */}
-                        {(cachedSignedTx?.decodedData?.opnetGasFee || rawTxInfo.gasSatFee) && (
+                        {/* OPNet Gas Fee - Only shown when actual data is available */}
+                        {cachedSignedTx?.decodedData?.opnetGasFee && (
                             <div
                                 style={{
                                     display: 'flex',
@@ -2559,11 +2571,9 @@ export default function TxOpnetConfirmScreen() {
                                             style={{
                                                 fontSize: '14px',
                                                 fontWeight: 600,
-                                                color: cachedSignedTx?.decodedData ? colors.success : colors.text
+                                                color: colors.success
                                             }}>
-                                            {cachedSignedTx?.decodedData
-                                                ? cachedSignedTx.decodedData.opnetGasFee.toString()
-                                                : (rawTxInfo.gasSatFee?.toString() ?? '0')}
+                                            {cachedSignedTx.decodedData.opnetGasFee.toString()}
                                         </span>
                                         <span
                                             style={{
@@ -2578,10 +2588,7 @@ export default function TxOpnetConfirmScreen() {
                                         <div style={{ fontSize: '10px', color: colors.textFaded }}>
                                             $
                                             {(
-                                                (Number(
-                                                    cachedSignedTx?.decodedData?.opnetGasFee ?? rawTxInfo.gasSatFee ?? 0
-                                                ) /
-                                                    1e8) *
+                                                (Number(cachedSignedTx.decodedData.opnetGasFee) / 1e8) *
                                                 btcPrice
                                             ).toFixed(2)}{' '}
                                             USD
@@ -2594,37 +2601,38 @@ export default function TxOpnetConfirmScreen() {
                         {/* Fee Rate */}
                         <div
                             style={{
-                                display: 'flex',
-                                justifyContent: 'space-between',
-                                alignItems: 'center',
                                 padding: '10px',
                                 background: colors.inputBg,
                                 borderRadius: '8px'
                             }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                <span style={{ fontSize: '13px', color: colors.textFaded }}>Fee Rate</span>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                                <ThunderboltOutlined style={{ fontSize: 14, color: colors.main }} />
+                                <span style={{ fontSize: '13px', color: colors.text }}>Fee Rate</span>
+                                <span style={{ fontSize: '11px', color: colors.textFaded }}>({feeRate} sat/vB)</span>
                             </div>
-                            <div style={{ textAlign: 'right' }}>
-                                <span
+                            <FeeRateBar onChange={handleFeeRateChange} initialFeeRate={rawTxInfo.feeRate} />
+                            {feeRateCheck.mismatch && feeRateCheck.effectiveRate !== null && (
+                                <div
                                     style={{
-                                        fontSize: '14px',
-                                        fontWeight: 600,
-                                        color: colors.text
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '6px',
+                                        marginTop: '8px',
+                                        padding: '6px 8px',
+                                        background: `${colors.warning}20`,
+                                        border: `1px solid ${colors.warning}50`,
+                                        borderRadius: '6px'
                                     }}>
-                                    {rawTxInfo.feeRate}
-                                </span>
-                                <span
-                                    style={{
-                                        fontSize: '11px',
-                                        color: colors.textFaded,
-                                        marginLeft: '4px'
-                                    }}>
-                                    sat/vB
-                                </span>
-                            </div>
+                                    <WarningOutlined style={{ fontSize: 12, color: colors.warning }} />
+                                    <span style={{ fontSize: '11px', color: colors.warning }}>
+                                        Incorrect fee rate calculated (effective: {feeRateCheck.effectiveRate} sat/vB)
+                                    </span>
+                                </div>
+                            )}
                         </div>
 
-                        {/* Total Transaction Cost */}
+                        {/* Total Transaction Cost - Only shown when actual data is available */}
+                        {outputAnalysis.totalCost !== null && (
                         <div
                             style={{
                                 marginTop: '12px',
@@ -2653,15 +2661,9 @@ export default function TxOpnetConfirmScreen() {
                                         gap: '6px'
                                     }}>
                                     Total Transaction Cost
-                                    {outputAnalysis.isActual ? (
-                                        <span style={{ fontSize: '9px', color: colors.success, fontWeight: 600 }}>
-                                            ACTUAL
-                                        </span>
-                                    ) : (
-                                        <span style={{ fontSize: '9px', color: colors.warning, fontWeight: 600 }}>
-                                            ~EST
-                                        </span>
-                                    )}
+                                    <span style={{ fontSize: '9px', color: colors.success, fontWeight: 600 }}>
+                                        ACTUAL
+                                    </span>
                                 </div>
                                 <div style={{ fontSize: '20px', fontWeight: 700, color: colors.main }}>
                                     {(outputAnalysis.totalCost / 1e8).toFixed(8).replace(/\.?0+$/, '')} {btcUnit}
@@ -2779,6 +2781,7 @@ export default function TxOpnetConfirmScreen() {
                                 </div>
                             )}
                         </div>
+                        )}
                     </div>
 
                     {/* Features */}
