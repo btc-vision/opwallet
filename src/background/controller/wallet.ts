@@ -1428,66 +1428,9 @@ export class WalletController {
         const wallet = await this.getWalletSigner();
 
         try {
-            const utxos = params.utxos.map((u) => {
-                let nonWitnessUtxo: Uint8Array | undefined;
+            const utxos = params.utxos.map(this.processUTXOFields);
+            const optionalInputs = params.optionalInputs?.map(this.processUTXOFields) || [];
 
-                if (u.nonWitnessUtxo instanceof Uint8Array) {
-                    nonWitnessUtxo = u.nonWitnessUtxo;
-                } else if (typeof u.nonWitnessUtxo === 'string') {
-                    try {
-                        nonWitnessUtxo = fromBase64(u.nonWitnessUtxo);
-                    } catch {
-                        nonWitnessUtxo = undefined;
-                    }
-                } else if (u.nonWitnessUtxo && typeof u.nonWitnessUtxo === 'object') {
-                    try {
-                        const raw = u.nonWitnessUtxo as Record<string, number>;
-                        const len = Math.max(...Object.keys(raw).map((k) => +k)) + 1;
-                        const buf = new Uint8Array(len);
-                        for (const [k, v] of Object.entries(raw)) buf[+k] = v;
-                        nonWitnessUtxo = buf;
-                    } catch {
-                        nonWitnessUtxo = undefined;
-                    }
-                }
-
-                return {
-                    ...u,
-                    value: typeof u.value === 'bigint' ? u.value : BigInt(u.value as unknown as string),
-                    nonWitnessUtxo
-                };
-            });
-
-            const optionalInputs =
-                params.optionalInputs?.map((u) => {
-                    let nonWitnessUtxo: Uint8Array | undefined;
-
-                    if (u.nonWitnessUtxo instanceof Uint8Array) {
-                        nonWitnessUtxo = u.nonWitnessUtxo;
-                    } else if (typeof u.nonWitnessUtxo === 'string') {
-                        try {
-                            nonWitnessUtxo = fromBase64(u.nonWitnessUtxo);
-                        } catch {
-                            nonWitnessUtxo = undefined;
-                        }
-                    } else if (u.nonWitnessUtxo && typeof u.nonWitnessUtxo === 'object') {
-                        try {
-                            const raw = u.nonWitnessUtxo as Record<string, number>;
-                            const len = Math.max(...Object.keys(raw).map((k) => +k)) + 1;
-                            const buf = new Uint8Array(len);
-                            for (const [k, v] of Object.entries(raw)) buf[+k] = v;
-                            nonWitnessUtxo = buf;
-                        } catch {
-                            nonWitnessUtxo = undefined;
-                        }
-                    }
-
-                    return {
-                        ...u,
-                        value: typeof u.value === 'bigint' ? u.value : BigInt(u.value as unknown as string),
-                        nonWitnessUtxo
-                    };
-                }) || [];
             const cancelParameters: ICancelTransactionParameters = {
                 ...params,
                 utxos,
@@ -1496,7 +1439,7 @@ export class WalletController {
                 network: Web3API.network,
                 feeRate: Number(params.feeRate.toString()),
                 compiledTargetScript: params.compiledTargetScript,
-                optionalOutputs: params.optionalOutputs || [],
+                optionalOutputs: (params.optionalOutputs || []).map(this.processOutputFields),
                 optionalInputs: optionalInputs,
                 note: params.note,
                 linkMLDSAPublicKeyToAddress: true
@@ -1516,66 +1459,8 @@ export class WalletController {
         const wallet = await this.getWalletSigner();
 
         try {
-            const utxos = params.utxos.map((u) => {
-                let nonWitnessUtxo: Uint8Array | undefined;
-
-                if (u.nonWitnessUtxo instanceof Uint8Array) {
-                    nonWitnessUtxo = u.nonWitnessUtxo;
-                } else if (typeof u.nonWitnessUtxo === 'string') {
-                    try {
-                        nonWitnessUtxo = fromBase64(u.nonWitnessUtxo);
-                    } catch {
-                        nonWitnessUtxo = undefined;
-                    }
-                } else if (u.nonWitnessUtxo && typeof u.nonWitnessUtxo === 'object') {
-                    try {
-                        const raw = u.nonWitnessUtxo as Record<string, number>;
-                        const len = Math.max(...Object.keys(raw).map((k) => +k)) + 1;
-                        const buf = new Uint8Array(len);
-                        for (const [k, v] of Object.entries(raw)) buf[+k] = v;
-                        nonWitnessUtxo = buf;
-                    } catch {
-                        nonWitnessUtxo = undefined;
-                    }
-                }
-
-                return {
-                    ...u,
-                    value: typeof u.value === 'bigint' ? u.value : BigInt(u.value as unknown as string),
-                    nonWitnessUtxo
-                };
-            });
-
-            const optionalInputs =
-                params.optionalInputs?.map((u) => {
-                    let nonWitnessUtxo: Uint8Array | undefined;
-
-                    if (u.nonWitnessUtxo instanceof Uint8Array) {
-                        nonWitnessUtxo = u.nonWitnessUtxo;
-                    } else if (typeof u.nonWitnessUtxo === 'string') {
-                        try {
-                            nonWitnessUtxo = fromBase64(u.nonWitnessUtxo);
-                        } catch {
-                            nonWitnessUtxo = undefined;
-                        }
-                    } else if (u.nonWitnessUtxo && typeof u.nonWitnessUtxo === 'object') {
-                        try {
-                            const raw = u.nonWitnessUtxo as Record<string, number>;
-                            const len = Math.max(...Object.keys(raw).map((k) => +k)) + 1;
-                            const buf = new Uint8Array(len);
-                            for (const [k, v] of Object.entries(raw)) buf[+k] = v;
-                            nonWitnessUtxo = buf;
-                        } catch {
-                            nonWitnessUtxo = undefined;
-                        }
-                    }
-
-                    return {
-                        ...u,
-                        value: typeof u.value === 'bigint' ? u.value : BigInt(u.value as unknown as string),
-                        nonWitnessUtxo
-                    };
-                }) || [];
+            const utxos = params.utxos.map(this.processUTXOFields);
+            const optionalInputs = params.optionalInputs?.map(this.processUTXOFields) || [];
 
             const challenge = await Web3API.provider.getChallenge();
             const deployContractParameters: IDeploymentParameters = {
@@ -1600,7 +1485,7 @@ export class WalletController {
                         ? fromHex(params.calldata)
                         : new Uint8Array(params.calldata)
                     : undefined,
-                optionalOutputs: params.optionalOutputs || [],
+                optionalOutputs: (params.optionalOutputs || []).map(this.processOutputFields),
                 optionalInputs: optionalInputs,
                 note: params.note,
                 linkMLDSAPublicKeyToAddress: true
