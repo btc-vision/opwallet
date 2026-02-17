@@ -213,7 +213,12 @@ class Web3API {
     }
 
     public setProviderFromUrl(url: string): void {
-        this._provider = new JSONRpcProvider(url, this.network, 6000);
+        this._provider = new JSONRpcProvider({
+            url: url,
+            network: this.network,
+            timeout: 6000
+        });
+
         this._limitedProvider = new OPNetLimitedProvider(url);
     }
 

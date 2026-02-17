@@ -20,69 +20,68 @@ type BitcoinFees = {
     };
 };
 
-export function FeeRateBar({ readonly, onChange, initialFeeRate }: { readonly?: boolean; onChange?: (val: number) => void; initialFeeRate?: number }) {
+function resolveInitialIndex(
+    options: { title: string; desc?: string; feeRate: number }[],
+    initialFeeRate: number | undefined
+): number {
+    if (initialFeeRate == null) return FeeRateType.AVG;
+    for (let i = 0; i < options.length - 1; i++) {
+        if (options[i].feeRate === initialFeeRate) return i;
+    }
+    return FeeRateType.CUSTOM;
+}
+
+export function FeeRateBar({
+    readonly,
+    onChange,
+    initialFeeRate
+}: {
+    readonly?: boolean;
+    onChange?: (val: number) => void;
+    initialFeeRate?: number;
+}) {
     const [feeOptions, setFeeOptions] = useState<{ title: string; desc?: string; feeRate: number }[]>([]);
-    const [initialized, setInitialized] = useState(false);
+
+    const [feeOptionIndex, setFeeOptionIndex] = useState(initialFeeRate != null ? FeeRateType.CUSTOM : FeeRateType.AVG);
+    const [feeRateInputVal, setFeeRateInputVal] = useState(initialFeeRate != null ? String(initialFeeRate) : '');
 
     const getData = useCallback(async () => {
+        const fallbackOptions = [
+            { title: 'Slow', desc: 'Slow', feeRate: 2 },
+            { title: 'Medium', desc: 'Medium', feeRate: 5 },
+            { title: 'Fast', desc: 'Fast', feeRate: 10 },
+            { title: 'Custom', feeRate: 0 }
+        ];
+
         const gasParameters = await Web3API.provider.gasParameters();
         if (!gasParameters) {
-            setFeeOptions([
-                { title: 'Slow', desc: 'Slow', feeRate: 2 },
-                { title: 'Medium', desc: 'Medium', feeRate: 5 },
-                { title: 'Fast', desc: 'Fast', feeRate: 10 },
-                { title: 'Custom', feeRate: 0 }
-            ]);
+            setFeeOptions(fallbackOptions);
+            setFeeOptionIndex(resolveInitialIndex(fallbackOptions, initialFeeRate));
             return;
         }
 
         const bitcoin = gasParameters.bitcoin as BitcoinFees;
         if (!bitcoin || !bitcoin.recommended) {
-            setFeeOptions([
-                { title: 'Slow', desc: 'Slow', feeRate: 2 },
-                { title: 'Medium', desc: 'Medium', feeRate: 5 },
-                { title: 'Fast', desc: 'Fast', feeRate: 10 },
-                { title: 'Custom', feeRate: 0 }
-            ]);
+            setFeeOptions(fallbackOptions);
+            setFeeOptionIndex(resolveInitialIndex(fallbackOptions, initialFeeRate));
             return;
         }
 
-        setFeeOptions([
+        const resolved = [
             { title: 'Slow', desc: 'Slow', feeRate: bitcoin.recommended.low },
             { title: 'Medium', desc: 'Medium', feeRate: bitcoin.recommended.medium },
             { title: 'Fast', desc: 'Fast', feeRate: bitcoin.recommended.high },
             { title: 'Custom', feeRate: 0 }
-        ]);
-    }, []);
+        ];
+
+        setFeeOptions(resolved);
+        setFeeOptionIndex(resolveInitialIndex(resolved, initialFeeRate));
+    }, [initialFeeRate]);
 
     useEffect(() => {
-        // eslint-disable-next-line react-hooks/set-state-in-effect -- Intentional async data loading on mount
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- setState occurs after await inside getData, not synchronously in the effect body
         void getData();
     }, [getData]);
-
-    // When initialFeeRate is provided, default to CUSTOM with that value.
-    // Otherwise default to AVG (existing behavior for other callers).
-    const [feeOptionIndex, setFeeOptionIndex] = useState(
-        initialFeeRate != null ? FeeRateType.CUSTOM : FeeRateType.AVG
-    );
-    const [feeRateInputVal, setFeeRateInputVal] = useState(
-        initialFeeRate != null ? String(initialFeeRate) : ''
-    );
-
-    // After fee options load, check if initialFeeRate matches a preset (Slow/Medium/Fast).
-    // If so, select that preset instead of staying on Custom.
-    useEffect(() => {
-        if (initialized || feeOptions.length === 0 || initialFeeRate == null) return;
-        setInitialized(true);
-
-        for (let i = 0; i < feeOptions.length - 1; i++) {
-            if (feeOptions[i].feeRate === initialFeeRate) {
-                setFeeOptionIndex(i);
-                return;
-            }
-        }
-        // No match — stay on CUSTOM with the value pre-filled
-    }, [feeOptions, initialFeeRate, initialized]);
 
     useEffect(() => {
         const defaultOption = feeOptions[1];
