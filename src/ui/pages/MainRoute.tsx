@@ -16,6 +16,7 @@ import ImportTokenScreen from '@/ui/pages/Wallet/ImportOP20Screen';
 import ImportSelectionScreen from '@/ui/pages/Wallet/ImportSelectionScreen';
 import NFTSendScreen from '@/ui/pages/Wallet/NFTSendScreen';
 import { Content, OPNetLoader } from '../components';
+import DisplaySetupPopup from '@/ui/components/DisplaySetupPopup';
 import { accountActions } from '../state/accounts/reducer';
 import { useIsReady, useIsUnlocked } from '../state/global/hooks';
 import { globalActions } from '../state/global/reducer';
@@ -60,6 +61,7 @@ import QuantumMigrationScreen from './Settings/QuantumMigrationScreen';
 import RotationHistoryScreen from './Settings/RotationHistoryScreen';
 import UpgradeNoticeScreen from './Settings/UpgradeNoticeScreen';
 import UserExperienceModeScreen from './Settings/UserExperienceModeScreen';
+import DisplaySettingsScreen from './Settings/DisplaySettingsScreen';
 import ReceiveScreen from './Wallet/ReceiveScreen';
 import ReceiveSelectScreen from './Wallet/ReceiveSelectScreen';
 import TxConfirmScreen from './Wallet/TxConfirmScreen';
@@ -288,6 +290,10 @@ export const routes: Routes = {
     [RouteTypes.UserExperienceModeScreen]: {
         path: routePaths[RouteTypes.UserExperienceModeScreen],
         element: <UserExperienceModeScreen />
+    },
+    [RouteTypes.DisplaySettingsScreen]: {
+        path: routePaths[RouteTypes.DisplaySettingsScreen],
+        element: <DisplaySettingsScreen />
     }
 };
 
@@ -401,6 +407,7 @@ const Main = () => {
 
     return (
         <HashRouter>
+            <DisplaySetupPopup />
             <Routes>{renderedRoutes}</Routes>
         </HashRouter>
     );

@@ -18,6 +18,7 @@ import {
     ExpandOutlined,
     GithubOutlined,
     GlobalOutlined,
+    FontSizeOutlined,
     KeyOutlined,
     LinkOutlined,
     LockOutlined,
@@ -103,6 +104,15 @@ const SettingList: Setting[] = [
         icon: <SettingOutlined />,
         action: 'advanced',
         route: '/settings/advanced',
+        right: true
+    },
+    {
+        label: 'Display',
+        value: '',
+        desc: 'Number formatting & display',
+        icon: <FontSizeOutlined />,
+        action: 'display',
+        route: '/settings/display',
         right: true
     },
     {

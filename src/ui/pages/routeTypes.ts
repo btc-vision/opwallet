@@ -54,7 +54,8 @@ export enum RouteTypes {
     RotationHistoryScreen = 'RotationHistoryScreen',
     ConsolidationScreen = 'ConsolidationScreen',
     ColdStorageWithdrawScreen = 'ColdStorageWithdrawScreen',
-    UserExperienceModeScreen = 'UserExperienceModeScreen'
+    UserExperienceModeScreen = 'UserExperienceModeScreen',
+    DisplaySettingsScreen = 'DisplaySettingsScreen'
 }
 
 export const routePaths: Record<RouteTypes, string> = {
@@ -110,7 +111,8 @@ export const routePaths: Record<RouteTypes, string> = {
     [RouteTypes.RotationHistoryScreen]: '/settings/rotation-history',
     [RouteTypes.ConsolidationScreen]: '/settings/consolidation',
     [RouteTypes.ColdStorageWithdrawScreen]: '/settings/cold-storage-withdraw',
-    [RouteTypes.UserExperienceModeScreen]: '/settings/experience-mode'
+    [RouteTypes.UserExperienceModeScreen]: '/settings/experience-mode',
+    [RouteTypes.DisplaySettingsScreen]: '/settings/display'
 };
 
 export type UseNavigate<T extends RouteTypes> = (routKey: T, state?: unknown) => void;
