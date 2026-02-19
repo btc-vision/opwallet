@@ -1,6 +1,7 @@
 import BigNumber from 'bignumber.js';
+import { describe, expect, it } from 'vitest';
 
-import { formatBalance, formatBalanceWithSettings } from './BigintToString';
+import { formatBalance, formatBalanceWithSettings } from '@/ui/pages/OpNet/BigintToString';
 import { DisplaySettings } from '@/ui/utils/formatAmount';
 
 describe('formatBalance (original behavior)', () => {

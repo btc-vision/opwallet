@@ -1,4 +1,6 @@
-import { formatAmount, DisplaySettings, DEFAULT_DISPLAY_SETTINGS } from './formatAmount';
+import { describe, expect, it } from 'vitest';
+
+import { formatAmount, DisplaySettings, DEFAULT_DISPLAY_SETTINGS } from '@/ui/utils/formatAmount';
 
 describe('formatAmount', () => {
     // =============================================
