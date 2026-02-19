@@ -1,15 +1,15 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 import {
-    useCompleteDisplaySetup,
     useDisplaySettings,
-    useHasCompletedDisplaySetup,
     useUpdateDisplaySettings
 } from '@/ui/state/settings/hooks';
 import { useIsUnlocked } from '@/ui/state/global/hooks';
 import { DisplaySettings } from '@/ui/state/settings/reducer';
 import { formatAmount } from '@/ui/utils/formatAmount';
 import { getUiType } from '@/ui/utils/uiType';
+
+const DISPLAY_SETUP_KEY = 'opwallet_display_setup_done';
 
 const colors = {
     main: '#f37413',
@@ -37,10 +37,18 @@ const PREVIEW_VALUES = [
 ];
 
 export default function DisplaySetupPopup() {
-    const hasCompleted = useHasCompletedDisplaySetup();
-    const completeSetup = useCompleteDisplaySetup();
     const currentSettings = useDisplaySettings();
     const updateSettings = useUpdateDisplaySettings();
+    const isUnlocked = useIsUnlocked();
+
+    // Check localStorage directly for completion flag
+    const [hasCompleted, setHasCompleted] = useState(() => {
+        try {
+            return localStorage.getItem(DISPLAY_SETUP_KEY) === 'true';
+        } catch {
+            return false;
+        }
+    });
 
     const [settings, setSettings] = useState<DisplaySettings>({
         decimalPrecision: 2,
@@ -48,7 +56,14 @@ export default function DisplaySetupPopup() {
         useCommas: true
     });
 
-    const isUnlocked = useIsUnlocked();
+    const completeSetup = () => {
+        try {
+            localStorage.setItem(DISPLAY_SETUP_KEY, 'true');
+        } catch {
+            // ignore
+        }
+        setHasCompleted(true);
+    };
 
     // Don't show on website popups (notification windows) -- only main popup or tab
     const uiType = getUiType();
