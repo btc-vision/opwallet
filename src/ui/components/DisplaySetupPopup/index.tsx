@@ -6,8 +6,10 @@ import {
     useHasCompletedDisplaySetup,
     useUpdateDisplaySettings
 } from '@/ui/state/settings/hooks';
+import { useIsUnlocked } from '@/ui/state/global/hooks';
 import { DisplaySettings } from '@/ui/state/settings/reducer';
 import { formatAmount } from '@/ui/utils/formatAmount';
+import { getUiType } from '@/ui/utils/uiType';
 
 const colors = {
     main: '#f37413',
@@ -45,6 +47,15 @@ export default function DisplaySetupPopup() {
         useKMBNotation: true,
         useCommas: true
     });
+
+    const isUnlocked = useIsUnlocked();
+
+    // Don't show on website popups (notification windows) -- only main popup or tab
+    const uiType = getUiType();
+    if (uiType.isNotification) return null;
+
+    // Don't show if user isn't logged in yet
+    if (!isUnlocked) return null;
 
     if (hasCompleted) return null;
 

@@ -62,9 +62,12 @@ export function formatBalanceWithSettings(balance: BigNumber, settings?: Display
 
     const num = balance.toNumber();
 
-    // Small/dust amounts: always preserve significant digits
+    // Small/dust amounts: always preserve significant digits (never scientific notation)
     if (Math.abs(num) > 0 && Math.abs(num) < 0.001) {
-        return balance.toPrecision(2);
+        const absNum = Math.abs(num);
+        const leadingZeros = Math.floor(-Math.log10(absNum));
+        const decPlaces = leadingZeros + 2;
+        return balance.toFixed(Math.min(decPlaces, 20)).replace(/0+$/, '').replace(/\.$/, '');
     }
 
     // K/M/B notation

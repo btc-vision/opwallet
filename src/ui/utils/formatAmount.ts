@@ -1,7 +1,13 @@
 /**
  * Display formatting utility for token amounts.
  * DISPLAY ONLY -- never use on input fields or internal state.
+ * Uses BigNumber.js for precision (no floating point errors).
  */
+
+import BigNumber from 'bignumber.js';
+
+// Never use scientific notation in BigNumber output
+BigNumber.config({ EXPONENTIAL_AT: [-20, 20] });
 
 export interface DisplaySettings {
     /** Decimal precision: -1 = full/current behavior, 0/2/4/8 = fixed decimals */
@@ -20,14 +26,14 @@ export const DEFAULT_DISPLAY_SETTINGS: DisplaySettings = {
 
 /**
  * Format a token amount for display based on user settings.
- * 
+ *
  * Rules:
  * - If all defaults, returns the original string representation (no change)
  * - Small/dust amounts (< 0.001) ALWAYS preserve significant digits
  * - K/M/B: 1234567 -> "1.23M"
  * - Commas: 7754.01 -> "7,754.01"
- * - Decimal precision: rounds display to N decimal places
- * 
+ * - Decimal precision: truncates display to N decimal places (ROUND_DOWN)
+ *
  * @param amount - The raw amount (string or number)
  * @param settings - User display settings
  * @returns Formatted string for display
@@ -35,48 +41,51 @@ export const DEFAULT_DISPLAY_SETTINGS: DisplaySettings = {
 export function formatAmount(amount: string | number | bigint, settings?: DisplaySettings): string {
     const cfg = settings || DEFAULT_DISPLAY_SETTINGS;
 
-    // If all defaults, return as-is (current behavior)
-    if (cfg.decimalPrecision === -1 && !cfg.useKMBNotation && !cfg.useCommas) {
-        return typeof amount === 'bigint' ? amount.toString() : String(amount);
-    }
-
-    let num: number;
+    // Parse into BigNumber
+    let bn: BigNumber;
     if (typeof amount === 'bigint') {
-        num = Number(amount);
+        bn = new BigNumber(amount.toString());
     } else if (typeof amount === 'string') {
-        // Remove existing commas before parsing
-        num = parseFloat(amount.replace(/,/g, ''));
+        bn = new BigNumber(amount.replace(/,/g, ''));
     } else {
-        num = amount;
+        bn = new BigNumber(amount);
     }
 
-    if (isNaN(num)) return String(amount);
-    if (num === 0) return '0';
+    if (bn.isNaN()) return String(amount);
+
+    // If all defaults, return as-is (BigNumber.toString() never uses scientific notation with our config)
+    if (cfg.decimalPrecision === -1 && !cfg.useKMBNotation && !cfg.useCommas) {
+        return bn.toString();
+    }
+
+    if (bn.isZero()) return '0';
 
     // Small/dust amounts: ALWAYS preserve significant digits regardless of settings
-    if (Math.abs(num) > 0 && Math.abs(num) < 0.001) {
-        return num.toPrecision(2);
+    const abs = bn.abs();
+    if (abs.isGreaterThan(0) && abs.isLessThan(0.001)) {
+        // toPrecision(2) then trim trailing zeros (e.g. "0.000000060" -> "0.00000006")
+        return bn.toPrecision(2).replace(/0+$/, '').replace(/\.$/, '');
     }
 
     // K/M/B notation (if enabled)
     if (cfg.useKMBNotation) {
-        if (Math.abs(num) >= 1_000_000_000) {
-            return addCommasIfEnabled(formatFixed(num / 1e9, 2), cfg.useCommas) + 'B';
+        if (abs.isGreaterThanOrEqualTo(1_000_000_000)) {
+            return addCommasIfEnabled(bn.dividedBy(1e9).toFixed(2, BigNumber.ROUND_DOWN), cfg.useCommas) + 'B';
         }
-        if (Math.abs(num) >= 1_000_000) {
-            return addCommasIfEnabled(formatFixed(num / 1e6, 2), cfg.useCommas) + 'M';
+        if (abs.isGreaterThanOrEqualTo(1_000_000)) {
+            return addCommasIfEnabled(bn.dividedBy(1e6).toFixed(2, BigNumber.ROUND_DOWN), cfg.useCommas) + 'M';
         }
-        if (Math.abs(num) >= 10_000) {
-            return addCommasIfEnabled(formatFixed(num / 1e3, 2), cfg.useCommas) + 'K';
+        if (abs.isGreaterThanOrEqualTo(10_000)) {
+            return addCommasIfEnabled(bn.dividedBy(1e3).toFixed(2, BigNumber.ROUND_DOWN), cfg.useCommas) + 'K';
         }
     }
 
     // Apply decimal precision
     let formatted: string;
     if (cfg.decimalPrecision >= 0) {
-        formatted = formatFixed(num, cfg.decimalPrecision);
+        formatted = bn.toFixed(cfg.decimalPrecision, BigNumber.ROUND_DOWN);
     } else {
-        formatted = String(num);
+        formatted = bn.toString();
     }
 
     // Apply comma separators
@@ -85,17 +94,6 @@ export function formatAmount(amount: string | number | bigint, settings?: Displa
     }
 
     return formatted;
-}
-
-/**
- * Format number to fixed decimal places, trimming trailing zeros.
- */
-function formatFixed(num: number, decimals: number): string {
-    if (decimals === 0) return Math.round(num).toString();
-
-    const fixed = num.toFixed(decimals);
-    // Don't trim trailing zeros for user-specified precision
-    return fixed;
 }
 
 /**

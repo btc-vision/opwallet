@@ -201,7 +201,8 @@ describe('formatAmount', () => {
         });
 
         it('dust with defaults stays as-is', () => {
-            expect(formatAmount(0.00000006)).toBe('6e-8');
+            // Defaults = no formatting, but dust should never produce scientific notation
+            expect(formatAmount(0.00000006)).toBe('0.00000006');
         });
 
         it('threshold: 0.001 is NOT dust', () => {
