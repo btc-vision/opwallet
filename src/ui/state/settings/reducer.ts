@@ -5,6 +5,15 @@ import { createSlice } from '@reduxjs/toolkit';
 
 import { updateVersion } from '../global/actions';
 
+export interface DisplaySettings {
+    /** Decimal precision: -1 = full/current behavior, 0/2/4/8 = fixed decimals */
+    decimalPrecision: number;
+    /** Use K/M/B notation for large numbers */
+    useKMBNotation: boolean;
+    /** Use comma separators for thousands */
+    useCommas: boolean;
+}
+
 export interface SettingsState {
     locale: string;
     addressType: AddressTypes;
@@ -13,6 +22,8 @@ export interface SettingsState {
     walletConfig: WalletConfig;
     skippedVersion: string;
     autoLockTimeId: number;
+    displaySettings: DisplaySettings;
+    hasCompletedDisplaySetup: boolean;
 }
 
 export const initialState: SettingsState = {
@@ -28,7 +39,13 @@ export const initialState: SettingsState = {
         chainTip: ''
     },
     skippedVersion: '',
-    autoLockTimeId: DEFAULT_LOCKTIME_ID
+    autoLockTimeId: DEFAULT_LOCKTIME_ID,
+    displaySettings: {
+        decimalPrecision: -1,
+        useKMBNotation: false,
+        useCommas: false
+    },
+    hasCompletedDisplaySetup: false
 };
 
 const slice = createSlice({
@@ -49,6 +66,8 @@ const slice = createSlice({
                     skippedVersion?: string;
                     chainType?: ChainType;
                     autoLockTimeId?: number;
+                    displaySettings?: DisplaySettings;
+                    hasCompletedDisplaySetup?: boolean;
                 };
             }
         ) {

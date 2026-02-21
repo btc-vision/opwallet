@@ -6,7 +6,8 @@ import BigNumber from 'bignumber.js';
 import { faTrashCan } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { Image } from '../Image';
-import { formatBalance } from '@/ui/pages/OpNet/BigintToString';
+import { formatBalanceWithSettings } from '@/ui/pages/OpNet/BigintToString';
+import { useDisplaySettings } from '@/ui/state/settings/hooks';
 
 export interface OpNetBalanceCardProps {
     tokenInfo: OPTokenInfo;
@@ -16,9 +17,10 @@ export interface OpNetBalanceCardProps {
 
 export default function OpNetBalanceCard(props: OpNetBalanceCardProps) {
     const { tokenInfo, handleRemoveToken, onClick } = props;
+    const displaySettings = useDisplaySettings();
     const balance = new BigNumber(bigIntToDecimal(tokenInfo.amount, tokenInfo.divisibility));
 
-    const finalBal = formatBalance(balance, 3);
+    const finalBal = formatBalanceWithSettings(balance, displaySettings, 3);
 
     return (
         <div

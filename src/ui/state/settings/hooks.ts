@@ -7,7 +7,8 @@ import { useWallet } from '@/ui/utils';
 
 import { AppState } from '..';
 import { useAppDispatch, useAppSelector } from '../hooks';
-import { settingsActions } from './reducer';
+import { DisplaySettings, settingsActions } from './reducer';
+import { DisplaySettings as FormatDisplaySettings, formatAmount as formatAmountUtil } from '@/ui/utils/formatAmount';
 
 export function useSettingsState(): AppState['settings'] {
     return useAppSelector((state) => state.settings);
@@ -155,4 +156,50 @@ export function useSkipVersionCallback() {
 export function useAutoLockTimeId() {
     const state = useSettingsState();
     return state.autoLockTimeId;
+}
+
+export function useHasCompletedDisplaySetup(): boolean {
+    const state = useSettingsState();
+    return state.hasCompletedDisplaySetup ?? false;
+}
+
+export function useCompleteDisplaySetup() {
+    const dispatch = useAppDispatch();
+    return useCallback(() => {
+        dispatch(settingsActions.updateSettings({ hasCompletedDisplaySetup: true }));
+    }, [dispatch]);
+}
+
+export function useDisplaySettings(): DisplaySettings {
+    const state = useSettingsState();
+    return state.displaySettings || {
+        decimalPrecision: -1,
+        useKMBNotation: false,
+        useCommas: false
+    };
+}
+
+export function useUpdateDisplaySettings() {
+    const dispatch = useAppDispatch();
+    return useCallback(
+        (displaySettings: DisplaySettings) => {
+            dispatch(settingsActions.updateSettings({ displaySettings }));
+        },
+        [dispatch]
+    );
+}
+
+/**
+ * Hook that returns a formatter function bound to the current display settings.
+ * Use this in components to format amounts for display.
+ * DISPLAY ONLY -- never use on input values.
+ */
+export function useFormatAmount() {
+    const displaySettings = useDisplaySettings();
+    return useCallback(
+        (amount: string | number | bigint): string => {
+            return formatAmountUtil(amount, displaySettings as FormatDisplaySettings);
+        },
+        [displaySettings]
+    );
 }
