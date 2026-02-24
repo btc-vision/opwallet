@@ -118,6 +118,7 @@ export interface SendBitcoinParameters extends BaseRawTxInfo<Action.SendBitcoin>
     readonly sourceType?: SourceType;
     readonly optimize: boolean;
     readonly splitInputsInto?: number; // Number of UTXOs to split into (opposite of consolidation)
+    readonly autoAdjustAmount?: boolean; // Number of UTXOs to split into (opposite of consolidation)
     readonly changeAddress?: string; // Custom change address (used for cold storage withdrawal)
     // Consolidation-specific fields
     readonly sourceAddresses?: string[]; // Multiple source addresses for consolidation

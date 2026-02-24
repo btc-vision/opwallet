@@ -474,7 +474,8 @@ export default function TxCreateScreen() {
             from: selectedBalance.address,
             sourceType: selectedBalance.type,
             optimize: !checked,
-            splitInputsInto: splitInputsInto
+            splitInputsInto: splitInputsInto,
+            autoAdjustAmount: true
         };
 
         navigate(RouteTypes.TxOpnetConfirmScreen, { rawTxInfo: event });
