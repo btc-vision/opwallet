@@ -384,8 +384,8 @@ export class WalletController {
             // Start cache cleanup timer
             this._startCacheCleanup();
 
-            // Start transaction status polling
-            transactionStatusPoller.start();
+            // Transaction status polling disabled — history feature not implemented yet
+            // transactionStatusPoller.start();
         } catch (err) {
             throw new WalletControllerError(`Unlock failed: ${String(err)}`, {
                 passwordProvided: !!password
@@ -418,8 +418,8 @@ export class WalletController {
             this._clearBalanceCache();
             this.invalidateKeyringCache();
 
-            // Stop transaction status polling
-            transactionStatusPoller.stop();
+            // Transaction status polling disabled — history feature not implemented yet
+            // transactionStatusPoller.stop();
         } catch (err) {
             throw new WalletControllerError(`Lock wallet failed: ${String(err)}`);
         }
@@ -1388,6 +1388,7 @@ export class WalletController {
             if (interTx.error) throw new WalletControllerError(interTx.error);
 
             Web3API.provider.utxoManager.spentUTXO(account.address, utxos, response.nextUTXOs);
+            this.invalidateBalanceAndUtxoCache(account.address);
 
             // Record transaction in history
             const calldata = interactionParameters.calldata
@@ -1784,6 +1785,9 @@ export class WalletController {
                 throw new WalletControllerError(`Broadcast failed: ${String(err)}`, transaction);
             }
         }
+
+        this.invalidateBalanceAndUtxoCache();
+
         return broadcastedTransactions;
     };
 
@@ -2095,6 +2099,9 @@ export class WalletController {
             if (result.error) {
                 throw new Error(result.error);
             }
+
+            this.invalidateBalanceAndUtxoCache();
+
             return result.result ?? '';
         } catch (err) {
             throw new WalletControllerError(`Failed to push transaction: ${String(err)}`, { rawtx });
@@ -4717,6 +4724,16 @@ export class WalletController {
 
         // No pubKey = simple balance only
         return `${chainType}:${address}:simple`;
+    };
+
+    /**
+     * Invalidate balance and UTXO caches after broadcasting a transaction.
+     * This forces a fresh fetch on the next balance/UTXO request.
+     * Can be called from UI via wallet proxy after dapp-initiated broadcasts.
+     */
+    public invalidateBalanceAndUtxoCache = (address?: string): void => {
+        this.balanceCache.clear();
+        Web3API.provider.utxoManager.clean(address);
     };
 
     /**

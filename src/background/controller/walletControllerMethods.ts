@@ -121,6 +121,7 @@ export const WALLET_CONTROLLER_METHODS = [
     'hasVault',
     'importDuplicationBackup',
     'initAlianNames',
+    'invalidateBalanceAndUtxoCache',
     'isBooted',
     'isKeyringRotationMode',
     'isReady',

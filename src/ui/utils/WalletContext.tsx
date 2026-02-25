@@ -191,6 +191,8 @@ export interface WalletController {
 
     pushTx(rawtx: string): Promise<string>;
 
+    invalidateBalanceAndUtxoCache(address?: string): void;
+
     getAppSummary(): Promise<AppSummary>;
 
     getBTCUtxos(): Promise<UnspentOutput[]>;
