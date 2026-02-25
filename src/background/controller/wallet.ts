@@ -35,7 +35,6 @@ import {
     AddressFlagType,
     AUTO_LOCKTIMES,
     BRAND_ALIAN_TYPE_TEXT,
-    ChainId,
     CHAINS_ENUM,
     CHAINS_MAP,
     ChainType,
@@ -127,27 +126,24 @@ import { customNetworksManager } from '@/shared/utils/CustomNetworksManager';
 import {
     address as bitcoinAddress,
     alloc,
-    concat,
     fromHex,
+    fromUtf8,
     payments,
     Psbt,
     PsbtOutputExtended,
-    PsbtOutputExtendedScript,
     reverseCopy,
     toHex,
     toXOnly,
-    fromUtf8,
     Transaction
 } from '@btc-vision/bitcoin';
 import { fromBase64 } from '@/shared/crypto/encoding';
 import type { UniversalSigner } from '@btc-vision/ecpair';
 import { createPublicKey, createSatoshi } from '@btc-vision/ecpair';
+import { ContactBookItem, ContactBookStore } from '../service/contactBook';
+import { ConnectedSite } from '../service/permission';
 
 // PsbtOutputExtendedAddress is not re-exported from the main index
 type PsbtOutputExtendedAddress = Extract<PsbtOutputExtended, { address: string }>;
-
-import { ContactBookItem, ContactBookStore } from '../service/contactBook';
-import { ConnectedSite } from '../service/permission';
 
 export interface BalanceCacheEntry {
     balance: BitcoinBalance;
@@ -1477,9 +1473,7 @@ export class WalletController {
                         : BigInt((params.gasSatFee as unknown as string) || 0n),
                 priorityFee: BigInt((params.priorityFee as unknown as string) || 0n),
                 bytecode:
-                    typeof params.bytecode === 'string'
-                        ? fromHex(params.bytecode)
-                        : new Uint8Array(params.bytecode),
+                    typeof params.bytecode === 'string' ? fromHex(params.bytecode) : new Uint8Array(params.bytecode),
                 calldata: params.calldata
                     ? typeof params.calldata === 'string'
                         ? fromHex(params.calldata)
@@ -2151,7 +2145,11 @@ export class WalletController {
 
         for (let j = 0; j < displayedKeyring.accounts.length; j++) {
             const { pubkey, quantumPublicKey } = displayedKeyring.accounts[j];
-            const address = publicKeyToAddressWithNetworkType(pubkey, addressType, networkTypeToOPNet(networkType, this.getChainType()));
+            const address = publicKeyToAddressWithNetworkType(
+                pubkey,
+                addressType,
+                networkTypeToOPNet(networkType, this.getChainType())
+            );
             const accountKey = `${key}#${j}`;
             const defaultName = this.getAlianName(pubkey) ?? this._generateAlianName(type, j + 1);
             const alianName = await preferenceService.getAccountAlianName(accountKey, defaultName);
@@ -4162,6 +4160,16 @@ export class WalletController {
     };
 
     /**
+     * Invalidate balance and UTXO caches after broadcasting a transaction.
+     * This forces a fresh fetch on the next balance/UTXO request.
+     * Can be called from UI via wallet proxy after dapp-initiated broadcasts.
+     */
+    public invalidateBalanceAndUtxoCache = (address?: string): void => {
+        this.balanceCache.clear();
+        Web3API.provider.utxoManager.clean(address);
+    };
+
+    /**
      * Update a keyring's alias name in the cache without full invalidation.
      */
     private updateKeyringNameInCache = (keyringKey: string, newName: string): void => {
@@ -4202,13 +4210,7 @@ export class WalletController {
 
     private async getWalletSigner(): Promise<Wallet> {
         const data = await this.getOPNetWallet();
-        return Wallet.fromWif(
-            data[0],
-            data[1],
-            Web3API.network,
-            MLDSASecurityLevel.LEVEL2,
-            fromHex(data[2])
-        );
+        return Wallet.fromWif(data[0], data[1], Web3API.network, MLDSASecurityLevel.LEVEL2, fromHex(data[2]));
     }
 
     private getEmptyBalance(): BitcoinBalance {
@@ -4550,7 +4552,9 @@ export class WalletController {
         return 'hex';
     };
 
-    private convertToBuffer = (input: string | Uint8Array | Record<string, number> | undefined): Uint8Array | undefined => {
+    private convertToBuffer = (
+        input: string | Uint8Array | Record<string, number> | undefined
+    ): Uint8Array | undefined => {
         if (!input) return undefined;
 
         // Already a Uint8Array
@@ -4608,12 +4612,8 @@ export class WalletController {
         };
     };
 
-    private processOutputFields = (
-        output: PsbtOutputExtended
-    ): PsbtOutputExtended => {
-        const value = typeof output.value === 'bigint'
-            ? output.value
-            : createSatoshi(BigInt(output.value));
+    private processOutputFields = (output: PsbtOutputExtended): PsbtOutputExtended => {
+        const value = typeof output.value === 'bigint' ? output.value : createSatoshi(BigInt(output.value));
 
         if ('address' in output && output.address) {
             return { address: output.address, value } as PsbtOutputExtended;
@@ -4678,7 +4678,9 @@ export class WalletController {
             optionalOutputs,
             contract: interactionParameters.contract,
             note: interactionParameters.note,
-            linkMLDSAPublicKeyToAddress: true
+            linkMLDSAPublicKeyToAddress: true,
+            revealMLDSAPublicKey: interactionParameters.revealMLDSAPublicKey,
+            subtractExtraUTXOFromAmountRequired: interactionParameters.subtractExtraUTXOFromAmountRequired
         };
 
         const response = await Web3API.transactionFactory.signInteraction(submit);
@@ -4724,16 +4726,6 @@ export class WalletController {
 
         // No pubKey = simple balance only
         return `${chainType}:${address}:simple`;
-    };
-
-    /**
-     * Invalidate balance and UTXO caches after broadcasting a transaction.
-     * This forces a fresh fetch on the next balance/UTXO request.
-     * Can be called from UI via wallet proxy after dapp-initiated broadcasts.
-     */
-    public invalidateBalanceAndUtxoCache = (address?: string): void => {
-        this.balanceCache.clear();
-        Web3API.provider.utxoManager.clean(address);
     };
 
     /**
