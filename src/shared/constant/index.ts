@@ -242,7 +242,10 @@ export const DEFAULT_CHAINS_MAP: { [key in ChainType]?: TypeChain<key> } = {
         okxExplorerUrl: '',
         showPrice: false,
         defaultExplorer: 'mempool-space',
-        contractAddresses: {}
+        contractAddresses: {
+            moto: '0xfd4473840751d58d9f8b73bdd57d6c5260453d5518bd7cd02d0a4cf3df9bf4dd',
+            pill: '0xb09fc29c112af8293539477e23d8df1d3126639642767d707277131352040cbb'
+        }
     },
     [ChainType.BITCOIN_TESTNET4]: {
         enum: ChainType.BITCOIN_TESTNET4,
