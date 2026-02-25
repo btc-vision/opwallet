@@ -415,13 +415,7 @@ export default function TxOpnetConfirmScreen() {
     const getOPNetWallet = useCallback(async () => {
         const data = await wallet.getOPNetWallet();
 
-        return Wallet.fromWif(
-            data[0],
-            data[1],
-            Web3API.network,
-            MLDSASecurityLevel.LEVEL2,
-            fromHex(data[2])
-        );
+        return Wallet.fromWif(data[0], data[1], Web3API.network, MLDSASecurityLevel.LEVEL2, fromHex(data[2]));
     }, [wallet]);
 
     // Track current feeRate in a ref so the callback stays stable
@@ -1249,7 +1243,11 @@ export default function TxOpnetConfirmScreen() {
 
                         const addressRotation = createAddressRotation(signerPairs);
 
-                        console.log('[RotationAll] Building tx with totalInputValue:', totalInputValue.toString(), 'satoshis');
+                        console.log(
+                            '[RotationAll] Building tx with totalInputValue:',
+                            totalInputValue.toString(),
+                            'satoshis'
+                        );
                         console.log('[RotationAll] Destination (to):', parameters.to);
                         console.log('[RotationAll] Network:', Web3API.network);
                         console.log('[RotationAll] Signer pairs count:', signerPairs.length);
@@ -1352,7 +1350,8 @@ export default function TxOpnetConfirmScreen() {
                     to: parameters.to,
                     from: fromAddress,
                     note: parameters.note,
-                    splitInputsInto: parameters.splitInputsInto
+                    splitInputsInto: parameters.splitInputsInto,
+                    autoAdjustAmount: parameters.autoAdjustAmount ?? false
                 };
 
                 // Create and sign the transaction (without broadcasting)
@@ -1624,6 +1623,7 @@ export default function TxOpnetConfirmScreen() {
 
             // Update UTXO manager for the correct address
             Web3API.provider.utxoManager.spentUTXO(fromAddress, cachedBtcTx.utxos, cachedBtcTx.nextUtxos);
+            void wallet.invalidateBalanceAndUtxoCache(fromAddress);
 
             // Record transaction in history with actual fee from decoded data
             const actualFee = cachedBtcTx.decodedData?.totalMiningFee ?? 0n;
@@ -1745,6 +1745,7 @@ export default function TxOpnetConfirmScreen() {
             const secondTransaction = await Web3API.provider.sendRawTransaction(sendTransact.transaction[1], false);
             if (secondTransaction.result && !secondTransaction.error && secondTransaction.success) {
                 Web3API.provider.utxoManager.spentUTXO(currentWalletAddress.address, utxos, sendTransact.utxos);
+                void wallet.invalidateBalanceAndUtxoCache(currentWalletAddress.address);
 
                 await waitForTransaction(secondTransaction.result, setOpenLoading, tools);
 
@@ -2514,7 +2515,11 @@ export default function TxOpnetConfirmScreen() {
                                                 fontWeight: 600,
                                                 color: colors.success
                                             }}>
-                                            {(cachedSignedTx?.decodedData?.totalMiningFee ?? cachedBtcTx?.decodedData?.totalMiningFee ?? 0n).toString()}
+                                            {(
+                                                cachedSignedTx?.decodedData?.totalMiningFee ??
+                                                cachedBtcTx?.decodedData?.totalMiningFee ??
+                                                0n
+                                            ).toString()}
                                         </span>
                                         <span
                                             style={{
@@ -2633,154 +2638,162 @@ export default function TxOpnetConfirmScreen() {
 
                         {/* Total Transaction Cost - Only shown when actual data is available */}
                         {outputAnalysis.totalCost !== null && (
-                        <div
-                            style={{
-                                marginTop: '12px',
-                                padding: '12px',
-                                background: `linear-gradient(135deg, ${colors.main}15 0%, ${colors.main}08 100%)`,
-                                border: `1px solid ${colors.main}30`,
-                                borderRadius: '8px'
-                            }}>
                             <div
                                 style={{
-                                    textAlign: 'center',
-                                    marginBottom:
-                                        outputAnalysis.changeOutputs.length > 0 ||
-                                        outputAnalysis.externalOutputs.length > 0
-                                            ? '10px'
-                                            : '0'
+                                    marginTop: '12px',
+                                    padding: '12px',
+                                    background: `linear-gradient(135deg, ${colors.main}15 0%, ${colors.main}08 100%)`,
+                                    border: `1px solid ${colors.main}30`,
+                                    borderRadius: '8px'
                                 }}>
                                 <div
                                     style={{
-                                        fontSize: '11px',
-                                        color: colors.textFaded,
-                                        marginBottom: '4px',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        gap: '6px'
-                                    }}>
-                                    Total Transaction Cost
-                                    <span style={{ fontSize: '9px', color: colors.success, fontWeight: 600 }}>
-                                        ACTUAL
-                                    </span>
-                                </div>
-                                <div style={{ fontSize: '20px', fontWeight: 700, color: colors.main }}>
-                                    {(outputAnalysis.totalCost / 1e8).toFixed(8).replace(/\.?0+$/, '')} {btcUnit}
-                                    {btcPrice > 0 && (
-                                        <span
-                                            style={{
-                                                fontSize: '12px',
-                                                color: colors.textFaded,
-                                                marginLeft: '8px',
-                                                fontWeight: 500
-                                            }}>
-                                            ($
-                                            {((outputAnalysis.totalCost / 1e8) * btcPrice).toLocaleString(undefined, {
-                                                minimumFractionDigits: 2,
-                                                maximumFractionDigits: 2
-                                            })}{' '}
-                                            USD)
-                                        </span>
-                                    )}
-                                </div>
-                            </div>
-
-                            {/* Refund Info */}
-                            {outputAnalysis.changeOutputs.length > 0 && (
-                                <div
-                                    style={{
-                                        padding: '8px 10px',
-                                        background: `${colors.success}10`,
-                                        border: `1px solid ${colors.success}25`,
-                                        borderRadius: '8px',
-                                        marginBottom: outputAnalysis.externalOutputs.length > 0 ? '8px' : '0'
-                                    }}>
-                                    <div style={{ fontSize: '10px', color: colors.textFaded, marginBottom: '4px' }}>
-                                        Refund to your address{outputAnalysis.changeOutputs.length > 1 ? 'es' : ''}
-                                    </div>
-                                    {outputAnalysis.changeOutputs.map((output, idx) => (
-                                        <div
-                                            key={idx}
-                                            style={{
-                                                display: 'flex',
-                                                justifyContent: 'space-between',
-                                                alignItems: 'center',
-                                                marginTop: idx > 0 ? '4px' : '0'
-                                            }}>
-                                            <span
-                                                style={{
-                                                    fontSize: '11px',
-                                                    color: colors.success,
-                                                    fontFamily: 'monospace',
-                                                    fontWeight: 500
-                                                }}
-                                                title={output.address}>
-                                                {output.address.length > 16
-                                                    ? `${output.address.slice(0, 8)}...${output.address.slice(-8)}`
-                                                    : output.address}
-                                            </span>
-                                            <span style={{ fontSize: '11px', color: colors.success, fontWeight: 600 }}>
-                                                +{(Number(output.value) / 1e8).toFixed(8).replace(/\.?0+$/, '')}{' '}
-                                                {btcUnit}
-                                            </span>
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
-
-                            {/* External Outputs (e.g., domain treasury payment) */}
-                            {outputAnalysis.externalOutputs.length > 0 && (
-                                <div
-                                    style={{
-                                        padding: '8px 10px',
-                                        background: '#fbbf2415',
-                                        border: '1px solid #fbbf2430',
-                                        borderRadius: '8px'
+                                        textAlign: 'center',
+                                        marginBottom:
+                                            outputAnalysis.changeOutputs.length > 0 ||
+                                            outputAnalysis.externalOutputs.length > 0
+                                                ? '10px'
+                                                : '0'
                                     }}>
                                     <div
                                         style={{
-                                            fontSize: '10px',
-                                            color: '#fbbf24',
+                                            fontSize: '11px',
+                                            color: colors.textFaded,
                                             marginBottom: '4px',
                                             display: 'flex',
                                             alignItems: 'center',
-                                            gap: '4px'
+                                            justifyContent: 'center',
+                                            gap: '6px'
                                         }}>
-                                        <WarningOutlined style={{ fontSize: 10 }} />
-                                        External output{outputAnalysis.externalOutputs.length > 1 ? 's' : ''} (not your
-                                        address)
+                                        Total Transaction Cost
+                                        <span style={{ fontSize: '9px', color: colors.success, fontWeight: 600 }}>
+                                            ACTUAL
+                                        </span>
                                     </div>
-                                    {outputAnalysis.externalOutputs.map((output, idx) => (
-                                        <div
-                                            key={idx}
-                                            style={{
-                                                display: 'flex',
-                                                justifyContent: 'space-between',
-                                                alignItems: 'center',
-                                                marginTop: idx > 0 ? '4px' : '0'
-                                            }}>
+                                    <div style={{ fontSize: '20px', fontWeight: 700, color: colors.main }}>
+                                        {(outputAnalysis.totalCost / 1e8).toFixed(8).replace(/\.?0+$/, '')} {btcUnit}
+                                        {btcPrice > 0 && (
                                             <span
                                                 style={{
-                                                    fontSize: '11px',
-                                                    color: '#fbbf24',
-                                                    fontFamily: 'monospace',
+                                                    fontSize: '12px',
+                                                    color: colors.textFaded,
+                                                    marginLeft: '8px',
                                                     fontWeight: 500
-                                                }}
-                                                title={output.address}>
-                                                {output.address.length > 16
-                                                    ? `${output.address.slice(0, 8)}...${output.address.slice(-8)}`
-                                                    : output.address}
+                                                }}>
+                                                ($
+                                                {((outputAnalysis.totalCost / 1e8) * btcPrice).toLocaleString(
+                                                    undefined,
+                                                    {
+                                                        minimumFractionDigits: 2,
+                                                        maximumFractionDigits: 2
+                                                    }
+                                                )}{' '}
+                                                USD)
                                             </span>
-                                            <span style={{ fontSize: '11px', color: '#fbbf24', fontWeight: 600 }}>
-                                                -{(Number(output.value) / 1e8).toFixed(8).replace(/\.?0+$/, '')}{' '}
-                                                {btcUnit}
-                                            </span>
-                                        </div>
-                                    ))}
+                                        )}
+                                    </div>
                                 </div>
-                            )}
-                        </div>
+
+                                {/* Refund Info */}
+                                {outputAnalysis.changeOutputs.length > 0 && (
+                                    <div
+                                        style={{
+                                            padding: '8px 10px',
+                                            background: `${colors.success}10`,
+                                            border: `1px solid ${colors.success}25`,
+                                            borderRadius: '8px',
+                                            marginBottom: outputAnalysis.externalOutputs.length > 0 ? '8px' : '0'
+                                        }}>
+                                        <div style={{ fontSize: '10px', color: colors.textFaded, marginBottom: '4px' }}>
+                                            Refund to your address{outputAnalysis.changeOutputs.length > 1 ? 'es' : ''}
+                                        </div>
+                                        {outputAnalysis.changeOutputs.map((output, idx) => (
+                                            <div
+                                                key={idx}
+                                                style={{
+                                                    display: 'flex',
+                                                    justifyContent: 'space-between',
+                                                    alignItems: 'center',
+                                                    marginTop: idx > 0 ? '4px' : '0'
+                                                }}>
+                                                <span
+                                                    style={{
+                                                        fontSize: '11px',
+                                                        color: colors.success,
+                                                        fontFamily: 'monospace',
+                                                        fontWeight: 500
+                                                    }}
+                                                    title={output.address}>
+                                                    {output.address.length > 16
+                                                        ? `${output.address.slice(0, 8)}...${output.address.slice(-8)}`
+                                                        : output.address}
+                                                </span>
+                                                <span
+                                                    style={{
+                                                        fontSize: '11px',
+                                                        color: colors.success,
+                                                        fontWeight: 600
+                                                    }}>
+                                                    +{(Number(output.value) / 1e8).toFixed(8).replace(/\.?0+$/, '')}{' '}
+                                                    {btcUnit}
+                                                </span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+
+                                {/* External Outputs (e.g., domain treasury payment) */}
+                                {outputAnalysis.externalOutputs.length > 0 && (
+                                    <div
+                                        style={{
+                                            padding: '8px 10px',
+                                            background: '#fbbf2415',
+                                            border: '1px solid #fbbf2430',
+                                            borderRadius: '8px'
+                                        }}>
+                                        <div
+                                            style={{
+                                                fontSize: '10px',
+                                                color: '#fbbf24',
+                                                marginBottom: '4px',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: '4px'
+                                            }}>
+                                            <WarningOutlined style={{ fontSize: 10 }} />
+                                            External output{outputAnalysis.externalOutputs.length > 1 ? 's' : ''} (not
+                                            your address)
+                                        </div>
+                                        {outputAnalysis.externalOutputs.map((output, idx) => (
+                                            <div
+                                                key={idx}
+                                                style={{
+                                                    display: 'flex',
+                                                    justifyContent: 'space-between',
+                                                    alignItems: 'center',
+                                                    marginTop: idx > 0 ? '4px' : '0'
+                                                }}>
+                                                <span
+                                                    style={{
+                                                        fontSize: '11px',
+                                                        color: '#fbbf24',
+                                                        fontFamily: 'monospace',
+                                                        fontWeight: 500
+                                                    }}
+                                                    title={output.address}>
+                                                    {output.address.length > 16
+                                                        ? `${output.address.slice(0, 8)}...${output.address.slice(-8)}`
+                                                        : output.address}
+                                                </span>
+                                                <span style={{ fontSize: '11px', color: '#fbbf24', fontWeight: 600 }}>
+                                                    -{(Number(output.value) / 1e8).toFixed(8).replace(/\.?0+$/, '')}{' '}
+                                                    {btcUnit}
+                                                </span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
                         )}
                     </div>
 

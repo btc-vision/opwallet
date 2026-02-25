@@ -105,6 +105,8 @@ export interface WalletController {
 
     getOPNetWallet(account?: { pubkey: string; type: string }): Promise<[string, string, string]>;
 
+    getQuantumPublicKey(): Promise<string | undefined>;
+
     getWalletAddress(): Promise<[string, string]>;
 
     getMnemonics(
@@ -190,6 +192,8 @@ export interface WalletController {
     sendAllBTC(data: { to: string; btcUtxos: UnspentOutput[]; feeRate: number; enableRBF: boolean }): Promise<string>;
 
     pushTx(rawtx: string): Promise<string>;
+
+    invalidateBalanceAndUtxoCache(address?: string): void;
 
     getAppSummary(): Promise<AppSummary>;
 

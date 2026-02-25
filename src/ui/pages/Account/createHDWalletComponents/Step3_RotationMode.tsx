@@ -14,6 +14,7 @@ import { ContextData, UpdateContextDataParams } from './types';
 import { RouteTypes, useNavigate } from '@/ui/pages/routeTypes';
 import { useCreateAccountCallback } from '@/ui/state/global/hooks';
 import { useTools } from '@/ui/components/ActionComponent';
+import { usePrivacyModeEnabled } from '@/ui/hooks/useAppConfig';
 
 const colors = {
     main: '#f37413',
@@ -73,6 +74,7 @@ export function Step3_RotationMode({
     const tools = useTools();
     const navigate = useNavigate();
     const createAccount = useCreateAccountCallback();
+    const privacyModeEnabled = usePrivacyModeEnabled();
 
     const [selectedOption, setSelectedOption] = useState<'standard' | 'privacy'>('standard');
     const [loading, setLoading] = useState(false);
@@ -139,14 +141,20 @@ export function Step3_RotationMode({
 
             {/* Options */}
             <Column gap="md">
-                {privacyOptions.map((option) => (
-                    <OptionCard
-                        key={option.id}
-                        option={option}
-                        selected={selectedOption === option.id}
-                        onClick={() => setSelectedOption(option.id)}
-                    />
-                ))}
+                {privacyOptions.map((option) => {
+                    const disabled = option.id === 'privacy' && !privacyModeEnabled;
+                    return (
+                        <OptionCard
+                            key={option.id}
+                            option={option}
+                            selected={selectedOption === option.id}
+                            disabled={disabled}
+                            onClick={() => {
+                                if (!disabled) setSelectedOption(option.id);
+                            }}
+                        />
+                    );
+                })}
             </Column>
 
             {/* Selected option explanation */}
@@ -198,52 +206,76 @@ export function Step3_RotationMode({
 function OptionCard({
     option,
     selected,
+    disabled,
     onClick
 }: {
     option: PrivacyOption;
     selected: boolean;
+    disabled?: boolean;
     onClick: () => void;
 }) {
-    const borderColor = selected
-        ? option.id === 'privacy'
-            ? colors.privacyBlue
-            : colors.main
-        : 'transparent';
+    const borderColor = disabled
+        ? 'transparent'
+        : selected
+          ? option.id === 'privacy'
+              ? colors.privacyBlue
+              : colors.main
+          : 'transparent';
 
-    const bgGradient = selected
-        ? option.id === 'privacy'
-            ? `linear-gradient(145deg, ${colors.privacyBlue}15 0%, ${colors.privacyBlue}08 100%)`
-            : `linear-gradient(145deg, ${colors.main}15 0%, ${colors.main}08 100%)`
-        : colors.containerBgFaded;
+    const bgGradient = disabled
+        ? colors.containerBgFaded
+        : selected
+          ? option.id === 'privacy'
+              ? `linear-gradient(145deg, ${colors.privacyBlue}15 0%, ${colors.privacyBlue}08 100%)`
+              : `linear-gradient(145deg, ${colors.main}15 0%, ${colors.main}08 100%)`
+          : colors.containerBgFaded;
 
     return (
         <div
-            onClick={onClick}
+            onClick={disabled ? undefined : onClick}
             style={{
                 background: bgGradient,
                 border: `2px solid ${borderColor}`,
                 borderRadius: 14,
                 padding: 16,
-                cursor: 'pointer',
+                cursor: disabled ? 'not-allowed' : 'pointer',
                 transition: 'all 0.2s',
-                position: 'relative'
+                position: 'relative',
+                opacity: disabled ? 0.4 : 1
             }}>
-            {/* Recommended badge */}
-            {option.recommended && (
+            {/* Recommended badge or Disabled badge */}
+            {disabled ? (
                 <div
                     style={{
                         position: 'absolute',
                         top: -10,
                         right: 12,
-                        background: option.id === 'privacy' ? colors.privacyBlue : colors.main,
-                        color: 'white',
+                        background: '#555',
+                        color: '#aaa',
                         fontSize: 10,
                         fontWeight: 600,
                         padding: '4px 10px',
                         borderRadius: 10
                     }}>
-                    RECOMMENDED
+                    COMING SOON
                 </div>
+            ) : (
+                option.recommended && (
+                    <div
+                        style={{
+                            position: 'absolute',
+                            top: -10,
+                            right: 12,
+                            background: option.id === 'privacy' ? colors.privacyBlue : colors.main,
+                            color: 'white',
+                            fontSize: 10,
+                            fontWeight: 600,
+                            padding: '4px 10px',
+                            borderRadius: 10
+                        }}>
+                        RECOMMENDED
+                    </div>
+                )
             )}
 
             <Row style={{ gap: 14, alignItems: 'flex-start' }}>
@@ -265,7 +297,7 @@ function OptionCard({
                 <Column style={{ flex: 1 }}>
                     <Row justifyBetween style={{ marginBottom: 4 }}>
                         <Text text={option.title} style={{ fontWeight: 600, fontSize: 15 }} />
-                        {selected && (
+                        {selected && !disabled && (
                             <CheckCircleFilled
                                 style={{
                                     color: option.id === 'privacy' ? colors.privacyBlue : colors.main,

@@ -42,6 +42,67 @@ interface AddressTypeOption {
 }
 
 // =============================================================================
+// HELPER COMPONENT
+// =============================================================================
+
+/** Copyable row for displaying an address or key with a label and copy button */
+function CopyableRow({
+    label,
+    value,
+    tools,
+    noBorder
+}: {
+    label: string;
+    value: string;
+    tools: ReturnType<typeof useTools>;
+    noBorder?: boolean;
+}) {
+    if (!value) return null;
+    return (
+        <div
+            style={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 4,
+                padding: '10px 0',
+                borderBottom: noBorder ? 'none' : `1px solid ${colors.border}`
+            }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <Text
+                    text={label}
+                    style={{
+                        fontSize: 10,
+                        fontWeight: 600,
+                        color: colors.textDim,
+                        textTransform: 'uppercase',
+                        letterSpacing: 0.5
+                    }}
+                />
+                <div
+                    onClick={() => {
+                        copyToClipboard(value).then(() => {
+                            tools.toastSuccess(`${label} copied`);
+                        });
+                    }}
+                    style={{ cursor: 'pointer', padding: '2px 6px', borderRadius: 4 }}>
+                    <CopyOutlined style={{ fontSize: 12, color: colors.textDim }} />
+                </div>
+            </div>
+            <Text
+                text={value}
+                style={{
+                    fontSize: 11,
+                    color: colors.text,
+                    fontFamily: 'monospace',
+                    lineHeight: '16px',
+                    wordBreak: 'break-all'
+                }}
+            />
+        </div>
+    );
+}
+
+// =============================================================================
 // MAIN COMPONENT
 // =============================================================================
 
@@ -86,6 +147,12 @@ export default function ReceiveScreen() {
     // OP_20-specific state
     const [quantumPublicKeyHash, setQuantumPublicKeyHash] = useState<string>('');
     const [loadingQuantum, setLoadingQuantum] = useState(true);
+
+    // Additional address/key state (BTC mode only)
+    const [csv1Address, setCsv1Address] = useState<string>('');
+    const [csv75Address, setCsv75Address] = useState<string>('');
+    const [tweakedPublicKey, setTweakedPublicKey] = useState<string>('');
+    const [mldsaPublicKey, setMldsaPublicKey] = useState<string>('');
 
     // Computed BTC address (considering rotation)
     const btcAddress = rotationEnabled && currentRotationAddress ? currentRotationAddress.address : baseAddress;
@@ -142,6 +209,11 @@ export default function ReceiveScreen() {
 
             setAddressTypes(types);
 
+            // Compute additional addresses/keys
+            setCsv1Address(addr.toCSV(1, network).address);
+            setCsv75Address(addr.toCSV(75, network).address);
+            setTweakedPublicKey(addr.tweakedToHex());
+
             // Set current keyring's address type as selected
             const currentType = types.find((t) => t.value === currentKeyring.addressType);
             if (currentType) {
@@ -184,6 +256,24 @@ export default function ReceiveScreen() {
         };
 
         void fetchQuantumInfo();
+    }, [wallet, isOP20]);
+
+    /**
+     * Fetch MLDSA public key for BTC mode additional display
+     */
+    useEffect(() => {
+        if (isOP20) return;
+
+        const fetchMldsaKey = async () => {
+            try {
+                const mldsaKey = await wallet.getQuantumPublicKey();
+                if (mldsaKey) setMldsaPublicKey(`0x${mldsaKey}`);
+            } catch (e) {
+                console.error('Error fetching MLDSA public key:', e);
+            }
+        };
+
+        void fetchMldsaKey();
     }, [wallet, isOP20]);
 
     // =========================================================================
@@ -610,6 +700,39 @@ export default function ReceiveScreen() {
                             </div>
                         </div>
                     </div>
+
+                    {/* ============================================================= */}
+                    {/* ADDITIONAL ADDRESSES & KEYS - BTC mode only */}
+                    {/* ============================================================= */}
+                    {!isOP20 && (
+                        <div
+                            style={{
+                                backgroundColor: colors.bg2,
+                                borderRadius: 16,
+                                padding: '4px 16px',
+                                border: `1px solid ${colors.border}`
+                            }}>
+                            <CopyableRow label="CSV1 ADDRESS" value={csv1Address} tools={tools} />
+                            <CopyableRow label="CSV75 ADDRESS" value={csv75Address} tools={tools} />
+                            <CopyableRow label="TWEAKED PUBLIC KEY" value={tweakedPublicKey} tools={tools} />
+                            <CopyableRow label="MLDSA PUBLIC KEY" value={mldsaPublicKey} tools={tools} />
+                            <CopyableRow
+                                label="MLDSA HASHED PUBLIC KEY"
+                                value={
+                                    currentAccount.quantumPublicKeyHash
+                                        ? `0x${currentAccount.quantumPublicKeyHash}`
+                                        : ''
+                                }
+                                tools={tools}
+                            />
+                            <CopyableRow
+                                label="ORIGINAL PUBLIC KEY"
+                                value={currentAccount.pubkey || ''}
+                                tools={tools}
+                                noBorder
+                            />
+                        </div>
+                    )}
                 </Column>
             </Content>
         </Layout>

@@ -124,12 +124,8 @@ export function useConsolidation() {
         const utxoCount = accountBalance.csv1_unlocked_utxos_count + accountBalance.unspent_utxos_count;
 
         // Available balance for splitting (csv1 unlocked + main wallet confirmed)
-        const csv1UnlockedAmount = BigInt(
-            Math.floor(parseFloat(accountBalance.csv1_unlocked_amount || '0') * 1e8)
-        );
-        const mainConfirmedAmount = BigInt(
-            Math.floor(parseFloat(accountBalance.btc_confirm_amount || '0') * 1e8)
-        );
+        const csv1UnlockedAmount = BigInt(Math.floor(parseFloat(accountBalance.csv1_unlocked_amount || '0') * 1e8));
+        const mainConfirmedAmount = BigInt(Math.floor(parseFloat(accountBalance.btc_confirm_amount || '0') * 1e8));
         const availableBalance = csv1UnlockedAmount + mainConfirmedAmount;
 
         let status: OptimizationStatus;
@@ -261,7 +257,8 @@ export function useConsolidation() {
                 from: currentAccount.address,
                 sourceType: SourceType.CURRENT,
                 optimize: true,
-                splitInputsInto: splitCount
+                splitInputsInto: splitCount,
+                autoAdjustAmount: true
             };
 
             // Navigate directly to confirmation screen

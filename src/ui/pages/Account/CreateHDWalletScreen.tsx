@@ -19,7 +19,6 @@ import {
 
 import { useLocationState } from '@/ui/utils';
 import { RouteTypes, useNavigate } from '../routeTypes';
-import { usePrivacyModeEnabled } from '@/ui/hooks/useAppConfig';
 
 const colors = {
     main: '#f37413',
@@ -43,8 +42,6 @@ interface LocationState {
 export default function CreateHDWalletScreen() {
     const navigate = useNavigate();
     const { isImport, fromUnlock } = useLocationState<LocationState>();
-    const privacyModeEnabled = usePrivacyModeEnabled();
-
     const [contextData, setContextData] = useState<ContextData>({
         mnemonics: '',
         hdPath: '',
@@ -71,7 +68,7 @@ export default function CreateHDWalletScreen() {
     const items = useMemo(() => {
         if (contextData.isRestore) {
             if (contextData.restoreWalletType === RestoreWalletType.XVERSE) {
-                // XVerse import: Type → Import → Address → Warning → (Privacy Mode if enabled)
+                // XVerse import: Type → Import → Address → Warning → Privacy
                 const steps = [
                     {
                         key: TabType.STEP1,
@@ -94,17 +91,14 @@ export default function CreateHDWalletScreen() {
                         children: <Step3_XVerseWarning contextData={contextData} updateContextData={updateContextData} />
                     }
                 ];
-                // Only add privacy step if feature is enabled
-                if (privacyModeEnabled) {
-                    steps.push({
-                        key: TabType.STEP4,
-                        label: 'Privacy',
-                        children: <Step3_RotationMode contextData={contextData} updateContextData={updateContextData} />
-                    });
-                }
+                steps.push({
+                    key: TabType.STEP4,
+                    label: 'Privacy',
+                    children: <Step3_RotationMode contextData={contextData} updateContextData={updateContextData} />
+                });
                 return steps;
             } else {
-                // Standard import: Type → Import → Address → (Privacy Mode if enabled)
+                // Standard import: Type → Import → Address → Privacy
                 const steps = [
                     {
                         key: TabType.STEP1,
@@ -122,18 +116,15 @@ export default function CreateHDWalletScreen() {
                         children: <Step2 contextData={contextData} updateContextData={updateContextData} />
                     }
                 ];
-                // Only add privacy step if feature is enabled
-                if (privacyModeEnabled) {
-                    steps.push({
-                        key: TabType.STEP4,
-                        label: 'Privacy',
-                        children: <Step3_RotationMode contextData={contextData} updateContextData={updateContextData} />
-                    });
-                }
+                steps.push({
+                    key: TabType.STEP4,
+                    label: 'Privacy',
+                    children: <Step3_RotationMode contextData={contextData} updateContextData={updateContextData} />
+                });
                 return steps;
             }
         } else {
-            // Create: Create → Address → (Privacy Mode if enabled)
+            // Create: Create → Address → Privacy
             const steps = [
                 {
                     key: TabType.STEP1,
@@ -146,17 +137,14 @@ export default function CreateHDWalletScreen() {
                     children: <Step2 contextData={contextData} updateContextData={updateContextData} />
                 }
             ];
-            // Only add privacy step if feature is enabled
-            if (privacyModeEnabled) {
-                steps.push({
-                    key: TabType.STEP3,
-                    label: 'Privacy',
-                    children: <Step3_RotationMode contextData={contextData} updateContextData={updateContextData} />
-                });
-            }
+            steps.push({
+                key: TabType.STEP3,
+                label: 'Privacy',
+                children: <Step3_RotationMode contextData={contextData} updateContextData={updateContextData} />
+            });
             return steps;
         }
-    }, [contextData, updateContextData, privacyModeEnabled]);
+    }, [contextData, updateContextData]);
 
     const currentChildren = useMemo(() => {
         const item = items.find((v) => v.key === contextData.tabType);
