@@ -105,6 +105,8 @@ export interface WalletController {
 
     getOPNetWallet(account?: { pubkey: string; type: string }): Promise<[string, string, string]>;
 
+    getQuantumPublicKey(): Promise<string | undefined>;
+
     getWalletAddress(): Promise<[string, string]>;
 
     getMnemonics(
