@@ -1623,7 +1623,7 @@ export default function TxOpnetConfirmScreen() {
 
             // Update UTXO manager for the correct address
             Web3API.provider.utxoManager.spentUTXO(fromAddress, cachedBtcTx.utxos, cachedBtcTx.nextUtxos);
-            void wallet.invalidateBalanceAndUtxoCache(fromAddress);
+            wallet.invalidateBalanceAndUtxoCache(fromAddress);
 
             // Record transaction in history with actual fee from decoded data
             const actualFee = cachedBtcTx.decodedData?.totalMiningFee ?? 0n;
@@ -1745,7 +1745,8 @@ export default function TxOpnetConfirmScreen() {
             const secondTransaction = await Web3API.provider.sendRawTransaction(sendTransact.transaction[1], false);
             if (secondTransaction.result && !secondTransaction.error && secondTransaction.success) {
                 Web3API.provider.utxoManager.spentUTXO(currentWalletAddress.address, utxos, sendTransact.utxos);
-                void wallet.invalidateBalanceAndUtxoCache(currentWalletAddress.address);
+
+                wallet.invalidateBalanceAndUtxoCache(currentWalletAddress.address);
 
                 await waitForTransaction(secondTransaction.result, setOpenLoading, tools);
 
