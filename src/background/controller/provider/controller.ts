@@ -13,7 +13,12 @@ import Web3API, { getBitcoinLibJSNetwork } from '@/shared/web3/Web3API';
 import { DetailedInteractionParameters } from '@/shared/web3/interfaces/DetailedInteractionParameters';
 import { amountToSatoshis } from '@/shared/utils/btc-utils';
 import { Psbt, toHex } from '@btc-vision/bitcoin';
-import { ICancelTransactionParametersWithoutSigner, IDeploymentParametersWithoutSigner, IFundingTransactionParametersWithoutSigner, MessageSigner } from '@btc-vision/transaction';
+import {
+    ICancelTransactionParametersWithoutSigner,
+    IDeploymentParametersWithoutSigner,
+    IFundingTransactionParametersWithoutSigner,
+    MessageSigner
+} from '@btc-vision/transaction';
 import { verifyBip322MessageWithNetworkType } from '@btc-vision/wallet-sdk';
 import wallet from '../wallet';
 
@@ -592,7 +597,7 @@ export class ProviderController {
             if (expectedHash !== data && expectedHash !== data.replace(/^0x/, '')) {
                 throw new Error(
                     'Hash mismatch: the SHA-256 hash of originalMessage does not match the data to sign. ' +
-                    'This could indicate a tampered request.'
+                        'This could indicate a tampered request.'
                 );
             }
         }
