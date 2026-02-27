@@ -97,6 +97,7 @@ import {
     IDeploymentParameters,
     IDeploymentParametersWithoutSigner,
     IFundingTransactionParameters,
+    IFundingTransactionParametersWithoutSigner,
     IInteractionParameters,
     InteractionParametersWithoutSigner,
     InteractionResponse,
@@ -2113,7 +2114,7 @@ export class WalletController {
      * If 'from' is not provided, defaults to the current account address.
      */
     public sendBitcoin = async (
-        params: Omit<IFundingTransactionParameters, 'signer' | 'network' | 'mldsaSigner'>,
+        params: IFundingTransactionParametersWithoutSigner,
         origin?: TransactionOrigin
     ): Promise<BitcoinTransferBase> => {
         if (!params.to) {
@@ -2141,12 +2142,7 @@ export class WalletController {
         // Fetch UTXOs if not provided by the caller
         let utxos = params.utxos;
         if (!utxos || utxos.length === 0) {
-            utxos = await Web3API.getAllUTXOsForAddresses(
-                [fromAddress],
-                params.amount,
-                undefined,
-                false
-            );
+            utxos = await Web3API.getAllUTXOsForAddresses([fromAddress], params.amount, undefined, false);
 
             if (!utxos.length) {
                 throw new WalletControllerError('No UTXOs available to fund this transaction');
@@ -2159,9 +2155,9 @@ export class WalletController {
             amount: params.amount,
             to: params.to,
             from: fromAddress,
+            gasSatFee: 0n,
             feeRate,
             priorityFee: params.priorityFee ?? 0n,
-            gasSatFee: params.gasSatFee ?? 0n,
             note: params.note,
             splitInputsInto: params.splitInputsInto,
             autoAdjustAmount: params.autoAdjustAmount,

@@ -92,25 +92,8 @@ export class Web3Provider {
     }
 
     /**
-     * Sign arbitrary data with ECDSA or Schnorr.
-     * @param data - Hexadecimal string of data to sign
-     * @param type - Signature algorithm: 'ecdsa' or 'schnorr'
-     * @param originalMessage - Optional original message (JSON) for display in approval UI. If provided,
-     *                          the approval UI will display the parsed JSON alongside the hex data,
-     *                          allowing the user to verify what they are signing.
-     * @returns The signature in hex format
-     */
-    public async signData(
-        data: string,
-        type: 'ecdsa' | 'schnorr' = 'schnorr',
-        originalMessage?: string
-    ): Promise<string> {
-        return this.provider.signData(data, type, originalMessage) as Promise<string>;
-    }
-
-    /**
      * Sign a message using Schnorr signature.
-     * Convenience wrapper for signData with type='schnorr'.
+     * Convenience wrapper — delegates to signData on the root provider.
      * @param message - Hexadecimal string message to sign
      * @returns The Schnorr signature in hex format
      */

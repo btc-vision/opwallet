@@ -302,7 +302,6 @@ export class ProviderController {
             // Re-hydrate bigint fields that were stringified during message serialization
             params.amount = BigInt(params.amount as string | bigint);
             params.priorityFee = BigInt((params.priorityFee as string | bigint) ?? 0);
-            params.gasSatFee = BigInt((params.gasSatFee as string | bigint) ?? 0);
 
             const amount = params.amount as bigint;
             if (amount <= 0n) {

@@ -113,7 +113,13 @@ export type SignInteractionApprovalResponse = BaseApprovalResponse | undefined;
 
 export type SignDeploymentApprovalResponse = BaseApprovalResponse | undefined;
 
-export type SendBitcoinApprovalResponse = BaseApprovalResponse | undefined;
+export interface SendBitcoinApprovalResponse extends BaseApprovalResponse {
+    tx: string;
+    txid: string;
+    estimatedFees: string;
+    nextUTXOs: unknown[];
+    inputUtxos: unknown[];
+}
 
 export type SignCancellationApprovalResponse = BaseApprovalResponse | undefined;
 
