@@ -167,6 +167,7 @@ export interface SignTextApprovalParams {
     data: {
         message: string;
         type: string;
+        originalMessage?: string;
     };
     session: Session;
 }

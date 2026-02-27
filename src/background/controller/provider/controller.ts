@@ -205,8 +205,24 @@ export class ProviderController {
 
     @Reflect.metadata('APPROVAL', [
         ApprovalType.SignText,
-        (req: { data: { params: { message: string; type?: string } } }) => {
+        (req: { data: { params: { message: string; type?: string; originalMessage?: string } } }) => {
             req.data.params.type = 'mldsa';
+
+            // If originalMessage is provided, verify its SHA-256 hash matches the message being signed.
+            // Prevents showing a fake human-readable message while signing something else.
+            const { message, originalMessage } = req.data.params;
+            if (originalMessage) {
+                const messageBuffer = new TextEncoder().encode(originalMessage);
+                const expectedHash = toHex(MessageSigner.sha256(messageBuffer));
+                const normalizedMsg = message.replace(/^0x/, '');
+
+                if (expectedHash !== message && expectedHash !== normalizedMsg) {
+                    throw new Error(
+                        'Hash mismatch: the SHA-256 hash of originalMessage does not match the message to sign. ' +
+                            'This could indicate a tampered request.'
+                    );
+                }
+            }
         }
     ])
     signMLDSAMessage = async ({
@@ -311,6 +327,26 @@ export class ProviderController {
             if (!Web3API.isValidAddress(params.to)) {
                 throw new Error('Invalid recipient address. Are you on the right network?');
             }
+
+            // SECURITY: Strip all dangerous fields that could be abused by malicious DApps.
+            // Only whitelist safe fields that the user can see in the approval UI.
+            // optionalOutputs could add hidden outputs that drain funds to an attacker.
+            // optionalInputs, feeUtxos, utxos could inject arbitrary UTXOs.
+            // compiledTargetScript, noSignatures, addressRotation could manipulate signing.
+            delete params.optionalOutputs;
+            delete params.optionalInputs;
+            delete params.feeUtxos;
+            delete params.utxos;
+            delete params.compiledTargetScript;
+            delete params.noSignatures;
+            delete params.addressRotation;
+            delete params.nonWitnessUtxo;
+            delete params.estimatedFees;
+            delete params.chainId;
+            delete params.debugFees;
+            delete params.revealMLDSAPublicKey;
+            delete params.linkMLDSAPublicKeyToAddress;
+            delete params.anchor;
         }
     ])
     sendBitcoin = async (request: {
@@ -524,8 +560,22 @@ export class ProviderController {
 
     @Reflect.metadata('APPROVAL', [
         ApprovalType.SignText,
-        () => {
-            // todo check text
+        (req: { data: { params: { message: string | Uint8Array; type?: string; originalMessage?: string } } }) => {
+            // If originalMessage is provided, verify its SHA-256 hash matches the message being signed.
+            // Prevents showing a fake human-readable message while signing something else.
+            const { message, originalMessage } = req.data.params;
+            if (originalMessage && typeof message === 'string') {
+                const messageBuffer = new TextEncoder().encode(originalMessage);
+                const expectedHash = toHex(MessageSigner.sha256(messageBuffer));
+                const normalizedMsg = message.replace(/^0x/, '');
+
+                if (expectedHash !== message && expectedHash !== normalizedMsg) {
+                    throw new Error(
+                        'Hash mismatch: the SHA-256 hash of originalMessage does not match the message to sign. ' +
+                            'This could indicate a tampered request.'
+                    );
+                }
+            }
         }
     ])
     signMessage = async ({

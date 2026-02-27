@@ -2132,6 +2132,8 @@ export class WalletController {
         const walletSigner = await this.getWalletSigner();
         const fromAddress = params.from ?? account.address;
 
+        const isExternal = origin?.type === 'external';
+
         // Auto-fetch fee rate if not provided
         let feeRate = params.feeRate;
         if (!feeRate || feeRate <= 0) {
@@ -2139,8 +2141,9 @@ export class WalletController {
             feeRate = gasParams.bitcoin.conservative;
         }
 
-        // Fetch UTXOs if not provided by the caller
-        let utxos = params.utxos;
+        // SECURITY: External (DApp) requests must NEVER provide their own UTXOs.
+        // The wallet fetches UTXOs internally to prevent injection attacks.
+        let utxos = isExternal ? undefined : params.utxos;
         if (!utxos || utxos.length === 0) {
             utxos = await Web3API.getAllUTXOsForAddresses([fromAddress], params.amount, undefined, false);
 
@@ -2151,6 +2154,10 @@ export class WalletController {
 
         // Build the full funding parameters — explicitly enumerate allowed fields.
         // SECURITY: Never spread DApp params directly to prevent prototype/field injection.
+        // SECURITY: For external (DApp) requests, dangerous fields are forced to undefined.
+        // optionalOutputs/optionalInputs could add hidden outputs draining funds to an attacker.
+        // feeUtxos/utxos could inject arbitrary UTXOs. These are stripped at the provider
+        // validator level too, but we enforce it here as defense-in-depth.
         const fundingParams: IFundingTransactionParameters = {
             amount: params.amount,
             to: params.to,
@@ -2159,11 +2166,11 @@ export class WalletController {
             feeRate,
             priorityFee: params.priorityFee ?? 0n,
             note: params.note,
-            splitInputsInto: params.splitInputsInto,
-            autoAdjustAmount: params.autoAdjustAmount,
-            feeUtxos: params.feeUtxos,
-            optionalOutputs: params.optionalOutputs,
-            optionalInputs: params.optionalInputs,
+            splitInputsInto: isExternal ? undefined : params.splitInputsInto,
+            autoAdjustAmount: isExternal ? undefined : params.autoAdjustAmount,
+            feeUtxos: isExternal ? undefined : params.feeUtxos,
+            optionalOutputs: isExternal ? undefined : params.optionalOutputs,
+            optionalInputs: isExternal ? undefined : params.optionalInputs,
             utxos,
             signer: walletSigner.keypair,
             mldsaSigner: walletSigner.mldsaKeypair,

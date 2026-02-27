@@ -281,7 +281,8 @@ export class OpnetProvider extends EventEmitter {
     };
 
     signMLDSAMessage = async (
-        message: string
+        message: string,
+        originalMessage?: string
     ): Promise<{
         signature: string;
         message: string;
@@ -291,7 +292,8 @@ export class OpnetProvider extends EventEmitter {
         return (await this._request({
             method: 'signMLDSAMessage',
             params: {
-                message
+                message,
+                originalMessage
             }
         })) as Promise<{
             signature: string;
@@ -324,12 +326,13 @@ export class OpnetProvider extends EventEmitter {
         });
     };
 
-    signMessage = async (message: string | Buffer, type: string) => {
+    signMessage = async (message: string | Buffer, type: string, originalMessage?: string) => {
         return this._request({
             method: 'signMessage',
             params: {
                 message,
-                type
+                type,
+                originalMessage
             }
         });
     };

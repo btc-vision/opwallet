@@ -105,13 +105,13 @@ export class Web3Provider {
         return this.provider.getMLDSAPublicKey();
     }
 
-    public async signMLDSAMessage(message: string): Promise<{
+    public async signMLDSAMessage(message: string, originalMessage?: string): Promise<{
         signature: string;
         message: string;
         publicKey: string;
         securityLevel: number;
     }> {
-        return this.provider.signMLDSAMessage(message);
+        return this.provider.signMLDSAMessage(message, originalMessage);
     }
 
     public async verifyMLDSASignature(
