@@ -2136,7 +2136,7 @@ export class WalletController {
         let feeRate = params.feeRate;
         if (!feeRate || feeRate <= 0) {
             const gasParams = await Web3API.provider.gasParameters();
-            feeRate = gasParams.bitcoin.recommended.medium;
+            feeRate = gasParams.bitcoin.conservative;
         }
 
         // Fetch UTXOs if not provided by the caller
