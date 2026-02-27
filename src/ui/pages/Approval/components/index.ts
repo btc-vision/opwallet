@@ -1,4 +1,5 @@
 import Connect from './Connect';
+import SendBitcoin from './SendBitcoin';
 import SignData from './SignData';
 import SignDeployment from './SignDeployment';
 import SignInteraction from './SignInteraction';
@@ -10,6 +11,7 @@ import CancelTransaction from './CancelTransaction';
 
 export {
     Connect,
+    SendBitcoin,
     SignData,
     SignDeployment,
     SignInteraction,
@@ -23,6 +25,7 @@ export {
 // Use string literals to avoid circular dependency with ApprovalType enum
 export const ApprovalComponents = {
     'Connect': Connect,
+    'SendBitcoin': SendBitcoin,
     'SignData': SignData,
     'SignInteraction': SignInteraction,
     'CancelTransaction': CancelTransaction,

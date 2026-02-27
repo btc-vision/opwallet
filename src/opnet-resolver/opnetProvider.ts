@@ -138,10 +138,10 @@ class OpnetResolverProvider extends EventEmitter {
         }) as Promise<string>;
     }
 
-    async signData(data: string, type: string): Promise<string> {
+    async signData(data: string, type: string, originalMessage?: string): Promise<string> {
         return this._request({
             method: 'signData',
-            params: { data, type }
+            params: { data, type, originalMessage }
         }) as Promise<string>;
     }
 
@@ -187,52 +187,8 @@ class OpnetResolverProvider extends EventEmitter {
     }
 
     // =========================================================================
-    // PSBT Methods
-    // =========================================================================
-
-    async signPsbt(psbtHex: string, options?: unknown): Promise<string> {
-        return this._request({
-            method: 'signPsbt',
-            params: { psbtHex, options }
-        }) as Promise<string>;
-    }
-
-    async signPsbts(psbtHexs: string[], options?: unknown[]): Promise<string[]> {
-        return this._request({
-            method: 'signPsbts',
-            params: { psbtHexs, options }
-        }) as Promise<string[]>;
-    }
-
-    async pushPsbt(psbtHex: string): Promise<string> {
-        return this._request({
-            method: 'pushPsbt',
-            params: { psbtHex }
-        }) as Promise<string>;
-    }
-
-    // =========================================================================
     // Transaction Methods
     // =========================================================================
-
-    async sendBitcoin(
-        toAddress: string,
-        satoshis: number,
-        options?: { feeRate?: number; memo?: string; memos?: string[] }
-    ): Promise<string> {
-        return this._request({
-            method: 'sendBitcoin',
-            params: {
-                sendBitcoinParams: {
-                    toAddress,
-                    satoshis,
-                    feeRate: options?.feeRate,
-                    memo: options?.memo,
-                    memos: options?.memos
-                }
-            }
-        }) as Promise<string>;
-    }
 
     async pushTx(rawtx: string): Promise<string> {
         return this._request({

@@ -1,5 +1,5 @@
 import type { SessionInfo as Session } from '@/background/service/session';
-import type { ICancelTransactionParametersWithoutSigner, IDeploymentParameters } from '@btc-vision/transaction';
+import type { ICancelTransactionParametersWithoutSigner, IDeploymentParameters, IFundingTransactionParametersWithoutSigner } from '@btc-vision/transaction';
 import { ChainType } from '../constant';
 import { NetworkType, RawTxInfo, SignPsbtOptions, TxType } from '../types';
 import type { DetailedInteractionParameters } from '../web3/interfaces/DetailedInteractionParameters';
@@ -43,6 +43,7 @@ export type StandardApprovalData<T extends ApprovalType = ApprovalType> = {
 // APPROVAL COMPONENTS(TYPES) ENUM
 export enum ApprovalType {
     Connect = 'Connect',
+    SendBitcoin = 'SendBitcoin',
     SignData = 'SignData',
     SignInteraction = 'SignInteraction',
     CancelTransaction = 'CancelTransaction',
@@ -56,28 +57,31 @@ export enum ApprovalType {
 // APPROVAL COMPONENT PARAMS MAPPING
 export type ApprovalComponentParams<T extends ApprovalType> = T extends ApprovalType.Connect
     ? ConnectApprovalParams
-    : T extends ApprovalType.SignData
-      ? SignDataApprovalParams
-      : T extends ApprovalType.SignInteraction
-        ? SignInteractionApprovalParams
-        : T extends ApprovalType.SignPsbt
-          ? SignPsbtApprovalParams
-          : T extends ApprovalType.SignText
-            ? SignTextApprovalParams
-            : T extends ApprovalType.SwitchChain
-              ? SwitchChainApprovalParams
-              : T extends ApprovalType.SwitchNetwork
-                ? SwitchNetworkApprovalParams
-                : T extends ApprovalType.SignDeployment
-                  ? SignDeploymentApprovalParams
-                  : T extends ApprovalType.CancelTransaction
-                    ? CancelApprovalParams
-                    : never;
+    : T extends ApprovalType.SendBitcoin
+      ? SendBitcoinApprovalParams
+      : T extends ApprovalType.SignData
+        ? SignDataApprovalParams
+        : T extends ApprovalType.SignInteraction
+          ? SignInteractionApprovalParams
+          : T extends ApprovalType.SignPsbt
+            ? SignPsbtApprovalParams
+            : T extends ApprovalType.SignText
+              ? SignTextApprovalParams
+              : T extends ApprovalType.SwitchChain
+                ? SwitchChainApprovalParams
+                : T extends ApprovalType.SwitchNetwork
+                  ? SwitchNetworkApprovalParams
+                  : T extends ApprovalType.SignDeployment
+                    ? SignDeploymentApprovalParams
+                    : T extends ApprovalType.CancelTransaction
+                      ? CancelApprovalParams
+                      : never;
 
 // UNION OF APPROVAL RESPONSES
 export type ApprovalResponse =
     | LockApprovalResponse
     | ConnectApprovalResponse
+    | SendBitcoinApprovalResponse
     | SwitchNetworkApprovalResponse
     | SwitchChainApprovalResponse
     | SignPsbtApprovalResponse
@@ -109,6 +113,14 @@ export type SignInteractionApprovalResponse = BaseApprovalResponse | undefined;
 
 export type SignDeploymentApprovalResponse = BaseApprovalResponse | undefined;
 
+export interface SendBitcoinApprovalResponse extends BaseApprovalResponse {
+    tx: string;
+    txid: string;
+    estimatedFees: string;
+    nextUTXOs: unknown[];
+    inputUtxos: unknown[];
+}
+
 export type SignCancellationApprovalResponse = BaseApprovalResponse | undefined;
 
 export interface SignTextApprovalResponse extends BaseApprovalResponse {
@@ -128,6 +140,8 @@ export interface SignDataApprovalParams {
     method: string;
     data: {
         data: string;
+        type: 'ecdsa' | 'schnorr';
+        originalMessage?: string;
     };
     session: Session;
 }
@@ -144,13 +158,6 @@ export interface SignPsbtApprovalParams {
         psbtHex: string;
         options?: SignPsbtOptions;
         rawTxInfo?: RawTxInfo;
-        sendBitcoinParams?: {
-            toAddress: string;
-            satoshis: number;
-            memo: string;
-            memos: string[];
-            feeRate: number;
-        };
     };
     session?: Session;
 }
@@ -160,6 +167,7 @@ export interface SignTextApprovalParams {
     data: {
         message: string;
         type: string;
+        originalMessage?: string;
     };
     session: Session;
 }
@@ -183,6 +191,12 @@ export interface SwitchNetworkApprovalParams {
 export interface SignDeploymentApprovalParams {
     method: string;
     data: IDeploymentParameters;
+    session: Session;
+}
+
+export interface SendBitcoinApprovalParams {
+    method: string;
+    data: IFundingTransactionParametersWithoutSigner;
     session: Session;
 }
 

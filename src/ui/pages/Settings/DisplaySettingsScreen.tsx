@@ -1,11 +1,19 @@
 import { useState } from 'react';
 
-import { Column, Content, Header, Layout } from '@/ui/components';
+import { Column, Header, Layout } from '@/ui/components';
 import { useTools } from '@/ui/components/ActionComponent';
 import { useDisplaySettings, useUpdateDisplaySettings } from '@/ui/state/settings/hooks';
 import { DisplaySettings } from '@/ui/state/settings/reducer';
-import { CheckCircleFilled, FontSizeOutlined, InfoCircleOutlined, NumberOutlined, RightOutlined } from '@ant-design/icons';
+import {
+    CheckCircleFilled,
+    FontSizeOutlined,
+    InfoCircleOutlined,
+    NumberOutlined,
+    RightOutlined
+} from '@ant-design/icons';
 import { Popover } from '@/ui/components/Popover';
+// Import for preview
+import { formatAmount } from '@/ui/utils/formatAmount';
 
 const colors = {
     main: '#f37413',
@@ -36,12 +44,13 @@ export default function DisplaySettingsScreen() {
     const updateDisplaySettings = useUpdateDisplaySettings();
     const [decimalPopoverVisible, setDecimalPopoverVisible] = useState(false);
 
-    const currentDecimalOption = DECIMAL_OPTIONS.find((o) => o.id === displaySettings.decimalPrecision) || DECIMAL_OPTIONS[0];
+    const currentDecimalOption =
+        DECIMAL_OPTIONS.find((o) => o.id === displaySettings.decimalPrecision) || DECIMAL_OPTIONS[0];
 
     const handleToggle = (key: keyof DisplaySettings) => {
         const newSettings: DisplaySettings = {
             ...displaySettings,
-            [key]: !displaySettings[key as keyof DisplaySettings]
+            [key]: !displaySettings[key]
         };
         updateDisplaySettings(newSettings);
         tools.toastSuccess('Display settings updated');
@@ -93,9 +102,9 @@ export default function DisplaySettingsScreen() {
                                 color: colors.textFaded,
                                 lineHeight: '1.3'
                             }}>
-                            Customize how token amounts and balances are displayed. These settings only affect the visual
-                            display and never change the actual values. Very small amounts (dust) always preserve their
-                            significant digits.
+                            Customize how token amounts and balances are displayed. These settings only affect the
+                            visual display and never change the actual values. Very small amounts (dust) always preserve
+                            their significant digits.
                         </div>
                     </div>
                 </div>
@@ -383,9 +392,6 @@ export default function DisplaySettingsScreen() {
     );
 }
 
-// Import for preview
-import { formatAmount } from '@/ui/utils/formatAmount';
-
 function PreviewRow({
     label,
     raw,
@@ -514,7 +520,9 @@ function DecimalPopover({
                                     </div>
                                 </div>
                                 {isSelected && (
-                                    <CheckCircleFilled style={{ fontSize: 14, color: colors.main, marginLeft: '8px' }} />
+                                    <CheckCircleFilled
+                                        style={{ fontSize: 14, color: colors.main, marginLeft: '8px' }}
+                                    />
                                 )}
                             </div>
                         );

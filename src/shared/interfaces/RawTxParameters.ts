@@ -1,4 +1,6 @@
 import { OPTokenInfo } from '@/shared/types';
+import type { PsbtOutputExtended } from '@btc-vision/bitcoin';
+import type { UTXO } from '@btc-vision/transaction';
 
 export enum Features {
     /** Replace-By-Fee — let the user bump the fee after broadcast */
@@ -117,12 +119,18 @@ export interface SendBitcoinParameters extends BaseRawTxInfo<Action.SendBitcoin>
     readonly from?: string;
     readonly sourceType?: SourceType;
     readonly optimize: boolean;
-    readonly splitInputsInto?: number; // Number of UTXOs to split into (opposite of consolidation)
-    readonly autoAdjustAmount?: boolean; // Number of UTXOs to split into (opposite of consolidation)
-    readonly changeAddress?: string; // Custom change address (used for cold storage withdrawal)
+    readonly splitInputsInto?: number;
+    readonly autoAdjustAmount?: boolean;
+    readonly changeAddress?: string;
+    // Extra outputs to include in the transaction (e.g. multi-recipient sends)
+    readonly optionalOutputs?: PsbtOutputExtended[];
+    // Extra UTXOs used exclusively to cover transaction fees
+    readonly feeUtxos?: UTXO[];
     // Consolidation-specific fields
-    readonly sourceAddresses?: string[]; // Multiple source addresses for consolidation
-    readonly sourcePubkeys?: string[]; // Pubkeys for each source address (for signer lookup)
+    readonly sourceAddresses?: string[];
+    readonly sourcePubkeys?: string[];
+    // When true, this is a DApp request — resolve approval with BitcoinTransferResponse after broadcast
+    readonly isDAppRequest?: boolean;
 }
 
 export interface DeployContractParameters extends BaseRawTxInfo<Action.DeployContract> {

@@ -156,6 +156,7 @@ export const WALLET_CONTROLLER_METHODS = [
     'resolveDuplicationConflict',
     'restoreFromDuplicationBackup',
     'rotateToNextAddress',
+    'sendBitcoin',
     'setAccountAlianName',
     'setAutoLockTimeId',
     'setChainType',
