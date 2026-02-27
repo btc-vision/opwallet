@@ -346,34 +346,15 @@ export class OpnetProvider extends EventEmitter {
         });
     };
 
-    signData = async (data: string, type: string) => {
+    signData = async (data: string, type: string, originalMessage?: string) => {
         return this._request({
             method: 'signData',
             params: {
                 data,
-                type
+                type,
+                originalMessage
             }
         });
-    };
-
-    sendBitcoin = async (
-        toAddress: string,
-        satoshis: number,
-        options?: { feeRate: number; memo?: string; memos?: string[] }
-    ): Promise<string> => {
-        return (await this._request({
-            method: 'sendBitcoin',
-            params: {
-                sendBitcoinParams: {
-                    toAddress,
-                    satoshis,
-                    feeRate: options?.feeRate,
-                    memo: options?.memo,
-                    memos: options?.memos
-                },
-                type: TxType.SEND_BITCOIN
-            }
-        })) as Promise<string>;
     };
 
     deployContract = async (params: IDeploymentParametersWithoutSigner): Promise<DeploymentResult> => {
@@ -445,36 +426,6 @@ export class OpnetProvider extends EventEmitter {
             method: 'pushTx',
             params: {
                 rawtx
-            }
-        });
-    };
-
-    signPsbt = async (psbtHex: string, options?: SignPsbtOptions) => {
-        return this._request({
-            method: 'signPsbt',
-            params: {
-                psbtHex,
-                type: TxType.SIGN_TX,
-                options
-            }
-        });
-    };
-
-    signPsbts = async (psbtHexs: string[], options?: SignPsbtOptions[]) => {
-        return this._request({
-            method: 'multiSignPsbt',
-            params: {
-                psbtHexs,
-                options
-            }
-        });
-    };
-
-    pushPsbt = async (psbtHex: string) => {
-        return this._request({
-            method: 'pushPsbt',
-            params: {
-                psbtHex
             }
         });
     };

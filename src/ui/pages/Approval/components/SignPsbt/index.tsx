@@ -217,7 +217,7 @@ const initTxInfo: TxInfo = {
 
 export default function SignPsbt({
     params: {
-        data: { psbtHex, options, type, sendBitcoinParams, rawTxInfo },
+        data: { psbtHex, options, type, rawTxInfo },
         session
     },
     header,
@@ -334,19 +334,11 @@ export default function SignPsbt({
         const decodedPsbt = await wallet.decodePsbt(psbtHex);
 
         let toSignInputs: ToSignInput[] = [];
-        // @ts-expect-error
-        if (type === TxType.SEND_BITCOIN) {
-            toSignInputs = decodedPsbt.inputs.map((_, index) => ({
-                index,
-                publicKey: currentAccount.pubkey
-            }));
-        } else {
-            try {
-                toSignInputs = await wallet.formatOptionsToSignInputs(psbtHex, options);
-            } catch (e) {
-                txError = (e as Error).message;
-                tools.toastError(txError);
-            }
+        try {
+            toSignInputs = await wallet.formatOptionsToSignInputs(psbtHex, options);
+        } catch (e) {
+            txError = (e as Error).message;
+            tools.toastError(txError);
         }
 
         setTxInfo({

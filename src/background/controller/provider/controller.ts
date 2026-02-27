@@ -12,8 +12,8 @@ import { getChainInfo } from '@/shared/utils';
 import Web3API, { getBitcoinLibJSNetwork } from '@/shared/web3/Web3API';
 import { DetailedInteractionParameters } from '@/shared/web3/interfaces/DetailedInteractionParameters';
 import { amountToSatoshis } from '@/shared/utils/btc-utils';
-import { Psbt } from '@btc-vision/bitcoin';
-import { ICancelTransactionParametersWithoutSigner, IDeploymentParametersWithoutSigner } from '@btc-vision/transaction';
+import { Psbt, toHex } from '@btc-vision/bitcoin';
+import { ICancelTransactionParametersWithoutSigner, IDeploymentParametersWithoutSigner, IFundingTransactionParametersWithoutSigner, MessageSigner } from '@btc-vision/transaction';
 import { verifyBip322MessageWithNetworkType } from '@btc-vision/wallet-sdk';
 import wallet from '../wallet';
 
@@ -283,16 +283,43 @@ export class ProviderController {
     };
 
     @Reflect.metadata('APPROVAL', [
-        ApprovalType.SignPsbt,
-        (_req: ProviderControllerRequest) => {
-            //const { data: { params: { toAddress, satoshis } } } = req;
+        ApprovalType.SendBitcoin,
+        (req: ProviderControllerRequest) => {
+            const params = req.data.params as Record<string, unknown>;
+
+            if (!params.to || typeof params.to !== 'string') {
+                throw new Error('Missing "to" address');
+            }
+            if (!params.amount) {
+                throw new Error('Missing amount');
+            }
+
+            // Re-hydrate bigint fields that were stringified during message serialization
+            params.amount = BigInt(params.amount as string | bigint);
+            params.priorityFee = BigInt((params.priorityFee as string | bigint) ?? 0);
+            params.gasSatFee = BigInt((params.gasSatFee as string | bigint) ?? 0);
+
+            const amount = params.amount as bigint;
+            if (amount <= 0n) {
+                throw new Error('Invalid amount: must be greater than 0');
+            }
+
+            if (!Web3API.isValidAddress(params.to)) {
+                throw new Error('Invalid recipient address. Are you on the right network?');
+            }
         }
     ])
-    sendBitcoin = async ({ approvalRes: { psbtHex } }: { approvalRes: { psbtHex: string } }) => {
-        const psbt = Psbt.fromHex(psbtHex);
-        const tx = psbt.extractTransaction();
-        const rawtx = tx.toHex();
-        return await wallet.pushTx(rawtx);
+    sendBitcoin = async (request: {
+        approvalRes: undefined;
+        data: { params: IFundingTransactionParametersWithoutSigner };
+        session?: Session;
+    }) => {
+        return wallet.sendBitcoin(request.data.params, {
+            type: 'external',
+            siteUrl: request.session?.origin,
+            siteName: request.session?.name,
+            siteIcon: request.session?.icon
+        });
     };
 
     @Reflect.metadata('APPROVAL', [
@@ -521,17 +548,55 @@ export class ProviderController {
 
     @Reflect.metadata('APPROVAL', [
         ApprovalType.SignData,
-        () => {
-            // todo check text
+        (req: ProviderControllerRequest) => {
+            const params = req.data.params as {
+                data?: string;
+                type?: string;
+                originalMessage?: string;
+            };
+
+            if (!params.data || typeof params.data !== 'string') {
+                throw new Error('Missing data to sign');
+            }
+
+            if (params.type && params.type !== 'ecdsa' && params.type !== 'schnorr') {
+                throw new Error('Invalid signature type: must be "ecdsa" or "schnorr"');
+            }
+
+            // Default type to schnorr if not specified
+            if (!params.type) {
+                params.type = 'schnorr';
+            }
         }
     ])
     signData = ({
         data: {
-            params: { data, type }
+            params: { data, type, originalMessage }
         }
     }: {
-        data: { params: { data: string; type: 'ecdsa' | 'schnorr' } };
+        data: {
+            params: {
+                data: string;
+                type: 'ecdsa' | 'schnorr';
+                originalMessage?: string;
+            };
+        };
     }) => {
+        // If originalMessage is provided, verify the SHA-256 hash matches the data being signed.
+        // This ensures the human-readable message shown in the approval UI actually corresponds
+        // to the hex data being signed — prevents showing a fake message while signing something else.
+        if (originalMessage) {
+            const messageBuffer = new TextEncoder().encode(originalMessage);
+            const expectedHash = toHex(MessageSigner.sha256(messageBuffer));
+
+            if (expectedHash !== data && expectedHash !== data.replace(/^0x/, '')) {
+                throw new Error(
+                    'Hash mismatch: the SHA-256 hash of originalMessage does not match the data to sign. ' +
+                    'This could indicate a tampered request.'
+                );
+            }
+        }
+
         return wallet.signData(data, type);
     };
 

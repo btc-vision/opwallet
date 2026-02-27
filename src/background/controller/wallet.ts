@@ -87,6 +87,7 @@ import Web3API, { getBitcoinLibJSNetwork } from '@/shared/web3/Web3API';
 import {
     Address,
     AddressTypes,
+    BitcoinTransferBase,
     CancelledTransaction,
     createAddressRotation,
     DeploymentResult,
@@ -2100,6 +2101,104 @@ export class WalletController {
         } catch (err) {
             throw new WalletControllerError(`Failed to push transaction: ${String(err)}`, { rawtx });
         }
+    };
+
+    /**
+     * Build, sign, and broadcast a BTC funding transaction using TransactionFactory.
+     * Accepts IFundingTransactionParametersWithoutSigner — the wallet provides
+     * signer, mldsaSigner, and network internally.
+     *
+     * If UTXOs are not provided, the wallet fetches them automatically.
+     * If feeRate is not provided or 0, the wallet uses the network recommended rate.
+     * If 'from' is not provided, defaults to the current account address.
+     */
+    public sendBitcoin = async (
+        params: Omit<IFundingTransactionParameters, 'signer' | 'network' | 'mldsaSigner'>,
+        origin?: TransactionOrigin
+    ): Promise<BitcoinTransferBase> => {
+        if (!params.to) {
+            throw new WalletControllerError('Missing "to" address');
+        }
+        if (!params.amount || params.amount <= 0n) {
+            throw new WalletControllerError('Invalid amount');
+        }
+
+        const account = await this.getCurrentAccount();
+        if (!account) {
+            throw new WalletControllerError('No current account');
+        }
+
+        const walletSigner = await this.getWalletSigner();
+        const fromAddress = params.from ?? account.address;
+
+        // Auto-fetch fee rate if not provided
+        let feeRate = params.feeRate;
+        if (!feeRate || feeRate <= 0) {
+            const gasParams = await Web3API.provider.gasParameters();
+            feeRate = gasParams.bitcoin.recommended.medium;
+        }
+
+        // Fetch UTXOs if not provided by the caller
+        let utxos = params.utxos;
+        if (!utxos || utxos.length === 0) {
+            utxos = await Web3API.getAllUTXOsForAddresses(
+                [fromAddress],
+                params.amount,
+                undefined,
+                false
+            );
+
+            if (!utxos.length) {
+                throw new WalletControllerError('No UTXOs available to fund this transaction');
+            }
+        }
+
+        // Build the full funding parameters — explicitly enumerate allowed fields.
+        // SECURITY: Never spread DApp params directly to prevent prototype/field injection.
+        const fundingParams: IFundingTransactionParameters = {
+            amount: params.amount,
+            to: params.to,
+            from: fromAddress,
+            feeRate,
+            priorityFee: params.priorityFee ?? 0n,
+            gasSatFee: params.gasSatFee ?? 0n,
+            note: params.note,
+            splitInputsInto: params.splitInputsInto,
+            autoAdjustAmount: params.autoAdjustAmount,
+            feeUtxos: params.feeUtxos,
+            optionalOutputs: params.optionalOutputs,
+            optionalInputs: params.optionalInputs,
+            utxos,
+            signer: walletSigner.keypair,
+            mldsaSigner: walletSigner.mldsaKeypair,
+            network: Web3API.network
+        };
+
+        const signedTx = await Web3API.transactionFactory.createBTCTransfer(fundingParams);
+
+        // Broadcast
+        const txid = await this.pushTx(signedTx.tx);
+
+        // Record in transaction history
+        await this.recordTransaction(
+            {
+                txid,
+                type: TransactionType.BTC_TRANSFER,
+                from: fromAddress,
+                to: params.to,
+                amount: params.amount.toString(),
+                fee: Number(signedTx.estimatedFees),
+                feeRate: params.feeRate
+            },
+            origin ?? { type: 'internal' }
+        );
+
+        return {
+            tx: signedTx.tx,
+            estimatedFees: signedTx.estimatedFees,
+            nextUTXOs: signedTx.nextUTXOs,
+            inputUtxos: signedTx.inputUtxos
+        };
     };
 
     /**

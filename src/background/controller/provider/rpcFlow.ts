@@ -18,7 +18,7 @@ import providerController, { ProviderController } from './controller';
 type ApprovalMetadata = [ApprovalType, (req: ProviderControllerRequest) => boolean, object?];
 
 const isSignApproval = (type: string) => {
-    const SIGN_APPROVALS = ['SignText', 'SignPsbt', 'SignTx', 'SignData', 'SignInteraction'];
+    const SIGN_APPROVALS = ['SendBitcoin', 'SignText', 'SignPsbt', 'SignTx', 'SignData', 'SignInteraction'];
     return SIGN_APPROVALS.includes(type);
 };
 const windowHeight = 600;
