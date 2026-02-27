@@ -2156,8 +2156,6 @@ export class WalletController {
         // SECURITY: Never spread DApp params directly to prevent prototype/field injection.
         // SECURITY: For external (DApp) requests, dangerous fields are forced to undefined.
         // optionalOutputs/optionalInputs could add hidden outputs draining funds to an attacker.
-        // feeUtxos/utxos could inject arbitrary UTXOs. These are stripped at the provider
-        // validator level too, but we enforce it here as defense-in-depth.
         const fundingParams: IFundingTransactionParameters = {
             amount: params.amount,
             to: params.to,
@@ -2166,8 +2164,8 @@ export class WalletController {
             feeRate,
             priorityFee: params.priorityFee ?? 0n,
             note: params.note,
-            splitInputsInto: isExternal ? undefined : params.splitInputsInto,
-            autoAdjustAmount: isExternal ? undefined : params.autoAdjustAmount,
+            splitInputsInto: params.splitInputsInto,
+            autoAdjustAmount: params.autoAdjustAmount,
             feeUtxos: isExternal ? undefined : params.feeUtxos,
             optionalOutputs: isExternal ? undefined : params.optionalOutputs,
             optionalInputs: isExternal ? undefined : params.optionalInputs,
