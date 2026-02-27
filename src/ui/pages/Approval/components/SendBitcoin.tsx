@@ -1,15 +1,75 @@
 import { SendBitcoinApprovalParams } from '@/shared/types/Approval';
-import { Button, Card, Column, Content, Footer, Header, Layout, Row, Text } from '@/ui/components';
-import { AddressText } from '@/ui/components/AddressText';
-import WebsiteBar from '@/ui/components/WebsiteBar';
+import { Button, Content, Footer, Layout, Row } from '@/ui/components';
 import { useCurrentAccount } from '@/ui/state/accounts/hooks';
 import { useBTCUnit } from '@/ui/state/settings/hooks';
-import { colors } from '@/ui/theme/colors';
 import { satoshisToAmount } from '@/ui/utils';
 import { useApproval } from '@/ui/utils/hooks';
+import { SendOutlined, WalletOutlined, WarningOutlined } from '@ant-design/icons';
 
 export interface Props {
     params: SendBitcoinApprovalParams;
+}
+
+const themeColors = {
+    main: '#f37413',
+    background: '#212121',
+    text: '#dbdbdb',
+    textFaded: 'rgba(219, 219, 219, 0.7)',
+    containerBgFaded: '#292929',
+    containerBorder: '#303030',
+    inputBg: '#292828',
+    warning: '#fbbf24'
+};
+
+function SectionLabel({ icon, text }: { icon: React.ReactNode; text: string }) {
+    return (
+        <div
+            style={{
+                fontSize: 11,
+                fontWeight: 600,
+                color: themeColors.textFaded,
+                textTransform: 'uppercase',
+                letterSpacing: '0.5px',
+                marginBottom: 8,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6
+            }}>
+            {icon}
+            {text}
+        </div>
+    );
+}
+
+function DetailRow({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
+    return (
+        <div
+            style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                padding: 10,
+                background: themeColors.inputBg,
+                borderRadius: 8,
+                border: `1px solid ${themeColors.containerBorder}`
+            }}>
+            <span style={{ fontSize: 12, color: themeColors.textFaded }}>{label}</span>
+            <span
+                style={{
+                    fontSize: 12,
+                    fontWeight: 600,
+                    color: themeColors.text,
+                    fontFamily: mono ? 'monospace' : 'inherit',
+                    maxWidth: '60%',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                    textAlign: 'right'
+                }}>
+                {value}
+            </span>
+        </div>
+    );
 }
 
 export default function SendBitcoin(props: Props) {
@@ -41,111 +101,234 @@ export default function SendBitcoin(props: Props) {
 
     return (
         <Layout>
-            <Content>
-                <Header padding={8} height={'140px'}>
-                    <Column>
-                        <WebsiteBar session={session} />
-                        <Column>
-                            <Text text={'Send Bitcoin'} textCenter preset="title-bold" mt="lg" />
-                        </Column>
-                    </Column>
-                </Header>
-
-                <Column gap="lg">
-                    {/* Amount */}
-                    <Card>
-                        <Column gap="sm" itemsCenter>
-                            <Text text="Amount" preset="sub" style={{ color: colors.textDim }} />
-                            <Row itemsCenter gap="sm">
-                                <Text
-                                    text={amountDisplay}
-                                    preset="title-bold"
-                                    size="xxl"
-                                    style={{ color: colors.white }}
-                                />
-                                <Text text={btcUnit} preset="bold" style={{ color: colors.textDim }} />
-                            </Row>
-                            <Text
-                                text={`${amountStr} satoshis`}
-                                preset="sub"
-                                size="xs"
-                                style={{ color: colors.textDim }}
+            <Content style={{ padding: 12, overflowY: 'auto' }}>
+                {/* Site Header */}
+                <div
+                    style={{
+                        background: `linear-gradient(135deg, ${themeColors.main}10 0%, ${themeColors.main}05 100%)`,
+                        border: `1px solid ${themeColors.main}20`,
+                        borderRadius: 12,
+                        padding: 16,
+                        marginBottom: 12
+                    }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                        {session.icon ? (
+                            <img
+                                src={session.icon}
+                                alt={session.name || session.origin}
+                                style={{
+                                    width: 40,
+                                    height: 40,
+                                    borderRadius: 10,
+                                    objectFit: 'cover'
+                                }}
+                                onError={(e) => {
+                                    (e.target as HTMLImageElement).style.display = 'none';
+                                    const fallback = (e.target as HTMLImageElement)
+                                        .nextElementSibling as HTMLElement;
+                                    if (fallback) fallback.style.display = 'flex';
+                                }}
                             />
-                        </Column>
-                    </Card>
+                        ) : null}
+                        <div
+                            style={{
+                                width: 40,
+                                height: 40,
+                                borderRadius: 10,
+                                background: themeColors.main,
+                                display: session.icon ? 'none' : 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                flexShrink: 0
+                            }}>
+                            <SendOutlined style={{ fontSize: 20, color: themeColors.background }} />
+                        </div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                            <div
+                                style={{
+                                    fontSize: 14,
+                                    fontWeight: 600,
+                                    color: themeColors.text,
+                                    marginBottom: 2
+                                }}>
+                                {session.name || 'Unknown Site'}
+                            </div>
+                            <div
+                                style={{
+                                    fontSize: 11,
+                                    color: themeColors.textFaded,
+                                    fontFamily: 'monospace',
+                                    overflow: 'hidden',
+                                    textOverflow: 'ellipsis',
+                                    whiteSpace: 'nowrap'
+                                }}>
+                                {session.origin}
+                            </div>
+                        </div>
+                    </div>
+                </div>
 
-                    {/* From */}
-                    <Column gap="sm">
-                        <Text text="From" preset="bold" />
-                        <Card>
-                            <Row itemsCenter gap="xs">
-                                <Text
-                                    text="(You)"
-                                    style={{ color: colors.green }}
-                                    size="xs"
-                                    preset="bold"
-                                />
-                                <AddressText address={fromAddress} color="white" />
-                            </Row>
-                        </Card>
-                    </Column>
-
-                    {/* To */}
-                    <Column gap="sm">
-                        <Text text="To" preset="bold" />
-                        <Card>
-                            <AddressText address={toAddress} color="white" />
-                        </Card>
-                    </Column>
-
-                    {/* Fee Rate */}
-                    {feeRate > 0 ? (
-                        <Column gap="sm">
-                            <Text text="Fee Rate" preset="bold" />
-                            <Card>
-                                <Row justifyBetween>
-                                    <Text text="Rate:" style={{ color: colors.textDim }} />
-                                    <Text text={`${feeRate} sat/vB`} />
-                                </Row>
-                            </Card>
-                        </Column>
-                    ) : null}
-
-                    {/* Note */}
-                    {data.note && typeof data.note === 'string' ? (
-                        <Column gap="sm">
-                            <Text text="Note" preset="bold" />
-                            <Card>
-                                <Text
-                                    text={data.note}
-                                    preset="sub"
-                                    style={{ wordBreak: 'break-word', fontSize: 12 }}
-                                />
-                            </Card>
-                        </Column>
-                    ) : null}
-
-                    {/* Security Notice */}
-                    <Card
+                {/* Title + Badge */}
+                <div style={{ textAlign: 'center', marginBottom: 16 }}>
+                    <div style={{ fontSize: 18, fontWeight: 700, color: '#ffffff', marginBottom: 6 }}>
+                        Send Bitcoin
+                    </div>
+                    <div
                         style={{
-                            borderColor: colors.warning,
-                            borderWidth: 1,
-                            borderStyle: 'solid',
-                            backgroundColor: 'rgba(243, 116, 19, 0.1)'
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 6,
+                            padding: '4px 12px',
+                            borderRadius: 16,
+                            backgroundColor: `${themeColors.main}20`,
+                            border: `1px solid ${themeColors.main}40`
                         }}>
-                        <Text
-                            text="Only confirm if you trust this site. This will send Bitcoin from your wallet and cannot be reversed."
-                            preset="sub"
-                            textCenter
+                        <SendOutlined style={{ fontSize: 11, color: themeColors.main }} />
+                        <span style={{ fontSize: 12, fontWeight: 600, color: themeColors.main }}>BTC Transfer</span>
+                    </div>
+                </div>
+
+                {/* Amount Section */}
+                <div
+                    style={{
+                        background: themeColors.containerBgFaded,
+                        borderRadius: 12,
+                        padding: 12,
+                        marginBottom: 12
+                    }}>
+                    <SectionLabel
+                        icon={<WalletOutlined style={{ fontSize: 10 }} />}
+                        text="Amount"
+                    />
+                    <div
+                        style={{
+                            textAlign: 'center',
+                            padding: 16,
+                            background: themeColors.inputBg,
+                            borderRadius: 8,
+                            border: `1px solid ${themeColors.containerBorder}`
+                        }}>
+                        <div
+                            style={{
+                                fontSize: 24,
+                                fontWeight: 700,
+                                color: '#ffffff',
+                                marginBottom: 4
+                            }}>
+                            {amountDisplay}{' '}
+                            <span style={{ fontSize: 14, fontWeight: 600, color: themeColors.textFaded }}>
+                                {btcUnit}
+                            </span>
+                        </div>
+                        <div
+                            style={{
+                                fontSize: 11,
+                                color: themeColors.textFaded,
+                                fontFamily: 'monospace'
+                            }}>
+                            {amountStr} satoshis
+                        </div>
+                    </div>
+                </div>
+
+                {/* Transaction Details Section */}
+                <div
+                    style={{
+                        background: themeColors.containerBgFaded,
+                        borderRadius: 12,
+                        padding: 12,
+                        marginBottom: 12
+                    }}>
+                    <SectionLabel
+                        icon={<SendOutlined style={{ fontSize: 10 }} />}
+                        text="Transaction Details"
+                    />
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                        <DetailRow label="From" value={fromAddress} mono />
+                        <DetailRow label="To" value={toAddress} mono />
+                        {feeRate > 0 ? (
+                            <DetailRow label="Fee Rate" value={`${feeRate} sat/vB`} />
+                        ) : null}
+                    </div>
+                </div>
+
+                {/* Note Section */}
+                {data.note && typeof data.note === 'string' ? (
+                    <div
+                        style={{
+                            background: themeColors.containerBgFaded,
+                            borderRadius: 12,
+                            padding: 12,
+                            marginBottom: 12
+                        }}>
+                        <SectionLabel
+                            icon={<SendOutlined style={{ fontSize: 10 }} />}
+                            text="Note"
                         />
-                    </Card>
-                </Column>
+                        <div
+                            style={{
+                                userSelect: 'text',
+                                whiteSpace: 'pre-wrap',
+                                wordBreak: 'break-word',
+                                padding: 10,
+                                background: themeColors.inputBg,
+                                borderRadius: 8,
+                                border: `1px solid ${themeColors.containerBorder}`,
+                                fontSize: 13,
+                                color: themeColors.text,
+                                lineHeight: '1.6'
+                            }}>
+                            {data.note}
+                        </div>
+                    </div>
+                ) : null}
+
+                {/* Warning Section */}
+                <div
+                    style={{
+                        padding: '10px 12px',
+                        background: `${themeColors.warning}10`,
+                        border: `1px solid ${themeColors.warning}30`,
+                        borderRadius: 12,
+                        marginBottom: 12
+                    }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <WarningOutlined style={{ fontSize: 14, color: themeColors.warning, flexShrink: 0 }} />
+                        <span style={{ fontSize: 12, color: themeColors.warning, lineHeight: '1.5' }}>
+                            Only confirm if you trust this site. This will send Bitcoin from your wallet and cannot be
+                            reversed.
+                        </span>
+                    </div>
+                </div>
+
+                {/* Spacer for fixed footer */}
+                <div style={{ height: 70 }} />
             </Content>
 
-            <Footer>
-                <Row full gap="md">
-                    <Button text="Reject" full preset="default" onClick={handleReject} style={{ flex: 1 }} />
-                    <Button text="Confirm Send" full preset="primary" onClick={handleConfirm} style={{ flex: 1 }} />
+            <Footer style={{ padding: 12 }}>
+                <Row full style={{ gap: 8 }}>
+                    <Button
+                        text="Reject"
+                        full
+                        preset="default"
+                        onClick={handleReject}
+                        style={{
+                            background: '#434343',
+                            border: `1px solid ${themeColors.containerBorder}`,
+                            color: themeColors.text
+                        }}
+                    />
+                    <Button
+                        text="Confirm Send"
+                        full
+                        preset="primary"
+                        onClick={handleConfirm}
+                        style={{
+                            background: themeColors.main,
+                            color: themeColors.background,
+                            fontWeight: 600
+                        }}
+                    />
                 </Row>
             </Footer>
         </Layout>
