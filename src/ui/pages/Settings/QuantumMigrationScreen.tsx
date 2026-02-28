@@ -390,7 +390,7 @@ export default function QuantumMigrationScreen() {
     return (
         <Layout>
             <Header title="Post-Quantum Migration" onBack={() => window.history.go(-1)} />
-            <Content style={{ padding: '16px' }}>
+            <Content style={{ padding: '12px 16px 16px' }}>
                 {/* Show on-chain linked key info if exists - hide when in import mode to avoid UI collision */}
                 {!importMode && isLinkedOnChain && onChainLinkedKey && (
                     <Card
@@ -398,27 +398,29 @@ export default function QuantumMigrationScreen() {
                             backgroundColor: colors.containerBg,
                             border: '1px solid rgba(139, 92, 246, 0.3)',
                             borderRadius: '12px',
-                            padding: '12px',
+                            padding: '10px 12px',
                             marginBottom: '12px'
                         }}
                     >
                         <Column fullX>
-                            <Row itemsCenter gap="sm" style={{ marginBottom: 4 }}>
-                                <LinkOutlined style={{ fontSize: 16, color: colors.purple }} />
-                                <Text text="On-Chain Linked Key Detected" preset="bold" size="sm" />
+                            <Row itemsCenter gap="sm">
+                                <LinkOutlined style={{ fontSize: 18, color: colors.purple, flexShrink: 0 }} />
+                                <Column gap="zero" style={{ flex: 1 }}>
+                                    <Text text="On-Chain Linked Key Detected" preset="bold" size="sm" />
+                                    <Text
+                                        text="This wallet has an MLDSA key linked on the blockchain:"
+                                        preset="sub"
+                                        size="xs"
+                                    />
+                                </Column>
                             </Row>
-                            <Text
-                                text="This wallet has an MLDSA key already linked on the blockchain:"
-                                preset="sub"
-                                size="xs"
-                                style={{ marginBottom: 8 }}
-                            />
                             <div
                                 style={{
                                     background: colors.background,
                                     border: `1px solid ${colors.containerBorder}`,
                                     borderRadius: '8px',
-                                    padding: '8px 10px'
+                                    padding: '8px 10px',
+                                    marginTop: '2px'
                                 }}
                             >
                                 <code
@@ -436,8 +438,8 @@ export default function QuantumMigrationScreen() {
                             <Text
                                 text="You must import the key matching this hash."
                                 preset="sub"
-                                size="xs"
-                                style={{ marginTop: 6, opacity: 0.8 }}
+                                size="xxs"
+                                style={{ marginTop: '6px', opacity: 0.7, fontSize: '10px' }}
                             />
                         </Column>
                     </Card>
