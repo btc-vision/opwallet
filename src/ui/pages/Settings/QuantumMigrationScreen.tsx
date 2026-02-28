@@ -1,5 +1,12 @@
+import {
+    CheckCircleOutlined,
+    FileProtectOutlined,
+    InfoCircleOutlined,
+    LinkOutlined,
+    LockOutlined,
+    WarningOutlined
+} from '@ant-design/icons';
 import { useEffect, useState } from 'react';
-import { CheckCircleOutlined, InfoCircleOutlined, LinkOutlined, WarningOutlined } from '@ant-design/icons';
 
 import { KEYRING_TYPE } from '@/shared/constant';
 import Web3API from '@/shared/web3/Web3API';
@@ -19,10 +26,13 @@ const EXPECTED_QUANTUM_KEY_HEX_CHARS = EXPECTED_QUANTUM_KEY_BYTES * 2;
 const colors = {
     main: '#f37413',
     background: '#212121',
+    containerBg: '#252525',
+    containerBorder: '#303030',
     success: '#4ade80',
     warning: '#f37413',
     error: '#ef4444',
     purple: '#8B5CF6',
+    purpleText: '#c4b5fd',
     textFaded: 'rgba(255, 255, 255, 0.6)',
     text: '#ffffff',
     textMuted: 'rgba(255, 255, 255, 0.8)'
@@ -96,7 +106,6 @@ export default function QuantumMigrationScreen() {
         };
 
         void checkStatus();
-         
     }, [address.pubkey]);
 
     const handleImport = async () => {
@@ -205,7 +214,8 @@ export default function QuantumMigrationScreen() {
                 <Header title="Post-Quantum Keys" onBack={() => window.history.go(-1)} />
                 <Content style={{ padding: '16px' }}>
                     <Card
-                        style={{ backgroundColor: 'rgba(74, 222, 128, 0.1)', borderColor: 'rgba(74, 222, 128, 0.3)' }}>
+                        style={{ backgroundColor: 'rgba(74, 222, 128, 0.1)', borderColor: 'rgba(74, 222, 128, 0.3)' }}
+                    >
                         <Row itemsCenter gap="md">
                             <CheckCircleOutlined style={{ fontSize: 24, color: colors.success }} />
                             <Column gap="zero" style={{ flex: 1 }}>
@@ -225,7 +235,8 @@ export default function QuantumMigrationScreen() {
                                 marginTop: '12px',
                                 backgroundColor: 'rgba(139, 92, 246, 0.1)',
                                 borderColor: 'rgba(139, 92, 246, 0.3)'
-                            }}>
+                            }}
+                        >
                             <Row itemsCenter gap="sm">
                                 <LinkOutlined style={{ fontSize: 16, color: colors.purple }} />
                                 <Text text="Linked on-chain" preset="sub" size="xs" color="white" />
@@ -245,7 +256,8 @@ export default function QuantumMigrationScreen() {
                                     fontFamily: 'monospace',
                                     fontSize: '12px',
                                     color: 'white'
-                                }}>
+                                }}
+                            >
                                 {quantumPublicKeyHash ? `0x${quantumPublicKeyHash}` : 'Loading...'}
                             </div>
                             <Button
@@ -288,7 +300,8 @@ export default function QuantumMigrationScreen() {
                 <Header title="Post-Quantum Keys" onBack={() => window.history.go(-1)} />
                 <Content style={{ padding: '16px' }}>
                     <Card
-                        style={{ backgroundColor: 'rgba(74, 222, 128, 0.1)', borderColor: 'rgba(74, 222, 128, 0.3)' }}>
+                        style={{ backgroundColor: 'rgba(74, 222, 128, 0.1)', borderColor: 'rgba(74, 222, 128, 0.3)' }}
+                    >
                         <Row itemsCenter gap="md">
                             <CheckCircleOutlined style={{ fontSize: 24, color: colors.success }} />
                             <Column gap="zero" style={{ flex: 1 }}>
@@ -306,7 +319,8 @@ export default function QuantumMigrationScreen() {
                                     ? 'rgba(139, 92, 246, 0.1)'
                                     : 'rgba(239, 68, 68, 0.1)',
                                 borderColor: keyMatchesOnChain ? 'rgba(139, 92, 246, 0.3)' : 'rgba(239, 68, 68, 0.3)'
-                            }}>
+                            }}
+                        >
                             <Row itemsCenter gap="sm">
                                 <LinkOutlined
                                     style={{ fontSize: 16, color: keyMatchesOnChain ? colors.purple : colors.error }}
@@ -333,7 +347,8 @@ export default function QuantumMigrationScreen() {
                                     fontFamily: 'monospace',
                                     fontSize: '12px',
                                     color: 'white'
-                                }}>
+                                }}
+                            >
                                 {quantumPublicKeyHash ? `0x${quantumPublicKeyHash}` : 'Loading...'}
                             </div>
                             <Button
@@ -355,7 +370,8 @@ export default function QuantumMigrationScreen() {
                             marginTop: '16px',
                             backgroundColor: 'rgba(243, 116, 19, 0.1)',
                             borderColor: 'rgba(243, 116, 19, 0.3)'
-                        }}>
+                        }}
+                    >
                         <Row itemsCenter gap="sm">
                             <WarningOutlined style={{ fontSize: 16, color: colors.warning }} />
                             <Text
@@ -379,45 +395,68 @@ export default function QuantumMigrationScreen() {
                 {!importMode && isLinkedOnChain && onChainLinkedKey && (
                     <Card
                         style={{
-                            backgroundColor: 'rgba(139, 92, 246, 0.15)',
-                            borderColor: 'rgba(139, 92, 246, 0.4)',
-                            border: '1px solid rgba(139, 92, 246, 0.4)',
-                            marginBottom: '16px',
-                            padding: '16px'
-                        }}>
-                        <Column gap="md">
-                            <Row itemsCenter gap="sm">
-                                <LinkOutlined style={{ fontSize: 18, color: colors.purple }} />
-                                <Text text="On-Chain Linked Key Detected" preset="bold" size="sm" color="white" />
+                            backgroundColor: colors.containerBg,
+                            border: '1px solid rgba(139, 92, 246, 0.3)',
+                            borderRadius: '12px',
+                            padding: '12px',
+                            marginBottom: '12px'
+                        }}
+                    >
+                        <Column fullX>
+                            <Row itemsCenter gap="sm" style={{ marginBottom: 4 }}>
+                                <LinkOutlined style={{ fontSize: 16, color: colors.purple }} />
+                                <Text text="On-Chain Linked Key Detected" preset="bold" size="sm" />
                             </Row>
                             <Text
-                                text="This wallet has an MLDSA key already linked on the blockchain. You must import the original key that matches this hash:"
+                                text="This wallet has an MLDSA key already linked on the blockchain:"
                                 preset="sub"
                                 size="xs"
-                                color="white"
-                                style={{ opacity: 0.9 }}
+                                style={{ marginBottom: 8 }}
                             />
                             <div
                                 style={{
-                                    padding: '12px',
-                                    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+                                    background: colors.background,
+                                    border: `1px solid ${colors.containerBorder}`,
                                     borderRadius: '8px',
-                                    fontFamily: 'monospace',
-                                    fontSize: '11px',
-                                    wordBreak: 'break-all',
-                                    color: colors.text
-                                }}>
-                                {onChainLinkedKey}
+                                    padding: '8px 10px'
+                                }}
+                            >
+                                <code
+                                    style={{
+                                        fontFamily: 'monospace',
+                                        fontSize: 10,
+                                        color: colors.purpleText,
+                                        wordBreak: 'break-all',
+                                        lineHeight: '16px'
+                                    }}
+                                >
+                                    {onChainLinkedKey}
+                                </code>
                             </div>
+                            <Text
+                                text="You must import the key matching this hash."
+                                preset="sub"
+                                size="xs"
+                                style={{ marginTop: 6, opacity: 0.8 }}
+                            />
                         </Column>
                     </Card>
                 )}
 
-                <Card style={{ backgroundColor: 'rgba(243, 116, 19, 0.1)', borderColor: 'rgba(243, 116, 19, 0.3)' }}>
-                    <Row itemsCenter gap="md">
-                        <WarningOutlined style={{ fontSize: 24, color: colors.warning }} />
+                {/* Migration Required */}
+                <Card
+                    style={{
+                        background: 'linear-gradient(135deg, rgba(243,116,19,0.12) 0%, rgba(239,68,68,0.08) 100%)',
+                        border: '1px solid rgba(243, 116, 19, 0.25)',
+                        borderRadius: '12px',
+                        padding: '10px 12px',
+                        marginBottom: '12px'
+                    }}
+                >
+                    <Row itemsCenter gap="sm">
+                        <WarningOutlined style={{ fontSize: 18, color: colors.warning, flexShrink: 0 }} />
                         <Column gap="zero" style={{ flex: 1 }}>
-                            <Text text="Migration Required" preset="bold" color="warning" />
+                            <Text text="Migration Required" preset="bold" size="sm" color="warning" />
                             <Text
                                 text="Your wallet needs a quantum-resistant MLDSA key for OPNet transactions."
                                 preset="sub"
@@ -429,122 +468,185 @@ export default function QuantumMigrationScreen() {
 
                 {!importMode ? (
                     <>
-                        <Text text="Choose how to set up your quantum key:" mt="lg" mb="md" />
-
-                        <Card
+                        {/* Import Existing Key */}
+                        <div
                             style={{
-                                marginTop: '8px',
+                                backgroundColor: 'rgba(139, 92, 246, 0.1)',
+                                border: '1px solid rgba(139, 92, 246, 0.25)',
+                                borderRadius: '12px',
+                                padding: '12px',
                                 cursor: 'pointer',
-                                backgroundColor: 'rgba(139, 92, 246, 0.15)',
-                                border: '2px solid rgba(139, 92, 246, 0.5)',
-                                transition: 'all 0.2s ease',
-                                padding: '16px'
+                                transition: 'all 0.15s'
                             }}
-                            onClick={() => setImportMode(true)}>
-                            <Column gap="sm">
-                                <Row itemsCenter gap="sm">
-                                    <Text text="📥" style={{ fontSize: '18px' }} />
-                                    <Text text="Import Existing MLDSA Key" preset="bold" color="white" />
-                                </Row>
-                                <Text
-                                    text={
-                                        isLinkedOnChain
-                                            ? 'Import the quantum key that matches the on-chain linked hash.'
-                                            : 'If you have previously exported a quantum key from another wallet, import it here.'
-                                    }
-                                    preset="sub"
-                                    size="xs"
-                                    color="white"
-                                    style={{ opacity: 0.8 }}
-                                />
-                            </Column>
-                        </Card>
-
-                        {!isLinkedOnChain && (
-                            <Card
-                                style={{
-                                    marginTop: '12px',
-                                    cursor: 'pointer',
-                                    backgroundColor: 'rgba(74, 222, 128, 0.1)',
-                                    border: '2px solid rgba(74, 222, 128, 0.4)',
-                                    transition: 'all 0.2s ease',
-                                    padding: '16px'
-                                }}
-                                onClick={handleGenerateNew}>
-                                <Column gap="sm">
-                                    <Row itemsCenter gap="sm">
-                                        <Text text="🔐" style={{ fontSize: '18px' }} />
-                                        <Text text="Generate New MLDSA Key" preset="bold" color="white" />
-                                    </Row>
+                            onClick={() => setImportMode(true)}
+                            onMouseEnter={(e) => {
+                                e.currentTarget.style.background = 'rgba(139, 92, 246, 0.18)';
+                                e.currentTarget.style.borderColor = 'rgba(139, 92, 246, 0.4)';
+                            }}
+                            onMouseLeave={(e) => {
+                                e.currentTarget.style.background = 'rgba(139, 92, 246, 0.1)';
+                                e.currentTarget.style.borderColor = 'rgba(139, 92, 246, 0.25)';
+                            }}
+                        >
+                            <Row itemsCenter gap="md">
+                                <div
+                                    style={{
+                                        width: '36px',
+                                        height: '36px',
+                                        borderRadius: '10px',
+                                        background: 'rgba(139, 92, 246, 0.25)',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        flexShrink: 0
+                                    }}
+                                >
+                                    <FileProtectOutlined style={{ fontSize: 18, color: colors.text }} />
+                                </div>
+                                <Column gap="zero" style={{ flex: 1 }}>
+                                    <Text text="Import Existing MLDSA Key" preset="bold" size="sm" />
                                     <Text
-                                        text="Create a new quantum-resistant key. Make sure to backup this key after generation."
+                                        text={
+                                            isLinkedOnChain
+                                                ? 'Import the quantum key matching the on-chain hash'
+                                                : 'Use your existing MLDSA quantum key'
+                                        }
                                         preset="sub"
                                         size="xs"
-                                        color="white"
-                                        style={{ opacity: 0.8 }}
                                     />
                                 </Column>
-                            </Card>
-                        )}
+                            </Row>
 
-                        {isLinkedOnChain && (
-                            <Card style={{ marginTop: '16px', backgroundColor: 'rgba(0, 0, 0, 0.2)' }}>
-                                <Row itemsCenter gap="sm">
-                                    <InfoCircleOutlined style={{ fontSize: 16, color: colors.textFaded }} />
+                            {/* Info note - only when linked on-chain */}
+                            {isLinkedOnChain && (
+                                <Row
+                                    gap="sm"
+                                    style={{
+                                        background: 'rgba(0, 0, 0, 0.2)',
+                                        borderRadius: '8px',
+                                        padding: '8px 10px',
+                                        marginTop: 12,
+                                        alignItems: 'flex-start'
+                                    }}
+                                >
+                                    <InfoCircleOutlined
+                                        style={{ fontSize: 12, color: colors.textFaded, flexShrink: 0, marginTop: 1 }}
+                                    />
                                     <Text
                                         text="Generating a new key is disabled because this wallet already has a key linked on-chain."
                                         preset="sub"
                                         size="xs"
+                                        style={{ opacity: 0.8 }}
                                     />
                                 </Row>
-                            </Card>
+                            )}
+                        </div>
+
+                        {/* Generate New Key - only when NOT linked on-chain */}
+                        {!isLinkedOnChain && (
+                            <div
+                                style={{
+                                    backgroundColor: 'rgba(74, 222, 128, 0.1)',
+                                    border: '1px solid rgba(74, 222, 128, 0.25)',
+                                    borderRadius: '12px',
+                                    padding: '12px',
+                                    marginTop: '12px',
+                                    cursor: 'pointer',
+                                    transition: 'all 0.15s'
+                                }}
+                                onClick={handleGenerateNew}
+                                onMouseEnter={(e) => {
+                                    e.currentTarget.style.background = 'rgba(74, 222, 128, 0.18)';
+                                    e.currentTarget.style.borderColor = 'rgba(74, 222, 128, 0.4)';
+                                }}
+                                onMouseLeave={(e) => {
+                                    e.currentTarget.style.background = 'rgba(74, 222, 128, 0.1)';
+                                    e.currentTarget.style.borderColor = 'rgba(74, 222, 128, 0.25)';
+                                }}
+                            >
+                                <Row itemsCenter gap="md">
+                                    <div
+                                        style={{
+                                            width: '36px',
+                                            height: '36px',
+                                            borderRadius: '10px',
+                                            background: 'rgba(74, 222, 128, 0.25)',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            flexShrink: 0
+                                        }}
+                                    >
+                                        <LockOutlined style={{ fontSize: 18, color: colors.text }} />
+                                    </div>
+                                    <Column gap="zero" style={{ flex: 1 }}>
+                                        <Text text="Generate New MLDSA Key" preset="bold" size="sm" />
+                                        <Text
+                                            text="Create a new quantum-resistant key for this wallet"
+                                            preset="sub"
+                                            size="xs"
+                                        />
+                                    </Column>
+                                </Row>
+                            </div>
                         )}
                     </>
                 ) : (
-                    <Column gap="md" style={{ flex: 1 }}>
-                        <Text text="Import Quantum Private Key" mt="md" preset="bold" color="white" />
-                        <Text
-                            text={
-                                isLinkedOnChain
-                                    ? 'Enter the quantum private key that matches the on-chain linked hash:'
-                                    : 'Enter your MLDSA private key (hex format):'
-                            }
-                            preset="sub"
-                            size="sm"
-                            color="white"
-                            style={{ opacity: 0.8 }}
-                        />
+                    /* Import Mode */
+                    <Card
+                        style={{
+                            backgroundColor: colors.containerBg,
+                            border: `1px solid ${colors.containerBorder}`,
+                            borderRadius: '12px',
+                            padding: '12px'
+                        }}
+                    >
+                        <Column fullX>
+                            <Text text="Import Quantum Private Key" preset="bold" />
+                            <Text
+                                text={
+                                    isLinkedOnChain
+                                        ? 'Enter the quantum private key that matches the on-chain linked hash:'
+                                        : 'Enter your MLDSA private key (hex format):'
+                                }
+                                preset="sub"
+                                size="sm"
+                                style={{ opacity: 0.8, marginTop: 4 }}
+                            />
 
-                        <Input
-                            preset="text"
-                            placeholder="Enter quantum private key..."
-                            value={quantumKeyInput}
-                            onChange={(e) => {
-                                setQuantumKeyInput(e.target.value);
-                                setError('');
-                            }}
-                            containerStyle={{ marginTop: '8px' }}
-                        />
+                            <Input
+                                preset="text"
+                                placeholder="Enter quantum private key..."
+                                value={quantumKeyInput}
+                                onChange={(e) => {
+                                    setQuantumKeyInput(e.target.value);
+                                    setError('');
+                                }}
+                                containerStyle={{ marginTop: 8 }}
+                            />
 
-                        <Text
-                            text={`Expected: ${EXPECTED_QUANTUM_KEY_HEX_CHARS} hex chars (key only) or ${EXPECTED_QUANTUM_KEY_HEX_CHARS + CHAINCODE_HEX_CHARS} hex chars (with chaincode)`}
-                            preset="sub"
-                            size="xs"
-                            color="white"
-                            style={{ opacity: 0.6 }}
-                        />
+                            <Text
+                                text={`Expected: ${EXPECTED_QUANTUM_KEY_HEX_CHARS} hex chars (key only) or ${EXPECTED_QUANTUM_KEY_HEX_CHARS + CHAINCODE_HEX_CHARS} hex chars (with chaincode)`}
+                                preset="sub"
+                                size="xs"
+                                style={{ opacity: 0.6, marginTop: 4 }}
+                            />
 
-                        {error && (
-                            <Card
-                                style={{
-                                    backgroundColor: 'rgba(239, 68, 68, 0.15)',
-                                    border: '1px solid rgba(239, 68, 68, 0.4)',
-                                    padding: '12px'
-                                }}>
-                                <Text text={error} color="error" size="sm" />
-                            </Card>
-                        )}
-                    </Column>
+                            {error && (
+                                <Card
+                                    style={{
+                                        backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                                        border: '1px solid rgba(239, 68, 68, 0.3)',
+                                        borderRadius: '8px',
+                                        padding: '10px',
+                                        marginTop: 8
+                                    }}
+                                >
+                                    <Text text={error} color="error" size="sm" />
+                                </Card>
+                            )}
+                        </Column>
+                    </Card>
                 )}
             </Content>
 
