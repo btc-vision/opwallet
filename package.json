@@ -100,7 +100,7 @@
         "loglevel": "^1.9.2",
         "lru-cache": "^11.2.6",
         "nanoid": "^5.1.6",
-        "opnet": "^1.8.1-rc.16",
+        "opnet": "^1.8.1-rc.17",
         "postcss": "^8.5.6",
         "postcss-preset-env": "^11.2.0",
         "process": "0.11.10",
