@@ -105,6 +105,21 @@ export const ADDRESS_TYPES: {
     }*/
 ];
 
+/**
+ * Leather wallet uses BIP-44 account-level derivation (depth 3) instead of address index (depth 5).
+ * Leather: m/purpose'/0'/{account}'/0/0 -- OPWallet: m/purpose'/0'/0'/0/{index}
+ */
+export function getLeatherHdPath(addressType: AddressTypes, accountIndex: number): string {
+    const purposeMap: Partial<Record<AddressTypes, number>> = {
+        [AddressTypes.P2PKH]: 44,
+        [AddressTypes.P2SH_OR_P2SH_P2WPKH]: 49,
+        [AddressTypes.P2WPKH]: 84,
+        [AddressTypes.P2TR]: 86
+    };
+    const purpose = purposeMap[addressType] ?? 86;
+    return `m/${purpose}'/0'/${accountIndex}'/0`;
+}
+
 export const RESTORE_WALLETS: { value: RestoreWalletType; name: string; addressTypes: AddressTypes[] }[] = [
     {
         value: RestoreWalletType.OP_WALLET,
@@ -125,6 +140,11 @@ export const RESTORE_WALLETS: { value: RestoreWalletType; name: string; addressT
         value: RestoreWalletType.XVERSE,
         name: 'Xverse Wallet',
         addressTypes: [AddressTypes.P2SH_OR_P2SH_P2WPKH, AddressTypes.P2TR]
+    },
+    {
+        value: RestoreWalletType.LEATHER,
+        name: 'Leather Wallet',
+        addressTypes: [AddressTypes.P2WPKH, AddressTypes.P2TR]
     },
     {
         value: RestoreWalletType.OTHERS,

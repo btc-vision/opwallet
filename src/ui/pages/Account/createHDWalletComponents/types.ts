@@ -28,6 +28,7 @@ export interface ContextData {
     addressTypeIndex: number;
     wordsType: WordsType;
     rotationModeEnabled: boolean; // Privacy mode - permanent choice
+    leatherAccountIndex: number; // Leather wallet account number (0-based)
 }
 
 export interface UpdateContextDataParams {
@@ -43,4 +44,5 @@ export interface UpdateContextDataParams {
     addressTypeIndex?: number;
     wordsType?: WordsType;
     rotationModeEnabled?: boolean;
+    leatherAccountIndex?: number;
 }

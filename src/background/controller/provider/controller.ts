@@ -107,6 +107,8 @@ export class ProviderController {
                 req.data.params.networkType = NetworkType.TESTNET;
             } else if (NETWORK_TYPES[NetworkType.REGTEST].validNames.includes(network)) {
                 req.data.params.networkType = NetworkType.REGTEST;
+            } else if (NETWORK_TYPES[NetworkType.OPNET_TESTNET].validNames.includes(network)) {
+                req.data.params.networkType = NetworkType.OPNET_TESTNET;
             } else {
                 throw new Error(
                     `the network is invalid, supported networks: ${NETWORK_TYPES.map((v) => v.name).join(',')}`

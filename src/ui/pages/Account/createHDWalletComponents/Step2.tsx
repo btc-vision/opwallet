@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 
-import { ADDRESS_TYPES, RESTORE_WALLETS } from '@/shared/constant';
+import { ADDRESS_TYPES, RESTORE_WALLETS, getLeatherHdPath } from '@/shared/constant';
 
 /** BIP32 path validation regex from @btc-vision/bip32 */
 const BIP32_PATH_REGEX = /^(m\/)?(\d+'?\/)*\d+'?$/;
@@ -30,6 +30,15 @@ export function Step2({
     const navigate = useNavigate();
     const createAccount = useCreateAccountCallback();
     const privacyModeEnabled = usePrivacyModeEnabled();
+    const isLeatherImport = contextData.restoreWalletType === RestoreWalletType.LEATHER;
+
+    /** Resolve HD path for a given address type, respecting Leather account-level derivation. */
+    const resolveHdPath = (addressType: AddressTypes, fallbackHdPath: string): string => {
+        if (isLeatherImport) {
+            return getLeatherHdPath(addressType, contextData.leatherAccountIndex ?? 0);
+        }
+        return contextData.customHdPath || fallbackHdPath;
+    };
 
     const hdPathOptions = useMemo(() => {
         const restoreWallet = RESTORE_WALLETS[contextData.restoreWalletType];
@@ -114,7 +123,7 @@ export function Step2({
             try {
                 const keyring = await wallet.createTmpKeyringWithMnemonics(
                     contextData.mnemonics,
-                    contextData.customHdPath || options.hdPath,
+                    resolveHdPath(options.addressType, options.hdPath),
                     contextData.passphrase,
                     options.addressType
                 );
@@ -230,11 +239,11 @@ export function Step2({
         let hdPath: string;
         if (scannedGroups.length > 0) {
             const option = allHdPathOptions[contextData.addressTypeIndex];
-            hdPath = contextData.customHdPath || option.hdPath;
+            hdPath = resolveHdPath(option.addressType, option.hdPath);
             updateContextData({ hdPath });
         } else {
             const option = hdPathOptions[contextData.addressTypeIndex];
-            hdPath = contextData.customHdPath || option.hdPath;
+            hdPath = resolveHdPath(option.addressType, option.hdPath);
             updateContextData({ hdPath });
         }
 
@@ -289,7 +298,7 @@ export function Step2({
                 try {
                     const keyring = await wallet.createTmpKeyringWithMnemonics(
                         contextData.mnemonics,
-                        contextData.customHdPath || options.hdPath,
+                        resolveHdPath(options.addressType, options.hdPath),
                         contextData.passphrase,
                         options.addressType,
                         10
@@ -380,7 +389,7 @@ export function Step2({
                         return null;
                     }
 
-                    const hdPath = (contextData.customHdPath || item.hdPath) + '/0';
+                    const hdPath = resolveHdPath(item.addressType, item.hdPath) + '/0';
                     return (
                         <AddressTypeCard2
                             key={index}
@@ -394,40 +403,53 @@ export function Step2({
                             ]}
                             checked={index == contextData.addressTypeIndex}
                             onClick={() => {
-                                updateContextData({
+                                const updates: UpdateContextDataParams = {
                                     addressTypeIndex: index,
                                     addressType: item.addressType
-                                });
+                                };
+                                if (isLeatherImport) {
+                                    updates.customHdPath = getLeatherHdPath(
+                                        item.addressType,
+                                        contextData.leatherAccountIndex ?? 0
+                                    );
+                                }
+                                updateContextData(updates);
                             }}
                         />
                     );
                 })}
 
-            <Text text="Custom HdPath (Optional)" preset="bold" mt="lg" />
-
-            <Column>
-                <Input
-                    placeholder={'Custom HD Wallet Derivation Path'}
-                    value={pathText}
-                    onChange={(e) => {
-                        submitCustomHdPath(e.target.value);
-                    }}
-                />
-            </Column>
-            {pathError && <Text text={pathError} color="error" />}
+            {!isLeatherImport && (
+                <>
+                    <Text text="Custom HdPath (Optional)" preset="bold" mt="lg" />
+                    <Column>
+                        <Input
+                            placeholder={'Custom HD Wallet Derivation Path'}
+                            value={pathText}
+                            onChange={(e) => {
+                                submitCustomHdPath(e.target.value);
+                            }}
+                        />
+                    </Column>
+                    {pathError && <Text text={pathError} color="error" />}
+                </>
+            )}
             {error && <Text text={error} color="error" />}
 
-            <Text text="Phrase (Optional)" preset="bold" mt="lg" />
-
-            <Input
-                placeholder={'Passphrase'}
-                defaultValue={contextData.passphrase}
-                onChange={(e) => {
-                    updateContextData({
-                        passphrase: e.target.value
-                    });
-                }}
-            />
+            {!isLeatherImport && (
+                <>
+                    <Text text="Phrase (Optional)" preset="bold" mt="lg" />
+                    <Input
+                        placeholder={'Passphrase'}
+                        defaultValue={contextData.passphrase}
+                        onChange={(e) => {
+                            updateContextData({
+                                passphrase: e.target.value
+                            });
+                        }}
+                    />
+                </>
+            )}
 
             <FooterButtonContainer>
                 <Button

@@ -3,8 +3,10 @@ import { validateMnemonic } from '@scure/bip39';
 import { wordlist } from '@scure/bip39/wordlists/english.js';
 import { useEffect, useMemo, useState } from 'react';
 
+import { getLeatherHdPath } from '@/shared/constant';
 import { RestoreWalletType } from '@/shared/types';
 import { isWalletError } from '@/shared/utils/errors';
+import { AddressTypes } from '@btc-vision/transaction';
 import { Button, Card, Column, Grid, Input, Row, Text } from '@/ui/components';
 import { useTools } from '@/ui/components/ActionComponent';
 import { FooterButtonContainer } from '@/ui/components/FooterButtonContainer';
@@ -93,11 +95,18 @@ export function Step1_Import({
         //todo
     }, [hover]);
 
+    const isLeather = contextData.restoreWalletType === RestoreWalletType.LEATHER;
+
     const tools = useTools();
     const onNext = () => {
         try {
             const mnemonics = keys.join(' ');
-            updateContextData({ mnemonics, tabType: TabType.STEP3 });
+            if (isLeather) {
+                const leatherPath = getLeatherHdPath(AddressTypes.P2TR, contextData.leatherAccountIndex ?? 0);
+                updateContextData({ mnemonics, customHdPath: leatherPath, tabType: TabType.STEP3 });
+            } else {
+                updateContextData({ mnemonics, tabType: TabType.STEP3 });
+            }
         } catch (e) {
             if (isWalletError(e)) {
                 tools.toastError(e.message);
@@ -117,6 +126,27 @@ export function Step1_Import({
         <Column gap="lg">
             <Text text="Secret Recovery Phrase" preset="title-bold" textCenter />
             <Text text="Import an existing wallet with your secret recovery phrase" preset="sub" textCenter />
+
+            {isLeather && (
+                <Column gap="sm">
+                    <Text text="Leather Account Number" preset="bold" />
+                    <Text
+                        text="Which account from Leather do you want to import? Account 1 = first account."
+                        preset="sub"
+                    />
+                    <Input
+                        containerStyle={{ width: 100 }}
+                        value={String((contextData.leatherAccountIndex ?? 0) + 1)}
+                        onChange={(e) => {
+                            const num = parseInt(e.target.value, 10);
+                            if (!isNaN(num) && num >= 1) {
+                                updateContextData({ leatherAccountIndex: num - 1 });
+                            }
+                        }}
+                        placeholder="1"
+                    />
+                </Column>
+            )}
 
             {wordsItems.length > 1 ? (
                 <Row justifyCenter>
