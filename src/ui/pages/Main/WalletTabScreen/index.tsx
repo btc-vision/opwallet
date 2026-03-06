@@ -6,7 +6,6 @@ import { DuplicationDetectionResult } from '@/shared/types/Duplication';
 import { checkAddressFlag } from '@/shared/utils';
 import { Column, Content, Footer, Header, Image, Layout } from '@/ui/components';
 import AccountSelect from '@/ui/components/AccountSelect';
-import { DisableUnconfirmedsPopover } from '@/ui/components/DisableUnconfirmedPopover';
 import { DuplicationAlertModal } from '@/ui/components/DuplicationAlertModal';
 import { FeeRateBar } from '@/ui/components/FeeRateBar';
 import { MldsaBackupReminder } from '@/ui/components/MldsaBackupReminder';
@@ -163,7 +162,6 @@ export default function WalletTabScreen() {
         calculateMaxSplits
     } = useConsolidation();
 
-    const [showDisableUnconfirmedUtxoNotice, setShowDisableUnconfirmedUtxoNotice] = useState(false);
     const [showOptimizeModal, setShowOptimizeModal] = useState(false);
     const [splitCount, setSplitCount] = useState(25);
     const [splitFeeRate, setSplitFeeRate] = useState(5); // Default fee rate
@@ -282,7 +280,6 @@ export default function WalletTabScreen() {
             const account = await wallet.addAddressFlag(currentAccount, AddressFlagType.CONFIRMED_UTXO_MODE);
             dispatch(accountActions.setCurrent(account));
 
-            setShowDisableUnconfirmedUtxoNotice(true);
         })();
     }, [addressSummary, currentAccount, dispatch, wallet]);
 
@@ -1026,10 +1023,6 @@ export default function WalletTabScreen() {
                             await skipVersion(versionInfo.newVersion);
                         }}
                     />
-                )}
-
-                {showDisableUnconfirmedUtxoNotice && (
-                    <DisableUnconfirmedsPopover onClose={() => setShowDisableUnconfirmedUtxoNotice(false)} />
                 )}
 
                 {showMldsaBackupReminder && (

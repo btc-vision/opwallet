@@ -1,35 +1,85 @@
-import { SafetyOutlined, WarningOutlined } from '@ant-design/icons';
+import {
+    CopyOutlined,
+    KeyOutlined,
+    LockOutlined,
+    SafetyOutlined,
+    WarningOutlined
+} from '@ant-design/icons';
 import { useEffect, useState } from 'react';
-import { useTranslation } from 'react-i18next';
 
 import { KEYRING_TYPE } from '@/shared/constant';
 import { Account } from '@/shared/types';
 import { isWalletError } from '@/shared/utils/errors';
-import { Button, Card, Column, Content, Header, Icon, Input, Layout, Row, Text } from '@/ui/components';
+import { Content, Header, Layout } from '@/ui/components';
 import { useTools } from '@/ui/components/ActionComponent';
 import { WifExportWarningModal } from '@/ui/components/WifExportWarningModal';
 import { copyToClipboard, useLocationState, useWallet } from '@/ui/utils';
 
-type Status = '' | 'error' | 'warning' | undefined;
+const colors = {
+    main: '#f37413',
+    background: '#212121',
+    text: '#dbdbdb',
+    textFaded: 'rgba(219, 219, 219, 0.7)',
+    containerBgFaded: '#292929',
+    containerBorder: '#303030',
+    inputBg: '#292828',
+    buttonBg: '#434343',
+    success: '#4ade80',
+    error: '#ef4444',
+    warning: '#fbbf24',
+    purple: '#8B5CF6'
+};
 
 interface LocationState {
     account: Account;
 }
 
-export default function ExportPrivateKeyScreen() {
-    const { t } = useTranslation();
+function CopyableKey({ label, value, onCopy }: { label: string; value: string; onCopy: (v: string) => void }) {
+    return (
+        <div style={{ marginBottom: '10px' }}>
+            <div style={{ fontSize: '11px', color: colors.textFaded, marginBottom: '6px', fontWeight: 500 }}>
+                {label}
+            </div>
+            <div
+                onClick={() => onCopy(value)}
+                style={{
+                    display: 'flex',
+                    alignItems: 'flex-start',
+                    gap: '8px',
+                    padding: '10px 12px',
+                    background: colors.inputBg,
+                    borderRadius: '8px',
+                    border: `1px solid ${colors.containerBorder}`,
+                    cursor: 'pointer',
+                    transition: 'all 0.15s'
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.borderColor = colors.main; }}
+                onMouseLeave={(e) => { e.currentTarget.style.borderColor = colors.containerBorder; }}>
+                <CopyOutlined style={{ fontSize: 13, color: colors.textFaded, marginTop: '2px', flexShrink: 0 }} />
+                <span
+                    style={{
+                        fontSize: '11px',
+                        color: colors.textFaded,
+                        fontFamily: 'monospace',
+                        overflowWrap: 'anywhere',
+                        flex: 1,
+                        lineHeight: '1.5',
+                        userSelect: 'text'
+                    }}>
+                    {value}
+                </span>
+            </div>
+        </div>
+    );
+}
 
+export default function ExportPrivateKeyScreen() {
     const { account } = useLocationState<LocationState>();
 
     const [password, setPassword] = useState('');
-
-    // Derive disabled from password
-    const disabled = !password;
-
     const [privateKey, setPrivateKey] = useState({ hex: '', wif: '' });
     const [quantumPrivateKey, setQuantumPrivateKey] = useState('');
     const [isSimpleKeyring, setIsSimpleKeyring] = useState(false);
-    const [status, setStatus] = useState<Status>('');
     const [error, setError] = useState('');
     const [showWifWarning, setShowWifWarning] = useState(false);
     const [pendingExport, setPendingExport] = useState(false);
@@ -37,7 +87,6 @@ export default function ExportPrivateKeyScreen() {
     const tools = useTools();
 
     useEffect(() => {
-        // Check if this is a Simple Keyring (WIF/private key import)
         const checkKeyringType = async () => {
             try {
                 const keyring = await wallet.getCurrentKeyring();
@@ -49,8 +98,8 @@ export default function ExportPrivateKeyScreen() {
         void checkKeyringType();
     }, [wallet]);
 
-    const btnClick = async () => {
-        // For HD wallets (mnemonic-based), show warning before exporting WIF
+
+    const handleExport = async () => {
         if (!isSimpleKeyring && !pendingExport) {
             setShowWifWarning(true);
             return;
@@ -59,15 +108,12 @@ export default function ExportPrivateKeyScreen() {
         try {
             const _res = await wallet.getPrivateKey(password, account);
             if (!_res) {
-                setStatus('error');
                 setError('Password is incorrect');
                 return;
             }
-
             setPrivateKey(_res);
-            setPendingExport(false); // Reset after successful export
+            setPendingExport(false);
 
-            // Get the quantum private key for all wallet types
             try {
                 const opnetWallet = await wallet.getOPNetWallet(account);
                 setQuantumPrivateKey(opnetWallet[1]);
@@ -75,283 +121,220 @@ export default function ExportPrivateKeyScreen() {
                 console.error('Could not retrieve quantum private key:', e);
             }
         } catch (e) {
-            setStatus('error');
             if (isWalletError(e)) {
                 setError(e.message);
             } else {
                 setError('An unexpected error occurred.');
-                console.error('Non-WalletError caught: ', e);
             }
         }
     };
 
-    const handleOnKeyUp = (e: React.KeyboardEvent<HTMLInputElement>) => {
-        if ('Enter' == e.key) {
-            void btnClick();
-        }
-    };
-
-    // Reset status and error when password changes
-    useEffect(() => {
-        if (password) {
-            // eslint-disable-next-line react-hooks/set-state-in-effect -- Clear errors on password change
-            setStatus('');
-             
-            setError('');
-        }
-    }, [password]);
-
-    function copy(str: string) {
+    const copy = (str: string) => {
         void copyToClipboard(str);
         tools.toastSuccess('Copied');
-    }
-
-    const handleWifExportConfirm = () => {
-        setShowWifWarning(false);
-        setPendingExport(true);
-        // Now call btnClick which will proceed past the warning check
-        void btnClick();
-    };
-
-    const handleWifExportCancel = () => {
-        setShowWifWarning(false);
-        setPendingExport(false);
     };
 
     return (
         <Layout>
-            <Header
-                onBack={() => {
-                    window.history.go(-1);
-                }}
-                title="Export Private Key"
-            />
+            <Header onBack={() => window.history.go(-1)} title="Export Private Key" />
             <Content>
-                {privateKey.wif == '' ? (
-                    <Column gap="lg">
-                        <Card>
-                            <Column gap="lg">
-                                <Text
-                                    text="If you lose your Private Key, your assets will be gone!"
-                                    preset="title-bold"
-                                    color="red"
-                                />
-
-                                <Text
-                                    text="If you share the Private Key to others, your assets will be stolen!"
-                                    preset="title-bold"
-                                    color="red"
-                                />
-
-                                <Text
-                                    text="Private Key is only stored in your browser, it is your responsibilities to keep the Private Key safe!"
-                                    preset="title-bold"
-                                    color="red"
-                                />
-                            </Column>
-                        </Card>
-
-                        {isSimpleKeyring && (
-                            <Card
+                <div style={{ padding: '4px 0' }}>
+                    {privateKey.wif === '' ? (
+                        /* ─── Password Entry Phase ─── */
+                        <div>
+                            {/* Warning Card */}
+                            <div
                                 style={{
-                                    backgroundColor: 'rgba(243, 116, 19, 0.1)',
-                                    borderColor: 'rgba(243, 116, 19, 0.3)'
+                                    background: `${colors.error}10`,
+                                    border: `1px solid ${colors.error}30`,
+                                    borderRadius: '12px',
+                                    padding: '14px',
+                                    marginBottom: '16px'
                                 }}>
-                                <Row itemsCenter gap="sm">
-                                    <WarningOutlined style={{ fontSize: 18, color: '#f37413' }} />
-                                    <Column gap="xs" style={{ flex: 1 }}>
-                                        <Text
-                                            text="IMPORTANT: Export BOTH Keys"
-                                            preset="bold"
-                                            size="sm"
-                                            color="warning"
-                                        />
-                                        <Text
-                                            text="For OPNet compatibility, you must backup both your classical and quantum private keys."
-                                            preset="sub"
-                                            size="xs"
-                                        />
-                                    </Column>
-                                </Row>
-                            </Card>
-                        )}
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
+                                    <WarningOutlined style={{ fontSize: 16, color: colors.error }} />
+                                    <span style={{ fontSize: '13px', fontWeight: 600, color: colors.error }}>
+                                        Security Warning
+                                    </span>
+                                </div>
+                                <div style={{ fontSize: '12px', color: colors.textFaded, lineHeight: '1.6' }}>
+                                    Your private key gives full access to your wallet. Never share it with anyone.
+                                    If you lose it, your assets cannot be recovered.
+                                </div>
+                            </div>
 
-                        <Text
-                            text=" Please make sure you have read the security tips above before typing your password"
-                            preset="title"
-                            color="warning"
-                            textCenter
-                            my="xl"
-                        />
-                        <Input
-                            preset="password"
-                            onChange={(e) => {
-                                setPassword(e.target.value);
-                            }}
-                            onKeyUp={(e) => handleOnKeyUp(e)}
-                            autoFocus={true}
-                        />
-                        {error && <Text text={error} preset="regular" color="error" />}
-
-                        <Button text="Show Private Key" preset="primary" disabled={disabled} onClick={btnClick} />
-                    </Column>
-                ) : (
-                    <Column gap="lg">
-                        <Text
-                            text="If you ever change browsers or move computers, you will need these keys to access this account. Save them somewhere safe and secret."
-                            preset="sub"
-                            size="sm"
-                            textCenter
-                        />
-
-                        {/* Classical Private Key Section */}
-                        <Card style={{ backgroundColor: 'rgba(0, 0, 0, 0.2)' }}>
-                            <Column gap="md">
-                                <Text text="Classical Private Key" preset="bold" size="sm" />
-
-                                <Column gap="xs">
-                                    <Text text="WIF Format" preset="sub" size="xs" style={{ opacity: 0.7 }} />
-                                    <div
-                                        onClick={() => copy(privateKey.wif)}
-                                        style={{
-                                            padding: '10px 12px',
-                                            backgroundColor: 'rgba(0, 0, 0, 0.3)',
-                                            borderRadius: '8px',
-                                            cursor: 'pointer',
-                                            display: 'flex',
-                                            alignItems: 'flex-start',
-                                            gap: '8px'
-                                        }}>
-                                        <Icon icon="copy" color="textDim" size={14} />
-                                        <Text
-                                            text={privateKey.wif}
-                                            color="textDim"
-                                            size="xs"
-                                            style={{ overflowWrap: 'anywhere', flex: 1 }}
-                                        />
-                                    </div>
-                                </Column>
-
-                                <Column gap="xs">
-                                    <Text text="HEX Format" preset="sub" size="xs" style={{ opacity: 0.7 }} />
-                                    <div
-                                        onClick={() => copy(privateKey.hex)}
-                                        style={{
-                                            padding: '10px 12px',
-                                            backgroundColor: 'rgba(0, 0, 0, 0.3)',
-                                            borderRadius: '8px',
-                                            cursor: 'pointer',
-                                            display: 'flex',
-                                            alignItems: 'flex-start',
-                                            gap: '8px'
-                                        }}>
-                                        <Icon icon="copy" color="textDim" size={14} />
-                                        <Text
-                                            text={privateKey.hex}
-                                            color="textDim"
-                                            size="xs"
-                                            style={{ overflowWrap: 'anywhere', flex: 1 }}
-                                        />
-                                    </div>
-                                </Column>
-                            </Column>
-                        </Card>
-
-                        {/* Quantum Private Key Section */}
-                        {quantumPrivateKey && (
-                            <>
-                                <Card
+                            {isSimpleKeyring && (
+                                <div
                                     style={{
-                                        backgroundColor: isSimpleKeyring
-                                            ? 'rgba(239, 68, 68, 0.15)'
-                                            : 'rgba(243, 116, 19, 0.1)',
-                                        borderColor: isSimpleKeyring
-                                            ? 'rgba(239, 68, 68, 0.4)'
-                                            : 'rgba(243, 116, 19, 0.3)'
+                                        background: `${colors.main}10`,
+                                        border: `1px solid ${colors.main}30`,
+                                        borderRadius: '12px',
+                                        padding: '14px',
+                                        marginBottom: '16px',
+                                        display: 'flex',
+                                        alignItems: 'flex-start',
+                                        gap: '10px'
                                     }}>
-                                    <Column gap="sm">
-                                        <Row itemsCenter gap="sm">
-                                            <WarningOutlined
-                                                style={{ fontSize: 18, color: isSimpleKeyring ? '#ef4444' : '#f37413' }}
-                                            />
-                                            <Text
-                                                text={
-                                                    isSimpleKeyring
-                                                        ? 'CRITICAL: Import BOTH Keys'
-                                                        : 'Note: Import BOTH Keys for Private Key Import'
-                                                }
-                                                preset="bold"
-                                                size="sm"
-                                                color={isSimpleKeyring ? 'red' : 'warning'}
-                                            />
-                                        </Row>
-                                        <Text
-                                            text={
-                                                isSimpleKeyring
-                                                    ? 'When importing this wallet elsewhere, you MUST import BOTH the classical private key (WIF) AND the quantum private key below. If you only import the WIF key, you will NOT be able to use OPNet features!'
-                                                    : 'If you import this account via private key (instead of seed phrase), you must import BOTH keys below for full OPNet functionality.'
-                                            }
-                                            preset="sub"
-                                            size="xs"
-                                            color={isSimpleKeyring ? 'red' : undefined}
-                                        />
-                                    </Column>
-                                </Card>
-
-                                <Card
-                                    style={{
-                                        backgroundColor: 'rgba(139, 92, 246, 0.1)',
-                                        borderColor: 'rgba(139, 92, 246, 0.3)'
-                                    }}>
-                                    <Column gap="md">
-                                        <Row itemsCenter gap="sm">
-                                            <SafetyOutlined style={{ fontSize: 16, color: '#8B5CF6' }} />
-                                            <Text text="Post-Quantum Private Key (MLDSA)" preset="bold" size="sm" />
-                                        </Row>
-
-                                        <Text
-                                            text={
-                                                isSimpleKeyring
-                                                    ? 'This key is required for all OPNet transactions. Store it securely alongside your classical key.'
-                                                    : 'This key can also be derived from your seed phrase. Use this if you need to import just this account elsewhere.'
-                                            }
-                                            preset="sub"
-                                            size="xs"
-                                            style={{ opacity: 0.7 }}
-                                        />
-
-                                        <div
-                                            onClick={() => copy(quantumPrivateKey)}
-                                            style={{
-                                                padding: '10px 12px',
-                                                backgroundColor: 'rgba(0, 0, 0, 0.3)',
-                                                borderRadius: '8px',
-                                                cursor: 'pointer',
-                                                display: 'flex',
-                                                alignItems: 'flex-start',
-                                                gap: '8px'
-                                            }}>
-                                            <Icon icon="copy" color="textDim" size={14} />
-                                            <Text
-                                                text={quantumPrivateKey}
-                                                color="textDim"
-                                                size="xs"
-                                                style={{ overflowWrap: 'anywhere', flex: 1, fontFamily: 'monospace' }}
-                                            />
+                                    <WarningOutlined style={{ fontSize: 16, color: colors.main, marginTop: '1px', flexShrink: 0 }} />
+                                    <div>
+                                        <div style={{ fontSize: '12px', fontWeight: 600, color: colors.main, marginBottom: '4px' }}>
+                                            Export BOTH Keys
                                         </div>
-                                    </Column>
-                                </Card>
-                            </>
-                        )}
-                    </Column>
-                )}
+                                        <div style={{ fontSize: '11px', color: colors.textFaded, lineHeight: '1.5' }}>
+                                            For OPNet compatibility, you must backup both your classical and quantum private keys.
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Password Input */}
+                            <div style={{ marginBottom: '16px' }}>
+                                <div style={{ fontSize: '12px', color: colors.textFaded, marginBottom: '8px', fontWeight: 500 }}>
+                                    Enter your password to reveal keys
+                                </div>
+                                <input
+                                    type="password"
+                                    value={password}
+                                    onChange={(e) => { setPassword(e.target.value); setError(''); }}
+                                    onKeyUp={(e) => { if (e.key === 'Enter') void handleExport(); }}
+                                    autoFocus
+                                    placeholder="Password"
+                                    style={{
+                                        width: '100%',
+                                        padding: '12px 14px',
+                                        background: colors.inputBg,
+                                        border: `1px solid ${error ? colors.error : colors.containerBorder}`,
+                                        borderRadius: '10px',
+                                        color: colors.text,
+                                        fontSize: '14px',
+                                        outline: 'none',
+                                        boxSizing: 'border-box',
+                                        transition: 'border-color 0.2s'
+                                    }}
+                                    onFocus={(e) => { e.currentTarget.style.borderColor = colors.main; }}
+                                    onBlur={(e) => { e.currentTarget.style.borderColor = error ? colors.error : colors.containerBorder; }}
+                                />
+                                {error && (
+                                    <div style={{ fontSize: '12px', color: colors.error, marginTop: '6px' }}>
+                                        {error}
+                                    </div>
+                                )}
+                            </div>
+
+                            <button
+                                disabled={!password}
+                                onClick={() => void handleExport()}
+                                style={{
+                                    width: '100%',
+                                    padding: '14px',
+                                    background: !password ? colors.buttonBg : colors.main,
+                                    border: 'none',
+                                    borderRadius: '12px',
+                                    color: !password ? colors.textFaded : colors.background,
+                                    fontSize: '14px',
+                                    fontWeight: 600,
+                                    cursor: !password ? 'not-allowed' : 'pointer',
+                                    opacity: !password ? 0.5 : 1,
+                                    transition: 'all 0.2s'
+                                }}>
+                                Show Private Key
+                            </button>
+                        </div>
+                    ) : (
+                        /* ─── Key Display Phase ─── */
+                        <div>
+                            <div style={{ fontSize: '12px', color: colors.textFaded, textAlign: 'center', marginBottom: '16px', lineHeight: '1.5' }}>
+                                Save these keys somewhere safe and secret. You will need them to recover this account.
+                            </div>
+
+                            {/* Classical Private Key */}
+                            <div
+                                style={{
+                                    background: colors.containerBgFaded,
+                                    borderRadius: '12px',
+                                    padding: '14px',
+                                    border: `1px solid ${colors.containerBorder}`,
+                                    marginBottom: '12px'
+                                }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
+                                    <KeyOutlined style={{ fontSize: 15, color: colors.main }} />
+                                    <span style={{ fontSize: '13px', fontWeight: 600, color: colors.text }}>
+                                        Classical Private Key
+                                    </span>
+                                </div>
+                                <CopyableKey label="WIF Format" value={privateKey.wif} onCopy={copy} />
+                                <CopyableKey label="HEX Format" value={privateKey.hex} onCopy={copy} />
+                            </div>
+
+                            {/* Quantum Private Key */}
+                            {quantumPrivateKey && (
+                                <>
+                                    {/* Warning */}
+                                    <div
+                                        style={{
+                                            display: 'flex',
+                                            alignItems: 'flex-start',
+                                            gap: '8px',
+                                            padding: '10px 12px',
+                                            background: isSimpleKeyring ? `${colors.error}10` : `${colors.main}10`,
+                                            border: `1px solid ${isSimpleKeyring ? colors.error + '30' : colors.main + '30'}`,
+                                            borderRadius: '10px',
+                                            marginBottom: '12px'
+                                        }}>
+                                        <WarningOutlined
+                                            style={{
+                                                fontSize: 14,
+                                                color: isSimpleKeyring ? colors.error : colors.main,
+                                                marginTop: '1px',
+                                                flexShrink: 0
+                                            }}
+                                        />
+                                        <span style={{ fontSize: '11px', color: colors.textFaded, lineHeight: '1.5' }}>
+                                            {isSimpleKeyring
+                                                ? 'You MUST import BOTH the classical and quantum private keys. Without both, OPNet features will not work.'
+                                                : 'If importing via private key instead of seed phrase, you need both keys for full OPNet functionality.'}
+                                        </span>
+                                    </div>
+
+                                    {/* Quantum Key Card */}
+                                    <div
+                                        style={{
+                                            background: colors.containerBgFaded,
+                                            borderRadius: '12px',
+                                            padding: '14px',
+                                            border: `1px solid ${colors.purple}30`
+                                        }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+                                            <SafetyOutlined style={{ fontSize: 15, color: colors.purple }} />
+                                            <span style={{ fontSize: '13px', fontWeight: 600, color: colors.text }}>
+                                                Post-Quantum Private Key (MLDSA)
+                                            </span>
+                                        </div>
+                                        <div style={{ fontSize: '11px', color: colors.textFaded, marginBottom: '12px', lineHeight: '1.4' }}>
+                                            {isSimpleKeyring
+                                                ? 'Required for all OPNet transactions. Store securely alongside your classical key.'
+                                                : 'Can also be derived from your seed phrase.'}
+                                        </div>
+                                        <CopyableKey label="MLDSA Private Key" value={quantumPrivateKey} onCopy={copy} />
+                                    </div>
+                                </>
+                            )}
+                        </div>
+                    )}
+                </div>
             </Content>
 
-            {/* WIF Export Warning Modal for HD Wallets */}
             <WifExportWarningModal
                 open={showWifWarning}
-                onConfirm={handleWifExportConfirm}
-                onCancel={handleWifExportCancel}
+                onConfirm={() => {
+                    setShowWifWarning(false);
+                    setPendingExport(true);
+                    void handleExport();
+                }}
+                onCancel={() => {
+                    setShowWifWarning(false);
+                    setPendingExport(false);
+                }}
             />
         </Layout>
     );

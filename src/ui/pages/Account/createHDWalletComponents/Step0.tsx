@@ -130,20 +130,6 @@ export function Step0({
                     );
                 })}
             </div>
-
-            {/* Tip */}
-            <div
-                style={{
-                    padding: '10px 12px',
-                    background: `${colors.main}08`,
-                    border: `1px solid ${colors.main}15`,
-                    borderRadius: '10px'
-                }}>
-                <span style={{ fontSize: '11px', color: colors.textFaded, lineHeight: '1.5' }}>
-                    Not sure? Select <strong style={{ color: colors.text }}>OP_WALLET</strong> or{' '}
-                    <strong style={{ color: colors.text }}>Other Wallet</strong> -- both support all standard derivation paths.
-                </span>
-            </div>
         </Column>
     );
 }

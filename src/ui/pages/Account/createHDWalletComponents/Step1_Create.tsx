@@ -1,13 +1,28 @@
-import { Checkbox } from 'antd';
-import type { CheckboxChangeEvent } from 'antd/es/checkbox';
 import { useEffect, useState } from 'react';
 
-import { Button, Card, Column, Grid, Icon, Row, Text } from '@/ui/components';
+import { Column } from '@/ui/components';
 import { useTools } from '@/ui/components/ActionComponent';
-import { FooterButtonContainer } from '@/ui/components/FooterButtonContainer';
 import { ContextData, TabType, UpdateContextDataParams } from '@/ui/pages/Account/createHDWalletComponents/types';
-import { fontSizes } from '@/ui/theme/font';
 import { copyToClipboard, useWallet } from '@/ui/utils';
+import {
+    CopyOutlined,
+    CheckCircleFilled,
+    LockOutlined,
+    WarningOutlined
+} from '@ant-design/icons';
+
+const colors = {
+    main: '#f37413',
+    background: '#212121',
+    text: '#dbdbdb',
+    textFaded: 'rgba(219, 219, 219, 0.7)',
+    containerBgFaded: '#292929',
+    containerBorder: '#303030',
+    inputBg: '#292828',
+    success: '#4ade80',
+    error: '#ef4444',
+    warning: '#fbbf24'
+};
 
 export function Step1_Create({
     contextData,
@@ -17,82 +32,206 @@ export function Step1_Create({
     updateContextData: (params: UpdateContextDataParams) => void;
 }) {
     const [checked, setChecked] = useState(false);
-
+    const [copied, setCopied] = useState(false);
     const wallet = useWallet();
     const tools = useTools();
 
-    const init = async () => {
-        const _mnemonics = await wallet.generatePreMnemonic();
-        updateContextData({
-            mnemonics: _mnemonics
-        });
-    };
-
     useEffect(() => {
-        init();
+        const init = async () => {
+            const _mnemonics = await wallet.generatePreMnemonic();
+            updateContextData({ mnemonics: _mnemonics });
+        };
+        void init();
     }, []);
 
-    const onChange = (e: CheckboxChangeEvent) => {
-        const val = e.target.checked;
-        setChecked(val);
-        updateContextData({ step1Completed: val });
-    };
-
-    function copy(str: string) {
-        copyToClipboard(str).then(() => {
+    const handleCopy = () => {
+        void copyToClipboard(contextData.mnemonics).then(() => {
+            setCopied(true);
             tools.toastSuccess('Copied');
-        });
-    }
-
-    const btnClick = () => {
-        updateContextData({
-            tabType: TabType.STEP2
+            setTimeout(() => setCopied(false), 2000);
         });
     };
 
     const words = contextData.mnemonics.split(' ');
+
     return (
-        <Column gap="xl">
-            <Text text="Secret Recovery Phrase" preset="title-bold" textCenter />
-            <Text
-                text="This phrase is the ONLY way to recover your wallet. Do NOT share it with anyone!"
-                color="warning"
-                textCenter
-            />
+        <Column gap="md">
+            {/* Header */}
+            <div style={{ textAlign: 'center', marginBottom: '4px' }}>
+                <div
+                    style={{
+                        width: '52px',
+                        height: '52px',
+                        borderRadius: '50%',
+                        background: `linear-gradient(135deg, ${colors.main}20 0%, ${colors.main}10 100%)`,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        margin: '0 auto 12px'
+                    }}>
+                    <LockOutlined style={{ fontSize: 24, color: colors.main }} />
+                </div>
+                <div style={{ fontSize: '18px', fontWeight: 700, color: colors.text }}>
+                    Secret Recovery Phrase
+                </div>
+                <div style={{ fontSize: '12px', color: colors.error, marginTop: '6px', fontWeight: 500 }}>
+                    Do NOT share this phrase with anyone!
+                </div>
+            </div>
 
-            <Row
-                justifyCenter
-                onClick={(e) => {
-                    copy(contextData.mnemonics);
+            {/* Word Grid */}
+            <div
+                style={{
+                    background: colors.containerBgFaded,
+                    borderRadius: '12px',
+                    padding: '12px',
+                    border: `1px solid ${colors.containerBorder}`
                 }}>
-                <Icon icon="copy" color="textDim" />
-                <Text text="Copy to clipboard" color="textDim" />
-            </Row>
+                <div
+                    style={{
+                        display: 'grid',
+                        gridTemplateColumns: '1fr 1fr',
+                        gap: '8px'
+                    }}>
+                    {words.map((word, index) => (
+                        <div
+                            key={index}
+                            style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                background: colors.inputBg,
+                                borderRadius: '8px',
+                                padding: '0 10px',
+                                height: '36px',
+                                border: `1px solid ${colors.containerBorder}`,
+                                minWidth: 0
+                            }}>
+                            <span
+                                style={{
+                                    fontSize: '11px',
+                                    color: colors.textFaded,
+                                    minWidth: '22px',
+                                    fontWeight: 500,
+                                    userSelect: 'none'
+                                }}>
+                                {index + 1}.
+                            </span>
+                            <span
+                                style={{
+                                    fontSize: '13px',
+                                    color: colors.text,
+                                    fontFamily: 'monospace',
+                                    userSelect: 'text'
+                                }}>
+                                {word}
+                            </span>
+                        </div>
+                    ))}
+                </div>
 
-            <Row justifyCenter>
-                <Grid columns={2}>
-                    {words.map((v, index) => {
-                        return (
-                            <Row key={index}>
-                                <Text text={`${index + 1}. `} style={{ width: 40 }} />
-                                <Card preset="style2" style={{ width: 200 }}>
-                                    <Text text={v} selectText disableTranslate />
-                                </Card>
-                            </Row>
-                        );
-                    })}
-                </Grid>
-            </Row>
+                {/* Copy button */}
+                <button
+                    onClick={handleCopy}
+                    style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '6px',
+                        width: '100%',
+                        marginTop: '10px',
+                        padding: '8px',
+                        background: 'transparent',
+                        border: `1px dashed ${colors.containerBorder}`,
+                        borderRadius: '8px',
+                        cursor: 'pointer',
+                        color: copied ? colors.success : colors.textFaded,
+                        fontSize: '12px',
+                        fontWeight: 500,
+                        transition: 'all 0.15s'
+                    }}>
+                    {copied ? (
+                        <CheckCircleFilled style={{ fontSize: 13 }} />
+                    ) : (
+                        <CopyOutlined style={{ fontSize: 13 }} />
+                    )}
+                    {copied ? 'Copied!' : 'Copy to clipboard'}
+                </button>
+            </div>
 
-            <Row justifyCenter>
-                <Checkbox onChange={onChange} checked={checked} style={{ fontSize: fontSizes.sm }}>
-                    <Text text="I saved My Secret Recovery Phrase" />
-                </Checkbox>
-            </Row>
+            {/* Warning */}
+            <div
+                style={{
+                    display: 'flex',
+                    alignItems: 'flex-start',
+                    gap: '8px',
+                    padding: '10px 12px',
+                    background: `${colors.warning}10`,
+                    border: `1px solid ${colors.warning}25`,
+                    borderRadius: '10px'
+                }}>
+                <WarningOutlined style={{ fontSize: 14, color: colors.warning, marginTop: '1px', flexShrink: 0 }} />
+                <span style={{ fontSize: '11px', color: colors.textFaded, lineHeight: '1.5' }}>
+                    This phrase is the <strong style={{ color: colors.text }}>ONLY</strong> way to recover your wallet.
+                    Write it down and store it in a safe place.
+                </span>
+            </div>
 
-            <FooterButtonContainer>
-                <Button disabled={!checked} text="Continue" preset="primary" onClick={btnClick} />
-            </FooterButtonContainer>
+            {/* Checkbox */}
+            <label
+                style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '10px',
+                    padding: '12px',
+                    background: checked ? `${colors.success}10` : colors.containerBgFaded,
+                    borderRadius: '10px',
+                    border: `1px solid ${checked ? colors.success + '30' : colors.containerBorder}`,
+                    cursor: 'pointer',
+                    transition: 'all 0.15s'
+                }}>
+                <input
+                    type="checkbox"
+                    checked={checked}
+                    onChange={(e) => {
+                        setChecked(e.target.checked);
+                        updateContextData({ step1Completed: e.target.checked });
+                    }}
+                    style={{
+                        width: '18px',
+                        height: '18px',
+                        accentColor: colors.success,
+                        cursor: 'pointer'
+                    }}
+                />
+                <span
+                    style={{
+                        fontSize: '13px',
+                        fontWeight: 500,
+                        color: checked ? colors.success : colors.textFaded
+                    }}>
+                    I saved my Secret Recovery Phrase
+                </span>
+            </label>
+
+            {/* Continue */}
+            <button
+                disabled={!checked}
+                onClick={() => updateContextData({ tabType: TabType.STEP2 })}
+                style={{
+                    width: '100%',
+                    padding: '14px',
+                    background: !checked ? '#434343' : colors.main,
+                    border: 'none',
+                    borderRadius: '12px',
+                    color: !checked ? colors.textFaded : colors.background,
+                    fontSize: '14px',
+                    fontWeight: 600,
+                    cursor: !checked ? 'not-allowed' : 'pointer',
+                    transition: 'all 0.2s',
+                    opacity: !checked ? 0.5 : 1
+                }}>
+                Continue
+            </button>
         </Column>
     );
 }

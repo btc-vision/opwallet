@@ -7,7 +7,7 @@ const BIP32_PATH_REGEX = /^(m\/)?(\d+'?\/)*\d+'?$/;
 import { RestoreWalletType } from '@/shared/types';
 import { AddressTypes } from '@btc-vision/transaction';
 import Web3API from '@/shared/web3/Web3API';
-import { Column, Text } from '@/ui/components';
+import { Column } from '@/ui/components';
 import { useTools } from '@/ui/components/ActionComponent';
 import { ContextData, TabType, UpdateContextDataParams } from '@/ui/pages/Account/createHDWalletComponents/types';
 import { satoshisToAmount, useWallet } from '@/ui/utils';
@@ -17,7 +17,6 @@ import {
     InfoCircleOutlined,
     LoadingOutlined,
     SettingOutlined,
-    WalletOutlined,
     WarningOutlined
 } from '@ant-design/icons';
 import { usePrivacyModeEnabled } from '@/ui/hooks/useAppConfig';
@@ -245,29 +244,6 @@ export function Step2({
 
     return (
         <Column gap="lg">
-            {/* Header */}
-            <div style={{ textAlign: 'center', marginBottom: '4px' }}>
-                <div
-                    style={{
-                        width: '60px',
-                        height: '60px',
-                        borderRadius: '50%',
-                        background: `linear-gradient(135deg, ${colors.main}20 0%, ${colors.main}10 100%)`,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        margin: '0 auto 16px'
-                    }}>
-                    <WalletOutlined style={{ fontSize: 28, color: colors.main }} />
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'center' }}>
-                    <Text text="Choose Address Type" preset="bold" size="lg" />
-                </div>
-                <div style={{ fontSize: '13px', color: colors.textFaded, marginTop: '8px' }}>
-                    Select the address format for your wallet
-                </div>
-            </div>
-
             {/* Address Type Cards */}
             <div
                 style={{
