@@ -1,4 +1,5 @@
 import { Button, Column, Row, Text } from '@/ui/components';
+import { WarningOutlined } from '@ant-design/icons';
 import { FooterButtonContainer } from '@/ui/components/FooterButtonContainer';
 import { ContextData, TabType, UpdateContextDataParams } from './types';
 import { useCreateAccountCallback } from '@/ui/state/global/hooks';
@@ -68,7 +69,7 @@ export function Step3_XVerseWarning({
                 }}>
                 <Column gap="sm">
                     <Row itemsCenter gap="sm">
-                        <Text text="⚠️" size="xl" />
+                        <WarningOutlined style={{ fontSize: 20, color: '#fbbf24' }} />
                         <Text text="Important: XVerse Wallet Notice" preset="bold" color="warning" />
                     </Row>
                 </Column>

@@ -576,7 +576,7 @@ export default function DuplicationResolutionScreen() {
                 return {
                     title: 'Same MLDSA on Different Wallets',
                     subtitle: 'The same MLDSA key is assigned to different Bitcoin addresses. No on-chain linkage found.',
-                    recommendation: '⚠️ WALLET NOT LINKED ON CHAIN - Select which Bitcoin wallet should own this MLDSA key. Check your transaction history if unsure.',
+                    recommendation: 'WARNING: WALLET NOT LINKED ON CHAIN - Select which Bitcoin wallet should own this MLDSA key. Check your transaction history if unsure.',
                     restorable: null
                 };
             }

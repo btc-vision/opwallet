@@ -1,4 +1,4 @@
-import { CSSProperties, useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { UTXO_CONFIG } from '@/shared/config';
 import { AddressFlagType, KEYRING_TYPE } from '@/shared/constant';
@@ -11,7 +11,9 @@ import { MldsaBackupReminder } from '@/ui/components/MldsaBackupReminder';
 import { NavTabBar } from '@/ui/components/NavTabBar';
 import { QuantumMigrationBanner } from '@/ui/components/QuantumMigrationBanner';
 import { UpgradePopover } from '@/ui/components/UpgradePopover';
-import { BalanceDisplay } from '@/ui/pages/Main/WalletTabScreen/components/BalanceDisplay';
+import { BalanceDetailPopup } from '@/ui/components/BalanceDetailPopup';
+import { BtcDisplay } from '@/ui/pages/Main/WalletTabScreen/components/BtcDisplay';
+import { BtcUsd } from '@/ui/components/BtcUsd';
 import {
     useAccountAddress,
     useAccountBalance,
@@ -33,7 +35,7 @@ import {
     useWalletConfig
 } from '@/ui/state/settings/hooks';
 import { useResetUiTxCreateScreen } from '@/ui/state/ui/hooks';
-import { copyToClipboard, useWallet } from '@/ui/utils';
+import { amountToSatoshis, copyToClipboard, useWallet } from '@/ui/utils';
 
 import { BTCDomainModal, TOS_DOMAIN_ACCEPTED_KEY } from "@/ui/components/AcceptModals/btcDomainTermsModal";
 import { TermsOfServiceModal, TOS_ACCEPTED_KEY } from "@/ui/components/AcceptModals/TermsModal";
@@ -54,6 +56,7 @@ import {
     SettingOutlined,
     SwapOutlined,
     WalletOutlined,
+    LoadingOutlined,
     WarningOutlined
 } from '@ant-design/icons';
 import { Address } from '@btc-vision/transaction';
@@ -82,11 +85,6 @@ const colors = {
 
     buttonBorder: '#444746',
     buttonBorderHover: '#f37413'
-};
-
-const $noBreakStyle: CSSProperties = {
-    whiteSpace: 'nowrap',
-    wordBreak: 'keep-all'
 };
 
 export default function WalletTabScreen() {
@@ -131,6 +129,7 @@ export default function WalletTabScreen() {
 
     const [switchChainModalVisible, setSwitchChainModalVisible] = useState(false);
     const [showBalanceDetails, setShowBalanceDetails] = useState(false);
+    const [consolidateLoading, setConsolidateLoading] = useState(false);
 
     const currentKeyring = useCurrentKeyring();
     const currentAccount = useCurrentAccount();
@@ -274,6 +273,14 @@ export default function WalletTabScreen() {
     useEffect(() => {
         void fetchBalance();
     }, [fetchBalance]);
+
+    const totalBalance = useMemo(() => {
+        const main = parseFloat(accountBalance.btc_total_amount || '0');
+        const csv75 = parseFloat(accountBalance.csv75_total_amount || '0');
+        const csv2 = parseFloat(accountBalance.csv2_total_amount || '0');
+        const csv1 = parseFloat(accountBalance.csv1_total_amount || '0');
+        return (main + csv75 + csv2 + csv1).toFixed(8).replace(/\.?0+$/, '');
+    }, [accountBalance]);
 
     // Helper function to check if there are CSV balances
     const hasCSVBalances = () => {
@@ -419,7 +426,7 @@ export default function WalletTabScreen() {
                             <button
                                 onClick={(e) => {
                                     e.stopPropagation();
-                                    setShowBalanceDetails(!showBalanceDetails);
+                                    setShowBalanceDetails(true);
                                 }}
                                 style={{
                                     padding: '4px 10px',
@@ -444,14 +451,8 @@ export default function WalletTabScreen() {
                                     e.currentTarget.style.color = colors.textFaded;
                                     e.currentTarget.style.borderColor = colors.containerBorder;
                                 }}>
-                                {showBalanceDetails ? 'Hide' : 'Details'}
-                                <DownOutlined
-                                    style={{
-                                        fontSize: 6,
-                                        transform: showBalanceDetails ? 'rotate(180deg)' : 'rotate(0deg)',
-                                        transition: 'transform 0.2s'
-                                    }}
-                                />
+                                Details
+                                <DownOutlined style={{ fontSize: 6 }} />
                             </button>
                         }
                     />
@@ -533,19 +534,28 @@ export default function WalletTabScreen() {
                                                     Balance incomplete (2,000+ UTXOs). Consolidate to restore full balance visibility.
                                                 </div>
                                                 <button
-                                                    onClick={navigateToConsolidation}
+                                                    disabled={consolidateLoading}
+                                                    onClick={() => {
+                                                        setConsolidateLoading(true);
+                                                        void navigateToConsolidation().finally(() => setConsolidateLoading(false));
+                                                    }}
                                                     style={{
                                                         width: '100%',
                                                         padding: '8px',
-                                                        background: colors.error,
+                                                        background: consolidateLoading ? colors.buttonBg : colors.error,
                                                         border: 'none',
                                                         borderRadius: '8px',
-                                                        cursor: 'pointer',
+                                                        cursor: consolidateLoading ? 'not-allowed' : 'pointer',
                                                         fontSize: '11px',
                                                         fontWeight: 600,
-                                                        color: '#fff'
+                                                        color: consolidateLoading ? colors.textFaded : '#fff',
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        justifyContent: 'center',
+                                                        gap: '6px'
                                                     }}>
-                                                    Consolidate {consolidationLimit} UTXOs
+                                                    {consolidateLoading && <LoadingOutlined style={{ fontSize: 12 }} />}
+                                                    {consolidateLoading ? 'Loading UTXOs...' : `Consolidate ${consolidationLimit} UTXOs`}
                                                 </button>
                                             </div>
                                         );
@@ -588,19 +598,28 @@ export default function WalletTabScreen() {
                                                 {warningThreshold}+ UTXOs in a category. Consolidate to avoid exceeding the 2,000 limit.
                                             </div>
                                             <button
-                                                onClick={navigateToConsolidation}
+                                                disabled={consolidateLoading}
+                                                onClick={() => {
+                                                    setConsolidateLoading(true);
+                                                    void navigateToConsolidation().finally(() => setConsolidateLoading(false));
+                                                }}
                                                 style={{
                                                     width: '100%',
                                                     padding: '8px',
-                                                    background: accent,
+                                                    background: consolidateLoading ? colors.buttonBg : accent,
                                                     border: 'none',
                                                     borderRadius: '8px',
-                                                    cursor: 'pointer',
+                                                    cursor: consolidateLoading ? 'not-allowed' : 'pointer',
                                                     fontSize: '11px',
                                                     fontWeight: 600,
-                                                    color: '#000'
+                                                    color: consolidateLoading ? colors.textFaded : '#000',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'center',
+                                                    gap: '6px'
                                                 }}>
-                                                Consolidate UTXOs
+                                                {consolidateLoading && <LoadingOutlined style={{ fontSize: 12 }} />}
+                                                {consolidateLoading ? 'Loading UTXOs...' : 'Consolidate UTXOs'}
                                             </button>
                                         </div>
                                     );
@@ -655,17 +674,17 @@ export default function WalletTabScreen() {
                                     TOTAL BALANCE
                                 </div>
 
-                                {/* Balance Details Tabs or Balance Display */}
-                                <BalanceDisplay
-                                    accountBalance={accountBalance}
-                                    showDetails={showBalanceDetails}
-                                    btcUnit={btcUnit}
-                                    colors={colors}
-                                    noBreakStyle={$noBreakStyle}
+                                {/* Balance */}
+                                <BtcDisplay balance={totalBalance} />
+                                <BtcUsd
+                                    sats={amountToSatoshis(totalBalance)}
+                                    textCenter
+                                    size={'sm'}
+                                    style={{ marginBottom: '4px' }}
                                 />
 
                                 {/* Metadata: CSV Badge, MLDSA Key, and Bitcoin Address */}
-                                {!showBalanceDetails && (
+                                {(
                                     <div
                                         style={{
                                             display: 'flex',
@@ -958,6 +977,15 @@ export default function WalletTabScreen() {
                     navigate(RouteTypes.BtcDomainScreen)
                 }}
             />
+
+            {/* Balance Details Popup */}
+            {showBalanceDetails && (
+                <BalanceDetailPopup
+                    accountBalance={accountBalance}
+                    btcUnit={btcUnit}
+                    onClose={() => setShowBalanceDetails(false)}
+                />
+            )}
 
             {/* Duplication Alert Modal - blocks interaction until resolved */}
             {duplicationDetection && showDuplicationAlert && (

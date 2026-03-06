@@ -1,3 +1,4 @@
+import { WarningOutlined } from '@ant-design/icons';
 import { CancelApprovalParams } from '@/shared/types/Approval';
 import { Button, Card, Column, Content, Footer, Header, Layout, Row, Text } from '@/ui/components';
 import { AddressText } from '@/ui/components/AddressText';
@@ -181,7 +182,7 @@ export default function CancelTransaction(props: Props) {
                         }}>
                         <Column gap="sm">
                             <Row itemsCenter gap="sm">
-                                <Text text="⚠️" size="xl" />
+                                <WarningOutlined style={{ fontSize: 20, color: '#fbbf24' }} />
                                 <Text text="Transaction Cancellation" preset="bold" style={{ color: colors.warning }} />
                             </Row>
                             <Text

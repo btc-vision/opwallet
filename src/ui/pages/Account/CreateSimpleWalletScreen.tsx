@@ -16,7 +16,8 @@ import {
     KeyOutlined,
     PlusCircleOutlined,
     SafetyOutlined,
-    WalletOutlined
+    WalletOutlined,
+    WarningOutlined
 } from '@ant-design/icons';
 import { EcKeyPair, MLDSASecurityLevel, Wallet } from '@btc-vision/transaction';
 import { getMLDSAConfig, QuantumBIP32Factory } from '@btc-vision/bip32';
@@ -1399,13 +1400,7 @@ export default function CreateSimpleWalletScreen() {
                                 alignItems: 'center',
                                 gap: '8px'
                             }}>
-                            <span
-                                style={{
-                                    fontSize: '14px',
-                                    color: colors.warning
-                                }}>
-                                ⚠️
-                            </span>
+                            <WarningOutlined style={{ fontSize: 14, color: colors.warning, flexShrink: 0 }} />
                             <div
                                 style={{
                                     fontSize: '11px',
