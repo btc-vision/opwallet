@@ -46,6 +46,7 @@ import { useSimpleModeEnabled } from '@/ui/hooks/useExperienceMode';
 import {
     CheckCircleOutlined,
     CloseOutlined,
+    CopyOutlined,
     DownOutlined,
     ExclamationCircleOutlined,
     ExperimentOutlined,
@@ -469,7 +470,47 @@ export default function WalletTabScreen() {
                         </div>
                     )}
 
-                    <AccountSelect />
+                    <AccountSelect
+                        rightExtra={
+                            <button
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    setShowBalanceDetails(!showBalanceDetails);
+                                }}
+                                style={{
+                                    padding: '4px 10px',
+                                    background: colors.containerBgFaded,
+                                    border: `1px solid ${colors.containerBorder}`,
+                                    borderRadius: '20px',
+                                    cursor: 'pointer',
+                                    fontSize: '10px',
+                                    fontWeight: 600,
+                                    color: colors.textFaded,
+                                    transition: 'all 0.15s',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '3px',
+                                    flexShrink: 0
+                                }}
+                                onMouseEnter={(e) => {
+                                    e.currentTarget.style.color = colors.main;
+                                    e.currentTarget.style.borderColor = colors.main;
+                                }}
+                                onMouseLeave={(e) => {
+                                    e.currentTarget.style.color = colors.textFaded;
+                                    e.currentTarget.style.borderColor = colors.containerBorder;
+                                }}>
+                                {showBalanceDetails ? 'Hide' : 'Details'}
+                                <DownOutlined
+                                    style={{
+                                        fontSize: 6,
+                                        transform: showBalanceDetails ? 'rotate(180deg)' : 'rotate(0deg)',
+                                        transition: 'transform 0.2s'
+                                    }}
+                                />
+                            </button>
+                        }
+                    />
 
                     {/* Quantum Migration Banner */}
                     {needsQuantumMigration && (
@@ -502,7 +543,7 @@ export default function WalletTabScreen() {
                         {/* Balance Card */}
                         <div
                             style={{
-                                padding: '20px',
+                                padding: '20px 20px 0px',
                                 textAlign: 'center',
                                 position: 'relative',
                                 overflow: 'hidden'
@@ -664,40 +705,28 @@ export default function WalletTabScreen() {
                                     ) : null;
                                 })()}
 
-                                {/* Total Balance Label + Details Button + Optimize Button */}
-                                <div
-                                    style={{
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        gap: '8px',
-                                        marginBottom: '3px'
-                                    }}>
-                                    <div
-                                        style={{
-                                            fontSize: '10px',
-                                            fontWeight: 600,
-                                            color: colors.textFaded,
-                                            textTransform: 'uppercase',
-                                            letterSpacing: '0.5px'
-                                        }}>
-                                        TOTAL BALANCE
-                                    </div>
+
+                                {/* Optimize - absolute top right */}
+                                <Tooltip title="Optimize wallet UTXOs for better performance">
                                     <button
-                                        onClick={() => setShowBalanceDetails(!showBalanceDetails)}
+                                        onClick={() => setShowOptimizeModal(true)}
                                         style={{
-                                            padding: '2px 8px',
-                                            background: colors.buttonHoverBg,
+                                            position: 'absolute',
+                                            top: '8px',
+                                            right: '8px',
+                                            padding: '3px 9px',
+                                            background: colors.containerBgFaded,
                                             border: `1px solid ${colors.containerBorder}`,
-                                            borderRadius: '4px',
+                                            borderRadius: '20px',
                                             cursor: 'pointer',
                                             fontSize: '9px',
                                             fontWeight: 600,
                                             color: colors.textFaded,
-                                            transition: 'all 0.2s',
+                                            transition: 'all 0.15s',
                                             display: 'flex',
                                             alignItems: 'center',
-                                            gap: '4px'
+                                            gap: '3px',
+                                            zIndex: 1
                                         }}
                                         onMouseEnter={(e) => {
                                             e.currentTarget.style.color = colors.main;
@@ -707,44 +736,22 @@ export default function WalletTabScreen() {
                                             e.currentTarget.style.color = colors.textFaded;
                                             e.currentTarget.style.borderColor = colors.containerBorder;
                                         }}>
-                                        Details
-                                        <DownOutlined
-                                            style={{
-                                                fontSize: 7,
-                                                transform: showBalanceDetails ? 'rotate(180deg)' : 'rotate(0deg)',
-                                                transition: 'transform 0.2s'
-                                            }}
-                                        />
+                                        <SettingOutlined style={{ fontSize: 9 }} />
+                                        Optimize
                                     </button>
-                                    <Tooltip title="Optimize wallet UTXOs for better performance">
-                                        <button
-                                            onClick={() => setShowOptimizeModal(true)}
-                                            style={{
-                                                padding: '2px 8px',
-                                                background: colors.buttonHoverBg,
-                                                border: `1px solid ${colors.containerBorder}`,
-                                                borderRadius: '4px',
-                                                cursor: 'pointer',
-                                                fontSize: '9px',
-                                                fontWeight: 600,
-                                                color: colors.textFaded,
-                                                transition: 'all 0.2s',
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                gap: '4px'
-                                            }}
-                                            onMouseEnter={(e) => {
-                                                e.currentTarget.style.color = colors.main;
-                                                e.currentTarget.style.borderColor = colors.main;
-                                            }}
-                                            onMouseLeave={(e) => {
-                                                e.currentTarget.style.color = colors.textFaded;
-                                                e.currentTarget.style.borderColor = colors.containerBorder;
-                                            }}>
-                                            <SettingOutlined style={{ fontSize: 9 }} />
-                                            Optimize
-                                        </button>
-                                    </Tooltip>
+                                </Tooltip>
+
+                                {/* Total Balance Label */}
+                                <div
+                                    style={{
+                                        fontSize: '10px',
+                                        fontWeight: 600,
+                                        color: colors.textFaded,
+                                        textTransform: 'uppercase',
+                                        letterSpacing: '1px',
+                                        marginBottom: '2px'
+                                    }}>
+                                    TOTAL BALANCE
                                 </div>
 
                                 {/* Balance Details Tabs or Balance Display */}
@@ -763,8 +770,8 @@ export default function WalletTabScreen() {
                                             display: 'flex',
                                             flexDirection: 'column',
                                             alignItems: 'center',
-                                            gap: '6px',
-                                            marginTop: '4px'
+                                            gap: '8px',
+                                            marginTop: '10px'
                                         }}>
                                         {/* Show CSV balances if they exist */}
                                         {hasCSVBalances() && (
@@ -782,152 +789,99 @@ export default function WalletTabScreen() {
                                             </span>
                                         )}
 
-                                        {/* MLDSA Key and Bitcoin Address Row - hidden in Simple Mode */}
+                                        {/* MLDSA Key and Bitcoin Address - unified input group */}
                                         {!isSimpleMode && (
                                             <div
                                                 style={{
-                                                    display: 'flex',
-                                                    alignItems: 'center',
-                                                    justifyContent: 'center',
-                                                    gap: '8px',
-                                                    flexWrap: 'wrap'
+                                                    display: 'inline-flex',
+                                                    alignItems: 'stretch',
+                                                    background: colors.containerBgFaded,
+                                                    border: `1px solid ${colors.containerBorder}`,
+                                                    borderRadius: '10px',
+                                                    overflow: 'hidden'
                                                 }}>
-                                            {/* MLDSA Key Display - only show if wallet is migrated */}
-                                            {untweakedPublicKey.mldsa && (
-                                                <Tooltip title="Click to copy MLDSA public key hash" placement="top">
+                                                {/* MLDSA Key - only show if wallet is migrated */}
+                                                {untweakedPublicKey.mldsa && (
+                                                    <Tooltip title="Click to copy MLDSA public key hash" placement="top">
+                                                        <button
+                                                            style={{
+                                                                display: 'flex',
+                                                                alignItems: 'center',
+                                                                gap: '4px',
+                                                                padding: '5px 10px',
+                                                                background: 'rgba(139, 92, 246, 0.1)',
+                                                                border: 'none',
+                                                                borderRight: `1px solid ${colors.containerBorder}`,
+                                                                cursor: 'pointer',
+                                                                transition: 'background 0.15s'
+                                                            }}
+                                                            onClick={async (e) => {
+                                                                e.stopPropagation();
+                                                                await copyToClipboard(mldsaHashedPublicKey);
+                                                                tools.toastSuccess('MLDSA key copied');
+                                                            }}
+                                                            onMouseEnter={(e) => {
+                                                                e.currentTarget.style.background = 'rgba(139, 92, 246, 0.2)';
+                                                            }}
+                                                            onMouseLeave={(e) => {
+                                                                e.currentTarget.style.background = 'rgba(139, 92, 246, 0.1)';
+                                                            }}>
+                                                            <span style={{ fontSize: '9px', color: '#8B5CF6', fontWeight: 700 }}>
+                                                                MLDSA
+                                                            </span>
+                                                            <span
+                                                                style={{
+                                                                    fontSize: '10px',
+                                                                    color: '#dbdbdb',
+                                                                    fontFamily: 'monospace',
+                                                                    opacity: 0.8
+                                                                }}>
+                                                                {mldsaHashedPublicKey.slice(0, 6)}...{mldsaHashedPublicKey.slice(-4)}
+                                                            </span>
+                                                            <CopyOutlined style={{ fontSize: 9, color: '#dbdbdb', opacity: 0.4 }} />
+                                                        </button>
+                                                    </Tooltip>
+                                                )}
+
+                                                {/* Bitcoin Address */}
+                                                <Tooltip title="Click to copy Bitcoin address" placement="top">
                                                     <button
                                                         style={{
                                                             display: 'flex',
                                                             alignItems: 'center',
                                                             gap: '4px',
-                                                            padding: '3px 8px',
-                                                            background: 'rgba(139, 92, 246, 0.1)',
-                                                            border: '1px solid rgba(139, 92, 246, 0.3)',
-                                                            borderRadius: '6px',
+                                                            padding: '5px 10px',
+                                                            background: `${colors.main}15`,
+                                                            border: 'none',
                                                             cursor: 'pointer',
-                                                            transition: 'all 0.15s',
-                                                            maxWidth: '130px'
+                                                            transition: 'background 0.15s'
                                                         }}
                                                         onClick={async (e) => {
                                                             e.stopPropagation();
-                                                            await copyToClipboard(mldsaHashedPublicKey);
-                                                            tools.toastSuccess('MLDSA key copied');
+                                                            await copyToClipboard(bitcoinAddress);
+                                                            tools.toastSuccess('Address copied');
                                                         }}
                                                         onMouseEnter={(e) => {
-                                                            e.currentTarget.style.background =
-                                                                'rgba(139, 92, 246, 0.2)';
-                                                            e.currentTarget.style.borderColor =
-                                                                'rgba(139, 92, 246, 0.5)';
+                                                            e.currentTarget.style.background = `${colors.main}28`;
                                                         }}
                                                         onMouseLeave={(e) => {
-                                                            e.currentTarget.style.background =
-                                                                'rgba(139, 92, 246, 0.1)';
-                                                            e.currentTarget.style.borderColor =
-                                                                'rgba(139, 92, 246, 0.3)';
+                                                            e.currentTarget.style.background = `${colors.main}15`;
                                                         }}>
-                                                        <span
-                                                            style={{
-                                                                fontSize: '9px',
-                                                                color: '#8B5CF6',
-                                                                fontWeight: 600
-                                                            }}>
-                                                            MLDSA
+                                                        <span style={{ fontSize: '9px', color: colors.main, fontWeight: 700 }}>
+                                                            BTC
                                                         </span>
                                                         <span
                                                             style={{
                                                                 fontSize: '10px',
-                                                                color: '#8B5CF6',
+                                                                color: '#dbdbdb',
                                                                 fontFamily: 'monospace',
-                                                                overflow: 'hidden',
-                                                                textOverflow: 'ellipsis',
-                                                                whiteSpace: 'nowrap'
+                                                                opacity: 0.8
                                                             }}>
-                                                            {mldsaHashedPublicKey.slice(0, 6)}...
-                                                            {mldsaHashedPublicKey.slice(-4)}
+                                                            {bitcoinAddress.slice(0, 6)}...{bitcoinAddress.slice(-4)}
                                                         </span>
-                                                        <svg
-                                                            width="10"
-                                                            height="10"
-                                                            viewBox="0 0 24 24"
-                                                            fill="none"
-                                                            xmlns="http://www.w3.org/2000/svg"
-                                                            style={{ flexShrink: 0 }}>
-                                                            <path
-                                                                d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2M12 11v6M9 14h6M15 4H9a1 1 0 0 0-1 1v2a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V5a1 1 0 0 0-1-1z"
-                                                                stroke="#8B5CF6"
-                                                                strokeWidth="2"
-                                                                strokeLinecap="round"
-                                                                strokeLinejoin="round"
-                                                            />
-                                                        </svg>
+                                                        <CopyOutlined style={{ fontSize: 9, color: '#dbdbdb', opacity: 0.4 }} />
                                                     </button>
                                                 </Tooltip>
-                                            )}
-
-                                            {/* Bitcoin Address Display */}
-                                            <Tooltip title="Click to copy Bitcoin address" placement="top">
-                                                <button
-                                                    style={{
-                                                        display: 'flex',
-                                                        alignItems: 'center',
-                                                        gap: '4px',
-                                                        padding: '3px 8px',
-                                                        background: 'rgba(243, 116, 19, 0.1)',
-                                                        border: '1px solid rgba(243, 116, 19, 0.3)',
-                                                        borderRadius: '6px',
-                                                        cursor: 'pointer',
-                                                        transition: 'all 0.15s',
-                                                        maxWidth: '130px'
-                                                    }}
-                                                    onClick={async (e) => {
-                                                        e.stopPropagation();
-                                                        await copyToClipboard(bitcoinAddress);
-                                                        tools.toastSuccess('Address copied');
-                                                    }}
-                                                    onMouseEnter={(e) => {
-                                                        e.currentTarget.style.background = 'rgba(243, 116, 19, 0.2)';
-                                                        e.currentTarget.style.borderColor = 'rgba(243, 116, 19, 0.5)';
-                                                    }}
-                                                    onMouseLeave={(e) => {
-                                                        e.currentTarget.style.background = 'rgba(243, 116, 19, 0.1)';
-                                                        e.currentTarget.style.borderColor = 'rgba(243, 116, 19, 0.3)';
-                                                    }}>
-                                                    <span
-                                                        style={{
-                                                            fontSize: '9px',
-                                                            color: colors.main,
-                                                            fontWeight: 600
-                                                        }}>
-                                                        BTC
-                                                    </span>
-                                                    <span
-                                                        style={{
-                                                            fontSize: '10px',
-                                                            color: colors.main,
-                                                            fontFamily: 'monospace',
-                                                            overflow: 'hidden',
-                                                            textOverflow: 'ellipsis',
-                                                            whiteSpace: 'nowrap'
-                                                        }}>
-                                                        {bitcoinAddress.slice(0, 6)}...{bitcoinAddress.slice(-4)}
-                                                    </span>
-                                                    <svg
-                                                        width="10"
-                                                        height="10"
-                                                        viewBox="0 0 24 24"
-                                                        fill="none"
-                                                        xmlns="http://www.w3.org/2000/svg"
-                                                        style={{ flexShrink: 0 }}>
-                                                        <path
-                                                            d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2M12 11v6M9 14h6M15 4H9a1 1 0 0 0-1 1v2a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V5a1 1 0 0 0-1-1z"
-                                                            stroke={colors.main}
-                                                            strokeWidth="2"
-                                                            strokeLinecap="round"
-                                                            strokeLinejoin="round"
-                                                        />
-                                                    </svg>
-                                                </button>
-                                            </Tooltip>
                                             </div>
                                         )}
                                     </div>
@@ -938,21 +892,19 @@ export default function WalletTabScreen() {
                         {/* Action Buttons */}
                         <div
                             style={{
-                                display: 'grid',
-                                gridTemplateColumns: btcUnit == 'BTC' ? 'repeat(4, 1fr)' : 'repeat(5, 1fr)',
-                                gap: '6px',
-                                padding: '0 12px',
-                                marginBottom: '12px'
+                                display: 'flex',
+                                justifyContent: 'space-between',
+                                padding: '12px 12px 0px',
                             }}>
                             <ActionButton
                                 label="Receive"
-                                icon={<QrcodeOutlined style={{ fontSize: 18, color: colors.text }} />}
+                                icon={<QrcodeOutlined style={{ fontSize: 20, color: colors.text }} />}
                                 onClick={() => navigate(RouteTypes.ReceiveSelectScreen)}
                             />
 
                             <ActionButton
                                 label="Send"
-                                icon={<SendOutlined style={{ fontSize: 18, color: colors.text }} />}
+                                icon={<SendOutlined style={{ fontSize: 20, color: colors.text }} />}
                                 onClick={() => {
                                     resetUiTxCreateScreen();
                                     navigate(RouteTypes.TxCreateScreen);
@@ -961,7 +913,7 @@ export default function WalletTabScreen() {
 
                             <ActionButton
                                 label="Swap"
-                                icon={<SwapOutlined style={{ fontSize: 18, color: colors.text }} />}
+                                icon={<SwapOutlined style={{ fontSize: 20, color: colors.text }} />}
                                 onClick={() => {
                                     window.open('https://motoswap.org', '_blank', 'noopener noreferrer');
                                 }}
@@ -970,7 +922,7 @@ export default function WalletTabScreen() {
                             {btcUnit !== 'BTC' && (
                                 <ActionButton
                                     label="Faucet"
-                                    icon={<ExperimentOutlined style={{ fontSize: 18, color: colors.text }} />}
+                                    icon={<ExperimentOutlined style={{ fontSize: 20, color: colors.text }} />}
                                     onClick={() => {
                                         window.open(faucetUrl || '', '_blank', 'noopener noreferrer');
                                     }}
@@ -979,7 +931,7 @@ export default function WalletTabScreen() {
 
                             <ActionButton
                                 label="History"
-                                icon={<HistoryOutlined style={{ fontSize: 18, color: colors.text }} />}
+                                icon={<HistoryOutlined style={{ fontSize: 20, color: colors.text }} />}
                                 onClick={() => navigate(RouteTypes.HistoryScreen)}
                             />
                         </div>

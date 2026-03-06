@@ -12,7 +12,11 @@ import { useTools } from '../ActionComponent';
 import { Icon } from '../Icon';
 import './index.less';
 
-const AccountSelect = () => {
+interface AccountSelectProps {
+    rightExtra?: React.ReactNode;
+}
+
+const AccountSelect = ({ rightExtra }: AccountSelectProps) => {
     const navigate = useNavigate();
     const wallet = useWallet();
 
@@ -120,6 +124,7 @@ const AccountSelect = () => {
                 </div>
             </div>
             <div className="op_account_col_2">
+                {rightExtra}
                 <div className="op_account_icon_holder">
                     <Icon icon="right" size={20} />
                 </div>

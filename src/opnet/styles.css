@@ -229,30 +229,36 @@ body {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    background-color: transparent;
+    background-color: #292929;
     color: var(--opnet-button-text-color);
-    border-radius: 17px;
+    border-radius: 14px;
+    border: 1px solid #303030;
+    padding: 4px 6px 4px 4px;
     cursor: pointer;
-    transition: background 0.3s,
-    color 0.3s;
+    transition: all 0.2s ease;
 }
 
 .op_token_container:hover {
-    background-color: #2d2c2c;
+    background-color: #333333;
+    border-color: #444746;
 }
 
 .op_token_col_1 {
     flex: 1;
     display: flex;
     align-items: center;
+    gap: 2px;
 }
 
 .op_token_image {
-    height: 42px;
-    width: 42px;
+    height: 40px;
+    width: 40px;
     display: flex;
     align-items: center;
     justify-content: center;
+    border-radius: 50%;
+    background: transparent;
+    flex-shrink: 0;
 }
 
 .op_token_image > img {
@@ -263,37 +269,39 @@ body {
 
 .op_token_title {
     font-size: 13px;
-    font-weight: 500;
+    font-weight: 600;
     color: var(--opnet-button-text-color);
 }
 
 .op_token_remove {
-    height: 42px;
-    width: 42px;
+    height: 34px;
+    width: 34px;
     display: flex;
-    color: var(--opnet-button-background-color);
+    color: rgba(219, 219, 219, 0.3);
     align-items: center;
     justify-content: center;
-    transition: background 0.3s,
-    color 0.3s;
+    border-radius: 8px;
+    transition: all 0.2s;
 }
 
 .op_token_remove:hover {
-    color: white;
+    color: #ef4444;
+    background: rgba(239, 68, 68, 0.1);
 }
 
 .op_token_col_2 {
     flex: 0 0 auto;
     display: flex;
     align-items: center;
+    gap: 4px;
 }
 
 .op_token_balance {
-    font-size: 12px;
+    font-size: 13px;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    font-weight: 550;
+    font-weight: 600;
     color: var(--opnet-main-color);
     cursor: pointer;
 }
