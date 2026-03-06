@@ -239,7 +239,8 @@ export function Step1_Import({
                         background: colors.containerBgFaded,
                         borderRadius: '12px',
                         padding: '12px',
-                        border: `1px solid ${colors.containerBorder}`
+                        border: `1px solid ${colors.containerBorder}`,
+                        overflow: 'hidden'
                     }}>
                     <div
                         style={{
@@ -264,7 +265,9 @@ export function Step1_Import({
                                     }`,
                                     padding: '0 8px',
                                     height: '38px',
-                                    transition: 'border-color 0.2s'
+                                    transition: 'border-color 0.2s',
+                                    minWidth: 0,
+                                    boxSizing: 'border-box'
                                 }}>
                                 <span
                                     style={{
@@ -305,6 +308,7 @@ export function Step1_Import({
                                     autoFocus={index === 0}
                                     style={{
                                         flex: 1,
+                                        minWidth: 0,
                                         background: 'transparent',
                                         border: 'none',
                                         outline: 'none',
@@ -312,7 +316,8 @@ export function Step1_Import({
                                         fontSize: '13px',
                                         fontFamily: 'monospace',
                                         padding: '0 4px',
-                                        height: '100%'
+                                        height: '100%',
+                                        boxSizing: 'border-box'
                                     } as React.CSSProperties}
                                 />
                                 {word && wordlist.includes(word) && (

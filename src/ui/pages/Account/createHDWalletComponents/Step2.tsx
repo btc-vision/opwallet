@@ -783,7 +783,7 @@ function AddressTypeOption({
                             {truncAddr(addr)}
                         </span>
                         {hdPath && (
-                            <span style={{ fontSize: '10px', color: colors.textFaded + '80' }}>
+                            <span style={{ fontSize: '10px', color: 'rgba(219, 219, 219, 0.45)' }}>
                                 {hdPath}
                             </span>
                         )}
