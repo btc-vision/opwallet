@@ -1,143 +1,201 @@
-import { useRef, useState } from 'react';
-import { FileTextOutlined, CheckCircleFilled } from '@ant-design/icons';
+import { useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
+import { CheckCircleFilled } from '@ant-design/icons';
 
-const colors = {
-    main: '#f37413',
-    text: '#dbdbdb',
-    textFaded: 'rgba(219, 219, 219, 0.7)',
-    containerBgFaded: '#292929',
-    containerBorder: '#303030',
-    success: '#4ade80',
-    buttonBg: '#434343'
-};
+import { TOS_LAST_UPDATE } from '@/shared/constant';
+import { TermsText, type LegalDocStyles } from '@/legal-documents/Terms';
+import { PrivacyPolicyText } from '@/legal-documents/Privacy';
+
+type DocKey = 'tos' | 'privacy';
 
 export function OnboardingTOS({ onAccept }: { onAccept: () => void }) {
-    const [scrolledToBottom, setScrolledToBottom] = useState(false);
+    const [activeDoc, setActiveDoc] = useState<DocKey>('tos');
+
+    const [tosScrolled, setTosScrolled] = useState(false);
+    const [privacyScrolled, setPrivacyScrolled] = useState(false);
+
+    const [tosInteracted, setTosInteracted] = useState(false);
+    const [privacyInteracted, setPrivacyInteracted] = useState(false);
+
     const [accepted, setAccepted] = useState(false);
+
+    const switchingDocRef = useRef(false);
     const scrollRef = useRef<HTMLDivElement>(null);
 
-    const handleScroll = () => {
-        const el = scrollRef.current;
-        if (!el) return;
-        const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 30;
-        if (atBottom) setScrolledToBottom(true);
+    const bothScrolled = tosScrolled && privacyScrolled;
+
+    const isAtBottom = (el: HTMLDivElement) =>
+        el.scrollTop + el.clientHeight >= el.scrollHeight - 8;
+
+    const markActiveAsRead = () => {
+        if (activeDoc === 'tos') setTosScrolled(true);
+        else setPrivacyScrolled(true);
     };
 
+    const checkReadStatus = () => {
+        const el = scrollRef.current;
+        if (!el) return;
+
+        const noScrollNeeded = el.scrollHeight <= el.clientHeight + 8;
+        if (noScrollNeeded) {
+            markActiveAsRead();
+            return;
+        }
+
+        const interacted = activeDoc === 'tos' ? tosInteracted : privacyInteracted;
+        if (!interacted) return;
+
+        if (isAtBottom(el)) markActiveAsRead();
+    };
+
+    useLayoutEffect(() => {
+        switchingDocRef.current = true;
+
+        requestAnimationFrame(() => {
+            const el = scrollRef.current;
+            if (el) el.scrollTo({ top: 0, behavior: 'auto' });
+
+            requestAnimationFrame(() => {
+                switchingDocRef.current = false;
+                checkReadStatus();
+            });
+        });
+    }, [activeDoc]);
+
+    const onScroll = () => {
+        if (switchingDocRef.current) return;
+        if (activeDoc === 'tos') setTosInteracted(true);
+        else setPrivacyInteracted(true);
+        checkReadStatus();
+    };
+
+    const scrollToBottom = () => {
+        const el = scrollRef.current;
+        if (!el) return;
+
+        if (activeDoc === 'tos') setTosInteracted(true);
+        else setPrivacyInteracted(true);
+
+        el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
+
+        requestAnimationFrame(() => {
+            requestAnimationFrame(() => checkReadStatus());
+        });
+    };
+
+    const legalDocStyles: LegalDocStyles = useMemo(() => {
+        const baseText: CSSProperties = {
+            color: 'rgba(255,255,255,0.84)',
+            fontSize: 12.5,
+            lineHeight: 1.68,
+            letterSpacing: '0.01em',
+            fontFamily:
+                '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji"',
+            margin: '8px 0',
+        };
+        return {
+            baseText,
+            h2: { ...baseText, fontSize: 13.5, fontWeight: 850, margin: '14px 0 6px 0', color: 'rgba(255,255,255,0.92)' },
+            h3: { ...baseText, fontSize: 12.5, fontWeight: 850, margin: '12px 0 4px 0', color: 'rgba(255,255,255,0.88)' },
+            ul: { ...baseText, paddingLeft: 18, margin: '8px 0' },
+            li: { ...baseText, margin: '6px 0' },
+            hr: { border: 0, borderTop: '1px solid rgba(255,255,255,0.10)', margin: '14px 0' },
+            callout: {
+                borderRadius: 14,
+                border: '1px solid rgba(255,255,255,0.12)',
+                background: 'rgba(0,0,0,0.24)',
+                padding: '10px 12px',
+                margin: '10px 0',
+                color: 'rgba(255,255,255,0.85)',
+                fontSize: 12.25,
+                lineHeight: 1.5,
+            },
+        };
+    }, []);
+
+    const tosIcon = tosScrolled ? '\u2713' : '\u2022';
+    const privacyIcon = privacyScrolled ? '\u2713' : '\u2022';
+
     return (
-        <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-            <div style={{ textAlign: 'center', marginBottom: '12px' }}>
-                <FileTextOutlined style={{ fontSize: 28, color: colors.main, marginBottom: '8px' }} />
-                <div style={{ fontSize: '18px', fontWeight: 700, color: colors.text }}>
-                    Terms of Service
-                </div>
-                <div style={{ fontSize: '12px', color: colors.textFaded, marginTop: '4px' }}>
-                    Please read and accept to continue
-                </div>
+        <div className="tos-step">
+            <div className="tos__header">
+                <div className="tos__title">Legal Agreements</div>
+                <div className="tos__subtitle">Effective Date: {TOS_LAST_UPDATE}</div>
             </div>
 
-            <div
-                ref={scrollRef}
-                onScroll={handleScroll}
-                style={{
-                    flex: 1,
-                    background: colors.containerBgFaded,
-                    borderRadius: '10px',
-                    border: `1px solid ${colors.containerBorder}`,
-                    padding: '14px',
-                    overflowY: 'auto',
-                    fontSize: '11px',
-                    color: colors.textFaded,
-                    lineHeight: '1.6',
-                    maxHeight: '280px',
-                    marginBottom: '12px'
-                }}>
-                <div style={{ fontWeight: 600, color: colors.text, marginBottom: '8px' }}>
-                    OPWallet Terms of Service
-                </div>
-                <p>
-                    By using OPWallet, you agree to these terms. OPWallet is a non-custodial browser extension
-                    wallet for managing tokens and interacting with applications on the OP_NET Bitcoin Layer 1
-                    Metaprotocol.
-                </p>
-                <p style={{ marginTop: '8px' }}>
-                    <strong style={{ color: colors.text }}>Self-Custody:</strong> You are solely responsible
-                    for your wallet security. OPWallet does not store your private keys, seed phrases, or
-                    passwords on any server. If you lose access to your recovery phrase or private keys, your
-                    funds cannot be recovered.
-                </p>
-                <p style={{ marginTop: '8px' }}>
-                    <strong style={{ color: colors.text }}>No Warranty:</strong> OPWallet is provided &quot;as
-                    is&quot; without warranty of any kind. We are not responsible for any loss of funds,
-                    failed transactions, or damages arising from the use of this software.
-                </p>
-                <p style={{ marginTop: '8px' }}>
-                    <strong style={{ color: colors.text }}>Smart Contract Risks:</strong> Interacting with
-                    smart contracts carries inherent risks. Always verify contract addresses and transaction
-                    details before signing.
-                </p>
-                <p style={{ marginTop: '8px' }}>
-                    <strong style={{ color: colors.text }}>Privacy:</strong> OPWallet does not collect personal
-                    data. Network requests are made directly to Bitcoin nodes and indexers. Your transaction
-                    history is publicly visible on the Bitcoin blockchain.
-                </p>
-                <p style={{ marginTop: '8px' }}>
-                    <strong style={{ color: colors.text }}>Updates:</strong> We may update these terms at any
-                    time. Continued use of OPWallet constitutes acceptance of updated terms.
-                </p>
-                <div style={{ height: '20px' }} />
+            <div className="tos__tabs">
+                <button
+                    type="button"
+                    className={`tos__tab ${activeDoc === 'tos' ? 'tos__tab--active' : ''}`}
+                    onClick={() => setActiveDoc('tos')}>
+                    <span className="tos__tab-name">Terms of Service</span>
+                    <span className={`tos__tab-tick ${tosScrolled ? 'tos__tab-tick--done' : ''}`}>
+                        {tosScrolled ? '\u2713' : ''}
+                    </span>
+                </button>
+
+                <button
+                    type="button"
+                    className={`tos__tab ${activeDoc === 'privacy' ? 'tos__tab--active' : ''}`}
+                    onClick={() => setActiveDoc('privacy')}>
+                    <span className="tos__tab-name">Privacy Policy</span>
+                    <span className={`tos__tab-tick ${privacyScrolled ? 'tos__tab-tick--done' : ''}`}>
+                        {privacyScrolled ? '\u2713' : ''}
+                    </span>
+                </button>
             </div>
 
-            {!scrolledToBottom && (
-                <div style={{ fontSize: '10px', color: colors.textFaded, textAlign: 'center', marginBottom: '8px' }}>
-                    Scroll to the bottom to continue
+            <div className="tos__body">
+                <div ref={scrollRef} onScroll={onScroll} className="tos__scroll-area">
+                    {activeDoc === 'tos' ? (
+                        <TermsText effectiveDate={TOS_LAST_UPDATE} styles={legalDocStyles} />
+                    ) : (
+                        <PrivacyPolicyText effectiveDate={TOS_LAST_UPDATE} styles={legalDocStyles} />
+                    )}
+                    <div style={{ height: 14 }} />
                 </div>
-            )}
 
-            <label
-                style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '10px',
-                    padding: '10px 12px',
-                    background: accepted ? `${colors.success}10` : colors.containerBgFaded,
-                    borderRadius: '10px',
-                    border: `1px solid ${accepted ? colors.success + '30' : colors.containerBorder}`,
-                    cursor: scrolledToBottom ? 'pointer' : 'not-allowed',
-                    opacity: scrolledToBottom ? 1 : 0.4,
-                    transition: 'all 0.15s',
-                    marginBottom: '12px'
-                }}>
-                <input
-                    type="checkbox"
-                    checked={accepted}
-                    disabled={!scrolledToBottom}
-                    onChange={(e) => setAccepted(e.target.checked)}
-                    style={{ width: '16px', height: '16px', accentColor: colors.success }}
-                />
-                <span style={{ fontSize: '12px', color: accepted ? colors.success : colors.textFaded, fontWeight: 500 }}>
-                    I have read and accept the Terms of Service
-                </span>
-                {accepted && <CheckCircleFilled style={{ fontSize: 14, color: colors.success, marginLeft: 'auto' }} />}
-            </label>
+                <button
+                    type="button"
+                    className="tos__jump-btn"
+                    onClick={scrollToBottom}
+                    aria-label="Jump to bottom"
+                    title="Jump to bottom">
+                    <span style={{ fontSize: 18, transform: 'translateY(1px)' }}>{'\u2193'}</span>
+                </button>
+            </div>
 
-            <button
-                disabled={!accepted}
-                onClick={onAccept}
-                style={{
-                    width: '100%',
-                    padding: '14px',
-                    background: accepted ? colors.main : colors.buttonBg,
-                    border: 'none',
-                    borderRadius: '12px',
-                    color: accepted ? '#000' : colors.textFaded,
-                    fontSize: '14px',
-                    fontWeight: 600,
-                    cursor: accepted ? 'pointer' : 'not-allowed',
-                    opacity: accepted ? 1 : 0.5,
-                    transition: 'all 0.2s'
-                }}>
-                Continue
-            </button>
+            <div className="tos__footer">
+                <div className="tos__hint">
+                    {!bothScrolled
+                        ? `Scroll both docs. (${tosIcon} Terms, ${privacyIcon} Privacy)`
+                        : accepted
+                            ? 'Click "Continue" to proceed.'
+                            : 'Tick the box to enable "Continue".'}
+                </div>
+
+                <label
+                    className="checkbox-label tos__checkbox"
+                    data-checked={accepted}
+                    data-disabled={!bothScrolled}>
+                    <input
+                        type="checkbox"
+                        checked={accepted}
+                        disabled={!bothScrolled}
+                        onChange={(e) => setAccepted(e.target.checked)}
+                    />
+                    <span className={`tos__checkbox-text ${accepted ? 'text-success' : 'text-faded'}`}>
+                        I have read and agree to the Terms &amp; Privacy Policy
+                    </span>
+                    {accepted && <CheckCircleFilled style={{ fontSize: 14, color: 'var(--color-success)', marginLeft: 'auto' }} />}
+                </label>
+
+                <button
+                    disabled={!accepted}
+                    onClick={onAccept}
+                    className={`btn ${accepted ? 'btn-primary' : 'btn-disabled'}`}>
+                    Continue
+                </button>
+            </div>
         </div>
     );
 }

@@ -8,6 +8,7 @@ import { OnboardingTOS } from './steps/OnboardingTOS';
 import { OnboardingExperience } from './steps/OnboardingExperience';
 import { OnboardingDisplay } from './steps/OnboardingDisplay';
 import { OnboardingUTXO } from './steps/OnboardingUTXO';
+import './onboarding.css';
 
 // ─── Versioned step registry ───
 // Bump a step's version to force it to re-show for existing users.
@@ -60,12 +61,6 @@ export function isOnboardingComplete(): boolean {
     return getPendingSteps().length === 0;
 }
 
-const colors = {
-    main: '#f37413',
-    textFaded: 'rgba(219, 219, 219, 0.7)',
-    containerBorder: '#303030'
-};
-
 export default function OnboardingScreen() {
     const wallet = useWallet();
     const navigate = useNavigate();
@@ -97,37 +92,24 @@ export default function OnboardingScreen() {
 
     return (
         <Layout>
-            <Content style={{ padding: '0' }}>
-                <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-                    {/* Progress bar */}
-                    <div style={{ padding: '16px 16px 0' }}>
-                        <div style={{ display: 'flex', gap: '4px' }}>
+            <Content style={{ padding: 0 }}>
+                <div className="onboarding">
+                    <div className="onboarding__progress">
+                        <div className="onboarding__progress-bar">
                             {pendingSteps.map((_, i) => (
                                 <div
                                     key={i}
-                                    style={{
-                                        flex: 1,
-                                        height: '3px',
-                                        borderRadius: '2px',
-                                        background: i <= pendingIndex ? colors.main : colors.containerBorder,
-                                        transition: 'background 0.3s'
-                                    }}
+                                    className="onboarding__progress-segment"
+                                    data-active={i <= pendingIndex}
                                 />
                             ))}
                         </div>
-                        <div
-                            style={{
-                                fontSize: '10px',
-                                color: colors.textFaded,
-                                textAlign: 'right',
-                                marginTop: '6px'
-                            }}>
+                        <div className="onboarding__progress-count">
                             {pendingIndex + 1} / {totalSteps}
                         </div>
                     </div>
 
-                    {/* Step content */}
-                    <div style={{ flex: 1, overflow: 'auto', padding: '8px 16px 16px' }}>
+                    <div className="onboarding__content">
                         {currentStep === 'tos' && (
                             <OnboardingTOS
                                 onAccept={() => {

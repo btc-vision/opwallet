@@ -23,6 +23,9 @@ import { WalletController, WalletProvider } from './utils';
 import ChainUpdater from './state/settings/updater';
 
 import '@/ui/styles/global.less';
+import '@/ui/styles/theme.css';
+import '@/ui/styles/shared.css';
+import '@/ui/styles/animations.css';
 import './template.css';
 import '../opnet/styles.css';
 

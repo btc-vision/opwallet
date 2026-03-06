@@ -1,23 +1,43 @@
 import { useState } from 'react';
-import { ExperimentOutlined, SettingOutlined } from '@ant-design/icons';
+import { CheckCircleFilled } from '@ant-design/icons';
+import { faRocket, faBolt } from '@fortawesome/free-solid-svg-icons';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
 import type { WalletController } from '@/ui/utils/WalletContext';
 
-const colors = {
-    main: '#f37413',
-    text: '#dbdbdb',
-    textFaded: 'rgba(219, 219, 219, 0.7)',
-    containerBgFaded: '#292929',
-    containerBorder: '#303030',
-    success: '#4ade80',
-    buttonBg: '#434343'
-};
-
 type Mode = 'simple' | 'expert';
+
+interface ModeOption {
+    mode: Mode;
+    title: string;
+    description: string;
+    icon: typeof faRocket;
+    iconColor: string;
+    features: string[];
+}
+
+const modeOptions: ModeOption[] = [
+    {
+        mode: 'simple',
+        title: 'Simple Mode',
+        description: 'Perfect for beginners',
+        icon: faRocket,
+        iconColor: '#4ade80',
+        features: ['Streamlined dashboard', 'Hidden technical details', 'Easier navigation'],
+    },
+    {
+        mode: 'expert',
+        title: 'Expert Mode',
+        description: 'Full control for power users',
+        icon: faBolt,
+        iconColor: '#a78bfa',
+        features: ['MLDSA & BTC badges visible', 'Full address visibility', 'Advanced features'],
+    },
+];
 
 export function OnboardingExperience({
     wallet,
-    onContinue
+    onContinue,
 }: {
     wallet: WalletController;
     onContinue: () => void;
@@ -31,109 +51,67 @@ export function OnboardingExperience({
 
     return (
         <div>
-            <div style={{ textAlign: 'center', marginBottom: '16px' }}>
-                <div style={{ fontSize: '18px', fontWeight: 700, color: colors.text }}>
-                    Choose Your Experience
-                </div>
-                <div style={{ fontSize: '12px', color: colors.textFaded, marginTop: '4px' }}>
-                    You can change this anytime in Settings
-                </div>
+            <div className="experience__header">
+                <div className="experience__title">Choose Your Experience</div>
+                <div className="experience__subtitle">You can change this anytime in Settings</div>
             </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '20px' }}>
-                {/* Simple Mode */}
-                <button
-                    onClick={() => setSelected('simple')}
-                    style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '14px',
-                        padding: '16px',
-                        background: selected === 'simple' ? `${colors.success}10` : colors.containerBgFaded,
-                        border: `1.5px solid ${selected === 'simple' ? colors.success : colors.containerBorder}`,
-                        borderRadius: '12px',
-                        cursor: 'pointer',
-                        textAlign: 'left',
-                        transition: 'all 0.15s'
-                    }}>
-                    <div
-                        style={{
-                            width: '44px',
-                            height: '44px',
-                            borderRadius: '12px',
-                            background: `${colors.success}15`,
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            flexShrink: 0
-                        }}>
-                        <ExperimentOutlined style={{ fontSize: 22, color: colors.success }} />
-                    </div>
-                    <div>
-                        <div style={{ fontSize: '14px', fontWeight: 600, color: colors.text, marginBottom: '4px' }}>
-                            Simple Mode
-                        </div>
-                        <div style={{ fontSize: '11px', color: colors.textFaded, lineHeight: '1.5' }}>
-                            Clean interface, essential features only. Best for everyday use and beginners.
-                        </div>
-                    </div>
-                </button>
+            <div className="experience__cards">
+                {modeOptions.map((option) => {
+                    const isSelected = selected === option.mode;
+                    return (
+                        <button
+                            key={option.mode}
+                            type="button"
+                            className={`experience__card ${isSelected ? 'experience__card--selected' : ''}`}
+                            data-mode={option.mode}
+                            style={{
+                                borderColor: isSelected ? option.iconColor : undefined,
+                                background: isSelected ? `${option.iconColor}10` : undefined,
+                            }}
+                            onClick={() => setSelected(option.mode)}>
+                            {isSelected && (
+                                <CheckCircleFilled
+                                    className="experience__card-check"
+                                    style={{ color: option.iconColor }}
+                                />
+                            )}
 
-                {/* Expert Mode */}
-                <button
-                    onClick={() => setSelected('expert')}
-                    style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '14px',
-                        padding: '16px',
-                        background: selected === 'expert' ? `${colors.main}10` : colors.containerBgFaded,
-                        border: `1.5px solid ${selected === 'expert' ? colors.main : colors.containerBorder}`,
-                        borderRadius: '12px',
-                        cursor: 'pointer',
-                        textAlign: 'left',
-                        transition: 'all 0.15s'
-                    }}>
-                    <div
-                        style={{
-                            width: '44px',
-                            height: '44px',
-                            borderRadius: '12px',
-                            background: `${colors.main}15`,
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            flexShrink: 0
-                        }}>
-                        <SettingOutlined style={{ fontSize: 22, color: colors.main }} />
-                    </div>
-                    <div>
-                        <div style={{ fontSize: '14px', fontWeight: 600, color: colors.text, marginBottom: '4px' }}>
-                            Expert Mode
-                        </div>
-                        <div style={{ fontSize: '11px', color: colors.textFaded, lineHeight: '1.5' }}>
-                            Full access to all features including UTXO management, address rotation, and advanced settings.
-                        </div>
-                    </div>
-                </button>
+                            <div className="experience__card-icon-row">
+                                <div
+                                    className="experience__card-icon"
+                                    style={{ background: `${option.iconColor}20` }}>
+                                    <FontAwesomeIcon
+                                        icon={option.icon}
+                                        style={{ fontSize: 20, color: option.iconColor }}
+                                    />
+                                </div>
+                                <div>
+                                    <div className="experience__card-title">{option.title}</div>
+                                    <div className="experience__card-desc">{option.description}</div>
+                                </div>
+                            </div>
+
+                            <div className="experience__card-features">
+                                {option.features.map((feature, i) => (
+                                    <div key={i} className="experience__card-feature">
+                                        <span
+                                            className="experience__card-dot"
+                                            style={{ background: option.iconColor }}
+                                        />
+                                        <span className="experience__card-feature-text">{feature}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        </button>
+                    );
+                })}
             </div>
 
             <button
                 disabled={!selected}
                 onClick={handleContinue}
-                style={{
-                    width: '100%',
-                    padding: '14px',
-                    background: selected ? colors.main : colors.buttonBg,
-                    border: 'none',
-                    borderRadius: '12px',
-                    color: selected ? '#000' : colors.textFaded,
-                    fontSize: '14px',
-                    fontWeight: 600,
-                    cursor: selected ? 'pointer' : 'not-allowed',
-                    opacity: selected ? 1 : 0.5,
-                    transition: 'all 0.2s'
-                }}>
+                className={`btn ${selected ? 'btn-primary' : 'btn-disabled'}`}>
                 Continue
             </button>
         </div>

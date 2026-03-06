@@ -1,121 +1,114 @@
 import { useState } from 'react';
-import { SafetyOutlined, WarningOutlined } from '@ant-design/icons';
+import { CheckCircleFilled, WarningOutlined } from '@ant-design/icons';
+import { faShieldHalved, faBolt } from '@fortawesome/free-solid-svg-icons';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
 import type { WalletController } from '@/ui/utils/WalletContext';
 
-const colors = {
-    main: '#f37413',
-    text: '#dbdbdb',
-    textFaded: 'rgba(219, 219, 219, 0.7)',
-    containerBgFaded: '#292929',
-    containerBorder: '#303030',
-    success: '#4ade80',
-    error: '#ef4444',
-    warning: '#fbbf24',
-    buttonBg: '#434343'
-};
+type UTXOMode = 'protected' | 'fullaccess';
+
+interface UTXOOption {
+    mode: UTXOMode;
+    title: string;
+    description: string;
+    icon: typeof faShieldHalved;
+    iconColor: string;
+    features: string[];
+    badge?: string;
+}
+
+const utxoOptions: UTXOOption[] = [
+    {
+        mode: 'protected',
+        title: 'Protected Mode',
+        description: 'Safe for ordinal holders',
+        icon: faShieldHalved,
+        iconColor: '#4ade80',
+        features: ['Filters UTXOs under 1,000 sat', 'Prevents accidental ordinal spending', 'Safe default for most users'],
+        badge: 'Recommended',
+    },
+    {
+        mode: 'fullaccess',
+        title: 'Full Access Mode',
+        description: 'Uses all UTXOs',
+        icon: faBolt,
+        iconColor: '#f59e0b',
+        features: ['Access all UTXOs including small ones', 'May spend ordinals accidentally', 'For users who don\'t hold ordinals'],
+    },
+];
 
 export function OnboardingUTXO({
     wallet,
-    onContinue
+    onContinue,
 }: {
     wallet: WalletController;
     onContinue: () => void;
 }) {
+    const [selected, setSelected] = useState<UTXOMode | null>(null);
     const [showConfirm, setShowConfirm] = useState(false);
     const [confirmText, setConfirmText] = useState('');
 
-    const handleKeepProtection = () => {
-        void wallet.setUTXOProtectionDisabled(false).then(onContinue);
+    const handleSelect = (mode: UTXOMode) => {
+        if (mode === 'fullaccess') {
+            setShowConfirm(true);
+        } else {
+            setSelected(mode);
+            setShowConfirm(false);
+            setConfirmText('');
+        }
+    };
+
+    const handleContinue = () => {
+        if (!selected) return;
+        const disabled = selected === 'fullaccess';
+        void wallet.setUTXOProtectionDisabled(disabled).then(onContinue);
     };
 
     const handleConfirmDisable = () => {
-        void wallet.setUTXOProtectionDisabled(true).then(onContinue);
+        setSelected('fullaccess');
+        setShowConfirm(false);
+        setConfirmText('');
     };
 
     if (showConfirm) {
         return (
             <div>
-                <div style={{ textAlign: 'center', marginBottom: '16px' }}>
-                    <WarningOutlined style={{ fontSize: 32, color: colors.error }} />
-                    <div style={{ fontSize: '18px', fontWeight: 700, color: colors.error, marginTop: '8px' }}>
-                        Are You Sure?
-                    </div>
+                <div className="utxo__header">
+                    <WarningOutlined style={{ fontSize: 32, color: 'var(--color-error)' }} />
+                    <div className="utxo__title utxo__title--error">Are You Sure?</div>
                 </div>
 
-                <div
-                    style={{
-                        background: '#3b1111',
-                        borderRadius: '10px',
-                        padding: '14px',
-                        marginBottom: '16px'
-                    }}>
-                    <div style={{ fontSize: '12px', fontWeight: 600, color: colors.error, marginBottom: '6px' }}>
-                        THIS MAY DESTROY YOUR ORDINALS
-                    </div>
-                    <div style={{ fontSize: '11px', color: '#ccc', lineHeight: '1.6' }}>
+                <div className="utxo__info alert-error">
+                    <div className="alert-title text-error">THIS MAY DESTROY YOUR ORDINALS</div>
+                    <div className="utxo__info-text utxo__info-text--muted">
                         OPWallet will use all UTXOs including those under 1,000 sat. If any contain ordinals or
                         inscriptions, they will be permanently spent and lost.
                     </div>
                 </div>
 
-                <div style={{ marginBottom: '16px' }}>
-                    <div style={{ fontSize: '12px', color: colors.textFaded, marginBottom: '8px' }}>
-                        Type <strong style={{ color: colors.error }}>DISABLE</strong> to confirm:
+                <div className="utxo__confirm-input">
+                    <div className="utxo__confirm-label">
+                        Type <strong className="text-error">DISABLE</strong> to confirm:
                     </div>
                     <input
                         type="text"
                         value={confirmText}
                         onChange={(e) => setConfirmText(e.target.value)}
                         placeholder="Type DISABLE"
-                        style={{
-                            width: '100%',
-                            padding: '12px',
-                            borderRadius: '10px',
-                            border: `1px solid ${confirmText === 'DISABLE' ? colors.error : colors.containerBorder}`,
-                            background: colors.containerBgFaded,
-                            color: colors.text,
-                            fontSize: '14px',
-                            fontWeight: 600,
-                            textAlign: 'center',
-                            letterSpacing: '2px',
-                            outline: 'none',
-                            boxSizing: 'border-box'
-                        }}
+                        className={`input input-center input-mono ${confirmText === 'DISABLE' ? 'input-error' : ''}`}
                     />
                 </div>
 
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                <div className="utxo__actions">
                     <button
                         onClick={() => { setShowConfirm(false); setConfirmText(''); }}
-                        style={{
-                            width: '100%',
-                            padding: '14px',
-                            borderRadius: '12px',
-                            border: `1px solid ${colors.success}40`,
-                            background: `${colors.success}10`,
-                            color: colors.success,
-                            fontSize: '14px',
-                            fontWeight: 600,
-                            cursor: 'pointer'
-                        }}>
+                        className="btn btn-success">
                         Go Back - Keep Protection
                     </button>
                     <button
                         disabled={confirmText !== 'DISABLE'}
                         onClick={handleConfirmDisable}
-                        style={{
-                            width: '100%',
-                            padding: '14px',
-                            borderRadius: '12px',
-                            border: 'none',
-                            background: confirmText === 'DISABLE' ? colors.error : colors.buttonBg,
-                            color: confirmText === 'DISABLE' ? '#fff' : colors.textFaded,
-                            fontSize: '13px',
-                            fontWeight: 600,
-                            cursor: confirmText === 'DISABLE' ? 'pointer' : 'not-allowed',
-                            opacity: confirmText === 'DISABLE' ? 1 : 0.5
-                        }}>
+                        className={`btn ${confirmText === 'DISABLE' ? 'btn-danger' : 'btn-disabled'}`}>
                         Confirm - Disable Protection
                     </button>
                 </div>
@@ -125,64 +118,72 @@ export function OnboardingUTXO({
 
     return (
         <div>
-            <div style={{ textAlign: 'center', marginBottom: '16px' }}>
-                <SafetyOutlined style={{ fontSize: 28, color: colors.warning, marginBottom: '8px' }} />
-                <div style={{ fontSize: '18px', fontWeight: 700, color: colors.text }}>
-                    UTXO Protection
-                </div>
-                <div style={{ fontSize: '12px', color: colors.textFaded, marginTop: '4px' }}>
-                    Protect ordinals from accidental spending
-                </div>
+            <div className="utxo__header">
+                <div className="utxo__title">UTXO Protection</div>
+                <div className="utxo__subtitle">Protect ordinals from accidental spending</div>
             </div>
 
-            <div
-                style={{
-                    background: '#3b2e11',
-                    borderRadius: '10px',
-                    padding: '14px',
-                    marginBottom: '16px'
-                }}>
-                <div style={{ fontSize: '12px', color: colors.text, lineHeight: '1.6' }}>
-                    OPWallet filters UTXOs under 1,000 sat to prevent accidental ordinal spending.
-                    This was reduced from 12k sat to 1k sat.
-                </div>
-                <div style={{ fontSize: '12px', color: colors.textFaded, lineHeight: '1.6', marginTop: '8px' }}>
-                    If you do not care about ordinals and want to use all UTXOs, you can disable this protection.
-                </div>
+            <div className="utxo__cards">
+                {utxoOptions.map((option) => {
+                    const isSelected = selected === option.mode;
+                    return (
+                        <button
+                            key={option.mode}
+                            type="button"
+                            className={`utxo__card ${isSelected ? 'utxo__card--selected' : ''}`}
+                            style={{
+                                borderColor: isSelected ? option.iconColor : undefined,
+                                background: isSelected ? `${option.iconColor}10` : undefined,
+                            }}
+                            onClick={() => handleSelect(option.mode)}>
+                            {isSelected && (
+                                <CheckCircleFilled
+                                    className="utxo__card-check"
+                                    style={{ color: option.iconColor }}
+                                />
+                            )}
+
+                            {option.badge && (
+                                <span className="utxo__card-badge">{option.badge}</span>
+                            )}
+
+                            <div className="utxo__card-icon-row">
+                                <div
+                                    className="utxo__card-icon"
+                                    style={{ background: `${option.iconColor}20` }}>
+                                    <FontAwesomeIcon
+                                        icon={option.icon}
+                                        style={{ fontSize: 20, color: option.iconColor }}
+                                    />
+                                </div>
+                                <div>
+                                    <div className="utxo__card-title">{option.title}</div>
+                                    <div className="utxo__card-desc">{option.description}</div>
+                                </div>
+                            </div>
+
+                            <div className="utxo__card-features">
+                                {option.features.map((feature, i) => (
+                                    <div key={i} className="utxo__card-feature">
+                                        <span
+                                            className="utxo__card-dot"
+                                            style={{ background: option.iconColor }}
+                                        />
+                                        <span className="utxo__card-feature-text">{feature}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        </button>
+                    );
+                })}
             </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                <button
-                    onClick={handleKeepProtection}
-                    style={{
-                        width: '100%',
-                        padding: '14px',
-                        background: colors.main,
-                        border: 'none',
-                        borderRadius: '12px',
-                        color: '#000',
-                        fontSize: '14px',
-                        fontWeight: 600,
-                        cursor: 'pointer'
-                    }}>
-                    Keep Protection (Recommended)
-                </button>
-                <button
-                    onClick={() => setShowConfirm(true)}
-                    style={{
-                        width: '100%',
-                        padding: '14px',
-                        borderRadius: '12px',
-                        border: `1px solid ${colors.containerBorder}`,
-                        background: 'transparent',
-                        color: colors.textFaded,
-                        fontSize: '13px',
-                        fontWeight: 500,
-                        cursor: 'pointer'
-                    }}>
-                    Disable Protection
-                </button>
-            </div>
+            <button
+                disabled={!selected}
+                onClick={handleContinue}
+                className={`btn ${selected ? 'btn-primary' : 'btn-disabled'}`}>
+                Continue
+            </button>
         </div>
     );
 }

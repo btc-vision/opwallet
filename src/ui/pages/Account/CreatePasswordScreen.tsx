@@ -9,19 +9,7 @@ import { LockOutlined } from '@ant-design/icons';
 
 import { WalletError } from '@/shared/types/Error';
 import { RouteTypes, useNavigate } from '../routeTypes';
-
-const colors = {
-    main: '#f37413',
-    text: '#dbdbdb',
-    textFaded: 'rgba(219, 219, 219, 0.7)',
-    containerBgFaded: '#292929',
-    containerBorder: '#303030',
-    inputBg: '#292828',
-    buttonBg: '#434343',
-    success: '#4ade80',
-    error: '#ef4444',
-    warning: '#fbbf24'
-};
+import './create-password.css';
 
 interface LocationState {
     isNewAccount?: boolean;
@@ -35,9 +23,7 @@ export default function CreatePasswordScreen() {
     const params = new URLSearchParams(loc.search);
 
     let state: LocationState = {};
-    if (loc.state) {
-        state = loc.state as LocationState;
-    }
+    if (loc.state) state = loc.state as LocationState;
     if (Array.from(params).length > 0) {
         params.forEach((value, key) => {
             state[key as keyof LocationState] = value === 'true';
@@ -55,13 +41,9 @@ export default function CreatePasswordScreen() {
     const tools = useTools();
     const [run] = useWalletRequest(wallet.boot.bind(wallet), {
         onSuccess() {
-            if (isKeystone) {
-                navigate(RouteTypes.CreateKeystoneWalletScreen, { fromUnlock: true });
-            } else if (isNewAccount) {
-                navigate(RouteTypes.CreateHDWalletScreen, { isImport: false, fromUnlock: true });
-            } else {
-                navigate(RouteTypes.CreateHDWalletScreen, { isImport: true, fromUnlock: true });
-            }
+            if (isKeystone) navigate(RouteTypes.CreateKeystoneWalletScreen, { fromUnlock: true });
+            else if (isNewAccount) navigate(RouteTypes.CreateHDWalletScreen, { isImport: false, fromUnlock: true });
+            else navigate(RouteTypes.CreateHDWalletScreen, { isImport: true, fromUnlock: true });
         },
         onError(err: WalletError) {
             tools.toastError(typeof err === 'string' ? err : err.message);
@@ -76,137 +58,64 @@ export default function CreatePasswordScreen() {
     const passwordsMatch = confirmPassword ? newPassword === confirmPassword : true;
 
     const handleKeyUp = (e: React.KeyboardEvent<HTMLInputElement>) => {
-        if (!disabled && e.key === 'Enter') {
-            void run(newPassword.trim());
-        }
+        if (!disabled && e.key === 'Enter') void run(newPassword.trim());
     };
 
     return (
         <Layout>
             <Header onBack={() => window.history.go(-1)} title="Create Password" />
             <Content>
-                <div
-                    style={{
-                        display: 'flex',
-                        flexDirection: 'column',
-                        alignItems: 'center',
-                        padding: '20px 4px'
-                    }}>
-                    {/* Icon */}
-                    <div
-                        style={{
-                            width: '56px',
-                            height: '56px',
-                            borderRadius: '50%',
-                            background: `${colors.main}15`,
-                            border: `1px solid ${colors.main}30`,
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            marginBottom: '16px'
-                        }}>
-                        <LockOutlined style={{ fontSize: 24, color: colors.main }} />
+                <div className="create-password">
+                    <div className="icon-circle icon-circle-lg create-password__icon">
+                        <LockOutlined style={{ fontSize: 24, color: 'var(--color-main)' }} />
                     </div>
 
-                    <div style={{ fontSize: '13px', color: colors.textFaded, marginBottom: '24px', textAlign: 'center' }}>
+                    <div className="create-password__subtitle">
                         You will use this to unlock your wallet
                     </div>
 
-                    {/* Password Field */}
-                    <div style={{ width: '100%', marginBottom: '14px' }}>
-                        <div style={{ fontSize: '12px', color: colors.textFaded, marginBottom: '6px', fontWeight: 500 }}>
-                            Password
-                        </div>
+                    <div className="create-password__field">
+                        <div className="create-password__field-label">Password</div>
                         <input
                             type="password"
                             value={newPassword}
                             onChange={(e) => setNewPassword(e.target.value)}
                             autoFocus
                             placeholder="Enter password"
-                            style={{
-                                width: '100%',
-                                padding: '12px 14px',
-                                background: colors.inputBg,
-                                border: `1px solid ${colors.containerBorder}`,
-                                borderRadius: '10px',
-                                color: colors.text,
-                                fontSize: '14px',
-                                outline: 'none',
-                                boxSizing: 'border-box',
-                                transition: 'border-color 0.2s'
-                            }}
-                            onFocus={(e) => { e.currentTarget.style.borderColor = colors.main; }}
-                            onBlur={(e) => { e.currentTarget.style.borderColor = colors.containerBorder; }}
+                            className="input"
                         />
                         {strengthInfo && (
-                            <div style={{ marginTop: '6px' }}>
-                                <span style={{ fontSize: '11px', color: colors.textFaded }}>Strength: </span>
-                                <span style={{ fontSize: '11px', color: strengthInfo.color, fontWeight: 500 }}>
+                            <div className="create-password__strength">
+                                <span className="create-password__strength-label">Strength: </span>
+                                <span className="create-password__strength-value" style={{ color: strengthInfo.color }}>
                                     {strengthInfo.text}
                                 </span>
                                 {strengthInfo.tip && (
-                                    <div style={{ fontSize: '10px', color: colors.textFaded, marginTop: '2px' }}>
-                                        {strengthInfo.tip}
-                                    </div>
+                                    <div className="create-password__strength-tip">{strengthInfo.tip}</div>
                                 )}
                             </div>
                         )}
                     </div>
 
-                    {/* Confirm Password Field */}
-                    <div style={{ width: '100%', marginBottom: '20px' }}>
-                        <div style={{ fontSize: '12px', color: colors.textFaded, marginBottom: '6px', fontWeight: 500 }}>
-                            Confirm Password
-                        </div>
+                    <div className="create-password__field">
+                        <div className="create-password__field-label">Confirm Password</div>
                         <input
                             type="password"
                             value={confirmPassword}
                             onChange={(e) => setConfirmPassword(e.target.value)}
                             onKeyUp={handleKeyUp}
                             placeholder="Confirm password"
-                            style={{
-                                width: '100%',
-                                padding: '12px 14px',
-                                background: colors.inputBg,
-                                border: `1px solid ${!passwordsMatch ? colors.error : colors.containerBorder}`,
-                                borderRadius: '10px',
-                                color: colors.text,
-                                fontSize: '14px',
-                                outline: 'none',
-                                boxSizing: 'border-box',
-                                transition: 'border-color 0.2s'
-                            }}
-                            onFocus={(e) => {
-                                if (passwordsMatch) e.currentTarget.style.borderColor = colors.main;
-                            }}
-                            onBlur={(e) => {
-                                e.currentTarget.style.borderColor = !passwordsMatch ? colors.error : colors.containerBorder;
-                            }}
+                            className={`input ${!passwordsMatch ? 'input-error' : ''}`}
                         />
                         {!passwordsMatch && (
-                            <div style={{ fontSize: '11px', color: colors.error, marginTop: '6px' }}>
-                                Passwords don&apos;t match
-                            </div>
+                            <div className="create-password__mismatch">Passwords don&apos;t match</div>
                         )}
                     </div>
 
-                    {/* Continue Button */}
                     <button
                         disabled={disabled}
                         onClick={() => void run(newPassword.trim())}
-                        style={{
-                            width: '100%',
-                            padding: '14px',
-                            background: disabled ? colors.buttonBg : colors.main,
-                            border: 'none',
-                            borderRadius: '12px',
-                            color: disabled ? colors.textFaded : '#000',
-                            fontSize: '14px',
-                            fontWeight: 600,
-                            cursor: disabled ? 'not-allowed' : 'pointer',
-                            opacity: disabled ? 0.5 : 1,
-                            transition: 'all 0.2s'
-                        }}>
+                        className={`btn w-full ${disabled ? 'btn-disabled' : 'btn-primary'}`}>
                         Continue
                     </button>
                 </div>
