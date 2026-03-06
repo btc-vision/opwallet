@@ -158,7 +158,13 @@ export { ChainType } from './chainType';
 export const NETWORK_TYPES = [
     { value: NetworkType.MAINNET, label: 'MAINNET', name: 'mainnet', validNames: [0, 'livenet', 'mainnet'] },
     { value: NetworkType.TESTNET, label: 'TESTNET', name: 'testnet', validNames: ['testnet'] },
-    { value: NetworkType.REGTEST, label: 'REGTEST', name: 'regtest', validNames: ['regtest'] }
+    { value: NetworkType.REGTEST, label: 'REGTEST', name: 'regtest', validNames: ['regtest'] },
+    {
+        value: NetworkType.OPNET_TESTNET,
+        label: 'OPNET_TESTNET',
+        name: 'opnetTestnet',
+        validNames: ['opnetTestnet', 'opnet-testnet', 'opnet_testnet', 'OPNET_TESTNET']
+    }
 ];
 
 export enum ChainId {

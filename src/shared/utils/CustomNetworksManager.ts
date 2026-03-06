@@ -319,7 +319,7 @@ class CustomNetworksManager {
         this.chainsMap.clear();
 
         // Add all chains from CHAINS_MAP (includes defaults and disabled chains)
-        Object.entries(CHAINS_MAP).forEach(([key, value]) => {
+        Object.entries(CHAINS_MAP).forEach(([_, value]) => {
             if (value) {
                 this.chainsMap.set(value.enum, value as ConcreteTypeChain);
             }
@@ -382,7 +382,6 @@ class CustomNetworksManager {
         if (chainTypeStr.includes('DASH')) return ChainId.Dash;
         return ChainId.Bitcoin;
     }
-
 }
 
 export const customNetworksManager = new CustomNetworksManager();
