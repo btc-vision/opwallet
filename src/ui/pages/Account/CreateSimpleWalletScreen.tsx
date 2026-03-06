@@ -21,8 +21,6 @@ import {
 import { EcKeyPair, MLDSASecurityLevel, Wallet } from '@btc-vision/transaction';
 import { getMLDSAConfig, QuantumBIP32Factory } from '@btc-vision/bip32';
 import { crypto as bitcoinCrypto, networks } from '@btc-vision/bitcoin';
-import { ethers } from 'ethers';
-
 import { RouteTypes, useNavigate } from '../routeTypes';
 
 // Get the expected MLDSA key size for LEVEL2
@@ -43,8 +41,7 @@ const colors = {
     inputBg: '#292828',
     success: '#4ade80',
     error: '#ef4444',
-    warning: '#fbbf24',
-    ethereum: '#627EEA'
+    warning: '#fbbf24'
 };
 
 function Step1({ updateContextData }: { updateContextData: (params: UpdateContextDataParams) => void }) {
@@ -54,10 +51,10 @@ function Step1({ updateContextData }: { updateContextData: (params: UpdateContex
 
     // Derive disabled and inputType from wif instead of using useEffect
     const disabled = useMemo(() => !wif.trim(), [wif]);
-    const inputType = useMemo((): 'auto' | 'wif' | 'ethereum' => {
+    const inputType = useMemo((): 'auto' | 'wif' | 'hex' => {
         const raw = wif.trim();
         if (!raw) return 'auto';
-        if (isLikelyHexPriv(raw)) return 'ethereum';
+        if (isLikelyHexPriv(raw)) return 'hex';
         return 'wif';
     }, [wif]);
 
@@ -84,7 +81,7 @@ function Step1({ updateContextData }: { updateContextData: (params: UpdateContex
             console.error(e);
         }
 
-        // then try raw 32-byte hex (ethereum-style)
+        // then try raw 32-byte hex
         if (!keyKind && isLikelyHexPriv(raw)) {
             try {
                 const buf = fromHex(raw.replace(/^0x/, ''));
@@ -163,7 +160,7 @@ function Step1({ updateContextData }: { updateContextData: (params: UpdateContex
                         color: colors.textFaded,
                         marginTop: '8px'
                     }}>
-                    Enter your Bitcoin WIF/HEX or Ethereum private key
+                    Enter your Bitcoin WIF or HEX private key
                 </div>
             </div>
 
@@ -191,12 +188,12 @@ function Step1({ updateContextData }: { updateContextData: (params: UpdateContex
                             style={{
                                 fontSize: '11px',
                                 padding: '2px 8px',
-                                background: inputType === 'ethereum' ? `${colors.ethereum}20` : `${colors.main}20`,
-                                color: inputType === 'ethereum' ? colors.ethereum : colors.main,
+                                background: `${colors.main}20`,
+                                color: colors.main,
                                 borderRadius: '4px',
                                 fontWeight: 600
                             }}>
-                            {inputType === 'ethereum' ? 'BTC/ETH Format' : 'BTC Format'}
+                            {inputType === 'hex' ? 'HEX Format' : 'WIF Format'}
                         </span>
                     )}
                 </div>
@@ -289,13 +286,13 @@ function Step1({ updateContextData }: { updateContextData: (params: UpdateContex
                         <span
                             style={{
                                 padding: '1px 4px',
-                                background: `${colors.ethereum}20`,
-                                color: colors.ethereum,
+                                background: `${colors.main}20`,
+                                color: colors.main,
                                 borderRadius: '3px',
                                 fontSize: '10px',
                                 fontWeight: 600
                             }}>
-                            BTC/ETH
+                            HEX
                         </span>
                         <span style={{ fontFamily: 'monospace' }}>64 hex chars</span>
                     </div>
@@ -365,7 +362,6 @@ function Step2({
 
     const [previewAddresses, setPreviewAddresses] = useState<string[]>(hdPathOptions.map(() => ''));
     const [addressAssets, setAddressAssets] = useState<Record<string, AddressAssets>>({});
-    const [ethAddress, setEthAddress] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
 
     const run = async () => {
@@ -435,26 +431,6 @@ function Step2({
 
     }, [contextData.wif]);
 
-    // Derive ethAddress from wif and keyKind instead of using useEffect
-    const derivedEthAddress = useMemo(() => {
-        const raw = contextData.wif?.trim();
-        if (contextData.keyKind !== 'rawHex' || !raw) {
-            return null;
-        }
-        try {
-            const pk = raw.startsWith('0x') ? raw : '0x' + raw;
-            return ethers.computeAddress(pk);
-        } catch {
-            return null;
-        }
-    }, [contextData.wif, contextData.keyKind]);
-
-    // Update ethAddress when derived value changes
-    useEffect(() => {
-         
-        setEthAddress(derivedEthAddress);
-    }, [derivedEthAddress]);
-
     const pathIndex = useMemo(() => {
         return hdPathOptions.findIndex((v) => v.addressType === contextData.addressType);
     }, [hdPathOptions, contextData.addressType]);
@@ -500,41 +476,6 @@ function Step2({
                     Choose the address format for your wallet
                 </div>
             </div>
-
-            {/* Ethereum Address Info */}
-            {ethAddress && (
-                <div
-                    style={{
-                        padding: '12px',
-                        background: `${colors.ethereum}10`,
-                        border: `1px solid ${colors.ethereum}30`,
-                        borderRadius: '10px',
-                        marginBottom: '12px'
-                    }}>
-                    <div
-                        style={{
-                            fontSize: '11px',
-                            fontWeight: 600,
-                            color: colors.ethereum,
-                            marginBottom: '4px',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '6px'
-                        }}>
-                        <ImportOutlined style={{ fontSize: 12 }} />
-                        Linked Ethereum Address
-                    </div>
-                    <div
-                        style={{
-                            fontSize: '12px',
-                            color: colors.text,
-                            fontFamily: 'monospace',
-                            wordBreak: 'break-all'
-                        }}>
-                        {ethAddress}
-                    </div>
-                </div>
-            )}
 
             {/* Address Type Cards */}
             <div

@@ -26,7 +26,6 @@ const colors = {
     success: '#4ade80',
     error: '#ef4444',
     warning: '#fbbf24',
-    ethereum: '#627EEA',
     purple: '#8B5CF6'
 };
 
