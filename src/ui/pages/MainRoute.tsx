@@ -63,6 +63,7 @@ import RotationHistoryScreen from './Settings/RotationHistoryScreen';
 import UpgradeNoticeScreen from './Settings/UpgradeNoticeScreen';
 import UserExperienceModeScreen from './Settings/UserExperienceModeScreen';
 import DisplaySettingsScreen from './Settings/DisplaySettingsScreen';
+import UTXOOptimizeScreen from './Wallet/UTXOOptimizeScreen';
 import ReceiveScreen from './Wallet/ReceiveScreen';
 import ReceiveSelectScreen from './Wallet/ReceiveSelectScreen';
 import TxConfirmScreen from './Wallet/TxConfirmScreen';
@@ -295,6 +296,10 @@ export const routes: Routes = {
     [RouteTypes.DisplaySettingsScreen]: {
         path: routePaths[RouteTypes.DisplaySettingsScreen],
         element: <DisplaySettingsScreen />
+    },
+    [RouteTypes.UTXOOptimizeScreen]: {
+        path: routePaths[RouteTypes.UTXOOptimizeScreen],
+        element: <UTXOOptimizeScreen />
     }
 };
 

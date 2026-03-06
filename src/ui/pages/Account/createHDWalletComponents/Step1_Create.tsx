@@ -7,7 +7,6 @@ import { copyToClipboard, useWallet } from '@/ui/utils';
 import {
     CopyOutlined,
     CheckCircleFilled,
-    LockOutlined,
     WarningOutlined
 } from '@ant-design/icons';
 
@@ -56,29 +55,6 @@ export function Step1_Create({
 
     return (
         <Column gap="md">
-            {/* Header */}
-            <div style={{ textAlign: 'center', marginBottom: '4px' }}>
-                <div
-                    style={{
-                        width: '52px',
-                        height: '52px',
-                        borderRadius: '50%',
-                        background: `linear-gradient(135deg, ${colors.main}20 0%, ${colors.main}10 100%)`,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        margin: '0 auto 12px'
-                    }}>
-                    <LockOutlined style={{ fontSize: 24, color: colors.main }} />
-                </div>
-                <div style={{ fontSize: '18px', fontWeight: 700, color: colors.text }}>
-                    Secret Recovery Phrase
-                </div>
-                <div style={{ fontSize: '12px', color: colors.error, marginTop: '6px', fontWeight: 500 }}>
-                    Do NOT share this phrase with anyone!
-                </div>
-            </div>
-
             {/* Word Grid */}
             <div
                 style={{

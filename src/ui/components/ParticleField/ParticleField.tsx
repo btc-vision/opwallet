@@ -30,11 +30,19 @@ const ParticleCanvas: React.FC<ParticleCanvasProps> = ({ count = 50, speed = 0.5
         if (!ctx) return;
 
         const resizeCanvas = () => {
-            canvas.width = window.innerWidth;
-            canvas.height = window.innerHeight;
+            const parent = canvas.parentElement;
+            if (parent) {
+                canvas.width = parent.clientWidth;
+                canvas.height = parent.clientHeight;
+            }
         };
         resizeCanvas();
-        window.addEventListener('resize', resizeCanvas);
+
+        const resizeObserver = new ResizeObserver(resizeCanvas);
+        const parent = canvas.parentElement;
+        if (parent) {
+            resizeObserver.observe(parent);
+        }
 
         const createParticles = () => {
             const { width, height } = canvas;
@@ -42,7 +50,7 @@ const ParticleCanvas: React.FC<ParticleCanvasProps> = ({ count = 50, speed = 0.5
                 x: Math.random() * width,
                 y: Math.random() * height,
                 speed: speed + Math.random() * speed,
-                size: 1.5,
+                size: 1.1,
                 baseOpacity: 0.4 + Math.random() * 0.4,
                 offset: 0.4 + Math.random() * 1.5, // very subtle sway
                 frequency: 0.001 + Math.random() * 0.0015,
@@ -86,7 +94,7 @@ const ParticleCanvas: React.FC<ParticleCanvasProps> = ({ count = 50, speed = 0.5
         requestAnimationFrame(animate);
 
         return () => {
-            window.removeEventListener('resize', resizeCanvas);
+            resizeObserver.disconnect();
         };
     }, [count, speed, color]);
 
