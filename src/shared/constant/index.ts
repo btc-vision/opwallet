@@ -227,7 +227,7 @@ export const DEFAULT_CHAINS_MAP: { [key in ChainType]?: TypeChain<key> } = {
         unit: 'BTC',
         icon: './images/artifacts/bitcoin-mainnet.png',
         networkType: NetworkType.MAINNET,
-        opnetUrl: 'https://api.opnet.org',
+        opnetUrl: 'https://mainnet.opnet.org',
         endpoints: ['https://wallet.opnet.org'],
         mempoolSpaceUrl: 'https://mempool.space',
         faucetUrl: '',
