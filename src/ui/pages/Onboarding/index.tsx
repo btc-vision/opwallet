@@ -14,10 +14,10 @@ import './onboarding.css';
 // Bump a step's version to force it to re-show for existing users.
 // Add new steps here — they'll auto-show for anyone who hasn't completed them.
 const STEP_VERSIONS: Record<string, string> = {
-    tos: '1',
-    experience: '1',
-    display: '1',
-    utxo: '1'
+    tos: '2',
+    experience: '2',
+    display: '2',
+    utxo: '2'
 };
 
 const STEP_ORDER: StepId[] = ['tos', 'experience', 'display', 'utxo'];
