@@ -3348,6 +3348,14 @@ export class WalletController {
         return preferenceService.isExperienceModeSet();
     };
 
+    public getUTXOProtectionDisabled = (): boolean => {
+        return preferenceService.getUTXOProtectionDisabled();
+    };
+
+    public setUTXOProtectionDisabled = async (disabled: boolean): Promise<void> => {
+        await preferenceService.setUTXOProtectionDisabled(disabled);
+    };
+
     public setLastActiveTime = (): void => {
         this._resetTimeout();
     };
@@ -3548,6 +3556,10 @@ export class WalletController {
             }
 
             const publicOwner = await Web3API.provider.getPublicKeyInfo(ownerAddress.toHex(), false);
+            if (!publicOwner) {
+                console.warn(`Public key info not found for owner address ${ownerAddress.toHex()}`);
+                return null;
+            }
 
             // Convert to P2TR address
             return publicOwner.p2tr(Web3API.network);
@@ -3593,6 +3605,11 @@ export class WalletController {
                     domainResult.properties.owner.toHex(),
                     false
                 );
+
+                if (!publicOwner) {
+                    throw new Error('Public key info not found');
+                }
+
                 owner = publicOwner.p2tr(Web3API.network);
             } catch {
                 owner = domainResult.properties.owner.toHex();

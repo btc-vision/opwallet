@@ -52,7 +52,8 @@ export function storageToAddressTypes(stored: string | number): AddressTypes {
 export enum NetworkType {
     MAINNET = 0,
     TESTNET = 1,
-    REGTEST = 2
+    REGTEST = 2,
+    OPNET_TESTNET = 3
 }
 
 export function networkTypeToOPNet(networkType: NetworkType, chainType?: ChainType): WalletNetworks {
@@ -66,6 +67,8 @@ export function networkTypeToOPNet(networkType: NetworkType, chainType?: ChainTy
             return WalletNetworks.Mainnet;
         case NetworkType.TESTNET:
             return WalletNetworks.Testnet;
+        case NetworkType.OPNET_TESTNET:
+            return WalletNetworks.OpnetTestnet;
         case NetworkType.REGTEST:
             return WalletNetworks.Regtest;
         default:
@@ -78,6 +81,7 @@ export enum RestoreWalletType {
     UNISAT,
     SPARROW,
     XVERSE,
+    LEATHER,
     OTHERS
 }
 

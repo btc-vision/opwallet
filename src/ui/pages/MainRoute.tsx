@@ -17,6 +17,7 @@ import ImportSelectionScreen from '@/ui/pages/Wallet/ImportSelectionScreen';
 import NFTSendScreen from '@/ui/pages/Wallet/NFTSendScreen';
 import { Content, OPNetLoader } from '../components';
 import DisplaySetupPopup from '@/ui/components/DisplaySetupPopup';
+import UTXOProtectionSetupPopup from '@/ui/components/UTXOProtectionSetupPopup';
 import { accountActions } from '../state/accounts/reducer';
 import { useIsReady, useIsUnlocked } from '../state/global/hooks';
 import { globalActions } from '../state/global/reducer';
@@ -408,6 +409,7 @@ const Main = () => {
     return (
         <HashRouter>
             <DisplaySetupPopup />
+            <UTXOProtectionSetupPopup />
             <Routes>{renderedRoutes}</Routes>
         </HashRouter>
     );

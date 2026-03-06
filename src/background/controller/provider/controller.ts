@@ -103,6 +103,8 @@ export class ProviderController {
             const network = req.data.params.network;
             if (NETWORK_TYPES[NetworkType.MAINNET].validNames.includes(network)) {
                 req.data.params.networkType = NetworkType.MAINNET;
+            } else if (NETWORK_TYPES[NetworkType.OPNET_TESTNET].validNames.includes(network)) {
+                req.data.params.networkType = NetworkType.OPNET_TESTNET;
             } else if (NETWORK_TYPES[NetworkType.TESTNET].validNames.includes(network)) {
                 req.data.params.networkType = NetworkType.TESTNET;
             } else if (NETWORK_TYPES[NetworkType.REGTEST].validNames.includes(network)) {

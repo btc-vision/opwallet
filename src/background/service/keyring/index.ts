@@ -313,6 +313,10 @@ class KeyringService extends EventEmitter {
         this.checkForDuplicate(KEYRING_TYPE.HdKeyring, newAccounts);
 
         // Check for duplicate MLDSA keys
+        // Note: Different HD paths from the same seed (e.g. Leather account 1 vs 2) share the
+        // same BIP360 quantum derivation path (m/360'/{network}'/0'/0/{index}), so MLDSA hashes
+        // will collide. The classical public key check above (checkForDuplicate) already ensures
+        // the wallets are actually different, so we only warn here instead of blocking.
         if (tmpKeyring instanceof HdKeyring) {
             const existingMldsaHashes = this.getAllQuantumKeyHashes();
             for (const pubkey of newAccounts) {
@@ -321,17 +325,15 @@ class KeyringService extends EventEmitter {
                     if (wallet?.mldsaKeypair) {
                         const mldsaHash = wallet.address.toHex().replace('0x', '').toLowerCase();
                         if (existingMldsaHashes.includes(mldsaHash)) {
-                            throw new Error(
-                                'This wallet has already been imported. The mnemonic derives MLDSA keys that are already in use.'
+                            console.warn(
+                                '[KeyringService] MLDSA key hash collision detected for HD keyring import. ' +
+                                'This is expected when importing multiple accounts from the same seed ' +
+                                '(e.g. different Leather wallet accounts). Classical key check passed.'
                             );
                         }
                     }
                 } catch (e) {
-                    // If error is about duplicate, rethrow it
-                    if (e instanceof Error && e.message.includes('already been imported')) {
-                        throw e;
-                    }
-                    // Otherwise ignore - MLDSA key might not be available yet
+                    // Ignore - MLDSA key might not be available yet
                 }
             }
         }
@@ -509,15 +511,19 @@ class KeyringService extends EventEmitter {
 
     checkForDuplicate = (type: string, newAccountArray: string[]): string[] => {
         const keyrings = this.getKeyringsByType(type);
-        const _accounts = keyrings.map((keyring) => keyring.getAccounts());
-        const accounts: string[] = _accounts.reduce<string[]>((m, n) => m.concat(n), []);
 
-        const isIncluded = newAccountArray.some((account) => {
-            return accounts.find((key) => key === account);
-        });
-
-        if (isIncluded) {
-            throw new Error(i18n.t('Wallet already imported.'));
+        for (let ki = 0; ki < keyrings.length; ki++) {
+            const existingAccounts = keyrings[ki].getAccounts();
+            for (const newAccount of newAccountArray) {
+                if (existingAccounts.includes(newAccount)) {
+                    // Find the global keyring index for this keyring
+                    const globalIndex = this.keyrings.indexOf(keyrings[ki]);
+                    const walletNum = globalIndex >= 0 ? globalIndex + 1 : ki + 1;
+                    throw new Error(
+                        `Wallet already imported (Wallet #${walletNum} in your account list has the same key).`
+                    );
+                }
+            }
         }
 
         return newAccountArray;

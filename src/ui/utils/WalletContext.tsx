@@ -316,6 +316,10 @@ export interface WalletController {
 
     isExperienceModeSet(): Promise<boolean>;
 
+    getUTXOProtectionDisabled(): Promise<boolean>;
+
+    setUTXOProtectionDisabled(disabled: boolean): Promise<void>;
+
     setQuantumKey(quantumPrivateKey: string): Promise<void>;
 
     generateQuantumKey(): Promise<void>;

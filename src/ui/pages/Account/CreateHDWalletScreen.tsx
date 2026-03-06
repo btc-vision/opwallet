@@ -55,14 +55,15 @@ export default function CreateHDWalletScreen() {
         customHdPath: '',
         addressTypeIndex: 0,
         wordsType: WordsType.WORDS_12,
-        rotationModeEnabled: false
+        rotationModeEnabled: false,
+        leatherAccountIndex: 0
     });
 
     const updateContextData = useCallback(
         (params: UpdateContextDataParams) => {
-            setContextData(Object.assign({}, contextData, params));
+            setContextData((prev) => ({ ...prev, ...params }));
         },
-        [contextData, setContextData]
+        []
     );
 
     const items = useMemo(() => {
