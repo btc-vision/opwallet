@@ -56,7 +56,8 @@ export enum RouteTypes {
     ColdStorageWithdrawScreen = 'ColdStorageWithdrawScreen',
     UserExperienceModeScreen = 'UserExperienceModeScreen',
     DisplaySettingsScreen = 'DisplaySettingsScreen',
-    UTXOOptimizeScreen = 'UTXOOptimizeScreen'
+    UTXOOptimizeScreen = 'UTXOOptimizeScreen',
+    OnboardingScreen = 'OnboardingScreen'
 }
 
 export const routePaths: Record<RouteTypes, string> = {
@@ -114,7 +115,8 @@ export const routePaths: Record<RouteTypes, string> = {
     [RouteTypes.ColdStorageWithdrawScreen]: '/settings/cold-storage-withdraw',
     [RouteTypes.UserExperienceModeScreen]: '/settings/experience-mode',
     [RouteTypes.DisplaySettingsScreen]: '/settings/display',
-    [RouteTypes.UTXOOptimizeScreen]: '/wallet/utxo-optimize'
+    [RouteTypes.UTXOOptimizeScreen]: '/wallet/utxo-optimize',
+    [RouteTypes.OnboardingScreen]: '/onboarding'
 };
 
 export type UseNavigate<T extends RouteTypes> = (routKey: T, state?: unknown) => void;
