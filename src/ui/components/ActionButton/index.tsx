@@ -33,25 +33,25 @@ const ActionButton: React.FC<ActionButtonProps> = ({ label, onClick, icon }) => 
                 transition: 'all 0.2s'
             }}
             onMouseEnter={(e) => {
-                const circle = e.currentTarget.querySelector('[data-icon-circle]') as HTMLElement | null;
+                const circle = e.currentTarget.querySelector<HTMLElement>('[data-icon-circle]');
                 if (circle) {
                     circle.style.background = `linear-gradient(135deg, ${colors.main} 0%, ${colors.mainDark} 100%)`;
                     circle.style.borderColor = colors.main;
                     circle.style.transform = 'scale(1.08)';
                     circle.style.boxShadow = `0 4px 16px ${colors.main}40`;
                 }
-                const lbl = e.currentTarget.querySelector('[data-label]') as HTMLElement | null;
+                const lbl = e.currentTarget.querySelector<HTMLElement>('[data-label]');
                 if (lbl) lbl.style.color = colors.text;
             }}
             onMouseLeave={(e) => {
-                const circle = e.currentTarget.querySelector('[data-icon-circle]') as HTMLElement | null;
+                const circle = e.currentTarget.querySelector<HTMLElement>('[data-icon-circle]');
                 if (circle) {
                     circle.style.background = colors.bg;
                     circle.style.borderColor = colors.containerBorder;
                     circle.style.transform = 'scale(1)';
                     circle.style.boxShadow = 'none';
                 }
-                const lbl = e.currentTarget.querySelector('[data-label]') as HTMLElement | null;
+                const lbl = e.currentTarget.querySelector<HTMLElement>('[data-label]');
                 if (lbl) lbl.style.color = colors.textFaded;
             }}>
             <div
