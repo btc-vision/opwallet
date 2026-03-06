@@ -113,7 +113,7 @@ export function Step0({
                                     width: '40px',
                                     height: '40px',
                                     borderRadius: '10px',
-                                    background: `${colors.containerBorder}`,
+                                    background: colors.containerBorder,
                                     display: 'flex',
                                     alignItems: 'center',
                                     justifyContent: 'center',

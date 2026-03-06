@@ -130,83 +130,83 @@ export function Step2({
         }
     }, [recommendedTypeIndex, scannedGroups]);
 
-    const generateAddress = async () => {
-        const addresses: string[] = [];
-        for (const options of hdPathOptions) {
-            try {
-                const keyring = await wallet.createTmpKeyringWithMnemonics(
-                    contextData.mnemonics,
-                    resolveHdPath(options.addressType, options.hdPath),
-                    contextData.passphrase,
-                    options.addressType
-                );
-                keyring.accounts.forEach((v) => {
-                    addresses.push(v.address);
-                });
-            } catch (e) {
-                setError((e as Error).message);
-                return;
-            }
-        }
-        setPreviewAddresses(addresses);
-    };
-
     useEffect(() => {
+        const generateAddress = async () => {
+            const addresses: string[] = [];
+            for (const options of hdPathOptions) {
+                try {
+                    const keyring = await wallet.createTmpKeyringWithMnemonics(
+                        contextData.mnemonics,
+                        resolveHdPath(options.addressType, options.hdPath),
+                        contextData.passphrase,
+                        options.addressType
+                    );
+                    keyring.accounts.forEach((v) => {
+                        addresses.push(v.address);
+                    });
+                } catch (e) {
+                    setError((e as Error).message);
+                    return;
+                }
+            }
+            setPreviewAddresses(addresses);
+        };
+
         void generateAddress();
         setScanned(false);
     }, [contextData.passphrase, contextData.customHdPath]);
 
-    const fetchAddressesBalance = async () => {
-        try {
-            await Web3API.setNetwork(await wallet.getChainType());
-            if (!contextData.isRestore) return;
+    useEffect(() => {
+        const fetchAddressesBalance = async () => {
+            try {
+                await Web3API.setNetwork(await wallet.getChainType());
+                if (!contextData.isRestore) return;
 
-            const addresses = previewAddresses;
-            if (!addresses[0]) return;
+                const addresses = previewAddresses;
+                if (!addresses[0]) return;
 
-            setLoading(true);
-            let maxSatoshis = 0;
-            let recommended = 0;
+                setLoading(true);
+                let maxSatoshis = 0;
+                let recommended = 0;
 
-            const assets: Record<string, { total_btc: string; satoshis: number }> = {};
-            for (let i = 0; i < addresses.length; i++) {
-                try {
-                    const address = addresses[i];
-                    const addressBalance = await wallet.getMultiAddressAssets(address);
-                    const totalSatoshis = addressBalance[0].totalSatoshis || 0;
-                    assets[address] = {
-                        total_btc: satoshisToAmount(totalSatoshis),
-                        satoshis: totalSatoshis
-                    };
-                    if (totalSatoshis > maxSatoshis) {
-                        maxSatoshis = totalSatoshis;
-                        recommended = i;
+                const assets: Record<string, { total_btc: string; satoshis: number }> = {};
+                for (let i = 0; i < addresses.length; i++) {
+                    try {
+                        const address = addresses[i];
+                        const addressBalance = await wallet.getMultiAddressAssets(address);
+                        const totalSatoshis = addressBalance[0].totalSatoshis || 0;
+                        assets[address] = {
+                            total_btc: satoshisToAmount(totalSatoshis),
+                            satoshis: totalSatoshis
+                        };
+                        if (totalSatoshis > maxSatoshis) {
+                            maxSatoshis = totalSatoshis;
+                            recommended = i;
+                        }
+                    } catch {
+                        // ignore
                     }
-                } catch {
-                    // ignore
+                }
+
+                setLoading(false);
+                setAddressAssets(assets);
+            } catch {
+                // ignore
+            }
+        };
+
+        const selectP2TRAddress = () => {
+            setLoading(true);
+            for (let i = 0; i < hdPathOptions.length; i++) {
+                if (hdPathOptions[i].addressType === AddressTypes.P2TR) {
+                    setRecommendedTypeIndex(i);
+                    break;
                 }
             }
-
             setLoading(false);
-            setAddressAssets(assets);
-        } catch {
-            // ignore
-        }
-    };
+            setAddressAssets(addressAssets);
+        };
 
-    const selectP2TRAddress = () => {
-        setLoading(true);
-        for (let i = 0; i < hdPathOptions.length; i++) {
-            if (hdPathOptions[i].addressType === AddressTypes.P2TR) {
-                setRecommendedTypeIndex(i);
-                break;
-            }
-        }
-        setLoading(false);
-        setAddressAssets(addressAssets);
-    };
-
-    useEffect(() => {
         void fetchAddressesBalance();
         selectP2TRAddress();
     }, [previewAddresses]);
@@ -716,7 +716,7 @@ function AddressTypeOption({
                         style={{
                             fontSize: '9px',
                             padding: '2px 6px',
-                            background: selected ? `${colors.main}25` : `${colors.containerBorder}`,
+                            background: selected ? `${colors.main}25` : colors.containerBorder,
                             color: selected ? colors.main : colors.textFaded,
                             borderRadius: '4px',
                             fontWeight: 600
