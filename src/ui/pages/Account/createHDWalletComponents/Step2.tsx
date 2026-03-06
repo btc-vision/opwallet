@@ -7,7 +7,7 @@ const BIP32_PATH_REGEX = /^(m\/)?(\d+'?\/)*\d+'?$/;
 import { RestoreWalletType } from '@/shared/types';
 import { AddressTypes } from '@btc-vision/transaction';
 import Web3API from '@/shared/web3/Web3API';
-import { Button, Column, Icon, Input, Row, Text } from '@/ui/components';
+import { Button, Column, Icon, Input } from '@/ui/components';
 import { useTools } from '@/ui/components/ActionComponent';
 import { AddressTypeCard2 } from '@/ui/components/AddressTypeCard';
 import { FooterButtonContainer } from '@/ui/components/FooterButtonContainer';
@@ -324,110 +324,215 @@ export function Step2({
         }
     };
 
+const colors = {
+    main: '#f37413',
+    background: '#212121',
+    text: '#dbdbdb',
+    textFaded: 'rgba(219, 219, 219, 0.7)',
+    containerBgFaded: '#292929',
+    containerBorder: '#303030',
+    buttonBg: '#434343',
+    success: '#4ade80',
+    error: '#ef4444'
+};
+
     return (
         <Column>
-            {contextData.isRestore && !scanned ? (
-                <Row justifyBetween>
-                    <Text text="Address Type" preset="bold" />
-                    <Text
-                        text="Scan in more addresses..."
-                        preset="link"
-                        onClick={async () => {
-                            await scanVaultAddress();
+            {/* Section: Address Type */}
+            <div style={{ marginBottom: '4px' }}>
+                <div
+                    style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        marginBottom: '12px'
+                    }}>
+                    <div
+                        style={{
+                            fontSize: '13px',
+                            fontWeight: 700,
+                            color: colors.text
+                        }}>
+                        Address Type
+                    </div>
+                    {contextData.isRestore && !scanned && (
+                        <button
+                            onClick={async () => {
+                                await scanVaultAddress();
+                            }}
+                            style={{
+                                padding: '4px 12px',
+                                background: `${colors.main}15`,
+                                border: `1px solid ${colors.main}30`,
+                                borderRadius: '20px',
+                                cursor: 'pointer',
+                                fontSize: '11px',
+                                fontWeight: 600,
+                                color: colors.main,
+                                transition: 'all 0.15s'
+                            }}
+                            onMouseEnter={(e) => {
+                                e.currentTarget.style.background = `${colors.main}25`;
+                            }}
+                            onMouseLeave={(e) => {
+                                e.currentTarget.style.background = `${colors.main}15`;
+                            }}>
+                            Scan more addresses...
+                        </button>
+                    )}
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    {scannedGroups.length > 0 &&
+                        scannedGroups.map((item, index) => {
+                            const options = allHdPathOptions[index];
+                            if (!item.satoshis_arr.find((v) => v > 0)) {
+                                return null;
+                            }
+                            return (
+                                <AddressTypeCard2
+                                    key={index}
+                                    label={options.label}
+                                    items={item.address_arr.map((v, index) => ({
+                                        address: v,
+                                        satoshis: item.satoshis_arr[index],
+                                        path: `${contextData.customHdPath || options.hdPath}/${index}`
+                                    }))}
+                                    checked={index == contextData.addressTypeIndex}
+                                    onClick={() => {
+                                        updateContextData({
+                                            addressTypeIndex: index,
+                                            addressType: options.addressType
+                                        });
+                                    }}
+                                />
+                            );
+                        })}
+                    {scannedGroups.length == 0 &&
+                        hdPathOptions.map((item, index) => {
+                            const address = previewAddresses[index];
+                            const assets = addressAssets[address] || {
+                                total_btc: '--',
+                                satoshis: 0,
+                                total_inscription: 0
+                            };
+                            const hasVault = contextData.isRestore && assets.satoshis > 0;
+                            if (item.isUnisatLegacy && !hasVault) {
+                                return null;
+                            }
+
+                            const hdPath = (contextData.customHdPath || item.hdPath) + '/0';
+                            return (
+                                <AddressTypeCard2
+                                    key={index}
+                                    label={item.label}
+                                    items={[
+                                        {
+                                            address,
+                                            satoshis: assets.satoshis,
+                                            path: hdPath
+                                        }
+                                    ]}
+                                    checked={index == contextData.addressTypeIndex}
+                                    onClick={() => {
+                                        updateContextData({
+                                            addressTypeIndex: index,
+                                            addressType: item.addressType
+                                        });
+                                    }}
+                                />
+                            );
+                        })}
+                </div>
+            </div>
+
+            {/* Section: Advanced Options */}
+            <div
+                style={{
+                    background: colors.containerBgFaded,
+                    border: `1px solid ${colors.containerBorder}`,
+                    borderRadius: '14px',
+                    padding: '14px',
+                    marginTop: '8px'
+                }}>
+                <div
+                    style={{
+                        fontSize: '11px',
+                        fontWeight: 700,
+                        color: colors.textFaded,
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.5px',
+                        marginBottom: '12px'
+                    }}>
+                    Advanced Options
+                </div>
+
+                {/* Custom HD Path */}
+                <div style={{ marginBottom: '12px' }}>
+                    <label
+                        style={{
+                            fontSize: '12px',
+                            fontWeight: 600,
+                            color: colors.text,
+                            marginBottom: '6px',
+                            display: 'block'
+                        }}>
+                        Custom HD Path
+                        <span style={{ color: colors.textFaded, fontWeight: 400 }}> (Optional)</span>
+                    </label>
+                    <Input
+                        placeholder={'Custom HD Wallet Derivation Path'}
+                        value={pathText}
+                        onChange={(e) => {
+                            submitCustomHdPath(e.target.value);
                         }}
                     />
-                </Row>
-            ) : (
-                <Text text="Address Type" preset="bold" />
+                    {pathError && (
+                        <div style={{ fontSize: '11px', color: colors.error, marginTop: '4px' }}>
+                            {pathError}
+                        </div>
+                    )}
+                </div>
+
+                {/* Passphrase */}
+                <div>
+                    <label
+                        style={{
+                            fontSize: '12px',
+                            fontWeight: 600,
+                            color: colors.text,
+                            marginBottom: '6px',
+                            display: 'block'
+                        }}>
+                        Passphrase
+                        <span style={{ color: colors.textFaded, fontWeight: 400 }}> (Optional)</span>
+                    </label>
+                    <Input
+                        placeholder={'Passphrase'}
+                        defaultValue={contextData.passphrase}
+                        onChange={(e) => {
+                            updateContextData({
+                                passphrase: e.target.value
+                            });
+                        }}
+                    />
+                </div>
+            </div>
+
+            {error && (
+                <div
+                    style={{
+                        fontSize: '12px',
+                        color: colors.error,
+                        background: `${colors.error}15`,
+                        border: `1px solid ${colors.error}30`,
+                        borderRadius: '10px',
+                        padding: '10px 12px',
+                        marginTop: '8px'
+                    }}>
+                    {error}
+                </div>
             )}
-
-            {scannedGroups.length > 0 &&
-                scannedGroups.map((item, index) => {
-                    const options = allHdPathOptions[index];
-                    if (!item.satoshis_arr.find((v) => v > 0)) {
-                        // skip group with no vault
-                        return null;
-                    }
-                    return (
-                        <AddressTypeCard2
-                            key={index}
-                            label={options.label}
-                            items={item.address_arr.map((v, index) => ({
-                                address: v,
-                                satoshis: item.satoshis_arr[index],
-                                path: `${contextData.customHdPath || options.hdPath}/${index}`
-                            }))}
-                            checked={index == contextData.addressTypeIndex}
-                            onClick={() => {
-                                updateContextData({
-                                    addressTypeIndex: index,
-                                    addressType: options.addressType
-                                });
-                            }}
-                        />
-                    );
-                })}
-            {scannedGroups.length == 0 &&
-                hdPathOptions.map((item, index) => {
-                    const address = previewAddresses[index];
-                    const assets = addressAssets[address] || {
-                        total_btc: '--',
-                        satoshis: 0,
-                        total_inscription: 0
-                    };
-                    const hasVault = contextData.isRestore && assets.satoshis > 0;
-                    if (item.isUnisatLegacy && !hasVault) {
-                        return null;
-                    }
-
-                    const hdPath = (contextData.customHdPath || item.hdPath) + '/0';
-                    return (
-                        <AddressTypeCard2
-                            key={index}
-                            label={item.label}
-                            items={[
-                                {
-                                    address,
-                                    satoshis: assets.satoshis,
-                                    path: hdPath
-                                }
-                            ]}
-                            checked={index == contextData.addressTypeIndex}
-                            onClick={() => {
-                                updateContextData({
-                                    addressTypeIndex: index,
-                                    addressType: item.addressType
-                                });
-                            }}
-                        />
-                    );
-                })}
-
-            <Text text="Custom HdPath (Optional)" preset="bold" mt="lg" />
-
-            <Column>
-                <Input
-                    placeholder={'Custom HD Wallet Derivation Path'}
-                    value={pathText}
-                    onChange={(e) => {
-                        submitCustomHdPath(e.target.value);
-                    }}
-                />
-            </Column>
-            {pathError && <Text text={pathError} color="error" />}
-            {error && <Text text={error} color="error" />}
-
-            <Text text="Phrase (Optional)" preset="bold" mt="lg" />
-
-            <Input
-                placeholder={'Passphrase'}
-                defaultValue={contextData.passphrase}
-                onChange={(e) => {
-                    updateContextData({
-                        passphrase: e.target.value
-                    });
-                }}
-            />
 
             <FooterButtonContainer>
                 <Button
