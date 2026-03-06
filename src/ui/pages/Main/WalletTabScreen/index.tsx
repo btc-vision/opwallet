@@ -51,6 +51,7 @@ import {
     HistoryOutlined,
     LockOutlined,
     QrcodeOutlined,
+    RocketOutlined,
     SendOutlined,
     SettingOutlined,
     SwapOutlined,
@@ -829,13 +830,19 @@ export default function WalletTabScreen() {
                                 }}
                             />
 
-                            {btcUnit !== 'BTC' && (
+                            {btcUnit !== 'BTC' ? (
                                 <ActionButton
                                     label="Faucet"
                                     icon={<ExperimentOutlined style={{ fontSize: 20, color: colors.text }} />}
                                     onClick={() => {
                                         window.open(faucetUrl || '', '_blank', 'noopener noreferrer');
                                     }}
+                                />
+                            ) : (
+                                <ActionButton
+                                    label="Deploy"
+                                    icon={<RocketOutlined style={{ fontSize: 20, color: colors.text }} />}
+                                    onClick={() => navigate(RouteTypes.DeployContract)}
                                 />
                             )}
 
