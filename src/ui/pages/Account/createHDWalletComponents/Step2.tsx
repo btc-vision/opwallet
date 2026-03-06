@@ -123,10 +123,18 @@ export function Step2({
         if (scannedGroups.length > 0) {
             const itemIndex = scannedGroups.findIndex((v) => v.address_arr.length > 0);
             const item = scannedGroups[itemIndex];
-            updateContextData({ addressType: item.type, addressTypeIndex: itemIndex });
+            const updates: UpdateContextDataParams = { addressType: item.type, addressTypeIndex: itemIndex };
+            if (isLeatherImport) {
+                updates.customHdPath = getLeatherHdPath(item.type, contextData.leatherAccountIndex ?? 0);
+            }
+            updateContextData(updates);
         } else {
             const option = hdPathOptions[recommendedTypeIndex];
-            updateContextData({ addressType: option.addressType, addressTypeIndex: recommendedTypeIndex });
+            const updates: UpdateContextDataParams = { addressType: option.addressType, addressTypeIndex: recommendedTypeIndex };
+            if (isLeatherImport) {
+                updates.customHdPath = getLeatherHdPath(option.addressType, contextData.leatherAccountIndex ?? 0);
+            }
+            updateContextData(updates);
         }
     }, [recommendedTypeIndex, scannedGroups]);
 

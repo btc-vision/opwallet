@@ -61,9 +61,9 @@ export default function CreateHDWalletScreen() {
 
     const updateContextData = useCallback(
         (params: UpdateContextDataParams) => {
-            setContextData(Object.assign({}, contextData, params));
+            setContextData((prev) => ({ ...prev, ...params }));
         },
-        [contextData, setContextData]
+        []
     );
 
     const items = useMemo(() => {

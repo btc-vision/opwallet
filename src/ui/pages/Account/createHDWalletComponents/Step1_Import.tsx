@@ -130,7 +130,7 @@ export function Step1_Import({
             if (isLeather) {
                 const idx = accountIndex ?? contextData.leatherAccountIndex ?? 0;
                 const leatherPath = getLeatherHdPath(AddressTypes.P2TR, idx);
-                updateContextData({ mnemonics, customHdPath: leatherPath, tabType: TabType.STEP3 });
+                updateContextData({ mnemonics, customHdPath: leatherPath, leatherAccountIndex: idx, tabType: TabType.STEP3 });
             } else {
                 updateContextData({ mnemonics, tabType: TabType.STEP3 });
             }
