@@ -14,7 +14,12 @@ import {
     UpdateContextDataParams,
     WordsType
 } from '@/ui/pages/Account/createHDWalletComponents/types';
-import { CheckCircleFilled, FileTextOutlined, LockOutlined, WarningOutlined } from '@ant-design/icons';
+import {
+    FileTextOutlined,
+    LockOutlined,
+    CheckCircleFilled,
+    WarningOutlined
+} from '@ant-design/icons';
 
 const colors = {
     main: '#f37413',
@@ -51,13 +56,17 @@ export function Step1_Import({
     const wordsCount = isXverse ? 12 : contextData.wordsType === WordsType.WORDS_12 ? 12 : 24;
     const [keys, setKeys] = useState<string[]>(new Array(wordsCount).fill(''));
     const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
+    const [prevWordsCount, setPrevWordsCount] = useState(wordsCount);
 
-    // Sync keys array when word count changes
+    // Sync keys array when word count changes (adjust state during render, not in effect)
+    if (wordsCount !== prevWordsCount) {
+        setPrevWordsCount(wordsCount);
+        setKeys(new Array(wordsCount).fill(''));
+    }
+
+    // Sync refs in effect (refs cannot be updated during render)
     useEffect(() => {
-        const words: string[] = new Array(wordsCount).fill('') as string[];
-        setKeys(words);
-
-        inputRefs.current = new Array(wordsCount).fill(null);
+        inputRefs.current = new Array<HTMLInputElement | null>(wordsCount).fill(null);
     }, [wordsCount]);
 
     const mnemonicValid = useMemo(() => {
@@ -69,10 +78,7 @@ export function Step1_Import({
 
     const handlePaste = (event: React.ClipboardEvent<HTMLInputElement>, index: number) => {
         const text = event.clipboardData?.getData('text/plain') || '';
-        const words = text
-            .trim()
-            .split(/[\s,]+/)
-            .filter((w) => w.length > 0);
+        const words = text.trim().split(/[\s,]+/).filter((w) => w.length > 0);
         if (words.length > 1) {
             const newKeys = [...keys];
             for (let i = 0; i < keys.length - index && i < words.length; i++) {
@@ -188,9 +194,14 @@ export function Step1_Import({
                                 fontSize: '13px',
                                 fontWeight: 600,
                                 transition: 'all 0.2s',
-                                background: contextData.wordsType === WordsType.WORDS_12 ? colors.main : 'transparent',
+                                background:
+                                    contextData.wordsType === WordsType.WORDS_12
+                                        ? colors.main
+                                        : 'transparent',
                                 color:
-                                    contextData.wordsType === WordsType.WORDS_12 ? colors.background : colors.textFaded
+                                    contextData.wordsType === WordsType.WORDS_12
+                                        ? colors.background
+                                        : colors.textFaded
                             }}>
                             12 Words
                         </button>
@@ -208,9 +219,14 @@ export function Step1_Import({
                                 fontSize: '13px',
                                 fontWeight: 600,
                                 transition: 'all 0.2s',
-                                background: contextData.wordsType === WordsType.WORDS_24 ? colors.main : 'transparent',
+                                background:
+                                    contextData.wordsType === WordsType.WORDS_24
+                                        ? colors.main
+                                        : 'transparent',
                                 color:
-                                    contextData.wordsType === WordsType.WORDS_24 ? colors.background : colors.textFaded
+                                    contextData.wordsType === WordsType.WORDS_24
+                                        ? colors.background
+                                        : colors.textFaded
                             }}>
                             24 Words
                         </button>
@@ -279,31 +295,30 @@ export function Step1_Import({
                                     onBlur={(e) => {
                                         const parent = e.currentTarget.parentElement;
                                         if (parent) {
-                                            parent.style.borderColor =
-                                                word && !wordlist.includes(word)
-                                                    ? colors.error + '60'
-                                                    : word
-                                                      ? colors.success + '30'
-                                                      : colors.containerBorder;
+                                            parent.style.borderColor = word && !wordlist.includes(word)
+                                                ? colors.error + '60'
+                                                : word
+                                                  ? colors.success + '30'
+                                                  : colors.containerBorder;
                                         }
                                     }}
                                     autoFocus={index === 0}
-                                    style={
-                                        {
-                                            flex: 1,
-                                            background: 'transparent',
-                                            border: 'none',
-                                            outline: 'none',
-                                            color: colors.text,
-                                            fontSize: '13px',
-                                            fontFamily: 'monospace',
-                                            padding: '0 4px',
-                                            height: '100%'
-                                        } as React.CSSProperties
-                                    }
+                                    style={{
+                                        flex: 1,
+                                        background: 'transparent',
+                                        border: 'none',
+                                        outline: 'none',
+                                        color: colors.text,
+                                        fontSize: '13px',
+                                        fontFamily: 'monospace',
+                                        padding: '0 4px',
+                                        height: '100%'
+                                    } as React.CSSProperties}
                                 />
                                 {word && wordlist.includes(word) && (
-                                    <CheckCircleFilled style={{ fontSize: 12, color: colors.success, flexShrink: 0 }} />
+                                    <CheckCircleFilled
+                                        style={{ fontSize: 12, color: colors.success, flexShrink: 0 }}
+                                    />
                                 )}
                             </div>
                         ))}
@@ -382,14 +397,12 @@ export function Step1_Import({
 
     // ─── Leather Account Selection View ───
     if (showAccountInput) {
-        return (
-            <LeatherAccountStep
-                contextData={contextData}
-                updateContextData={updateContextData}
-                onBack={() => setLeatherPhase('seed')}
-                onContinue={(idx) => finishImport(idx)}
-            />
-        );
+        return <LeatherAccountStep
+            contextData={contextData}
+            updateContextData={updateContextData}
+            onBack={() => setLeatherPhase('seed')}
+            onContinue={(idx) => finishImport(idx)}
+        />;
     }
 
     return null;

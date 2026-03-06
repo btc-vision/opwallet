@@ -38,6 +38,7 @@ export default function ConsolidationScreen() {
     const [feeRate, setFeeRate] = useState(5);
     const [coldAddress, setColdAddress] = useState('');
     const [sourcePubkeys, setSourcePubkeys] = useState<string[]>([]);
+    const [utxoProtectionDisabled, setUtxoProtectionDisabled] = useState(false);
 
     // Get addresses with balance that can be consolidated
     const addressesWithBalance = history.filter(
@@ -68,6 +69,10 @@ export default function ConsolidationScreen() {
             // Get pubkeys for source addresses
             const pubkeys = addressesWithBalance.map(a => a.pubkey);
             setSourcePubkeys(pubkeys);
+
+            // Load UTXO protection preference
+            const disabled = await wallet.getUTXOProtectionDisabled();
+            setUtxoProtectionDisabled(disabled);
         } catch (error) {
             console.error('Failed to load consolidation data:', error);
         } finally {
@@ -97,7 +102,7 @@ export default function ConsolidationScreen() {
             sourceType: SourceType.CONSOLIDATION,
             sourceAddresses: addressesWithBalance.map(a => a.address),
             sourcePubkeys: sourcePubkeys,
-            optimize: true
+            optimize: !utxoProtectionDisabled
         };
 
         navigate(RouteTypes.TxOpnetConfirmScreen, { rawTxInfo });

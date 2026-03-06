@@ -212,7 +212,9 @@ export const WALLET_CONTROLLER_METHODS = [
     'getNextUnusedRotationWallet',
     'getExperienceMode',
     'setExperienceMode',
-    'isExperienceModeSet'
+    'isExperienceModeSet',
+    'getUTXOProtectionDisabled',
+    'setUTXOProtectionDisabled'
 ] as const;
 
 export type WalletControllerMethod = (typeof WALLET_CONTROLLER_METHODS)[number];

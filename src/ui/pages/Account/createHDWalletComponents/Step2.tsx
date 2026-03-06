@@ -1,13 +1,16 @@
 import { useEffect, useMemo, useState } from 'react';
 
-import { ADDRESS_TYPES, getLeatherHdPath, RESTORE_WALLETS } from '@/shared/constant';
+import { ADDRESS_TYPES, RESTORE_WALLETS, getLeatherHdPath } from '@/shared/constant';
+
+/** BIP32 path validation regex from @btc-vision/bip32 */
+const BIP32_PATH_REGEX = /^(m\/)?(\d+'?\/)*\d+'?$/;
 import { RestoreWalletType } from '@/shared/types';
 import { AddressTypes } from '@btc-vision/transaction';
 import Web3API from '@/shared/web3/Web3API';
 import { Column, Text } from '@/ui/components';
 import { useTools } from '@/ui/components/ActionComponent';
 import { ContextData, TabType, UpdateContextDataParams } from '@/ui/pages/Account/createHDWalletComponents/types';
-import { copyToClipboard, satoshisToAmount, useWallet } from '@/ui/utils';
+import { satoshisToAmount, useWallet } from '@/ui/utils';
 import {
     CheckCircleFilled,
     CopyOutlined,
@@ -22,9 +25,7 @@ import { usePrivacyModeEnabled } from '@/ui/hooks/useAppConfig';
 import { useCreateAccountCallback } from '@/ui/state/global/hooks';
 import { RouteTypes, useNavigate } from '@/ui/pages/routeTypes';
 import { useBTCUnit } from '@/ui/state/settings/hooks';
-
-/** BIP32 path validation regex from @btc-vision/bip32 */
-const BIP32_PATH_REGEX = /^(m\/)?(\d+'?\/)*\d+'?$/;
+import { copyToClipboard } from '@/ui/utils';
 
 const colors = {
     main: '#f37413',
@@ -107,7 +108,9 @@ export function Step2({
     const [scannedGroups, setScannedGroups] = useState<
         { type: AddressTypes; address_arr: string[]; satoshis_arr: number[] }[]
     >([]);
-    const [addressAssets, setAddressAssets] = useState<Record<string, { total_btc: string; satoshis: number }>>({});
+    const [addressAssets, setAddressAssets] = useState<
+        Record<string, { total_btc: string; satoshis: number }>
+    >({});
     const [error, setError] = useState('');
     const [pathError, setPathError] = useState('');
     const [loading, setLoading] = useState(false);
@@ -246,12 +249,8 @@ export function Step2({
             setCreatingWallet(true);
             try {
                 await createAccount(
-                    contextData.mnemonics,
-                    hdPath,
-                    contextData.passphrase,
-                    contextData.addressType,
-                    1,
-                    false
+                    contextData.mnemonics, hdPath, contextData.passphrase,
+                    contextData.addressType, 1, false
                 );
                 navigate(RouteTypes.MainScreen);
             } catch (e) {
@@ -542,7 +541,9 @@ export function Step2({
                             }}
                         />
                         {pathError && (
-                            <div style={{ fontSize: '11px', color: colors.error, marginTop: '4px' }}>{pathError}</div>
+                            <div style={{ fontSize: '11px', color: colors.error, marginTop: '4px' }}>
+                                {pathError}
+                            </div>
                         )}
                     </div>
 
@@ -715,7 +716,7 @@ function AddressTypeOption({
                         style={{
                             fontSize: '9px',
                             padding: '2px 6px',
-                            background: selected ? `${colors.main}25` : colors.containerBorder,
+                            background: selected ? `${colors.main}25` : `${colors.containerBorder}`,
                             color: selected ? colors.main : colors.textFaded,
                             borderRadius: '4px',
                             fontWeight: 600
@@ -754,10 +755,12 @@ function AddressTypeOption({
             </div>
 
             {/* Description */}
-            <div style={{ fontSize: '11px', color: colors.textFaded, marginBottom: '6px' }}>{description}</div>
+            <div style={{ fontSize: '11px', color: colors.textFaded, marginBottom: '6px' }}>
+                {description}
+            </div>
 
             {/* Addresses */}
-            {addresses.map((addr, i) =>
+            {addresses.map((addr, i) => (
                 addr ? (
                     <div
                         key={i}
@@ -779,7 +782,11 @@ function AddressTypeOption({
                             }}>
                             {truncAddr(addr)}
                         </span>
-                        {hdPath && <span style={{ fontSize: '10px', color: colors.textFaded + '80' }}>{hdPath}</span>}
+                        {hdPath && (
+                            <span style={{ fontSize: '10px', color: colors.textFaded + '80' }}>
+                                {hdPath}
+                            </span>
+                        )}
                         <CopyOutlined
                             style={{ fontSize: 11, color: colors.textFaded, cursor: 'pointer', flexShrink: 0 }}
                             onClick={(e) => {
@@ -789,7 +796,7 @@ function AddressTypeOption({
                         />
                     </div>
                 ) : null
-            )}
+            ))}
         </div>
     );
 }

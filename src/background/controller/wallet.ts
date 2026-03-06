@@ -3348,6 +3348,14 @@ export class WalletController {
         return preferenceService.isExperienceModeSet();
     };
 
+    public getUTXOProtectionDisabled = (): boolean => {
+        return preferenceService.getUTXOProtectionDisabled();
+    };
+
+    public setUTXOProtectionDisabled = async (disabled: boolean): Promise<void> => {
+        await preferenceService.setUTXOProtectionDisabled(disabled);
+    };
+
     public setLastActiveTime = (): void => {
         this._resetTimeout();
     };
