@@ -55,7 +55,8 @@ export default function CreateHDWalletScreen() {
         customHdPath: '',
         addressTypeIndex: 0,
         wordsType: WordsType.WORDS_12,
-        rotationModeEnabled: false
+        rotationModeEnabled: false,
+        leatherAccountIndex: 0
     });
 
     const updateContextData = useCallback(

@@ -1,8 +1,8 @@
 // @ts-check
-import react from 'eslint-plugin-react';
+import eslintReact from '@eslint-react/eslint-plugin';
 import reactHooks from 'eslint-plugin-react-hooks';
+import reactRefresh from 'eslint-plugin-react-refresh';
 import tseslint from 'typescript-eslint';
-
 import eslint from '@eslint/js';
 
 export default tseslint.config(
@@ -22,12 +22,12 @@ export default tseslint.config(
         },
         plugins: {
             'react-hooks': reactHooks,
-            react
+            'react-refresh': reactRefresh,
+            '@eslint-react': eslintReact
         },
         rules: {
             ...reactHooks.configs.recommended.rules,
-            ...react.configs.recommended.rules,
-
+            'react-refresh/only-export-components': ['warn', { allowConstantExport: true }],
             'no-undef': 'off',
             '@typescript-eslint/no-unused-vars': 'off',
             'no-empty': 'off',
@@ -43,10 +43,8 @@ export default tseslint.config(
             '@typescript-eslint/no-duplicate-enum-values': 'off',
             'prefer-spread': 'off',
             '@typescript-eslint/ban-types': 'off',
-            'react/react-in-jsx-scope': 'off',
             '@typescript-eslint/no-empty-object-type': 'off',
             '@typescript-eslint/ban-ts-comment': 'off',
-
             // Additional rules
             '@typescript-eslint/prefer-ts-expect-error': 'error',
             '@typescript-eslint/no-unsafe-assignment': 'error',
@@ -68,9 +66,11 @@ export default tseslint.config(
             '@typescript-eslint/no-unnecessary-type-assertion': 'error',
             '@typescript-eslint/no-redundant-type-constituents': 'error',
             '@typescript-eslint/no-useless-constructor': 'error',
-            'react/prop-types': 'warn',
+            '@eslint-react/no-missing-key': 'warn',
             '@typescript-eslint/no-empty-function': 'off',
-            'react-hooks/exhaustive-deps': 'off'
+            'react-hooks/exhaustive-deps': 'off',
+            'preserve-caught-error': 'warn',
+            'no-useless-assignment': 'off'
         }
     },
     {

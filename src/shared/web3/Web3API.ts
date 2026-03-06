@@ -92,6 +92,8 @@ export function getBitcoinLibJSNetwork(networkType: NetworkType, chainType?: Cha
     switch (networkType) {
         case NetworkType.MAINNET:
             return networks.bitcoin;
+        case NetworkType.OPNET_TESTNET:
+            return networks.opnetTestnet;
         case NetworkType.TESTNET:
             return networks.testnet;
         case NetworkType.REGTEST:

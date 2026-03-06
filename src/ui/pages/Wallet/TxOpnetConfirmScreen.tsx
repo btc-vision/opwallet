@@ -1433,7 +1433,8 @@ export default function TxOpnetConfirmScreen() {
     }, []);
 
     const getPubKey = async (to: string) => {
-        let pubKey: Address;
+        let pubKey: Address | undefined;
+
         const pubKeyStr: string = to.replace('0x', '');
 
         // Allow 32-byte hex (MLDSA public key hash), 33-byte (compressed pubkey), or 65-byte (uncompressed pubkey)

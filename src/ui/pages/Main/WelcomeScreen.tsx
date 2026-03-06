@@ -65,19 +65,6 @@ export default function WelcomeScreen() {
                         />
 
                         <Button
-                            text="I have an Ethereum wallet"
-                            preset="default"
-                            onClick={async () => {
-                                const isBooted = await wallet.isBooted();
-                                if (isBooted) {
-                                    navigate(RouteTypes.CreateSimpleWalletScreen, { isImport: true });
-                                } else {
-                                    navigate(RouteTypes.CreatePasswordScreen, { isNewAccount: false, isEthereum: true });
-                                }
-                            }}
-                        />
-
-                        <Button
                             text="Connect to Hardware Wallet"
                             preset="default"
                             onClick={() => {
