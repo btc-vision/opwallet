@@ -3,7 +3,6 @@ import { useEffect, useMemo, useState } from 'react';
 import { Layout, Content } from '@/ui/components';
 import { useWallet } from '@/ui/utils';
 import { RouteTypes, useNavigate } from '../routeTypes';
-import { TOS_ACCEPTED_KEY } from '@/ui/components/AcceptModals/TermsModal';
 
 import { OnboardingTOS } from './steps/OnboardingTOS';
 import { OnboardingExperience } from './steps/OnboardingExperience';
@@ -20,59 +19,20 @@ const STEP_VERSIONS: Record<string, string> = {
     utxo: '1'
 };
 
-// Ordered list — new steps added here appear in this order.
 const STEP_ORDER: StepId[] = ['tos', 'experience', 'display', 'utxo'];
 
 type StepId = keyof typeof STEP_VERSIONS;
 
-const ONBOARDING_STORAGE_KEY = 'opwallet_onboarding';
-
-// Legacy keys — checked for migration from old system
-const LEGACY_DONE_KEY = 'opwallet_onboarding_done';
-const LEGACY_DISPLAY_KEY = 'opwallet_display_setup_done';
-const LEGACY_UTXO_KEY = 'opwallet_utxo_protection_setup_done';
+const ONBOARDING_KEY = 'opwallet_onboarding_v2';
 
 interface OnboardingState {
-    [stepId: string]: string; // stepId → completed version
+    [stepId: string]: string;
 }
 
 function loadState(): OnboardingState {
     try {
-        const raw = localStorage.getItem(ONBOARDING_STORAGE_KEY);
+        const raw = localStorage.getItem(ONBOARDING_KEY);
         if (raw) return JSON.parse(raw) as OnboardingState;
-
-        // Migration: if old system marked onboarding as done, mark all current steps as done
-        const legacyDone = localStorage.getItem(LEGACY_DONE_KEY) === 'true';
-        if (legacyDone) {
-            const migrated: OnboardingState = {};
-            for (const [id, version] of Object.entries(STEP_VERSIONS)) {
-                migrated[id] = version;
-            }
-            localStorage.setItem(ONBOARDING_STORAGE_KEY, JSON.stringify(migrated));
-            return migrated;
-        }
-
-        // Also check individual legacy keys for partial migration
-        const state: OnboardingState = {};
-        if (localStorage.getItem(TOS_ACCEPTED_KEY) === '1') {
-            state.tos = STEP_VERSIONS.tos;
-        }
-        if (localStorage.getItem(LEGACY_DISPLAY_KEY) === 'true') {
-            state.display = STEP_VERSIONS.display;
-        }
-        if (localStorage.getItem(LEGACY_UTXO_KEY) === 'true') {
-            state.utxo = STEP_VERSIONS.utxo;
-        }
-        // Can't check experience mode from localStorage — it's in wallet API.
-        // If TOS was accepted, they likely went through the old experience setup too.
-        if (state.tos) {
-            state.experience = STEP_VERSIONS.experience;
-        }
-
-        if (Object.keys(state).length > 0) {
-            localStorage.setItem(ONBOARDING_STORAGE_KEY, JSON.stringify(state));
-            return state;
-        }
     } catch {
         // ignore
     }
@@ -83,7 +43,7 @@ function saveStepCompleted(stepId: string) {
     try {
         const state = loadState();
         state[stepId] = STEP_VERSIONS[stepId];
-        localStorage.setItem(ONBOARDING_STORAGE_KEY, JSON.stringify(state));
+        localStorage.setItem(ONBOARDING_KEY, JSON.stringify(state));
     } catch {
         // ignore
     }
@@ -116,10 +76,8 @@ export default function OnboardingScreen() {
     const currentStep = pendingSteps[pendingIndex];
     const totalSteps = pendingSteps.length;
 
-    // If nothing is pending, navigate away in an effect (not during render)
     useEffect(() => {
         if (!currentStep) {
-            setLegacyKeys();
             navigate(RouteTypes.MainScreen);
         }
     }, [currentStep, navigate]);
@@ -128,22 +86,13 @@ export default function OnboardingScreen() {
         return null;
     }
 
-    function markDone(stepId: StepId) {
-        saveStepCompleted(stepId);
-    }
-
     function goNext() {
         const nextIndex = pendingIndex + 1;
         if (nextIndex >= totalSteps) {
-            finishAll();
+            navigate(RouteTypes.MainScreen);
         } else {
             setPendingIndex(nextIndex);
         }
-    }
-
-    function finishAll() {
-        setLegacyKeys();
-        navigate(RouteTypes.MainScreen);
     }
 
     return (
@@ -182,8 +131,7 @@ export default function OnboardingScreen() {
                         {currentStep === 'tos' && (
                             <OnboardingTOS
                                 onAccept={() => {
-                                    try { localStorage.setItem(TOS_ACCEPTED_KEY, '1'); } catch { /* ignore */ }
-                                    markDone('tos');
+                                    saveStepCompleted('tos');
                                     goNext();
                                 }}
                             />
@@ -193,7 +141,7 @@ export default function OnboardingScreen() {
                             <OnboardingExperience
                                 wallet={wallet}
                                 onContinue={() => {
-                                    markDone('experience');
+                                    saveStepCompleted('experience');
                                     goNext();
                                 }}
                             />
@@ -202,7 +150,7 @@ export default function OnboardingScreen() {
                         {currentStep === 'display' && (
                             <OnboardingDisplay
                                 onContinue={() => {
-                                    markDone('display');
+                                    saveStepCompleted('display');
                                     goNext();
                                 }}
                             />
@@ -212,8 +160,8 @@ export default function OnboardingScreen() {
                             <OnboardingUTXO
                                 wallet={wallet}
                                 onContinue={() => {
-                                    markDone('utxo');
-                                    finishAll();
+                                    saveStepCompleted('utxo');
+                                    goNext();
                                 }}
                             />
                         )}
@@ -222,15 +170,4 @@ export default function OnboardingScreen() {
             </Content>
         </Layout>
     );
-}
-
-/** Set legacy localStorage keys for backward compatibility */
-function setLegacyKeys() {
-    try {
-        localStorage.setItem(LEGACY_DONE_KEY, 'true');
-        localStorage.setItem(LEGACY_DISPLAY_KEY, 'true');
-        localStorage.setItem(LEGACY_UTXO_KEY, 'true');
-    } catch {
-        // ignore
-    }
 }
