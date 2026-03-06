@@ -1,19 +1,31 @@
-import { Radio } from 'antd';
+import { CheckCircleFilled, FileTextOutlined, LockOutlined, WarningOutlined } from '@ant-design/icons';
 import { validateMnemonic } from '@scure/bip39';
 import { wordlist } from '@scure/bip39/wordlists/english.js';
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 
 import { RestoreWalletType } from '@/shared/types';
 import { isWalletError } from '@/shared/utils/errors';
-import { Button, Card, Column, Grid, Input, Row, Text } from '@/ui/components';
+import { Column, Text } from '@/ui/components';
 import { useTools } from '@/ui/components/ActionComponent';
-import { FooterButtonContainer } from '@/ui/components/FooterButtonContainer';
 import {
     ContextData,
     TabType,
     UpdateContextDataParams,
     WordsType
 } from '@/ui/pages/Account/createHDWalletComponents/types';
+
+const colors = {
+    main: '#f37413',
+    background: '#212121',
+    text: '#dbdbdb',
+    textFaded: 'rgba(219, 219, 219, 0.7)',
+    buttonBg: '#434343',
+    buttonHoverBg: 'rgba(85, 85, 85, 0.3)',
+    containerBgFaded: '#292929',
+    containerBorder: '#303030',
+    success: '#4ade80',
+    error: '#ef4444'
+};
 
 const WORDS_12_ITEM = {
     key: WordsType.WORDS_12,
@@ -34,64 +46,64 @@ export function Step1_Import({
     contextData: ContextData;
     updateContextData: (params: UpdateContextDataParams) => void;
 }) {
-    const [curInputIndex, setCurInputIndex] = useState(0);
-    const [hover, setHover] = useState(999);
+    const isXverse = contextData.restoreWalletType === RestoreWalletType.XVERSE;
 
     const wordsItems = useMemo(() => {
-        if (contextData.restoreWalletType === RestoreWalletType.XVERSE) {
+        if (isXverse) {
             return [WORDS_12_ITEM];
         } else {
             return [WORDS_12_ITEM, WORDS_24_ITEM];
         }
-    }, [contextData]);
+    }, [isXverse]);
 
-    const [keys, setKeys] = useState<string[]>(new Array(wordsItems[contextData.wordsType].count).fill(''));
+    const wordsCount = wordsItems[contextData.wordsType]?.count ?? 12;
+    const [keys, setKeys] = useState<string[]>(new Array(wordsCount).fill(''));
+    const inputRefs = useRef<(HTMLInputElement | null)[]>(new Array<HTMLInputElement | null>(wordsCount).fill(null));
+    const [focusedIndex, setFocusedIndex] = useState<number | null>(0);
 
     const handleEventPaste = (event: React.ClipboardEvent<HTMLInputElement>, index: number) => {
         const copyText = event.clipboardData?.getData('text/plain');
-        // Split by spaces, commas, newlines, or tabs and filter empty strings
         const textArr = copyText
             .trim()
             .split(/[\s,]+/)
-            .filter((word) => word.length > 0);
+            .filter((word: string) => word.length > 0);
         const newKeys = [...keys];
         if (textArr) {
             for (let i = 0; i < keys.length - index; i++) {
                 if (textArr.length == i) {
                     break;
                 }
-                newKeys[index + i] = textArr[i];
+                newKeys[index + i] = textArr[i].toLowerCase();
             }
             setKeys(newKeys);
         }
-
         event.preventDefault();
     };
 
-    const onChange = (e: React.ChangeEvent<HTMLInputElement>, index: number) => {
+    const handleChange = (value: string, index: number) => {
         const newKeys = [...keys];
-        newKeys.splice(index, 1, e.target.value);
+        newKeys[index] = value.toLowerCase().trim();
         setKeys(newKeys);
     };
 
-    // Derive disabled state from keys instead of using useEffect
-    const disabled = useMemo(() => {
-        const hasEmpty = keys.some((key) => key === '');
-        if (hasEmpty) {
-            return true;
+    const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>, index: number) => {
+        if (e.key === 'Enter' || e.key === 'Tab') {
+            e.preventDefault();
+            if (index < wordsCount - 1) {
+                inputRefs.current[index + 1]?.focus();
+            } else if (mnemonicValid) {
+                onNext();
+            }
+        } else if (e.key === 'Backspace' && keys[index] === '' && index > 0) {
+            inputRefs.current[index - 1]?.focus();
         }
+    };
 
-        const mnemonic = keys.join(' ');
-        if (!validateMnemonic(mnemonic, wordlist)) {
-            return true;
-        }
-
-        return false;
-    }, [keys]);
-
-    useEffect(() => {
-        //todo
-    }, [hover]);
+    // Derive validation state directly from keys
+    const hasEmpty = keys.some((key) => key === '');
+    const mnemonicValid = !hasEmpty && validateMnemonic(keys.join(' '), wordlist);
+    const hasAttempted = !hasEmpty && !mnemonicValid;
+    const filledCount = keys.filter((k) => k !== '').length;
 
     const tools = useTools();
     const onNext = () => {
@@ -107,86 +119,250 @@ export function Step1_Import({
             }
         }
     };
-    const handleOnKeyUp = (e: React.KeyboardEvent<HTMLInputElement>) => {
-        if (!disabled && 'Enter' == e.key) {
-            onNext();
-        }
-    };
 
     return (
         <Column gap="lg">
-            <Text text="Secret Recovery Phrase" preset="title-bold" textCenter />
-            <Text text="Import an existing wallet with your secret recovery phrase" preset="sub" textCenter />
+            {/* Header */}
+            <div style={{ textAlign: 'center', marginBottom: '4px' }}>
+                <div
+                    style={{
+                        width: '56px',
+                        height: '56px',
+                        borderRadius: '50%',
+                        background: `linear-gradient(135deg, ${colors.main}20 0%, ${colors.main}10 100%)`,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        margin: '0 auto 12px'
+                    }}>
+                    <LockOutlined style={{ fontSize: 26, color: colors.main }} />
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'center' }}>
+                    <Text text="Secret Recovery Phrase" preset="bold" size="lg" />
+                </div>
+                <div style={{ fontSize: '13px', color: colors.textFaded, marginTop: '6px' }}>
+                    Import an existing wallet with your secret recovery phrase
+                </div>
+            </div>
 
-            {wordsItems.length > 1 ? (
-                <Row justifyCenter>
-                    <Radio.Group
-                        onChange={(e) => {
-                            const wordsType = e.target.value as WordsType;
-                            updateContextData({ wordsType });
-                            setKeys(new Array(wordsItems[wordsType].count).fill(''));
-                        }}
-                        value={contextData.wordsType}>
-                        {wordsItems.map((v) => (
-                            <Radio key={v.key} value={v.key}>
-                                {v.label}
-                            </Radio>
-                        ))}
-                    </Radio.Group>
-                </Row>
-            ) : null}
-
-            <Row justifyCenter>
-                <Grid columns={2}>
-                    {keys.map((_, index) => {
+            {/* Word Count Toggle */}
+            {wordsItems.length > 1 && (
+                <div
+                    style={{
+                        display: 'flex',
+                        background: colors.containerBgFaded,
+                        borderRadius: '10px',
+                        padding: '3px',
+                        border: `1px solid ${colors.containerBorder}`
+                    }}>
+                    {wordsItems.map((item) => {
+                        const isActive = contextData.wordsType === item.key;
                         return (
-                            <Row key={index}>
-                                <Card gap="zero">
-                                    <Text text={`${index + 1}. `} style={{ width: 25 }} textEnd color="textDim" />
-                                    <Input
-                                        containerStyle={{ width: 80, minHeight: 25, height: 25, padding: 0 }}
-                                        style={{ width: 60 }}
-                                        value={_}
-                                        onPaste={(e) => {
-                                            handleEventPaste(e, index);
-                                        }}
-                                        onChange={(e) => {
-                                            onChange(e, index);
-                                        }}
-                                        // onMouseOverCapture={(e) => {
-                                        //   setHover(index);
-                                        // }}
-                                        // onMouseLeave={(e) => {
-                                        //   setHover(999);
-                                        // }}
-                                        onFocus={(e) => {
-                                            setCurInputIndex(index);
-                                        }}
-                                        onBlur={(e) => {
-                                            setCurInputIndex(999);
-                                        }}
-                                        onKeyUp={(e) => handleOnKeyUp(e)}
-                                        autoFocus={index == curInputIndex}
-                                        preset={'password'}
-                                        placeholder=""
-                                    />
-                                </Card>
-                            </Row>
+                            <button
+                                key={item.key}
+                                onClick={() => {
+                                    updateContextData({ wordsType: item.key });
+                                    setKeys(new Array(item.count).fill('') as string[]);
+                                }}
+                                style={{
+                                    flex: 1,
+                                    padding: '8px 12px',
+                                    background: isActive ? colors.main : 'transparent',
+                                    border: 'none',
+                                    borderRadius: '8px',
+                                    color: isActive ? colors.background : colors.textFaded,
+                                    fontSize: '13px',
+                                    fontWeight: isActive ? 600 : 500,
+                                    cursor: 'pointer',
+                                    transition: 'all 0.15s'
+                                }}>
+                                {item.label}
+                            </button>
                         );
                     })}
-                </Grid>
-            </Row>
+                </div>
+            )}
 
-            <FooterButtonContainer>
-                <Button
-                    disabled={disabled}
-                    text="Continue"
-                    preset="primary"
-                    onClick={() => {
-                        onNext();
-                    }}
-                />
-            </FooterButtonContainer>
+            {/* Progress indicator */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <div
+                    style={{
+                        flex: 1,
+                        height: '3px',
+                        borderRadius: '2px',
+                        background: colors.containerBorder,
+                        overflow: 'hidden'
+                    }}>
+                    <div
+                        style={{
+                            height: '100%',
+                            width: `${(filledCount / wordsCount) * 100}%`,
+                            background: mnemonicValid ? colors.success : colors.main,
+                            borderRadius: '2px',
+                            transition: 'width 0.2s, background 0.2s'
+                        }}
+                    />
+                </div>
+                <span
+                    style={{
+                        fontSize: '11px',
+                        color: mnemonicValid ? colors.success : colors.textFaded,
+                        fontWeight: 500,
+                        minWidth: '40px',
+                        textAlign: 'right'
+                    }}>
+                    {filledCount}/{wordsCount}
+                </span>
+            </div>
+
+            {/* Word Inputs Grid */}
+            <div
+                style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(3, 1fr)',
+                    gap: '6px'
+                }}>
+                {keys.map((word, index) => {
+                    const isFilled = word !== '';
+                    return (
+                        <div
+                            key={index}
+                            style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                background: isFilled ? `${colors.main}08` : colors.containerBgFaded,
+                                border: `1.5px solid ${
+                                    focusedIndex === index
+                                        ? colors.main
+                                        : isFilled
+                                          ? `${colors.main}30`
+                                          : colors.containerBorder
+                                }`,
+                                borderRadius: '10px',
+                                padding: '0 8px',
+                                height: '38px',
+                                transition: 'border-color 0.15s',
+                                gap: '4px'
+                            }}>
+                            <span
+                                style={{
+                                    fontSize: '10px',
+                                    color: isFilled ? colors.main : colors.textFaded,
+                                    fontWeight: 600,
+                                    minWidth: '18px',
+                                    textAlign: 'right',
+                                    fontFamily: 'monospace',
+                                    flexShrink: 0,
+                                    opacity: 0.8
+                                }}>
+                                {index + 1}
+                            </span>
+                            <input
+                                ref={(el) => {
+                                    inputRefs.current[index] = el;
+                                }}
+                                type="text"
+                                value={word}
+                                autoComplete="off"
+                                spellCheck={false}
+                                onChange={(e) => handleChange(e.target.value, index)}
+                                onPaste={(e) => handleEventPaste(e, index)}
+                                onKeyDown={(e) => handleKeyDown(e, index)}
+                                onFocus={() => setFocusedIndex(index)}
+                                onBlur={() => setFocusedIndex(null)}
+                                autoFocus={index === 0}
+                                placeholder="···"
+                                style={{
+                                    flex: 1,
+                                    background: 'transparent',
+                                    border: 'none',
+                                    outline: 'none',
+                                    color: colors.text,
+                                    fontSize: '13px',
+                                    fontWeight: 500,
+                                    padding: '4px 0',
+                                    width: '100%',
+                                    minWidth: 0,
+                                    fontFamily: 'Inter-Regular, serif'
+                                }}
+                            />
+                            {isFilled && (
+                                <CheckCircleFilled
+                                    style={{
+                                        fontSize: 10,
+                                        color: colors.success,
+                                        flexShrink: 0,
+                                        opacity: 0.7
+                                    }}
+                                />
+                            )}
+                        </div>
+                    );
+                })}
+            </div>
+
+            {/* Validation Error */}
+            {hasAttempted && (
+                <div
+                    style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        padding: '10px 12px',
+                        background: `${colors.error}10`,
+                        border: `1px solid ${colors.error}30`,
+                        borderRadius: '10px'
+                    }}>
+                    <WarningOutlined style={{ fontSize: 14, color: colors.error }} />
+                    <span style={{ fontSize: '12px', color: colors.error }}>
+                        Invalid recovery phrase. Please check your words and try again.
+                    </span>
+                </div>
+            )}
+
+            {/* Paste hint */}
+            <div
+                style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    padding: '10px 12px',
+                    background: `${colors.main}08`,
+                    border: `1px solid ${colors.main}15`,
+                    borderRadius: '10px'
+                }}>
+                <FileTextOutlined style={{ fontSize: 14, color: colors.main }} />
+                <span style={{ fontSize: '11px', color: colors.textFaded }}>
+                    Paste your entire phrase into the first field to auto-fill all words
+                </span>
+            </div>
+
+            {/* Continue Button */}
+            <button
+                disabled={!mnemonicValid}
+                onClick={onNext}
+                style={{
+                    width: '100%',
+                    padding: '14px',
+                    background: !mnemonicValid ? colors.buttonBg : colors.main,
+                    border: 'none',
+                    borderRadius: '12px',
+                    color: !mnemonicValid ? colors.textFaded : colors.background,
+                    fontSize: '14px',
+                    fontWeight: 600,
+                    cursor: !mnemonicValid ? 'not-allowed' : 'pointer',
+                    opacity: !mnemonicValid ? 0.5 : 1,
+                    transition: 'all 0.2s',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '8px'
+                }}>
+                {mnemonicValid && <CheckCircleFilled style={{ fontSize: 14 }} />}
+                Continue
+            </button>
         </Column>
     );
 }
+
+
