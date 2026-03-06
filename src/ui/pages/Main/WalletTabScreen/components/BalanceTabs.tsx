@@ -79,22 +79,23 @@ export const BalanceTabs: React.FC<BalanceTabsProps> = ({
     return (
         <div
             style={{
-                background: noBorder ? 'transparent' : 'rgba(0, 0, 0, 0.85)',
-                border: noBorder ? 'none' : '1px solid rgba(255, 255, 255, 0.1)',
-                borderRadius: noBorder ? '0' : '8px',
-                padding: noBorder ? '0' : '12px',
-                width: alignLeft ? '100%' : '280px',
-                boxShadow: noBorder ? 'none' : '0 4px 12px rgba(0, 0, 0, 0.3)',
-                backdropFilter: noBorder ? 'none' : 'blur(10px)'
+                background: noBorder ? 'transparent' : '#1a1a1a',
+                border: noBorder ? 'none' : `1px solid ${colors.containerBorder}`,
+                borderRadius: noBorder ? '0' : '14px',
+                padding: noBorder ? '0' : '14px',
+                width: alignLeft ? '100%' : '300px',
+                boxShadow: noBorder ? 'none' : '0 8px 24px rgba(0, 0, 0, 0.4)',
+                backdropFilter: noBorder ? 'none' : 'blur(12px)'
             }}>
             {/* Tabs Header */}
             <div
                 style={{
                     display: 'flex',
                     gap: '4px',
-                    marginBottom: '12px',
-                    borderBottom: `1px solid ${colors.containerBorder}`,
-                    paddingBottom: '8px'
+                    marginBottom: '14px',
+                    background: 'rgba(255, 255, 255, 0.04)',
+                    borderRadius: '10px',
+                    padding: '3px'
                 }}>
                 {visibleTabs.map((tab) => (
                     <button
@@ -102,24 +103,26 @@ export const BalanceTabs: React.FC<BalanceTabsProps> = ({
                         onClick={() => setActiveTab(tab.id)}
                         style={{
                             flex: 1,
-                            padding: '6px 8px',
+                            padding: '7px 10px',
                             background: activeTab === tab.id ? colors.main : 'transparent',
                             border: 'none',
-                            borderRadius: '6px',
+                            borderRadius: '8px',
                             cursor: 'pointer',
                             transition: 'all 0.2s',
-                            fontSize: '10px',
-                            fontWeight: activeTab === tab.id ? 600 : 500,
+                            fontSize: '11px',
+                            fontWeight: 600,
                             color: activeTab === tab.id ? '#000' : colors.textFaded
                         }}
                         onMouseEnter={(e) => {
                             if (activeTab !== tab.id) {
-                                e.currentTarget.style.background = colors.buttonHoverBg;
+                                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.06)';
+                                e.currentTarget.style.color = '#dbdbdb';
                             }
                         }}
                         onMouseLeave={(e) => {
                             if (activeTab !== tab.id) {
                                 e.currentTarget.style.background = 'transparent';
+                                e.currentTarget.style.color = colors.textFaded;
                             }
                         }}>
                         {tab.label}
@@ -133,35 +136,43 @@ export const BalanceTabs: React.FC<BalanceTabsProps> = ({
                 {activeTab === 'balance' && (
                     <div>
                         {/* Main Balance Section */}
-                        <div style={{ marginBottom: hasCSV75 || hasCSV2 || hasCSV1 ? '12px' : '0' }}>
+                        <div
+                            style={{
+                                marginBottom: hasCSV75 || hasCSV2 || hasCSV1 ? '10px' : '0',
+                                background: 'rgba(255, 255, 255, 0.03)',
+                                borderRadius: '10px',
+                                padding: '10px 12px'
+                            }}>
                             <div
                                 style={{
                                     fontSize: '10px',
-                                    fontWeight: 600,
+                                    fontWeight: 700,
                                     color: colors.textFaded,
-                                    marginBottom: '6px',
+                                    marginBottom: '8px',
                                     textTransform: 'uppercase',
                                     letterSpacing: '0.5px',
                                     textAlign: 'left'
                                 }}>
                                 Main Balance
                             </div>
-                            <Row justifyBetween style={{ marginBottom: '4px' }}>
-                                <span style={{ ...noBreakStyle, color: '#dbdbdb', fontSize: '11px' }}>Available</span>
+                            <Row justifyBetween style={{ marginBottom: '5px' }}>
+                                <span style={{ ...noBreakStyle, color: '#dbdbdb', fontSize: '12px' }}>Available</span>
                                 <span
                                     style={{
                                         ...noBreakStyle,
                                         color: '#dbdbdb',
-                                        fontSize: '11px'
+                                        fontSize: '12px',
+                                        fontWeight: 600
                                     }}>{`${accountBalance.btc_confirm_amount} ${btcUnit}`}</span>
                             </Row>
-                            <Row justifyBetween style={{ marginBottom: '4px' }}>
-                                <span style={{ ...noBreakStyle, color: '#dbdbdb', fontSize: '11px' }}>Pending</span>
+                            <Row justifyBetween>
+                                <span style={{ ...noBreakStyle, color: '#dbdbdb', fontSize: '12px' }}>Pending</span>
                                 <span
                                     style={{
                                         ...noBreakStyle,
                                         color: '#dbdbdb',
-                                        fontSize: '11px'
+                                        fontSize: '12px',
+                                        fontWeight: 600
                                     }}>{`${accountBalance.btc_pending_amount} ${btcUnit}`}</span>
                             </Row>
                         </div>
@@ -170,60 +181,61 @@ export const BalanceTabs: React.FC<BalanceTabsProps> = ({
                         {hasCSV75 && (
                             <div
                                 style={{
-                                    marginBottom: hasCSV75 ? '12px' : '0',
-                                    paddingTop: '12px',
-                                    borderTop: `1px solid ${colors.containerBorder}`
+                                    marginBottom: hasCSV2 || hasCSV1 ? '10px' : '0',
+                                    background: 'rgba(255, 255, 255, 0.03)',
+                                    borderRadius: '10px',
+                                    padding: '10px 12px'
                                 }}>
                                 <div
                                     style={{
                                         fontSize: '10px',
-                                        fontWeight: 600,
+                                        fontWeight: 700,
                                         color: colors.main,
-                                        marginBottom: '6px',
+                                        marginBottom: '8px',
                                         textTransform: 'uppercase',
                                         letterSpacing: '0.5px',
                                         textAlign: 'left'
                                     }}>
                                     CSV 75 Balance
                                 </div>
-                                <Row justifyBetween style={{ marginBottom: '4px' }}>
-                                    <span style={{ ...noBreakStyle, color: colors.success, fontSize: '11px' }}>
+                                <Row justifyBetween style={{ marginBottom: '5px' }}>
+                                    <span style={{ ...noBreakStyle, color: colors.success, fontSize: '12px' }}>
                                         Unlocked
                                     </span>
-                                    <span style={{ ...noBreakStyle, color: colors.success, fontSize: '11px' }}>
+                                    <span style={{ ...noBreakStyle, color: colors.success, fontSize: '12px', fontWeight: 600 }}>
                                         {`${accountBalance.csv75_unlocked_amount || '0'} ${btcUnit}`}
                                     </span>
                                 </Row>
-                                <Row justifyBetween style={{ marginBottom: '4px' }}>
-                                    <span style={{ ...noBreakStyle, color: colors.warning, fontSize: '11px' }}>
+                                <Row justifyBetween style={{ marginBottom: '5px' }}>
+                                    <span style={{ ...noBreakStyle, color: colors.warning, fontSize: '12px' }}>
                                         Locked
                                     </span>
-                                    <span style={{ ...noBreakStyle, color: colors.warning, fontSize: '11px' }}>
+                                    <span style={{ ...noBreakStyle, color: colors.warning, fontSize: '12px', fontWeight: 600 }}>
                                         {`${accountBalance.csv75_locked_amount || '0'} ${btcUnit}`}
                                     </span>
                                 </Row>
                                 <Row
                                     justifyBetween
                                     style={{
-                                        marginTop: '8px',
-                                        paddingTop: '8px',
-                                        borderTop: `1px solid ${colors.containerBorder}`
+                                        marginTop: '6px',
+                                        paddingTop: '6px',
+                                        borderTop: `1px solid rgba(255, 255, 255, 0.06)`
                                     }}>
                                     <span
                                         style={{
                                             ...noBreakStyle,
-                                            fontWeight: 600,
+                                            fontWeight: 700,
                                             color: '#dbdbdb',
-                                            fontSize: '11px'
+                                            fontSize: '12px'
                                         }}>
                                         Total
                                     </span>
                                     <span
                                         style={{
                                             ...noBreakStyle,
-                                            fontWeight: 600,
+                                            fontWeight: 700,
                                             color: '#dbdbdb',
-                                            fontSize: '11px'
+                                            fontSize: '12px'
                                         }}>
                                         {`${accountBalance.csv75_total_amount} ${btcUnit}`}
                                     </span>
@@ -235,60 +247,49 @@ export const BalanceTabs: React.FC<BalanceTabsProps> = ({
                         {hasCSV2 && (
                             <div
                                 style={{
-                                    marginBottom: hasCSV1 ? '12px' : '0',
-                                    paddingTop: '12px',
-                                    borderTop: `1px solid ${colors.containerBorder}`
+                                    marginBottom: hasCSV1 ? '10px' : '0',
+                                    background: 'rgba(255, 255, 255, 0.03)',
+                                    borderRadius: '10px',
+                                    padding: '10px 12px'
                                 }}>
                                 <div
                                     style={{
                                         fontSize: '10px',
-                                        fontWeight: 600,
+                                        fontWeight: 700,
                                         color: colors.main,
-                                        marginBottom: '6px',
+                                        marginBottom: '8px',
                                         textTransform: 'uppercase',
                                         letterSpacing: '0.5px'
                                     }}>
                                     CSV 2 Balance
                                 </div>
-                                <Row justifyBetween style={{ marginBottom: '4px' }}>
-                                    <span style={{ ...noBreakStyle, color: colors.success, fontSize: '11px' }}>
+                                <Row justifyBetween style={{ marginBottom: '5px' }}>
+                                    <span style={{ ...noBreakStyle, color: colors.success, fontSize: '12px' }}>
                                         Unlocked
                                     </span>
-                                    <span style={{ ...noBreakStyle, color: colors.success, fontSize: '11px' }}>
+                                    <span style={{ ...noBreakStyle, color: colors.success, fontSize: '12px', fontWeight: 600 }}>
                                         {`${accountBalance.csv2_unlocked_amount || '0'} ${btcUnit}`}
                                     </span>
                                 </Row>
-                                <Row justifyBetween style={{ marginBottom: '4px' }}>
-                                    <span style={{ ...noBreakStyle, color: colors.warning, fontSize: '11px' }}>
+                                <Row justifyBetween style={{ marginBottom: '5px' }}>
+                                    <span style={{ ...noBreakStyle, color: colors.warning, fontSize: '12px' }}>
                                         Locked
                                     </span>
-                                    <span style={{ ...noBreakStyle, color: colors.warning, fontSize: '11px' }}>
+                                    <span style={{ ...noBreakStyle, color: colors.warning, fontSize: '12px', fontWeight: 600 }}>
                                         {`${accountBalance.csv2_locked_amount || '0'} ${btcUnit}`}
                                     </span>
                                 </Row>
                                 <Row
                                     justifyBetween
                                     style={{
-                                        marginTop: '8px',
-                                        paddingTop: '8px',
-                                        borderTop: `1px solid ${colors.containerBorder}`
+                                        marginTop: '6px',
+                                        paddingTop: '6px',
+                                        borderTop: `1px solid rgba(255, 255, 255, 0.06)`
                                     }}>
-                                    <span
-                                        style={{
-                                            ...noBreakStyle,
-                                            fontWeight: 600,
-                                            color: '#dbdbdb',
-                                            fontSize: '11px'
-                                        }}>
+                                    <span style={{ ...noBreakStyle, fontWeight: 700, color: '#dbdbdb', fontSize: '12px' }}>
                                         Total
                                     </span>
-                                    <span
-                                        style={{
-                                            ...noBreakStyle,
-                                            fontWeight: 600,
-                                            color: '#dbdbdb',
-                                            fontSize: '11px'
-                                        }}>
+                                    <span style={{ ...noBreakStyle, fontWeight: 700, color: '#dbdbdb', fontSize: '12px' }}>
                                         {`${accountBalance.csv2_total_amount} ${btcUnit}`}
                                     </span>
                                 </Row>
@@ -299,60 +300,49 @@ export const BalanceTabs: React.FC<BalanceTabsProps> = ({
                         {hasCSV1 && (
                             <div
                                 style={{
-                                    paddingTop: '12px',
-                                    borderTop: `1px solid ${colors.containerBorder}`
+                                    background: 'rgba(255, 255, 255, 0.03)',
+                                    borderRadius: '10px',
+                                    padding: '10px 12px'
                                 }}>
                                 <div
                                     style={{
                                         fontSize: '10px',
-                                        fontWeight: 600,
+                                        fontWeight: 700,
                                         color: colors.main,
-                                        marginBottom: '6px',
+                                        marginBottom: '8px',
                                         textTransform: 'uppercase',
                                         letterSpacing: '0.5px',
                                         textAlign: 'left'
                                     }}>
                                     CSV 1 Balance
                                 </div>
-                                <Row justifyBetween style={{ marginBottom: '4px' }}>
-                                    <span style={{ ...noBreakStyle, color: colors.success, fontSize: '11px' }}>
+                                <Row justifyBetween style={{ marginBottom: '5px' }}>
+                                    <span style={{ ...noBreakStyle, color: colors.success, fontSize: '12px' }}>
                                         Unlocked
                                     </span>
-                                    <span style={{ ...noBreakStyle, color: colors.success, fontSize: '11px' }}>
+                                    <span style={{ ...noBreakStyle, color: colors.success, fontSize: '12px', fontWeight: 600 }}>
                                         {`${accountBalance.csv1_unlocked_amount || '0'} ${btcUnit}`}
                                     </span>
                                 </Row>
-                                <Row justifyBetween style={{ marginBottom: '4px' }}>
-                                    <span style={{ ...noBreakStyle, color: colors.warning, fontSize: '11px' }}>
+                                <Row justifyBetween style={{ marginBottom: '5px' }}>
+                                    <span style={{ ...noBreakStyle, color: colors.warning, fontSize: '12px' }}>
                                         Locked
                                     </span>
-                                    <span style={{ ...noBreakStyle, color: colors.warning, fontSize: '11px' }}>
+                                    <span style={{ ...noBreakStyle, color: colors.warning, fontSize: '12px', fontWeight: 600 }}>
                                         {`${accountBalance.csv1_locked_amount || '0'} ${btcUnit}`}
                                     </span>
                                 </Row>
                                 <Row
                                     justifyBetween
                                     style={{
-                                        marginTop: '8px',
-                                        paddingTop: '8px',
-                                        borderTop: `1px solid ${colors.containerBorder}`
+                                        marginTop: '6px',
+                                        paddingTop: '6px',
+                                        borderTop: `1px solid rgba(255, 255, 255, 0.06)`
                                     }}>
-                                    <span
-                                        style={{
-                                            ...noBreakStyle,
-                                            fontWeight: 600,
-                                            color: '#dbdbdb',
-                                            fontSize: '11px'
-                                        }}>
+                                    <span style={{ ...noBreakStyle, fontWeight: 700, color: '#dbdbdb', fontSize: '12px' }}>
                                         Total
                                     </span>
-                                    <span
-                                        style={{
-                                            ...noBreakStyle,
-                                            fontWeight: 600,
-                                            color: '#dbdbdb',
-                                            fontSize: '11px'
-                                        }}>
+                                    <span style={{ ...noBreakStyle, fontWeight: 700, color: '#dbdbdb', fontSize: '12px' }}>
                                         {`${accountBalance.csv1_total_amount} ${btcUnit}`}
                                     </span>
                                 </Row>
@@ -368,9 +358,11 @@ export const BalanceTabs: React.FC<BalanceTabsProps> = ({
             {/* Grand Total Footer */}
             <div
                 style={{
-                    borderTop: `2px solid ${colors.main}`,
-                    paddingTop: '8px',
-                    marginTop: '12px'
+                    background: `linear-gradient(135deg, ${colors.main}18 0%, ${colors.main}08 100%)`,
+                    border: `1px solid ${colors.main}30`,
+                    borderRadius: '10px',
+                    padding: '10px 12px',
+                    marginTop: '10px'
                 }}>
                 <Row justifyBetween>
                     <span
@@ -378,7 +370,7 @@ export const BalanceTabs: React.FC<BalanceTabsProps> = ({
                             ...noBreakStyle,
                             fontWeight: 700,
                             color: colors.main,
-                            fontSize: '11px'
+                            fontSize: '12px'
                         }}>
                         GRAND TOTAL
                     </span>
@@ -387,7 +379,7 @@ export const BalanceTabs: React.FC<BalanceTabsProps> = ({
                             ...noBreakStyle,
                             fontWeight: 700,
                             color: colors.main,
-                            fontSize: '11px'
+                            fontSize: '12px'
                         }}>
                         {`${calculateTotalBalance()} ${btcUnit}`}
                     </span>

@@ -52,28 +52,29 @@ const colors = {
 };
 
 const tokenButtonStyle: React.CSSProperties = {
-    color: 'white',
+    color: colors.textFaded,
     fontSize: '12px',
     display: 'flex',
     alignItems: 'center',
     flex: '1',
     justifyContent: 'center',
     gap: '8px',
-    height: '32px',
-    padding: '0 12px',
-    border: '1px solid #444746',
-    background: '#313131',
-    transition: 'background-color 0.3s, border 0.3s',
-    borderRadius: '8px',
+    height: '36px',
+    padding: '0 14px',
+    border: `1px solid ${colors.containerBorder}`,
+    background: colors.containerBgFaded,
+    transition: 'all 0.2s',
+    borderRadius: '10px',
     cursor: 'pointer',
-    fontFamily: 'Inter-Regular, serif'
+    fontFamily: 'Inter-Regular, serif',
+    fontWeight: 600
 };
 
 const tokenRefreshButtonStyle: React.CSSProperties = {
     ...tokenButtonStyle,
-    width: '32px',
+    width: '36px',
     padding: '0',
-    flex: '0 0 32px'
+    flex: '0 0 36px'
 };
 
 export function OPNetList() {
@@ -515,50 +516,79 @@ export function OPNetList() {
             <div
                 style={{
                     display: 'flex',
+                    alignItems: 'center',
                     gap: '8px',
                     width: 'calc(100% + 24px)',
-                    borderBottom: `1px solid ${colors.headerBorder}`,
-                    borderTop: `1px solid ${colors.headerBorder}`,
-                    padding: `12px`,
+                    padding: '10px 12px',
                     margin: '0 -12px 12px -12px',
-                    background: colors.headerBG
+                    borderTop: `1px solid ${colors.containerBorder}`,
+                    background: 'transparent'
                 }}>
+                <span style={{
+                    fontSize: '11px',
+                    fontWeight: 700,
+                    color: colors.textFaded,
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.8px',
+                    marginRight: 'auto',
+                    paddingLeft: '4px'
+                }}>
+                    Tokens
+                </span>
                 <button
-                    style={tokenButtonStyle}
+                    style={{ ...tokenButtonStyle, flex: '0 0 auto', height: '30px', fontSize: '11px' }}
                     onClick={() => navigate(RouteTypes.ImportSelectionScreen)}
-                    onMouseOver={(e) => (e.currentTarget.style.background = '#212121')}
-                    onMouseOut={(e) => (e.currentTarget.style.background = '#313131')}>
-                    <FontAwesomeIcon icon={faPlus} style={{ fontSize: 12 }} />
+                    onMouseOver={(e) => {
+                        e.currentTarget.style.borderColor = colors.main;
+                        e.currentTarget.style.color = colors.text;
+                    }}
+                    onMouseOut={(e) => {
+                        e.currentTarget.style.borderColor = colors.containerBorder;
+                        e.currentTarget.style.color = colors.textFaded;
+                    }}>
+                    <FontAwesomeIcon icon={faPlus} style={{ fontSize: 10 }} />
                     <span>Import</span>
                 </button>
 
                 <button
-                    style={tokenButtonStyle}
+                    style={{ ...tokenButtonStyle, flex: '0 0 auto', height: '30px', fontSize: '11px' }}
                     onClick={async () => {
                         await browser.tabs.create({
                             url: browser.runtime.getURL('/index.html#/opnet/deploy-contract')
                         });
                     }}
-                    onMouseOver={(e) => (e.currentTarget.style.background = '#212121')}
-                    onMouseOut={(e) => (e.currentTarget.style.background = '#313131')}>
-                    <FontAwesomeIcon icon={faPencil} style={{ fontSize: 12 }} />
+                    onMouseOver={(e) => {
+                        e.currentTarget.style.borderColor = colors.main;
+                        e.currentTarget.style.color = colors.text;
+                    }}
+                    onMouseOut={(e) => {
+                        e.currentTarget.style.borderColor = colors.containerBorder;
+                        e.currentTarget.style.color = colors.textFaded;
+                    }}>
+                    <FontAwesomeIcon icon={faPencil} style={{ fontSize: 10 }} />
                     <span>Deploy</span>
                 </button>
 
                 <button
-                    style={tokenRefreshButtonStyle}
+                    style={{ ...tokenRefreshButtonStyle, height: '30px', width: '30px', flex: '0 0 30px' }}
                     onClick={refreshCurrentPage}
                     disabled={isLoading}
                     onMouseOver={(e) => {
-                        if (!isLoading) e.currentTarget.style.background = '#212121';
+                        if (!isLoading) {
+                            e.currentTarget.style.borderColor = colors.main;
+                            e.currentTarget.style.color = colors.text;
+                        }
                     }}
-                    onMouseOut={(e) => (e.currentTarget.style.background = '#313131')}>
+                    onMouseOut={(e) => {
+                        e.currentTarget.style.borderColor = colors.containerBorder;
+                        e.currentTarget.style.color = colors.textFaded;
+                    }}>
                     <FontAwesomeIcon
                         icon={faRefresh}
                         spin={isLoading}
                         style={{
-                            fontSize: 14,
-                            color: isLoading ? colors.main : 'white'
+                            fontSize: 12,
+                            color: isLoading ? colors.main : 'inherit'
                         }}
                     />
                 </button>
@@ -576,7 +606,7 @@ export function OPNetList() {
                             {currentPageBalances.map((data, index) => (
                                 <div
                                     key={data.address}
-                                    style={{ marginBottom: index < currentPageBalances.length - 1 ? '6px' : 0 }}>
+                                    style={{ marginBottom: index < currentPageBalances.length - 1 ? '8px' : 0 }}>
                                     <OpNetBalanceCard
                                         tokenInfo={data}
                                         onClick={() => {
@@ -692,11 +722,24 @@ export function OPNetList() {
                     style={{
                         background: colors.containerBgFaded,
                         borderRadius: '14px',
-                        padding: '40px 20px',
+                        border: `1px solid ${colors.containerBorder}`,
+                        padding: '32px 20px',
                         textAlign: 'center',
                         marginBottom: '12px'
                     }}>
-                    <Text text="No tokens found" color="text" size="md" style={{ marginBottom: 8 }} />
+                    <div style={{
+                        width: '48px',
+                        height: '48px',
+                        borderRadius: '50%',
+                        background: `${colors.main}10`,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        margin: '0 auto 12px'
+                    }}>
+                        <FontAwesomeIcon icon={faPlus} style={{ fontSize: 18, color: colors.main, opacity: 0.6 }} />
+                    </div>
+                    <Text text="No tokens found" color="text" size="md" style={{ marginBottom: 4 }} />
                     <Text text="Import or deploy a token to get started" color="textDim" size="sm" />
                 </div>
             )}
