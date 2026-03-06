@@ -895,10 +895,5 @@ button.op_token_action_button {
         border-left: 1px solid #303030;
         border-right: 1px solid #303030;
     }
-
-    .action-buttons {
-        justify-content: center !important;
-        gap: 16px;
-    }
 }
 

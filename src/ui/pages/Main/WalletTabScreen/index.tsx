@@ -800,10 +800,10 @@ export default function WalletTabScreen() {
 
                         {/* Action Buttons */}
                         <div
-                            className="action-buttons"
                             style={{
                                 display: 'flex',
-                                justifyContent: 'space-between',
+                                justifyContent: 'center',
+                                gap: '8px',
                                 padding: '12px 12px 0px',
                             }}>
                             <ActionButton
