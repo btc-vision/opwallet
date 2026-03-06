@@ -101,7 +101,7 @@ export default function DeployContractOpnet() {
 
     if (chain.opnetDisabled) {
         return (
-            <Layout>
+            <Layout wide>
                 <Header title="Deploy Smart Contract" onBack={() => navigate(RouteTypes.MainScreen)} />
                 <Content style={{ padding: '24px' }}>
                     <div
@@ -124,7 +124,7 @@ export default function DeployContractOpnet() {
     }
 
     return (
-        <Layout>
+        <Layout wide>
             <Header title="Deploy Smart Contract" onBack={() => navigate(RouteTypes.MainScreen)} />
 
             <Content

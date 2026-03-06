@@ -884,3 +884,21 @@ button.op_token_action_button {
 .backdrop-fade-out {
     animation: fadeBackdropOut 0.3s ease-in forwards;
 }
+
+/* Global layout width constraint for wide screens */
+@media (min-width: 700px) {
+    .layout-constrained {
+        max-width: 450px !important;
+        width: 450px !important;
+        margin-left: auto !important;
+        margin-right: auto !important;
+        border-left: 1px solid #303030;
+        border-right: 1px solid #303030;
+    }
+
+    .action-buttons {
+        justify-content: center !important;
+        gap: 16px;
+    }
+}
+
