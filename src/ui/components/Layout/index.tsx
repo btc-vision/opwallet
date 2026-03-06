@@ -8,6 +8,7 @@ import './index.less';
 export interface LayoutProps {
     children?: React.ReactNode;
     style?: CSSProperties;
+    wide?: boolean;
 }
 
 export function Layout(props: LayoutProps) {
@@ -23,10 +24,10 @@ export function Layout(props: LayoutProps) {
         }
     }, [isBooted, isUnlocked]);
 
-    const { children, style: $styleBase } = props;
+    const { children, style: $styleBase, wide } = props;
     return (
         <div
-            className="layout"
+            className={`layout ${wide ? '' : 'layout-constrained'}`}
             style={Object.assign(
                 {
                     display: 'flex',
