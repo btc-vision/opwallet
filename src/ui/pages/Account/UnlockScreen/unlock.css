@@ -42,6 +42,34 @@
   z-index: 1;
 }
 
+.unlock__input-wrap {
+  position: relative;
+}
+
+.unlock__input-wrap .input {
+  padding-right: 36px;
+}
+
+.unlock__eye {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: var(--color-text-faded);
+  font-size: 16px;
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.unlock__eye:hover {
+  color: var(--color-text);
+}
+
 .unlock__error {
   font-size: var(--font-md);
   color: var(--color-error);

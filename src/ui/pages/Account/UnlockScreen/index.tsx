@@ -4,7 +4,7 @@ import { Layout, Content, Logo } from '@/ui/components';
 import { useTools } from '@/ui/components/ActionComponent';
 import { useUnlockCallback } from '@/ui/state/global/hooks';
 import { getUiType, useWallet } from '@/ui/utils';
-import { LoadingOutlined } from '@ant-design/icons';
+import { EyeInvisibleOutlined, EyeOutlined, LoadingOutlined } from '@ant-design/icons';
 import ParticleCanvas from '@/ui/components/ParticleField/ParticleField';
 
 import { RouteTypes, useNavigate } from '../../routeTypes';
@@ -17,6 +17,7 @@ export default function UnlockScreen() {
     const [unlocking, setUnlocking] = useState(false);
     const [error, setError] = useState('');
     const [shaking, setShaking] = useState(false);
+    const [showPassword, setShowPassword] = useState(false);
     const UIType = getUiType();
     const isInNotification = UIType.isNotification;
     const unlock = useUnlockCallback();
@@ -55,7 +56,7 @@ export default function UnlockScreen() {
             <Content style={{ padding: 0, overflow: 'hidden' }}>
                 <div className="unlock">
                     <div className="unlock__particles">
-                        <ParticleCanvas count={20} speed={0.15} />
+                        <ParticleCanvas count={30} speed={0.15} size={1.375} />
                     </div>
 
                     <div className="unlock__logo">
@@ -70,15 +71,24 @@ export default function UnlockScreen() {
                     <div className="unlock__subtitle">Enter your password to unlock</div>
 
                     <div className={`unlock__form ${shaking ? 'anim-shake' : ''}`}>
-                        <input
-                            type="password"
-                            value={password}
-                            onChange={(e) => { setPassword(e.target.value); setError(''); }}
-                            onKeyUp={(e) => void handleKeyUp(e)}
-                            autoFocus
-                            placeholder="Password"
-                            className={`input input-center ${error ? 'input-error' : ''}`}
-                        />
+                        <div className="unlock__input-wrap">
+                            <input
+                                type={showPassword ? 'text' : 'password'}
+                                value={password}
+                                onChange={(e) => { setPassword(e.target.value); setError(''); }}
+                                onKeyUp={(e) => void handleKeyUp(e)}
+                                autoFocus
+                                placeholder="Password"
+                                className={`input input-center ${error ? 'input-error' : ''}`}
+                            />
+                            <button
+                                type="button"
+                                className="unlock__eye"
+                                onClick={() => setShowPassword((v) => !v)}
+                                tabIndex={-1}>
+                                {showPassword ? <EyeOutlined /> : <EyeInvisibleOutlined />}
+                            </button>
+                        </div>
                         {error && <div className="unlock__error">{error}</div>}
 
                         <button
