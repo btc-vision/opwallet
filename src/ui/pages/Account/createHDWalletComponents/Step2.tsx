@@ -277,6 +277,8 @@ export function Step2({
         setScanned(true);
         tools.showLoading(true);
         try {
+            await Web3API.setNetwork(await wallet.getChainType());
+
             const groups: {
                 type: AddressTypes;
                 address_arr: string[];
@@ -302,12 +304,27 @@ export function Step2({
                     setError((e as Error).message);
                     return;
                 }
+
+                // Fetch balances for derived addresses
+                try {
+                    const balances = await wallet.getMultiAddressAssets(address_arr.join(','));
+                    for (let i = 0; i < address_arr.length; i++) {
+                        satoshis_arr.push(balances[i]?.totalSatoshis ?? 0);
+                    }
+                } catch {
+                    // Fill with zeros if balance fetch fails
+                    for (let i = 0; i < address_arr.length; i++) {
+                        satoshis_arr.push(0);
+                    }
+                }
+
                 groups.push({ type: options.addressType, address_arr, satoshis_arr, pubkey_arr: [] });
             }
 
             setScannedGroups(groups);
-            if (groups.length === 0) {
-                tools.showTip('Unable to find any addresses with assets');
+            const hasAny = groups.some((g) => g.satoshis_arr.some((v) => v > 0));
+            if (!hasAny) {
+                tools.showTip('No addresses with funds found');
             }
         } catch (e) {
             setError((e as Error).message);

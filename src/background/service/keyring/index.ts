@@ -511,15 +511,19 @@ class KeyringService extends EventEmitter {
 
     checkForDuplicate = (type: string, newAccountArray: string[]): string[] => {
         const keyrings = this.getKeyringsByType(type);
-        const _accounts = keyrings.map((keyring) => keyring.getAccounts());
-        const accounts: string[] = _accounts.reduce<string[]>((m, n) => m.concat(n), []);
 
-        const isIncluded = newAccountArray.some((account) => {
-            return accounts.find((key) => key === account);
-        });
-
-        if (isIncluded) {
-            throw new Error(i18n.t('Wallet already imported.'));
+        for (let ki = 0; ki < keyrings.length; ki++) {
+            const existingAccounts = keyrings[ki].getAccounts();
+            for (const newAccount of newAccountArray) {
+                if (existingAccounts.includes(newAccount)) {
+                    // Find the global keyring index for this keyring
+                    const globalIndex = this.keyrings.indexOf(keyrings[ki]);
+                    const walletNum = globalIndex >= 0 ? globalIndex + 1 : ki + 1;
+                    throw new Error(
+                        `Wallet already imported (Wallet #${walletNum} in your account list has the same key).`
+                    );
+                }
+            }
         }
 
         return newAccountArray;
