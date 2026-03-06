@@ -15,9 +15,10 @@ interface ParticleCanvasProps {
     count?: number;
     speed?: number; // base speed
     color?: string;
+    size?: number; // base dot radius
 }
 
-const ParticleCanvas: React.FC<ParticleCanvasProps> = ({ count = 50, speed = 0.5, color = '#FE7901' }) => {
+const ParticleCanvas: React.FC<ParticleCanvasProps> = ({ count = 50, speed = 0.5, color = '#FE7901', size: baseSize = 1.1 }) => {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const particles = useRef<Particle[]>([]);
     const timeRef = useRef<number>(0);
@@ -50,7 +51,7 @@ const ParticleCanvas: React.FC<ParticleCanvasProps> = ({ count = 50, speed = 0.5
                 x: Math.random() * width,
                 y: Math.random() * height,
                 speed: speed + Math.random() * speed,
-                size: 1.1,
+                size: baseSize,
                 baseOpacity: 0.4 + Math.random() * 0.4,
                 offset: 0.4 + Math.random() * 1.5, // very subtle sway
                 frequency: 0.001 + Math.random() * 0.0015,
@@ -96,7 +97,7 @@ const ParticleCanvas: React.FC<ParticleCanvasProps> = ({ count = 50, speed = 0.5
         return () => {
             resizeObserver.disconnect();
         };
-    }, [count, speed, color]);
+    }, [count, speed, color, baseSize]);
 
     return <canvas ref={canvasRef} className="absolute top-0 left-0 w-full h-full pointer-events-none z-0" />;
 };

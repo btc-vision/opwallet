@@ -1,73 +1,105 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 
-import { Column, Content, Layout, Row } from '@/ui/components';
+import { Layout, Content, Logo } from '@/ui/components';
 import { useTools } from '@/ui/components/ActionComponent';
-import { Button } from '@/ui/components/Button';
-import { Input } from '@/ui/components/Input';
-import { Logo } from '@/ui/components/Logo';
-import { Text } from '@/ui/components/Text';
 import { useUnlockCallback } from '@/ui/state/global/hooks';
 import { getUiType, useWallet } from '@/ui/utils';
+import { EyeInvisibleOutlined, EyeOutlined, LoadingOutlined } from '@ant-design/icons';
+import ParticleCanvas from '@/ui/components/ParticleField/ParticleField';
 
 import { RouteTypes, useNavigate } from '../../routeTypes';
+import './unlock.css';
 
 export default function UnlockScreen() {
     const wallet = useWallet();
     const navigate = useNavigate();
     const [password, setPassword] = useState('');
+    const [unlocking, setUnlocking] = useState(false);
+    const [error, setError] = useState('');
+    const [shaking, setShaking] = useState(false);
+    const [showPassword, setShowPassword] = useState(false);
     const UIType = getUiType();
     const isInNotification = UIType.isNotification;
     const unlock = useUnlockCallback();
     const tools = useTools();
 
-    // Derive disabled from password
-    const disabled = !password;
-
-    const btnClick = async () => {
+    const handleUnlock = async () => {
+        if (!password || unlocking) return;
+        setUnlocking(true);
+        setError('');
         try {
             await unlock(password);
-
-            // Duplication detection now happens in WalletTabScreen after navigation
             if (!isInNotification) {
                 const hasVault = await wallet.hasVault();
-                if (!hasVault) {
-                    navigate(RouteTypes.WelcomeScreen);
-                    return;
-                } else {
-                    navigate(RouteTypes.MainScreen);
-                    return;
-                }
+                navigate(hasVault ? RouteTypes.MainScreen : RouteTypes.WelcomeScreen);
             }
-        } catch (e) {
-            tools.toastError(`Wrong password entered, please try again.`);
+        } catch {
+            setError('Wrong password');
+            setShaking(true);
+            setTimeout(() => setShaking(false), 500);
+            tools.toastError('Wrong password entered, please try again.');
+        } finally {
+            setUnlocking(false);
         }
     };
 
-    const handleOnKeyUp = async (e: React.KeyboardEvent<HTMLInputElement>) => {
-        if (!disabled && 'Enter' == e.key) {
-            await btnClick();
+    const handleKeyUp = async (e: React.KeyboardEvent<HTMLInputElement>) => {
+        if (e.key === 'Enter' && password) {
+            await handleUnlock();
         }
     };
+
+    const active = !!password && !unlocking;
+
     return (
         <Layout>
-            <Content preset="middle">
-                <Column fullX>
-                    <Row justifyCenter>
-                        <Logo preset="large" />
-                    </Row>
+            <Content style={{ padding: 0, overflow: 'hidden' }}>
+                <div className="unlock">
+                    <div className="unlock__particles">
+                        <ParticleCanvas count={30} speed={0.15} size={1.375} />
+                    </div>
 
-                    <Column gap="xl" mt="xxl">
-                        <Text preset="title-bold" text="Enter your password" textCenter />
-                        <Input
-                            preset="password"
-                            placeholder="Password"
-                            onChange={(e) => setPassword(e.target.value)}
-                            onKeyUp={(e) => handleOnKeyUp(e)}
-                            autoFocus={true}
-                        />
-                        <Button disabled={disabled} text="Unlock" preset="primary" onClick={btnClick} />
-                    </Column>
-                </Column>
+                    <div className="unlock__logo">
+                        <Logo preset="large" />
+                    </div>
+                    {unlocking && (
+                        <div className="unlock__loading">
+                            <LoadingOutlined style={{ fontSize: 20, color: 'var(--color-main)' }} />
+                        </div>
+                    )}
+
+                    <div className="unlock__subtitle">Enter your password to unlock</div>
+
+                    <div className={`unlock__form ${shaking ? 'anim-shake' : ''}`}>
+                        <div className="unlock__input-wrap">
+                            <input
+                                type={showPassword ? 'text' : 'password'}
+                                value={password}
+                                onChange={(e) => { setPassword(e.target.value); setError(''); }}
+                                onKeyUp={(e) => void handleKeyUp(e)}
+                                autoFocus
+                                placeholder="Password"
+                                className={`input input-center ${error ? 'input-error' : ''}`}
+                            />
+                            <button
+                                type="button"
+                                className="unlock__eye"
+                                onClick={() => setShowPassword((v) => !v)}
+                                tabIndex={-1}>
+                                {showPassword ? <EyeOutlined /> : <EyeInvisibleOutlined />}
+                            </button>
+                        </div>
+                        {error && <div className="unlock__error">{error}</div>}
+
+                        <button
+                            disabled={!active}
+                            onClick={() => void handleUnlock()}
+                            className={`btn unlock__submit ${active ? 'btn-primary' : 'btn-disabled'}`}>
+                            {unlocking && <LoadingOutlined style={{ fontSize: 14 }} />}
+                            {unlocking ? 'Unlocking...' : 'Unlock'}
+                        </button>
+                    </div>
+                </div>
             </Content>
         </Layout>
     );

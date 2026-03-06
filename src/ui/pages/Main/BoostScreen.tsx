@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 
 import { getUiType, useApproval, useWallet } from '@/ui/utils';
+import { isOnboardingComplete } from '../Onboarding';
 
 import { RouteTypes, useNavigate } from '../routeTypes';
 
@@ -55,9 +56,8 @@ export default function BoostScreen() {
         } else if (approval) {
             navigate(RouteTypes.ApprovalScreen);
         } else {
-            const experienceModeSet = await wallet.isExperienceModeSet();
-            if (!experienceModeSet) {
-                navigate(RouteTypes.UserExperienceModeScreen, { isSetup: true });
+            if (!isOnboardingComplete()) {
+                navigate(RouteTypes.OnboardingScreen);
                 return;
             }
             navigate(RouteTypes.MainScreen);

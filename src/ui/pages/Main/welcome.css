@@ -1,0 +1,43 @@
+.welcome {
+  position: relative;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-24);
+}
+
+.welcome__particles {
+  position: absolute;
+  inset: 0;
+  opacity: 0.3;
+  pointer-events: none;
+}
+
+.welcome__logo {
+  position: relative;
+  z-index: 1;
+  margin-bottom: var(--space-16);
+}
+
+.welcome__description {
+  font-size: var(--font-base);
+  color: var(--color-text-faded);
+  text-align: center;
+  max-width: 280px;
+  line-height: var(--line-height-normal);
+  margin-bottom: var(--space-32);
+  position: relative;
+  z-index: 1;
+}
+
+.welcome__actions {
+  width: 100%;
+  max-width: 300px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-10);
+  position: relative;
+  z-index: 1;
+}

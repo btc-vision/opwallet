@@ -38,7 +38,6 @@ import { useResetUiTxCreateScreen } from '@/ui/state/ui/hooks';
 import { amountToSatoshis, copyToClipboard, useWallet } from '@/ui/utils';
 
 import { BTCDomainModal, TOS_DOMAIN_ACCEPTED_KEY } from "@/ui/components/AcceptModals/btcDomainTermsModal";
-import { TermsOfServiceModal, TOS_ACCEPTED_KEY } from "@/ui/components/AcceptModals/TermsModal";
 import { useTools } from '@/ui/components/ActionComponent';
 import ParticleField from '@/ui/components/ParticleField/ParticleField';
 import { useBtcDomainsEnabled, usePrivacyModeEnabled } from '@/ui/hooks/useAppConfig';
@@ -156,11 +155,6 @@ export default function WalletTabScreen() {
     const [duplicationDetection, setDuplicationDetection] = useState<DuplicationDetectionResult | null>(null);
     const [showDuplicationAlert, setShowDuplicationAlert] = useState(false);
 
-    // TOS state - must be declared before duplication check useEffect
-    const [termsVisible, setTermsVisible] = useState(() => {
-        if (typeof window === 'undefined') return false;
-        return window.localStorage.getItem(TOS_ACCEPTED_KEY) !== '1';
-    });
 
     // Check if quantum migration is needed (SimpleKeyring without quantum key)
     useEffect(() => {
@@ -184,13 +178,8 @@ export default function WalletTabScreen() {
         void checkQuantumStatus();
     }, [currentKeyring, wallet]);
 
-    // Check for wallet duplications - only once after TOS is accepted
+    // Check for wallet duplications
     useEffect(() => {
-        // Don't check for duplicates until TOS is accepted
-        if (termsVisible) {
-            return;
-        }
-
         const checkForDuplicates = async () => {
             // Only check once per session (30 seconds threshold)
             if (await wallet.shouldSkipDuplicateCheck()) {
@@ -224,7 +213,7 @@ export default function WalletTabScreen() {
 
         void checkForDuplicates();
          
-    }, [termsVisible]);
+    }, []);
 
     // Check if MLDSA backup reminder should be shown (only for Simple Keyrings / WIF imports)
     useEffect(() => {
@@ -962,13 +951,6 @@ export default function WalletTabScreen() {
                 )}
 
             </Content>
-
-            <TermsOfServiceModal
-                open={termsVisible}
-                onAccept={() => {
-                    setTermsVisible(false);
-                }}
-            />
 
             <BTCDomainModal
                 onClose={() => setShowDomainTerms(false)}
