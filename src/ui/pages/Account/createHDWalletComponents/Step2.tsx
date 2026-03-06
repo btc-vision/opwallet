@@ -16,7 +16,6 @@ import {
     CopyOutlined,
     InfoCircleOutlined,
     LoadingOutlined,
-    SearchOutlined,
     SettingOutlined,
     WalletOutlined,
     WarningOutlined
@@ -93,21 +92,7 @@ export function Step2({
             }));
     }, [contextData]);
 
-    const allHdPathOptions = useMemo(() => {
-        return ADDRESS_TYPES.map((v) => v)
-            .sort((a, b) => a.displayIndex - b.displayIndex)
-            .map((v) => ({
-                label: v.name,
-                hdPath: v.hdPath,
-                addressType: v.value,
-                isUnisatLegacy: v.isUnisatLegacy
-            }));
-    }, []);
-
     const [previewAddresses, setPreviewAddresses] = useState<string[]>(hdPathOptions.map(() => ''));
-    const [scannedGroups, setScannedGroups] = useState<
-        { type: AddressTypes; address_arr: string[]; satoshis_arr: number[] }[]
-    >([]);
     const [addressAssets, setAddressAssets] = useState<
         Record<string, { total_btc: string; satoshis: number }>
     >({});
@@ -117,26 +102,15 @@ export function Step2({
     const [creatingWallet, setCreatingWallet] = useState(false);
     const [pathText, setPathText] = useState(contextData.customHdPath);
     const [recommendedTypeIndex, setRecommendedTypeIndex] = useState(0);
-    const [scanned, setScanned] = useState(false);
 
     useEffect(() => {
-        if (scannedGroups.length > 0) {
-            const itemIndex = scannedGroups.findIndex((v) => v.address_arr.length > 0);
-            const item = scannedGroups[itemIndex];
-            const updates: UpdateContextDataParams = { addressType: item.type, addressTypeIndex: itemIndex };
-            if (isLeatherImport) {
-                updates.customHdPath = getLeatherHdPath(item.type, contextData.leatherAccountIndex ?? 0);
-            }
-            updateContextData(updates);
-        } else {
-            const option = hdPathOptions[recommendedTypeIndex];
-            const updates: UpdateContextDataParams = { addressType: option.addressType, addressTypeIndex: recommendedTypeIndex };
-            if (isLeatherImport) {
-                updates.customHdPath = getLeatherHdPath(option.addressType, contextData.leatherAccountIndex ?? 0);
-            }
-            updateContextData(updates);
+        const option = hdPathOptions[recommendedTypeIndex];
+        const updates: UpdateContextDataParams = { addressType: option.addressType, addressTypeIndex: recommendedTypeIndex };
+        if (isLeatherImport) {
+            updates.customHdPath = getLeatherHdPath(option.addressType, contextData.leatherAccountIndex ?? 0);
         }
-    }, [recommendedTypeIndex, scannedGroups]);
+        updateContextData(updates);
+    }, [recommendedTypeIndex]);
 
     useEffect(() => {
         const generateAddress = async () => {
@@ -161,7 +135,6 @@ export function Step2({
         };
 
         void generateAddress();
-        setScanned(false);
     }, [contextData.passphrase, contextData.customHdPath]);
 
     useEffect(() => {
@@ -237,16 +210,9 @@ export function Step2({
     const disabled = useMemo(() => !(!error && !pathError), [error, pathError]);
 
     const onNext = async () => {
-        let hdPath: string;
-        if (scannedGroups.length > 0) {
-            const option = allHdPathOptions[contextData.addressTypeIndex];
-            hdPath = resolveHdPath(option.addressType, option.hdPath);
-            updateContextData({ hdPath });
-        } else {
-            const option = hdPathOptions[contextData.addressTypeIndex];
-            hdPath = resolveHdPath(option.addressType, option.hdPath);
-            updateContextData({ hdPath });
-        }
+        const option = hdPathOptions[contextData.addressTypeIndex];
+        const hdPath = resolveHdPath(option.addressType, option.hdPath);
+        updateContextData({ hdPath });
 
         if (contextData.isRestore && contextData.restoreWalletType === RestoreWalletType.XVERSE) {
             updateContextData({ tabType: TabType.STEP5 });
@@ -271,66 +237,6 @@ export function Step2({
 
         const nextStep = contextData.isRestore ? TabType.STEP4 : TabType.STEP3;
         updateContextData({ tabType: nextStep });
-    };
-
-    const scanVaultAddress = async () => {
-        setScanned(true);
-        tools.showLoading(true);
-        try {
-            await Web3API.setNetwork(await wallet.getChainType());
-
-            const groups: {
-                type: AddressTypes;
-                address_arr: string[];
-                satoshis_arr: number[];
-                pubkey_arr: string[];
-            }[] = [];
-
-            for (const options of allHdPathOptions) {
-                const address_arr: string[] = [];
-                const satoshis_arr: number[] = [];
-                try {
-                    const keyring = await wallet.createTmpKeyringWithMnemonics(
-                        contextData.mnemonics,
-                        resolveHdPath(options.addressType, options.hdPath),
-                        contextData.passphrase,
-                        options.addressType,
-                        10
-                    );
-                    keyring.accounts.forEach((v) => {
-                        address_arr.push(v.address);
-                    });
-                } catch (e) {
-                    setError((e as Error).message);
-                    return;
-                }
-
-                // Fetch balances for derived addresses
-                try {
-                    const balances = await wallet.getMultiAddressAssets(address_arr.join(','));
-                    for (let i = 0; i < address_arr.length; i++) {
-                        satoshis_arr.push(balances[i]?.totalSatoshis ?? 0);
-                    }
-                } catch {
-                    // Fill with zeros if balance fetch fails
-                    for (let i = 0; i < address_arr.length; i++) {
-                        satoshis_arr.push(0);
-                    }
-                }
-
-                groups.push({ type: options.addressType, address_arr, satoshis_arr, pubkey_arr: [] });
-            }
-
-            setScannedGroups(groups);
-            const hasAny = groups.some((g) => g.satoshis_arr.some((v) => v > 0));
-            if (!hasAny) {
-                tools.showTip('No addresses with funds found');
-            }
-        } catch (e) {
-            setError((e as Error).message);
-        } finally {
-            tools.showLoading(false);
-        }
     };
 
     const handleCopyAddress = (addr: string) => {
@@ -362,39 +268,6 @@ export function Step2({
                 </div>
             </div>
 
-            {/* Scan button for restore */}
-            {contextData.isRestore && !scanned && (
-                <button
-                    onClick={() => void scanVaultAddress()}
-                    style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: '8px',
-                        width: '100%',
-                        padding: '10px',
-                        background: `${colors.main}10`,
-                        border: `1px dashed ${colors.main}40`,
-                        borderRadius: '10px',
-                        cursor: 'pointer',
-                        transition: 'all 0.15s',
-                        color: colors.main,
-                        fontSize: '12px',
-                        fontWeight: 600
-                    }}
-                    onMouseEnter={(e) => {
-                        e.currentTarget.style.background = `${colors.main}18`;
-                        e.currentTarget.style.borderColor = colors.main;
-                    }}
-                    onMouseLeave={(e) => {
-                        e.currentTarget.style.background = `${colors.main}10`;
-                        e.currentTarget.style.borderColor = `${colors.main}40`;
-                    }}>
-                    <SearchOutlined style={{ fontSize: 14 }} />
-                    Scan for addresses with funds
-                </button>
-            )}
-
             {/* Address Type Cards */}
             <div
                 style={{
@@ -403,38 +276,7 @@ export function Step2({
                     border: `1px solid ${colors.containerBorder}`,
                     overflow: 'hidden'
                 }}>
-                {scannedGroups.length > 0
-                    ? (() => {
-                          const visible = scannedGroups
-                              .map((item, index) => ({ item, index, options: allHdPathOptions[index] }))
-                              .filter(({ item }) => item.satoshis_arr.some((v) => v > 0));
-                          return visible.map(({ item, index, options }, vi) => {
-                              const isSelected = index === contextData.addressTypeIndex;
-                              const info = ADDRESS_TYPE_INFO[options.addressType];
-                              return (
-                                  <AddressTypeOption
-                                      key={index}
-                                      label={options.label}
-                                      tag={info?.tag}
-                                      description={info?.desc || ''}
-                                      addresses={item.address_arr}
-                                      satoshis={item.satoshis_arr}
-                                      selected={isSelected}
-                                      recommended={options.addressType === AddressTypes.P2TR}
-                                      isLast={vi === visible.length - 1}
-                                      btcUnit={btcUnit}
-                                      onCopy={handleCopyAddress}
-                                      onClick={() => {
-                                          updateContextData({
-                                              addressTypeIndex: index,
-                                              addressType: options.addressType
-                                          });
-                                      }}
-                                  />
-                              );
-                          });
-                      })()
-                    : (() => {
+                {(() => {
                           const visible = hdPathOptions
                               .map((item, index) => ({ item, index }))
                               .filter(({ item }) => {
