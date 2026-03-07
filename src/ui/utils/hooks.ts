@@ -50,6 +50,19 @@ export const useApproval = () => {
         [getApproval, navigate, wallet]
     );
 
+    const visibilityTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+    const handleVisibilityChange = useCallback(() => {
+        if (document.visibilityState === 'hidden') {
+            visibilityTimeout.current = setTimeout(async () => {
+                await rejectApproval('User left the approval window', false, false);
+            }, 5000);
+        } else if (visibilityTimeout.current) {
+            clearTimeout(visibilityTimeout.current);
+            visibilityTimeout.current = null;
+        }
+    }, [rejectApproval]);
+
     const handleBeforeUnload = useCallback(async () => {
         await rejectApproval('beforeUnload event occurred', false, false);
     }, [rejectApproval]);
@@ -58,10 +71,27 @@ export const useApproval = () => {
         if (!getUiType().isNotification) {
             return;
         }
-        window.addEventListener('beforeunload', handleBeforeUnload);
 
-        return () => window.removeEventListener('beforeunload', handleBeforeUnload);
-    }, [handleBeforeUnload]);
+        const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+
+        if (isMobile) {
+            document.addEventListener('visibilitychange', handleVisibilityChange);
+        } else {
+            window.addEventListener('beforeunload', handleBeforeUnload);
+        }
+
+        return () => {
+            if (isMobile) {
+                document.removeEventListener('visibilitychange', handleVisibilityChange);
+            } else {
+                window.removeEventListener('beforeunload', handleBeforeUnload);
+            }
+
+            if (visibilityTimeout.current) {
+                clearTimeout(visibilityTimeout.current);
+            }
+        };
+    }, [handleBeforeUnload, handleVisibilityChange]);
 
     return { getApproval, resolveApproval, rejectApproval };
 };

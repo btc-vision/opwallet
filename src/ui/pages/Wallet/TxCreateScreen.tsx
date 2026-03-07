@@ -128,6 +128,12 @@ export default function TxCreateScreen() {
         void (async () => {
             const chain = await wallet.getChainType();
             await Web3API.setNetwork(chain);
+
+            // Load UTXO protection preference
+            const utxoProtectionDisabled = await wallet.getUTXOProtectionDisabled();
+            if (utxoProtectionDisabled) {
+                setChecked(true); // checked=true means optimize=false (include small UTXOs)
+            }
         })();
     }, [wallet]);
 

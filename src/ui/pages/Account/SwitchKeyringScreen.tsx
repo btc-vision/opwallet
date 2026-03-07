@@ -91,13 +91,13 @@ export function MyItem({ keyring, autoNav }: MyItemProps, ref: React.Ref<HTMLDiv
     const getWalletTypeIcon = () => {
         switch (keyring.type) {
             case KEYRING_TYPE.HdKeyring:
-                return '🔑';
+                return <WalletOutlined style={{ fontSize: 14 }} />;
             case KEYRING_TYPE.SimpleKeyring:
-                return '🔐';
+                return <KeyOutlined style={{ fontSize: 14 }} />;
             case KEYRING_TYPE.KeystoneKeyring:
-                return '🗝️';
+                return <LockOutlined style={{ fontSize: 14 }} />;
             default:
-                return '🔑';
+                return <WalletOutlined style={{ fontSize: 14 }} />;
         }
     };
 

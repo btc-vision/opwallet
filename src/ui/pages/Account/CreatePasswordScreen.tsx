@@ -1,13 +1,15 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 
-import { Button, Column, Content, Input, Layout, Row, Text } from '@/ui/components';
+import { Layout, Content, Header } from '@/ui/components';
 import { useTools } from '@/ui/components/ActionComponent';
 import { useWallet, useWalletRequest } from '@/ui/utils';
 import { getPasswordStrengthWord, MIN_PASSWORD_LENGTH } from '@/ui/utils/password-utils';
+import { LockOutlined } from '@ant-design/icons';
 
 import { WalletError } from '@/shared/types/Error';
 import { RouteTypes, useNavigate } from '../routeTypes';
+import './create-password.css';
 
 interface LocationState {
     isNewAccount?: boolean;
@@ -21,10 +23,7 @@ export default function CreatePasswordScreen() {
     const params = new URLSearchParams(loc.search);
 
     let state: LocationState = {};
-    if (loc.state) {
-        state = loc.state as LocationState;
-    }
-
+    if (loc.state) state = loc.state as LocationState;
     if (Array.from(params).length > 0) {
         params.forEach((value, key) => {
             state[key as keyof LocationState] = value === 'true';
@@ -35,103 +34,91 @@ export default function CreatePasswordScreen() {
     const [newPassword, setNewPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
 
-    // Derive disabled state from password values instead of using useEffect
     const disabled = useMemo(() => {
         return !(newPassword && newPassword.length >= MIN_PASSWORD_LENGTH && newPassword === confirmPassword);
     }, [newPassword, confirmPassword]);
 
     const tools = useTools();
-    const [run, _] = useWalletRequest(wallet.boot.bind(wallet), {
+    const [run] = useWalletRequest(wallet.boot.bind(wallet), {
         onSuccess() {
-            if (isKeystone) {
-                navigate(RouteTypes.CreateKeystoneWalletScreen, { fromUnlock: true });
-            } else if (isNewAccount) {
-                navigate(RouteTypes.CreateHDWalletScreen, { isImport: false, fromUnlock: true });
-            } else {
-                navigate(RouteTypes.CreateHDWalletScreen, { isImport: true, fromUnlock: true });
-            }
+            if (isKeystone) navigate(RouteTypes.CreateKeystoneWalletScreen, { fromUnlock: true });
+            else if (isNewAccount) navigate(RouteTypes.CreateHDWalletScreen, { isImport: false, fromUnlock: true });
+            else navigate(RouteTypes.CreateHDWalletScreen, { isImport: true, fromUnlock: true });
         },
         onError(err: WalletError) {
             tools.toastError(typeof err === 'string' ? err : err.message);
         }
     });
 
-    const btnClick = () => {
-        void run(newPassword.trim());
-    };
-
-    const strongText = useMemo(() => {
-        if (!newPassword) {
-            return;
-        }
-        const { text, color, tip } = getPasswordStrengthWord(newPassword);
-
-        return (
-            <Column>
-                <Row>
-                    <Text size="xs" text={'Password strength: '} />
-                    <Text size="xs" text={text} style={{ color: color }} />
-                </Row>
-                {tip ? <Text size="xs" preset="sub" text={tip} /> : null}
-            </Column>
-        );
+    const strengthInfo = useMemo(() => {
+        if (!newPassword) return null;
+        return getPasswordStrengthWord(newPassword);
     }, [newPassword]);
 
-    const matchText = useMemo(() => {
-        if (!confirmPassword) {
-            return;
-        }
+    const passwordsMatch = confirmPassword ? newPassword === confirmPassword : true;
 
-        if (newPassword !== confirmPassword) {
-            return (
-                <Row>
-                    <Text size="xs" text={"Passwords don't match"} color="red" />
-                </Row>
-            );
-        } else {
-            return;
-        }
-    }, [newPassword, confirmPassword]);
-
-    const handleOnKeyUp = (e: React.KeyboardEvent<HTMLInputElement>) => {
-        if (!disabled && 'Enter' == e.key) {
-            btnClick();
-        }
+    const handleKeyUp = (e: React.KeyboardEvent<HTMLInputElement>) => {
+        if (!disabled && e.key === 'Enter') void run(newPassword.trim());
     };
 
     return (
         <Layout>
-            <Content preset="middle">
-                <Column fullX fullY>
-                    <Column gap="xl" style={{ marginTop: 200 }}>
-                        <Text text="Create a password" preset="title-bold" textCenter />
-                        <Text text="You will use this to unlock your wallet" preset="sub" textCenter />
-                        <Column>
-                            <Input
-                                preset="password"
-                                onChange={(e) => {
-                                    setNewPassword(e.target.value);
-                                }}
-                                autoFocus={true}
-                            />
-                            {strongText}
-                        </Column>
+            <Header onBack={() => window.history.go(-1)} title="Create Password" />
+            <Content>
+                <div className="create-password">
+                    <div className="icon-circle icon-circle-lg create-password__icon">
+                        <LockOutlined style={{ fontSize: 24, color: 'var(--color-main)' }} />
+                    </div>
 
-                        <Column>
-                            <Input
-                                preset="password"
-                                placeholder="Confirm Password"
-                                onChange={(e) => {
-                                    setConfirmPassword(e.target.value);
-                                }}
-                                onKeyUp={(e) => handleOnKeyUp(e)}
-                            />
-                            {matchText}
-                        </Column>
+                    <div className="create-password__subtitle">
+                        You will use this to unlock your wallet
+                    </div>
 
-                        <Button disabled={disabled} text="Continue" preset="primary" onClick={btnClick} />
-                    </Column>
-                </Column>
+                    <div className="create-password__field">
+                        <div className="create-password__field-label">Password</div>
+                        <input
+                            type="password"
+                            value={newPassword}
+                            onChange={(e) => setNewPassword(e.target.value)}
+                            autoFocus
+                            placeholder="Enter password"
+                            className="input"
+                        />
+                        {strengthInfo && (
+                            <div className="create-password__strength">
+                                <span className="create-password__strength-label">Strength: </span>
+                                <span className="create-password__strength-value" style={{ color: strengthInfo.color }}>
+                                    {strengthInfo.text}
+                                </span>
+                                {strengthInfo.tip && (
+                                    <div className="create-password__strength-tip">{strengthInfo.tip}</div>
+                                )}
+                            </div>
+                        )}
+                    </div>
+
+                    <div className="create-password__field">
+                        <div className="create-password__field-label">Confirm Password</div>
+                        <input
+                            type="password"
+                            value={confirmPassword}
+                            onChange={(e) => setConfirmPassword(e.target.value)}
+                            onKeyUp={handleKeyUp}
+                            placeholder="Confirm password"
+                            className={`input ${!passwordsMatch ? 'input-error' : ''}`}
+                        />
+                        {!passwordsMatch && (
+                            <div className="create-password__mismatch">Passwords don&apos;t match</div>
+                        )}
+                    </div>
+
+                    <button
+                        disabled={disabled}
+                        onClick={() => void run(newPassword.trim())}
+                        className={`btn w-full ${disabled ? 'btn-disabled' : 'btn-primary'}`}>
+                        Continue
+                    </button>
+                </div>
             </Content>
         </Layout>
     );

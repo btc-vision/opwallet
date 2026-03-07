@@ -1,13 +1,12 @@
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
 
 const colors = {
-    buttonBg: '#434343',
-    buttonHoverBg: 'rgba(85, 85, 85, 0.3)',
-    buttonBorder: '#444746',
-    buttonBorderHover: '#f37413',
     main: '#f37413',
-    text: '#dbdbdb'
+    mainDark: '#d5640f',
+    text: '#dbdbdb',
+    textFaded: 'rgba(219, 219, 219, 0.55)',
+    containerBorder: '#303030',
+    bg: '#292929'
 };
 
 interface ActionButtonProps {
@@ -17,52 +16,67 @@ interface ActionButtonProps {
 }
 
 const ActionButton: React.FC<ActionButtonProps> = ({ label, onClick, icon }) => {
-    const navigate = useNavigate();
     return (
         <button
             onClick={onClick}
             style={{
                 display: 'flex',
                 flexDirection: 'column',
-                aspectRatio: '1 / 1',
                 alignItems: 'center',
                 justifyContent: 'center',
-                gap: '2px',
-                background: colors.buttonHoverBg,
-                border: `1px solid`,
-                borderColor: colors.buttonBorder,
-                borderRadius: '12px',
+                gap: '5px',
+                padding: '4px 4px 4px',
+                background: 'transparent',
+                border: 'none',
+                borderRadius: '16px',
                 cursor: 'pointer',
-                transition: 'all 0.15s'
+                transition: 'all 0.2s'
             }}
             onMouseEnter={(e) => {
-                e.currentTarget.style.background = colors.buttonBg;
-                e.currentTarget.style.borderColor = colors.main;
-                e.currentTarget.style.transform = 'translateY(-2px)';
+                const circle = e.currentTarget.querySelector<HTMLElement>('[data-icon-circle]');
+                if (circle) {
+                    circle.style.background = `linear-gradient(135deg, ${colors.main} 0%, ${colors.mainDark} 100%)`;
+                    circle.style.borderColor = colors.main;
+                    circle.style.transform = 'scale(1.08)';
+                    circle.style.boxShadow = `0 4px 16px ${colors.main}40`;
+                }
+                const lbl = e.currentTarget.querySelector<HTMLElement>('[data-label]');
+                if (lbl) lbl.style.color = colors.text;
             }}
             onMouseLeave={(e) => {
-                e.currentTarget.style.background = colors.buttonHoverBg;
-                e.currentTarget.style.borderColor = colors.buttonBorder;
-                e.currentTarget.style.transform = 'translateY(0)';
+                const circle = e.currentTarget.querySelector<HTMLElement>('[data-icon-circle]');
+                if (circle) {
+                    circle.style.background = colors.bg;
+                    circle.style.borderColor = colors.containerBorder;
+                    circle.style.transform = 'scale(1)';
+                    circle.style.boxShadow = 'none';
+                }
+                const lbl = e.currentTarget.querySelector<HTMLElement>('[data-label]');
+                if (lbl) lbl.style.color = colors.textFaded;
             }}>
             <div
+                data-icon-circle=""
                 style={{
-                    width: '32px',
-                    height: '32px',
-                    borderRadius: '8px',
+                    width: '44px',
+                    height: '44px',
+                    borderRadius: '50%',
+                    background: colors.bg,
+                    border: `1.5px solid ${colors.containerBorder}`,
                     display: 'flex',
                     alignItems: 'center',
-                    marginBottom: '-5px',
-                    justifyContent: 'center'
+                    justifyContent: 'center',
+                    transition: 'all 0.25s ease'
                 }}>
                 {icon}
             </div>
             <span
+                data-label=""
                 style={{
                     fontSize: '11px',
-                    fontWeight: 500,
-                    color: colors.text,
-                    fontFamily: 'Inter-Regular, serif'
+                    fontWeight: 600,
+                    color: colors.textFaded,
+                    fontFamily: 'Inter-Regular, serif',
+                    transition: 'color 0.2s'
                 }}>
                 {label}
             </span>

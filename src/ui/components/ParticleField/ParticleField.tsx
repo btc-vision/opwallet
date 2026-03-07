@@ -15,9 +15,10 @@ interface ParticleCanvasProps {
     count?: number;
     speed?: number; // base speed
     color?: string;
+    size?: number; // base dot radius
 }
 
-const ParticleCanvas: React.FC<ParticleCanvasProps> = ({ count = 50, speed = 0.5, color = '#FE7901' }) => {
+const ParticleCanvas: React.FC<ParticleCanvasProps> = ({ count = 50, speed = 0.5, color = '#FE7901', size: baseSize = 1.1 }) => {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const particles = useRef<Particle[]>([]);
     const timeRef = useRef<number>(0);
@@ -30,11 +31,19 @@ const ParticleCanvas: React.FC<ParticleCanvasProps> = ({ count = 50, speed = 0.5
         if (!ctx) return;
 
         const resizeCanvas = () => {
-            canvas.width = window.innerWidth;
-            canvas.height = window.innerHeight;
+            const parent = canvas.parentElement;
+            if (parent) {
+                canvas.width = parent.clientWidth;
+                canvas.height = parent.clientHeight;
+            }
         };
         resizeCanvas();
-        window.addEventListener('resize', resizeCanvas);
+
+        const resizeObserver = new ResizeObserver(resizeCanvas);
+        const parent = canvas.parentElement;
+        if (parent) {
+            resizeObserver.observe(parent);
+        }
 
         const createParticles = () => {
             const { width, height } = canvas;
@@ -42,7 +51,7 @@ const ParticleCanvas: React.FC<ParticleCanvasProps> = ({ count = 50, speed = 0.5
                 x: Math.random() * width,
                 y: Math.random() * height,
                 speed: speed + Math.random() * speed,
-                size: 1.5,
+                size: baseSize,
                 baseOpacity: 0.4 + Math.random() * 0.4,
                 offset: 0.4 + Math.random() * 1.5, // very subtle sway
                 frequency: 0.001 + Math.random() * 0.0015,
@@ -86,9 +95,9 @@ const ParticleCanvas: React.FC<ParticleCanvasProps> = ({ count = 50, speed = 0.5
         requestAnimationFrame(animate);
 
         return () => {
-            window.removeEventListener('resize', resizeCanvas);
+            resizeObserver.disconnect();
         };
-    }, [count, speed, color]);
+    }, [count, speed, color, baseSize]);
 
     return <canvas ref={canvasRef} className="absolute top-0 left-0 w-full h-full pointer-events-none z-0" />;
 };

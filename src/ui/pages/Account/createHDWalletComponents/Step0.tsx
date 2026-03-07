@@ -1,6 +1,6 @@
 import { RESTORE_WALLETS } from '@/shared/constant';
 import { RestoreWalletType } from '@/shared/types';
-import { Column, Text } from '@/ui/components';
+import { Column } from '@/ui/components';
 import { ContextData, TabType, UpdateContextDataParams } from '@/ui/pages/Account/createHDWalletComponents/types';
 import {
     WalletOutlined,
@@ -46,30 +46,7 @@ export function Step0({
     updateContextData: (params: UpdateContextDataParams) => void;
 }) {
     return (
-        <Column gap="lg">
-            {/* Header */}
-            <div style={{ textAlign: 'center', marginBottom: '4px' }}>
-                <div
-                    style={{
-                        width: '60px',
-                        height: '60px',
-                        borderRadius: '50%',
-                        background: `linear-gradient(135deg, ${colors.main}20 0%, ${colors.main}10 100%)`,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        margin: '0 auto 16px'
-                    }}>
-                    <ImportOutlined style={{ fontSize: 28, color: colors.main }} />
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'center' }}>
-                    <Text text="Select Your Wallet" preset="bold" size="lg" />
-                </div>
-                <div style={{ fontSize: '13px', color: colors.textFaded, marginTop: '8px' }}>
-                    Choose the wallet you are restoring from so we can use the correct derivation path
-                </div>
-            </div>
-
+        <Column gap="md">
             {/* Wallet Options */}
             <div
                 style={{
@@ -113,7 +90,7 @@ export function Step0({
                                     width: '40px',
                                     height: '40px',
                                     borderRadius: '10px',
-                                    background: `${colors.containerBorder}`,
+                                    background: colors.containerBorder,
                                     display: 'flex',
                                     alignItems: 'center',
                                     justifyContent: 'center',
@@ -152,20 +129,6 @@ export function Step0({
                         </button>
                     );
                 })}
-            </div>
-
-            {/* Tip */}
-            <div
-                style={{
-                    padding: '10px 12px',
-                    background: `${colors.main}08`,
-                    border: `1px solid ${colors.main}15`,
-                    borderRadius: '10px'
-                }}>
-                <span style={{ fontSize: '11px', color: colors.textFaded, lineHeight: '1.5' }}>
-                    Not sure? Select <strong style={{ color: colors.text }}>OP_WALLET</strong> or{' '}
-                    <strong style={{ color: colors.text }}>Other Wallet</strong> -- both support all standard derivation paths.
-                </span>
             </div>
         </Column>
     );

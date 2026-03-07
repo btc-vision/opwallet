@@ -81,20 +81,22 @@ body {
     display: flex;
     align-items: center;
     gap: 6px;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
+    overflow: hidden;
+    min-width: 0;
 }
 
 .op_account_type_badge {
     display: inline-flex;
     align-items: center;
-    padding: 2px 6px;
-    font-size: 10px;
+    padding: 1px 3px;
+    font-size: 8px;
     font-weight: 600;
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    border-radius: 4px;
+    border: none;
+    border-radius: 9999px;
     color: rgba(255, 255, 255, 0.9);
     text-transform: uppercase;
-    letter-spacing: 0.3px;
+    letter-spacing: 0.2px;
     white-space: nowrap;
 }
 
@@ -102,6 +104,8 @@ body {
     flex: 1;
     display: flex;
     align-items: center;
+    min-width: 0;
+    overflow: hidden;
 }
 
 .op_account_col_2 {
@@ -110,11 +114,22 @@ body {
     align-items: center;
 }
 
+.op_account_details {
+    min-width: 0;
+    overflow: hidden;
+    flex: 1;
+}
+
 .op_account_name {
-    font-size: 14px;
+    font-size: 10px;
     line-height: normal;
     font-family: Inter-Regular, serif;
     color: var(--opnet-text-color);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    flex-shrink: 1;
+    min-width: 0;
 }
 
 .op_account_wallet {
@@ -229,30 +244,36 @@ body {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    background-color: transparent;
+    background-color: #292929;
     color: var(--opnet-button-text-color);
-    border-radius: 17px;
+    border-radius: 14px;
+    border: 1px solid #303030;
+    padding: 4px 6px 4px 4px;
     cursor: pointer;
-    transition: background 0.3s,
-    color 0.3s;
+    transition: all 0.2s ease;
 }
 
 .op_token_container:hover {
-    background-color: #2d2c2c;
+    background-color: #333333;
+    border-color: #444746;
 }
 
 .op_token_col_1 {
     flex: 1;
     display: flex;
     align-items: center;
+    gap: 2px;
 }
 
 .op_token_image {
-    height: 42px;
-    width: 42px;
+    height: 40px;
+    width: 40px;
     display: flex;
     align-items: center;
     justify-content: center;
+    border-radius: 50%;
+    background: transparent;
+    flex-shrink: 0;
 }
 
 .op_token_image > img {
@@ -263,37 +284,39 @@ body {
 
 .op_token_title {
     font-size: 13px;
-    font-weight: 500;
+    font-weight: 600;
     color: var(--opnet-button-text-color);
 }
 
 .op_token_remove {
-    height: 42px;
-    width: 42px;
+    height: 34px;
+    width: 34px;
     display: flex;
-    color: var(--opnet-button-background-color);
+    color: rgba(219, 219, 219, 0.3);
     align-items: center;
     justify-content: center;
-    transition: background 0.3s,
-    color 0.3s;
+    border-radius: 8px;
+    transition: all 0.2s;
 }
 
 .op_token_remove:hover {
-    color: white;
+    color: #ef4444;
+    background: rgba(239, 68, 68, 0.1);
 }
 
 .op_token_col_2 {
     flex: 0 0 auto;
     display: flex;
     align-items: center;
+    gap: 4px;
 }
 
 .op_token_balance {
-    font-size: 12px;
+    font-size: 13px;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    font-weight: 550;
+    font-weight: 600;
     color: var(--opnet-main-color);
     cursor: pointer;
 }
@@ -876,3 +899,16 @@ button.op_token_action_button {
 .backdrop-fade-out {
     animation: fadeBackdropOut 0.3s ease-in forwards;
 }
+
+/* Global layout width constraint for wide screens */
+@media (min-width: 700px) {
+    .layout-constrained {
+        max-width: 450px !important;
+        width: 450px !important;
+        margin-left: auto !important;
+        margin-right: auto !important;
+        border-left: 1px solid #303030;
+        border-right: 1px solid #303030;
+    }
+}
+

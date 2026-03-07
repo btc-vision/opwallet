@@ -1,102 +1,65 @@
-import React, { useEffect, useState } from 'react';
+import { useState } from 'react';
 
-import { Button, Column, Content, Layout, Logo, Row, Text } from '@/ui/components';
+import { Layout, Content, Logo } from '@/ui/components';
 import { useWallet } from '@/ui/utils';
+import ParticleCanvas from '@/ui/components/ParticleField/ParticleField';
+import { PlusOutlined, ImportOutlined, UsbOutlined } from '@ant-design/icons';
 
 import { RouteTypes, useNavigate } from '../routeTypes';
 import { ConnectHardwareModal } from './ConnectHardwareModal';
-import { TermsOfServiceModal, TOS_ACCEPTED_KEY } from '@/ui/components/AcceptModals/TermsModal';
+import './welcome.css';
 
 export default function WelcomeScreen() {
     const navigate = useNavigate();
     const wallet = useWallet();
-
     const [connectHardwareModalVisible, setConnectHardwareModalVisible] = useState(false);
-    const [termsVisible, setTermsVisible] = useState(false);
 
-    useEffect(() => {
-        if (typeof window === 'undefined') return;
-
-        // Only show if they haven't accepted yet (tied to the accept button).
-        const accepted = window.localStorage.getItem(TOS_ACCEPTED_KEY) === '1';
-        // eslint-disable-next-line react-hooks/set-state-in-effect -- Check localStorage on mount
-        if (!accepted) setTermsVisible(true);
-    }, []);
+    const handleAction = async (isImport: boolean) => {
+        const isBooted = await wallet.isBooted();
+        if (isBooted) {
+            navigate(RouteTypes.CreateHDWalletScreen, { isImport });
+        } else {
+            navigate(RouteTypes.CreatePasswordScreen, { isNewAccount: !isImport });
+        }
+    };
 
     return (
         <Layout>
-            <Content preset="middle">
-                <Column fullX>
-                    <Row justifyCenter>
+            <Content style={{ padding: 0, overflow: 'hidden' }}>
+                <div className="welcome">
+                    <div className="welcome__particles">
+                        <ParticleCanvas count={15} speed={0.12} />
+                    </div>
+
+                    <div className="welcome__logo">
                         <Logo preset="large" />
-                    </Row>
+                    </div>
 
-                    <Column gap="xl" mt="xxl">
-                        <Text
-                            text="A browser extension for managing tokens and interacting with apps on the OP_NET Bitcoin Layer 1 Metaprotocol."
-                            preset="sub"
-                            textCenter
-                        />
+                    <div className="welcome__description">
+                        Manage tokens and interact with apps on the OP_NET Bitcoin L1 Metaprotocol.
+                    </div>
 
-                        <Button
-                            text="Create new wallet"
-                            preset="primary"
-                            onClick={async () => {
-                                const isBooted = await wallet.isBooted();
-                                if (isBooted) {
-                                    navigate(RouteTypes.CreateHDWalletScreen, { isImport: false });
-                                } else {
-                                    navigate(RouteTypes.CreatePasswordScreen, { isNewAccount: true });
-                                }
-                            }}
-                        />
+                    <div className="welcome__actions">
+                        <button className="btn btn-primary" onClick={() => void handleAction(false)}>
+                            <PlusOutlined style={{ fontSize: 14 }} />
+                            Create New Wallet
+                        </button>
 
-                        <Button
-                            text="I already have a wallet"
-                            preset="default"
-                            onClick={async () => {
-                                const isBooted = await wallet.isBooted();
-                                if (isBooted) {
-                                    navigate(RouteTypes.CreateHDWalletScreen, { isImport: true });
-                                } else {
-                                    navigate(RouteTypes.CreatePasswordScreen, { isNewAccount: false });
-                                }
-                            }}
-                        />
+                        <button className="btn btn-secondary" onClick={() => void handleAction(true)}>
+                            <ImportOutlined style={{ fontSize: 14 }} />
+                            Import Existing Wallet
+                        </button>
 
-                        <Button
-                            text="Connect to Hardware Wallet"
-                            preset="default"
-                            onClick={() => {
-                                setConnectHardwareModalVisible(true);
-                            }}
-                        />
+                        <button className="btn btn-ghost" onClick={() => setConnectHardwareModalVisible(true)}>
+                            <UsbOutlined style={{ fontSize: 13 }} />
+                            Hardware Wallet
+                        </button>
+                    </div>
+                </div>
 
-                        {/* Optional: reopen the Terms modal manually (it still only closes via “I accept”) */}
-                        <Button
-                            text="Terms of service"
-                            preset="approval"
-                            onClick={() => {
-                                setTermsVisible(true);
-                            }}
-                        />
-
-                        {connectHardwareModalVisible && (
-                            <ConnectHardwareModal
-                                onClose={() => {
-                                    setConnectHardwareModalVisible(false);
-                                }}
-                            />
-                        )}
-
-                        <TermsOfServiceModal
-                            open={termsVisible}
-                            onAccept={() => {
-                                setTermsVisible(false);
-                            }}
-                        />
-                    </Column>
-                </Column>
+                {connectHardwareModalVisible && (
+                    <ConnectHardwareModal onClose={() => setConnectHardwareModalVisible(false)} />
+                )}
             </Content>
         </Layout>
     );

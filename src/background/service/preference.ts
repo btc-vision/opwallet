@@ -58,6 +58,7 @@ export interface PreferenceStore {
     mldsaBackupDismissed: Record<string, boolean>; // keyed by wallet pubkey
     duplicationState: DuplicationState; // tracks duplication resolution progress
     experienceMode: ExperienceMode; // 'simple' | 'expert' | undefined (not set)
+    utxoProtectionDisabled: boolean; // false = filter small UTXOs (safe), true = allow all UTXOs
 }
 
 const SUPPORT_LOCALES = ['en'];
@@ -104,7 +105,8 @@ const DEFAULTS = {
             backupDownloaded: false,
             conflictsResolved: []
         },
-        experienceMode: undefined
+        experienceMode: undefined,
+        utxoProtectionDisabled: false
     } as PreferenceStore
 };
 
@@ -196,6 +198,10 @@ class PreferenceService {
 
         if (!this.store.customNetworks) {
             this.store.customNetworks = {};
+        }
+
+        if (typeof this.store.utxoProtectionDisabled !== 'boolean') {
+            this.store.utxoProtectionDisabled = false;
         }
 
         if (!saved) {
@@ -743,6 +749,19 @@ class PreferenceService {
     };
 
     // ==================== END EXPERIENCE MODE ====================
+
+    // ==================== UTXO PROTECTION ====================
+
+    getUTXOProtectionDisabled = (): boolean => {
+        return this.store.utxoProtectionDisabled ?? false;
+    };
+
+    setUTXOProtectionDisabled = async (disabled: boolean): Promise<void> => {
+        this.store.utxoProtectionDisabled = disabled;
+        await this.persist();
+    };
+
+    // ==================== END UTXO PROTECTION ====================
 
     private persist = async () => {
         await browser.storage.local.set({ preference: this.store });

@@ -1,0 +1,50 @@
+/* ─── Animations ─── */
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  10%, 30%, 50%, 70%, 90% { transform: translateX(-4px); }
+  20%, 40%, 60%, 80% { transform: translateX(4px); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translate(-50%, calc(-50% + 20px));
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%);
+  }
+}
+
+.anim-shake {
+  animation: shake 0.5s ease-in-out;
+}
+
+.anim-fade-in {
+  animation: fadeIn var(--transition-normal);
+}
+
+/* ── Accessibility: Respect reduced motion ── */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+
+  .toggle-thumb {
+    transition: none;
+  }
+
+  .anim-shake {
+    animation: none;
+  }
+}

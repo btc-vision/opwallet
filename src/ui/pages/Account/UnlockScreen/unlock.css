@@ -1,0 +1,86 @@
+.unlock {
+  position: relative;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-24);
+}
+
+.unlock__particles {
+  position: absolute;
+  inset: 0;
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+.unlock__logo {
+  position: relative;
+  z-index: 1;
+  margin-bottom: var(--space-16);
+}
+
+.unlock__loading {
+  position: relative;
+  z-index: 1;
+  margin-bottom: var(--space-8);
+}
+
+.unlock__subtitle {
+  font-size: var(--font-base);
+  color: var(--color-text-faded);
+  margin-bottom: var(--space-32);
+  position: relative;
+  z-index: 1;
+}
+
+.unlock__form {
+  width: 100%;
+  max-width: 300px;
+  position: relative;
+  z-index: 1;
+}
+
+.unlock__input-wrap {
+  position: relative;
+}
+
+.unlock__input-wrap .input {
+  padding-right: 36px;
+}
+
+.unlock__eye {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: var(--color-text-faded);
+  font-size: 16px;
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.unlock__eye:hover {
+  color: var(--color-text);
+}
+
+.unlock__error {
+  font-size: var(--font-md);
+  color: var(--color-error);
+  text-align: center;
+  margin-top: var(--space-8);
+}
+
+.unlock__submit {
+  margin-top: var(--space-16);
+}
+
+.unlock__submit:not(:disabled):hover {
+  transform: translateY(-1px);
+}

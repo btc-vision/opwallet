@@ -4,7 +4,7 @@ import { BitcoinBalance } from '@/shared/types';
 import { useCurrentAccount } from '@/ui/state/accounts/hooks';
 import { useResetUiTxCreateScreen } from '@/ui/state/ui/hooks';
 import { useWallet } from '@/ui/utils';
-import { useCallback } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { RouteTypes, useNavigate } from '../../../routeTypes';
 
 /**
@@ -62,6 +62,11 @@ export function useConsolidation() {
     const currentAccount = useCurrentAccount();
     const resetUiTxCreateScreen = useResetUiTxCreateScreen();
     const navigate = useNavigate();
+    const [utxoProtectionDisabled, setUtxoProtectionDisabled] = useState(false);
+
+    useEffect(() => {
+        void wallet.getUTXOProtectionDisabled().then(setUtxoProtectionDisabled);
+    }, [wallet]);
 
     /**
      * Check if any UTXO category has reached the warning threshold (yellow indicator)
@@ -256,7 +261,7 @@ export function useConsolidation() {
                 note: `UTXO Split - Creating ${splitCount} UTXOs`,
                 from: currentAccount.address,
                 sourceType: SourceType.CURRENT,
-                optimize: true,
+                optimize: !utxoProtectionDisabled,
                 splitInputsInto: splitCount,
                 autoAdjustAmount: true
             };
@@ -264,7 +269,7 @@ export function useConsolidation() {
             // Navigate directly to confirmation screen
             navigate(RouteTypes.TxOpnetConfirmScreen, { rawTxInfo: txParams });
         },
-        [wallet, currentAccount, resetUiTxCreateScreen, navigate]
+        [wallet, currentAccount, resetUiTxCreateScreen, navigate, utxoProtectionDisabled]
     );
 
     /**

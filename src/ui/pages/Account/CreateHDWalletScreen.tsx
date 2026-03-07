@@ -1,4 +1,4 @@
-import { CheckCircleFilled } from '@ant-design/icons';
+import { CheckCircleFilled, WarningOutlined } from '@ant-design/icons';
 import { useCallback, useMemo, useState } from 'react';
 
 import { RestoreWalletType } from '@/shared/types';
@@ -61,9 +61,9 @@ export default function CreateHDWalletScreen() {
 
     const updateContextData = useCallback(
         (params: UpdateContextDataParams) => {
-            setContextData(Object.assign({}, contextData, params));
+            setContextData((prev) => ({ ...prev, ...params }));
         },
-        [contextData, setContextData]
+        []
     );
 
     const items = useMemo(() => {
@@ -316,13 +316,7 @@ export default function CreateHDWalletScreen() {
                                 alignItems: 'center',
                                 gap: '8px'
                             }}>
-                            <span
-                                style={{
-                                    fontSize: '14px',
-                                    color: colors.warning
-                                }}>
-                                ⚠️
-                            </span>
+                            <WarningOutlined style={{ fontSize: 14, color: colors.warning, flexShrink: 0 }} />
                             <div
                                 style={{
                                     fontSize: '11px',

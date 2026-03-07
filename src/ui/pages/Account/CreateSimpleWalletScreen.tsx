@@ -16,7 +16,8 @@ import {
     KeyOutlined,
     PlusCircleOutlined,
     SafetyOutlined,
-    WalletOutlined
+    WalletOutlined,
+    WarningOutlined
 } from '@ant-design/icons';
 import { EcKeyPair, MLDSASecurityLevel, Wallet } from '@btc-vision/transaction';
 import { getMLDSAConfig, QuantumBIP32Factory } from '@btc-vision/bip32';
@@ -364,71 +365,69 @@ function Step2({
     const [addressAssets, setAddressAssets] = useState<Record<string, AddressAssets>>({});
     const [loading, setLoading] = useState(true);
 
-    const run = async () => {
-        setLoading(true);
-        const network = await wallet.getNetworkType();
-        const chainType = await wallet.getChainType();
-        const bitcoinNetwork = getBitcoinLibJSNetwork(network, chainType);
+    useEffect(() => {
+        const run = async () => {
+            setLoading(true);
+            const network = await wallet.getNetworkType();
+            const chainType = await wallet.getChainType();
+            const bitcoinNetwork = getBitcoinLibJSNetwork(network, chainType);
 
-        const addresses: string[] = [];
-        const balancesMap: Record<string, AddressAssets> = {};
+            const addresses: string[] = [];
+            const balancesMap: Record<string, AddressAssets> = {};
 
-        const getAddrForType = (t: AddressTypes) => {
-            // For both WIF and raw hex, use EcKeyPair methods for address derivation
-            const kp =
-                contextData.keyKind === 'wif'
-                    ? EcKeyPair.fromWIF(contextData.wif, bitcoinNetwork)
-                    : EcKeyPair.fromPrivateKey(
-                          fromHex(contextData.wif.replace(/^0x/, '').trim()),
-                          bitcoinNetwork
-                      );
+            const getAddrForType = (t: AddressTypes) => {
+                // For both WIF and raw hex, use EcKeyPair methods for address derivation
+                const kp =
+                    contextData.keyKind === 'wif'
+                        ? EcKeyPair.fromWIF(contextData.wif, bitcoinNetwork)
+                        : EcKeyPair.fromPrivateKey(
+                              fromHex(contextData.wif.replace(/^0x/, '').trim()),
+                              bitcoinNetwork
+                          );
 
-            if (t === AddressTypes.P2TR) return EcKeyPair.getTaprootAddress(kp, bitcoinNetwork);
-            if (t === AddressTypes.P2SH_OR_P2SH_P2WPKH) return EcKeyPair.getLegacySegwitAddress(kp, bitcoinNetwork);
-            if (t === AddressTypes.P2WPKH) return EcKeyPair.getP2WPKHAddress(kp, bitcoinNetwork);
-            return EcKeyPair.getLegacyAddress(kp, bitcoinNetwork);
+                if (t === AddressTypes.P2TR) return EcKeyPair.getTaprootAddress(kp, bitcoinNetwork);
+                if (t === AddressTypes.P2SH_OR_P2SH_P2WPKH) return EcKeyPair.getLegacySegwitAddress(kp, bitcoinNetwork);
+                if (t === AddressTypes.P2WPKH) return EcKeyPair.getP2WPKHAddress(kp, bitcoinNetwork);
+                return EcKeyPair.getLegacyAddress(kp, bitcoinNetwork);
+            };
+
+            for (const opt of hdPathOptions) {
+                try {
+                    const addr = getAddrForType(opt.addressType);
+                    addresses.push(addr);
+                } catch (e) {
+                    addresses.push('');
+                }
+            }
+
+            const balances = await wallet.getMultiAddressAssets(addresses.join(','));
+            let maxSatoshis = 0;
+            let recommendedIndex = 0;
+
+            for (let i = 0; i < addresses.length; i++) {
+                const a = addresses[i];
+                if (!a) continue;
+                const b = balances[i];
+                const satoshis = b?.totalSatoshis ?? 0;
+                balancesMap[a] = { total_btc: satoshisToAmount(satoshis), satoshis };
+                if (satoshis > maxSatoshis) {
+                    maxSatoshis = satoshis;
+                    recommendedIndex = i;
+                }
+            }
+
+            let recommended: AddressTypes = hdPathOptions[recommendedIndex].addressType;
+            if (maxSatoshis === 0) {
+                recommended = AddressTypes.P2TR;
+            }
+
+            updateContextData({ addressType: recommended, step2Completed: true });
+            setAddressAssets(balancesMap);
+            setPreviewAddresses(addresses);
+            setLoading(false);
         };
 
-        for (const opt of hdPathOptions) {
-            try {
-                const addr = getAddrForType(opt.addressType);
-                addresses.push(addr);
-            } catch (e) {
-                addresses.push('');
-            }
-        }
-
-        const balances = await wallet.getMultiAddressAssets(addresses.join(','));
-        let maxSatoshis = 0;
-        let recommendedIndex = 0;
-
-        for (let i = 0; i < addresses.length; i++) {
-            const a = addresses[i];
-            if (!a) continue;
-            const b = balances[i];
-            const satoshis = b?.totalSatoshis ?? 0;
-            balancesMap[a] = { total_btc: satoshisToAmount(satoshis), satoshis };
-            if (satoshis > maxSatoshis) {
-                maxSatoshis = satoshis;
-                recommendedIndex = i;
-            }
-        }
-
-        let recommended: AddressTypes = hdPathOptions[recommendedIndex].addressType;
-        if (maxSatoshis === 0) {
-            recommended = AddressTypes.P2TR;
-        }
-
-        updateContextData({ addressType: recommended, step2Completed: true });
-        setAddressAssets(balancesMap);
-        setPreviewAddresses(addresses);
-        setLoading(false);
-    };
-
-    useEffect(() => {
-         
         void run();
-
     }, [contextData.wif]);
 
     const pathIndex = useMemo(() => {
@@ -1401,13 +1400,7 @@ export default function CreateSimpleWalletScreen() {
                                 alignItems: 'center',
                                 gap: '8px'
                             }}>
-                            <span
-                                style={{
-                                    fontSize: '14px',
-                                    color: colors.warning
-                                }}>
-                                ⚠️
-                            </span>
+                            <WarningOutlined style={{ fontSize: 14, color: colors.warning, flexShrink: 0 }} />
                             <div
                                 style={{
                                     fontSize: '11px',

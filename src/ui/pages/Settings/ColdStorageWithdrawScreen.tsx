@@ -40,13 +40,15 @@ export default function ColdStorageWithdrawScreen() {
     const [feeRate, setFeeRate] = useState('10');
     const [coldWalletAddress, setColdWalletAddress] = useState('');
     const [error, setError] = useState('');
+    const [utxoProtectionDisabled, setUtxoProtectionDisabled] = useState(false);
 
     const coldBalance = BigInt(rotationState.summary?.coldWalletBalance || '0');
     const coldBalanceBtc = satoshisToAmount(Number(coldBalance));
 
     useEffect(() => {
         void refreshRotation();
-    }, [refreshRotation]);
+        void wallet.getUTXOProtectionDisabled().then(setUtxoProtectionDisabled);
+    }, [refreshRotation, wallet]);
 
     useEffect(() => {
         const fetchAddresses = async () => {
@@ -134,7 +136,7 @@ export default function ColdStorageWithdrawScreen() {
             inputAmount: parseFloat(amount), // BTC amount, will be converted to satoshis by TxOpnetConfirmScreen
             from: coldWalletAddress,
             sourceType: SourceType.COLD_STORAGE,
-            optimize: true
+            optimize: !utxoProtectionDisabled
         };
 
         navigate(RouteTypes.TxOpnetConfirmScreen, { rawTxInfo });
