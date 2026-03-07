@@ -1437,7 +1437,8 @@ export class WalletController {
                 network: Web3API.network,
                 feeRate: Number(params.feeRate.toString()),
                 compiledTargetScript: params.compiledTargetScript,
-                optionalOutputs: (params.optionalOutputs || []).map(this.processOutputFields),
+                optionalOutputs: (params.optionalOutputs || []).map(this.processOutputFields)
+                    .filter((o): o is PsbtOutputExtended => o !== null),
                 optionalInputs: optionalInputs,
                 note: params.note,
                 linkMLDSAPublicKeyToAddress: true
@@ -1481,7 +1482,8 @@ export class WalletController {
                         ? fromHex(params.calldata)
                         : new Uint8Array(params.calldata)
                     : undefined,
-                optionalOutputs: (params.optionalOutputs || []).map(this.processOutputFields),
+                optionalOutputs: (params.optionalOutputs || []).map(this.processOutputFields)
+                    .filter((o): o is PsbtOutputExtended => o !== null),
                 optionalInputs: optionalInputs,
                 note: params.note,
                 linkMLDSAPublicKeyToAddress: true
@@ -2167,7 +2169,8 @@ export class WalletController {
             splitInputsInto: params.splitInputsInto,
             autoAdjustAmount: params.autoAdjustAmount,
             feeUtxos: isExternal ? undefined : params.feeUtxos,
-            optionalOutputs: isExternal ? undefined : params.optionalOutputs,
+            optionalOutputs: isExternal ? undefined : (params.optionalOutputs || []).map(this.processOutputFields)
+                .filter((o): o is PsbtOutputExtended => o !== null),
             optionalInputs: isExternal ? undefined : params.optionalInputs,
             utxos,
             signer: walletSigner.keypair,
@@ -4729,10 +4732,15 @@ export class WalletController {
         };
     };
 
-    private processOutputFields = (output: PsbtOutputExtended): PsbtOutputExtended => {
+    private processOutputFields = (output: PsbtOutputExtended): PsbtOutputExtended | null => {
         const value = typeof output.value === 'bigint' ? output.value : createSatoshi(BigInt(output.value));
 
         if ('address' in output && output.address) {
+            // Reject 0-value outputs to an address — only OP_RETURN/ANCHOR scripts may have value 0
+            if (BigInt(value) === 0n) {
+                console.warn('[processOutputFields] Skipping 0-value output to address:', output.address);
+                return null;
+            }
             return { address: output.address, value } as PsbtOutputExtended;
         }
 
@@ -4740,7 +4748,9 @@ export class WalletController {
             return { script: this.convertToBuffer(output.script), value } as PsbtOutputExtended;
         }
 
-        return { value } as PsbtOutputExtended;
+        // Output has neither address nor script — invalid, skip it
+        console.warn('[processOutputFields] Skipping output with no address and no script, value:', String(value));
+        return null;
     };
 
     private signInteractionInternal = async (
@@ -4777,7 +4787,8 @@ export class WalletController {
 
         // Process optional inputs using the new method
         const optionalInputs = interactionParameters.optionalInputs?.map(this.processUTXOFields) || [];
-        const optionalOutputs = interactionParameters.optionalOutputs?.map(this.processOutputFields) || [];
+        const optionalOutputs = (interactionParameters.optionalOutputs?.map(this.processOutputFields) || [])
+            .filter((o): o is PsbtOutputExtended => o !== null);
 
         const submit: IInteractionParameters = {
             from: interactionParameters.from,
