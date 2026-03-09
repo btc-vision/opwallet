@@ -99,7 +99,7 @@ export default function UTXOOptimizeScreen() {
                             alignItems: 'center'
                         }}>
                         <span style={{ fontSize: '13px', color: colors.text }}>
-                            Available UTXOs (Main + CSV1)
+                            Available UTXOs (Main + CSV1 + CSV2 + CSV3)
                         </span>
                         <span
                             style={{

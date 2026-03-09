@@ -98,6 +98,10 @@ export interface BitcoinBalance {
     csv2_unlocked_amount: string;
     csv2_locked_amount: string;
 
+    csv3_total_amount: string;
+    csv3_unlocked_amount: string;
+    csv3_locked_amount: string;
+
     csv1_total_amount: string;
     csv1_unlocked_amount: string;
     csv1_locked_amount: string;
@@ -111,6 +115,7 @@ export interface BitcoinBalance {
 
     consolidation_unspent_amount: string;
     consolidation_csv75_unlocked_amount: string;
+    consolidation_csv3_unlocked_amount: string;
     consolidation_csv2_unlocked_amount: string;
     consolidation_csv1_unlocked_amount: string;
     consolidation_p2wda_unspent_amount: string;
@@ -119,6 +124,8 @@ export interface BitcoinBalance {
     unspent_utxos_count: number;
     csv75_locked_utxos_count: number;
     csv75_unlocked_utxos_count: number;
+    csv3_locked_utxos_count: number;
+    csv3_unlocked_utxos_count: number;
     csv2_locked_utxos_count: number;
     csv2_unlocked_utxos_count: number;
     csv1_locked_utxos_count: number;

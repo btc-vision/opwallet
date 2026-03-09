@@ -34,6 +34,9 @@ export function AddressBar({
     csv75_total_amount,
     csv75_unlocked_amount,
     csv75_locked_amount,
+    csv3_total_amount,
+    csv3_unlocked_amount,
+    csv3_locked_amount,
     csv2_total_amount,
     csv2_unlocked_amount,
     csv2_locked_amount,
@@ -45,6 +48,9 @@ export function AddressBar({
     csv75_total_amount: string | undefined;
     csv75_unlocked_amount: string | undefined;
     csv75_locked_amount: string | undefined;
+    csv3_total_amount: string | undefined;
+    csv3_unlocked_amount: string | undefined;
+    csv3_locked_amount: string | undefined;
     csv2_total_amount: string | undefined;
     csv2_unlocked_amount: string | undefined;
     csv2_locked_amount: string | undefined;
@@ -64,6 +70,7 @@ export function AddressBar({
     const tweakedPublicKey = address.toHex();
     const explorerUrl = `https://opscan.org/accounts/${tweakedPublicKey}`;
     const csv75Address = address.toCSV(75, Web3API.network).address;
+    const csv3Address = address.toCSV(3, Web3API.network).address;
     const csv2Address = address.toCSV(2, Web3API.network).address;
     const csv1Address = address.toCSV(1, Web3API.network).address;
     const p2wdaAddress = address.p2wda(Web3API.network).address;
@@ -120,6 +127,16 @@ export function AddressBar({
             total: csv75_total_amount,
             unlocked: csv75_unlocked_amount,
             locked: csv75_locked_amount,
+            showLocked: true
+        },
+        {
+            label: 'CSV 3',
+            value: csv3Address,
+            info: 'Address for anti-pinning protection with 3-block lock time.',
+            showBalance: true,
+            total: csv3_total_amount,
+            unlocked: csv3_unlocked_amount,
+            locked: csv3_locked_amount,
             showLocked: true
         },
         {

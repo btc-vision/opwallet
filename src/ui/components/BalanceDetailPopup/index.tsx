@@ -98,6 +98,8 @@ export function BalanceDetailPopup({
                             unspent_utxos_count={accountBalance.unspent_utxos_count}
                             csv75_locked_utxos_count={accountBalance.csv75_locked_utxos_count}
                             csv75_unlocked_utxos_count={accountBalance.csv75_unlocked_utxos_count}
+                            csv3_locked_utxos_count={accountBalance.csv3_locked_utxos_count}
+                            csv3_unlocked_utxos_count={accountBalance.csv3_unlocked_utxos_count}
                             csv2_locked_utxos_count={accountBalance.csv2_locked_utxos_count}
                             csv2_unlocked_utxos_count={accountBalance.csv2_unlocked_utxos_count}
                             csv1_locked_utxos_count={accountBalance.csv1_locked_utxos_count}

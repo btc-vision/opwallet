@@ -10,6 +10,9 @@ interface BalanceTabsProps {
         csv75_total_amount?: string;
         csv75_unlocked_amount?: string;
         csv75_locked_amount?: string;
+        csv3_total_amount?: string;
+        csv3_unlocked_amount?: string;
+        csv3_locked_amount?: string;
         csv2_total_amount?: string;
         csv2_unlocked_amount?: string;
         csv2_locked_amount?: string;
@@ -19,6 +22,8 @@ interface BalanceTabsProps {
         unspent_utxos_count: number;
         csv75_locked_utxos_count: number;
         csv75_unlocked_utxos_count: number;
+        csv3_locked_utxos_count: number;
+        csv3_unlocked_utxos_count: number;
         csv2_locked_utxos_count: number;
         csv2_unlocked_utxos_count: number;
         csv1_locked_utxos_count: number;
@@ -57,6 +62,7 @@ export const BalanceTabs: React.FC<BalanceTabsProps> = ({
     const [activeTab, setActiveTab] = useState<BalanceTabType>(defaultActiveTab);
 
     const hasCSV75 = accountBalance.csv75_total_amount && parseFloat(accountBalance.csv75_total_amount) > 0;
+    const hasCSV3 = accountBalance.csv3_total_amount && parseFloat(accountBalance.csv3_total_amount) > 0;
     const hasCSV2 = accountBalance.csv2_total_amount && parseFloat(accountBalance.csv2_total_amount) > 0;
     const hasCSV1 = accountBalance.csv1_total_amount && parseFloat(accountBalance.csv1_total_amount) > 0;
 
@@ -70,9 +76,10 @@ export const BalanceTabs: React.FC<BalanceTabsProps> = ({
     const calculateTotalBalance = () => {
         const mainBalance = parseFloat(accountBalance.btc_total_amount || '0');
         const csv75Total = parseFloat(accountBalance.csv75_total_amount || '0');
+        const csv3Total = parseFloat(accountBalance.csv3_total_amount || '0');
         const csv2Total = parseFloat(accountBalance.csv2_total_amount || '0');
         const csv1Total = parseFloat(accountBalance.csv1_total_amount || '0');
-        const total = mainBalance + csv75Total + csv2Total + csv1Total;
+        const total = mainBalance + csv75Total + csv3Total + csv2Total + csv1Total;
         return total.toFixed(8).replace(/\.?0+$/, '');
     };
 
@@ -138,7 +145,7 @@ export const BalanceTabs: React.FC<BalanceTabsProps> = ({
                         {/* Main Balance Section */}
                         <div
                             style={{
-                                marginBottom: hasCSV75 || hasCSV2 || hasCSV1 ? '10px' : '0',
+                                marginBottom: hasCSV75 || hasCSV3 || hasCSV2 || hasCSV1 ? '10px' : '0',
                                 background: 'rgba(255, 255, 255, 0.03)',
                                 borderRadius: '10px',
                                 padding: '10px 12px'
@@ -181,7 +188,7 @@ export const BalanceTabs: React.FC<BalanceTabsProps> = ({
                         {hasCSV75 && (
                             <div
                                 style={{
-                                    marginBottom: hasCSV2 || hasCSV1 ? '10px' : '0',
+                                    marginBottom: hasCSV3 || hasCSV2 || hasCSV1 ? '10px' : '0',
                                     background: 'rgba(255, 255, 255, 0.03)',
                                     borderRadius: '10px',
                                     padding: '10px 12px'
@@ -238,6 +245,59 @@ export const BalanceTabs: React.FC<BalanceTabsProps> = ({
                                             fontSize: '12px'
                                         }}>
                                         {`${accountBalance.csv75_total_amount} ${btcUnit}`}
+                                    </span>
+                                </Row>
+                            </div>
+                        )}
+
+                        {/* CSV3 Section */}
+                        {hasCSV3 && (
+                            <div
+                                style={{
+                                    marginBottom: hasCSV2 || hasCSV1 ? '10px' : '0',
+                                    background: 'rgba(255, 255, 255, 0.03)',
+                                    borderRadius: '10px',
+                                    padding: '10px 12px'
+                                }}>
+                                <div
+                                    style={{
+                                        fontSize: '10px',
+                                        fontWeight: 700,
+                                        color: colors.main,
+                                        marginBottom: '8px',
+                                        textTransform: 'uppercase',
+                                        letterSpacing: '0.5px'
+                                    }}>
+                                    CSV 3 Balance
+                                </div>
+                                <Row justifyBetween style={{ marginBottom: '5px' }}>
+                                    <span style={{ ...noBreakStyle, color: colors.success, fontSize: '12px' }}>
+                                        Unlocked
+                                    </span>
+                                    <span style={{ ...noBreakStyle, color: colors.success, fontSize: '12px', fontWeight: 600 }}>
+                                        {`${accountBalance.csv3_unlocked_amount || '0'} ${btcUnit}`}
+                                    </span>
+                                </Row>
+                                <Row justifyBetween style={{ marginBottom: '5px' }}>
+                                    <span style={{ ...noBreakStyle, color: colors.warning, fontSize: '12px' }}>
+                                        Locked
+                                    </span>
+                                    <span style={{ ...noBreakStyle, color: colors.warning, fontSize: '12px', fontWeight: 600 }}>
+                                        {`${accountBalance.csv3_locked_amount || '0'} ${btcUnit}`}
+                                    </span>
+                                </Row>
+                                <Row
+                                    justifyBetween
+                                    style={{
+                                        marginTop: '6px',
+                                        paddingTop: '6px',
+                                        borderTop: `1px solid rgba(255, 255, 255, 0.06)`
+                                    }}>
+                                    <span style={{ ...noBreakStyle, fontWeight: 700, color: '#dbdbdb', fontSize: '12px' }}>
+                                        Total
+                                    </span>
+                                    <span style={{ ...noBreakStyle, fontWeight: 700, color: '#dbdbdb', fontSize: '12px' }}>
+                                        {`${accountBalance.csv3_total_amount} ${btcUnit}`}
                                     </span>
                                 </Row>
                             </div>

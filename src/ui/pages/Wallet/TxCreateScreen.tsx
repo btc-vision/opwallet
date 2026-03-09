@@ -62,7 +62,7 @@ interface AddressBalance {
 
 interface ConsolidationParams {
     enabled: boolean;
-    selectedType: 'unspent' | 'csv75' | 'csv2' | 'csv1' | 'p2wda';
+    selectedType: 'unspent' | 'csv75' | 'csv3' | 'csv2' | 'csv1' | 'p2wda';
     maxUTXOs: number;
     autoFillAmount: boolean;
 }
@@ -152,6 +152,7 @@ export default function TxCreateScreen() {
 
                 // Get CSV addresses for display
                 const csv75Address = currentAddress.toCSV(75, Web3API.network);
+                const csv3Address = currentAddress.toCSV(3, Web3API.network);
                 const csv2Address = currentAddress.toCSV(2, Web3API.network);
                 const csv1Address = currentAddress.toCSV(1, Web3API.network);
                 const p2wdaAddress = currentAddress.p2wda(Web3API.network);
@@ -227,6 +228,26 @@ export default function TxCreateScreen() {
                     });
                 }
 
+                // Check CSV3 balance from the response
+                if (currentBalance.csv3_total_amount && currentBalance.csv3_total_amount !== '0') {
+                    const csv3UnlockedAmount = currentBalance.csv3_unlocked_amount || '0';
+                    const csv3LockedAmount = currentBalance.csv3_locked_amount || '0';
+                    const hasUnlocked = csv3UnlockedAmount !== '0';
+
+                    balances.push({
+                        type: SourceType.CSV3,
+                        label: 'CSV-3 Fast Access',
+                        address: csv3Address.address,
+                        balance: csv3UnlockedAmount,
+                        totalBalance: currentBalance.csv3_total_amount,
+                        lockedBalance: csv3LockedAmount,
+                        satoshis: BigInt(amountToSatoshis(csv3UnlockedAmount)),
+                        available: hasUnlocked,
+                        lockTime: 3,
+                        description: 'Anti-pinning protection (3 block lock)'
+                    });
+                }
+
                 // Check CSV2 balance from the response
                 if (currentBalance.csv2_total_amount && currentBalance.csv2_total_amount !== '0') {
                     const csv2UnlockedAmount = currentBalance.csv2_unlocked_amount || '0';
@@ -291,6 +312,7 @@ export default function TxCreateScreen() {
                 const typeMapping: Record<string, SourceType> = {
                     unspent: SourceType.CURRENT,
                     csv1: SourceType.CSV1,
+                    csv3: SourceType.CSV3,
                     csv2: SourceType.CSV2,
                     csv75: SourceType.CSV75,
                     p2wda: SourceType.P2WDA
@@ -316,6 +338,9 @@ export default function TxCreateScreen() {
                         switch (consolidationParams.selectedType) {
                             case 'csv1':
                                 consolidationAmount = balance.consolidation_csv1_unlocked_amount || '0';
+                                break;
+                            case 'csv3':
+                                consolidationAmount = balance.consolidation_csv3_unlocked_amount || '0';
                                 break;
                             case 'csv2':
                                 consolidationAmount = balance.consolidation_csv2_unlocked_amount || '0';
@@ -353,6 +378,7 @@ export default function TxCreateScreen() {
                     const typeLabels: Record<string, string> = {
                         unspent: 'Primary Account',
                         csv1: 'CSV1 Fast Access',
+                        csv3: 'CSV3 Fast Access',
                         csv2: 'CSV2 Fast Access',
                         csv75: 'CSV75',
                         p2wda: 'Smart Contract Optimized'
@@ -1419,6 +1445,9 @@ export default function TxCreateScreen() {
                                             switch (consolidationParams.selectedType) {
                                                 case 'csv1':
                                                     maxAmount = balance.consolidation_csv1_unlocked_amount || '0';
+                                                    break;
+                                                case 'csv3':
+                                                    maxAmount = balance.consolidation_csv3_unlocked_amount || '0';
                                                     break;
                                                 case 'csv2':
                                                     maxAmount = balance.consolidation_csv2_unlocked_amount || '0';

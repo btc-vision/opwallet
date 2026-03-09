@@ -442,13 +442,13 @@ class Web3API {
 
     public async getTotalLockedAndUnlockedUTXOs(
         address: string,
-        csvType: 'csv75' | 'csv2' | 'csv1'
+        csvType: 'csv75' | 'csv3' | 'csv2' | 'csv1'
     ): Promise<{
         utxos: UTXO[];
         unlockedUTXOs: UTXO[];
         lockedUTXOs: UTXO[];
     }> {
-        const threshold = csvType === 'csv75' ? 75n : csvType === 'csv2' ? 2n : 1n;
+        const threshold = csvType === 'csv75' ? 75n : csvType === 'csv3' ? 3n : csvType === 'csv2' ? 2n : 1n;
 
         const [unlocked, all] = await Promise.all([
             this.getAllUTXOsForAddresses([address], undefined, threshold, false),

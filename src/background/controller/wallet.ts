@@ -3928,6 +3928,9 @@ export class WalletController {
                 csv75_total_amount: '0',
                 csv75_unlocked_amount: '0',
                 csv75_locked_amount: '0',
+                csv3_total_amount: '0',
+                csv3_unlocked_amount: '0',
+                csv3_locked_amount: '0',
                 csv2_total_amount: '0',
                 csv2_unlocked_amount: '0',
                 csv2_locked_amount: '0',
@@ -3940,6 +3943,7 @@ export class WalletController {
                 consolidation_amount: '0',
                 consolidation_unspent_amount: '0',
                 consolidation_csv75_unlocked_amount: '0',
+                consolidation_csv3_unlocked_amount: '0',
                 consolidation_csv2_unlocked_amount: '0',
                 consolidation_csv1_unlocked_amount: '0',
                 consolidation_p2wda_unspent_amount: '0',
@@ -3950,6 +3954,8 @@ export class WalletController {
                 unspent_utxos_count: unspentUTXOs.length,
                 csv75_locked_utxos_count: 0,
                 csv75_unlocked_utxos_count: 0,
+                csv3_locked_utxos_count: 0,
+                csv3_unlocked_utxos_count: 0,
                 csv2_locked_utxos_count: 0,
                 csv2_unlocked_utxos_count: 0,
                 csv1_locked_utxos_count: 0,
@@ -4338,6 +4344,9 @@ export class WalletController {
             csv75_total_amount: '0',
             csv75_unlocked_amount: '0',
             csv75_locked_amount: '0',
+            csv3_total_amount: '0',
+            csv3_unlocked_amount: '0',
+            csv3_locked_amount: '0',
             csv2_total_amount: '0',
             csv2_unlocked_amount: '0',
             csv2_locked_amount: '0',
@@ -4349,6 +4358,7 @@ export class WalletController {
             consolidation_amount: '0',
             consolidation_unspent_amount: '0',
             consolidation_csv75_unlocked_amount: '0',
+            consolidation_csv3_unlocked_amount: '0',
             consolidation_csv2_unlocked_amount: '0',
             consolidation_csv1_unlocked_amount: '0',
             consolidation_p2wda_unspent_amount: '0',
@@ -4358,6 +4368,8 @@ export class WalletController {
             unspent_utxos_count: 0,
             csv75_locked_utxos_count: 0,
             csv75_unlocked_utxos_count: 0,
+            csv3_locked_utxos_count: 0,
+            csv3_unlocked_utxos_count: 0,
             csv2_locked_utxos_count: 0,
             csv2_unlocked_utxos_count: 0,
             csv1_locked_utxos_count: 0,
@@ -4395,6 +4407,7 @@ export class WalletController {
         await Web3API.setNetwork(this.getChainType());
 
         let csv75Address = '';
+        let csv3Address = '';
         let csv2Address = '';
         let csv1Address = '';
         let p2wdaAddress = '';
@@ -4406,13 +4419,14 @@ export class WalletController {
             );
 
             csv75Address = addressInst.toCSV(75, Web3API.network).address;
+            csv3Address = addressInst.toCSV(3, Web3API.network).address;
             csv2Address = addressInst.toCSV(2, Web3API.network).address;
             csv1Address = addressInst.toCSV(1, Web3API.network).address;
             p2wdaAddress = addressInst.p2wda(Web3API.network).address;
         }
 
         try {
-            if (!csv75Address || !csv2Address || !csv1Address || !p2wdaAddress) {
+            if (!csv75Address || !csv3Address || !csv2Address || !csv1Address || !p2wdaAddress) {
                 // Simple balance fetch for non-CSV addresses
                 const [allUTXOs, unspentUTXOs] = await Promise.all([
                     Web3API.getAllUTXOsForAddresses([address], undefined, undefined, false),
@@ -4449,6 +4463,10 @@ export class WalletController {
                     csv75_unlocked_amount: '0',
                     csv75_locked_amount: '0',
 
+                    csv3_total_amount: '0',
+                    csv3_unlocked_amount: '0',
+                    csv3_locked_amount: '0',
+
                     csv2_total_amount: '0',
                     csv2_unlocked_amount: '0',
                     csv2_locked_amount: '0',
@@ -4464,6 +4482,7 @@ export class WalletController {
                     consolidation_unspent_amount: BitcoinUtils.formatUnits(consolidationUnspentAmount, 8),
                     // consolidation_unspent_count: consolidatableUnspentUTXOs.length,
                     consolidation_csv75_unlocked_amount: '0',
+                    consolidation_csv3_unlocked_amount: '0',
                     consolidation_csv2_unlocked_amount: '0',
                     consolidation_csv1_unlocked_amount: '0',
                     consolidation_p2wda_unspent_amount: '0',
@@ -4474,6 +4493,8 @@ export class WalletController {
                     unspent_utxos_count: unspentUTXOs.length,
                     csv75_locked_utxos_count: 0,
                     csv75_unlocked_utxos_count: 0,
+                    csv3_locked_utxos_count: 0,
+                    csv3_unlocked_utxos_count: 0,
                     csv2_locked_utxos_count: 0,
                     csv2_unlocked_utxos_count: 0,
                     csv1_locked_utxos_count: 0,
@@ -4488,6 +4509,7 @@ export class WalletController {
                 Web3API.getAllUTXOsForAddresses([address], undefined, undefined, false),
                 Web3API.getUnspentUTXOsForAddresses([address], undefined, undefined, true),
                 Web3API.getTotalLockedAndUnlockedUTXOs(csv75Address, 'csv75'),
+                Web3API.getTotalLockedAndUnlockedUTXOs(csv3Address, 'csv3'),
                 Web3API.getTotalLockedAndUnlockedUTXOs(csv2Address, 'csv2'),
                 Web3API.getTotalLockedAndUnlockedUTXOs(csv1Address, 'csv1'),
                 Web3API.getAllUTXOsForAddresses([p2wdaAddress], undefined, undefined, false),
@@ -4501,16 +4523,20 @@ export class WalletController {
                 results[2].status === 'fulfilled'
                     ? results[2].value
                     : { utxos: [], unlockedUTXOs: [], lockedUTXOs: [] };
-            const csv2Data =
+            const csv3Data =
                 results[3].status === 'fulfilled'
                     ? results[3].value
                     : { utxos: [], unlockedUTXOs: [], lockedUTXOs: [] };
-            const csv1Data =
+            const csv2Data =
                 results[4].status === 'fulfilled'
                     ? results[4].value
                     : { utxos: [], unlockedUTXOs: [], lockedUTXOs: [] };
-            const p2wdaUTXOs = results[5].status === 'fulfilled' ? results[5].value : [];
-            const unspentP2WDAUTXOs = results[6].status === 'fulfilled' ? results[6].value : [];
+            const csv1Data =
+                results[5].status === 'fulfilled'
+                    ? results[5].value
+                    : { utxos: [], unlockedUTXOs: [], lockedUTXOs: [] };
+            const p2wdaUTXOs = results[6].status === 'fulfilled' ? results[6].value : [];
+            const unspentP2WDAUTXOs = results[7].status === 'fulfilled' ? results[7].value : [];
 
             // Calculate all balances using BigInt
             const totalAll = allUTXOs.reduce((sum, u) => sum + u.value, 0n);
@@ -4520,6 +4546,10 @@ export class WalletController {
             const csv75Total = csv75Data.utxos.reduce((sum, u) => sum + u.value, 0n);
             const csv75Unlocked = csv75Data.unlockedUTXOs.reduce((sum, u) => sum + u.value, 0n);
             const csv75Locked = csv75Total - csv75Unlocked;
+
+            const csv3Total = csv3Data.utxos.reduce((sum, u) => sum + u.value, 0n);
+            const csv3Unlocked = csv3Data.unlockedUTXOs.reduce((sum, u) => sum + u.value, 0n);
+            const csv3Locked = csv3Total - csv3Unlocked;
 
             const csv2Total = csv2Data.utxos.reduce((sum, u) => sum + u.value, 0n);
             const csv2Unlocked = csv2Data.unlockedUTXOs.reduce((sum, u) => sum + u.value, 0n);
@@ -4537,6 +4567,8 @@ export class WalletController {
             const unspentUTXOsCount = unspentUTXOs.length;
             const csv75LockedUTXOsCount = csv75Data.lockedUTXOs.length;
             const csv75UnlockedUTXOsCount = csv75Data.unlockedUTXOs.length;
+            const csv3LockedUTXOsCount = csv3Data.lockedUTXOs.length;
+            const csv3UnlockedUTXOsCount = csv3Data.unlockedUTXOs.length;
             const csv2LockedUTXOsCount = csv2Data.lockedUTXOs.length;
             const csv2UnlockedUTXOsCount = csv2Data.unlockedUTXOs.length;
             const csv1LockedUTXOsCount = csv1Data.lockedUTXOs.length;
@@ -4554,6 +4586,13 @@ export class WalletController {
             // CSV75 unlocked UTXOs
             const consolidatableCsv75UnlockedUTXOs = csv75Data.unlockedUTXOs.slice(0, consolidationLimit);
             const consolidationCsv75UnlockedAmount = consolidatableCsv75UnlockedUTXOs.reduce(
+                (sum, u) => sum + u.value,
+                0n
+            );
+
+            // CSV3 unlocked UTXOs
+            const consolidatableCsv3UnlockedUTXOs = csv3Data.unlockedUTXOs.slice(0, consolidationLimit);
+            const consolidationCsv3UnlockedAmount = consolidatableCsv3UnlockedUTXOs.reduce(
                 (sum, u) => sum + u.value,
                 0n
             );
@@ -4583,6 +4622,7 @@ export class WalletController {
             const consolidationAmount =
                 consolidationUnspentAmount +
                 consolidationCsv75UnlockedAmount +
+                consolidationCsv3UnlockedAmount +
                 consolidationCsv2UnlockedAmount +
                 consolidationCsv1UnlockedAmount +
                 consolidationP2wdaUnspentAmount;
@@ -4610,6 +4650,10 @@ export class WalletController {
                 csv75_unlocked_amount: BitcoinUtils.formatUnits(csv75Unlocked, 8),
                 csv75_locked_amount: BitcoinUtils.formatUnits(csv75Locked, 8),
 
+                csv3_total_amount: BitcoinUtils.formatUnits(csv3Total, 8),
+                csv3_unlocked_amount: BitcoinUtils.formatUnits(csv3Unlocked, 8),
+                csv3_locked_amount: BitcoinUtils.formatUnits(csv3Locked, 8),
+
                 csv2_total_amount: BitcoinUtils.formatUnits(csv2Total, 8),
                 csv2_unlocked_amount: BitcoinUtils.formatUnits(csv2Unlocked, 8),
                 csv2_locked_amount: BitcoinUtils.formatUnits(csv2Locked, 8),
@@ -4625,6 +4669,7 @@ export class WalletController {
                 consolidation_unspent_amount: BitcoinUtils.formatUnits(consolidationUnspentAmount, 8),
                 consolidation_unspent_count: consolidatableUnspentUTXOs.length,
                 consolidation_csv75_unlocked_amount: BitcoinUtils.formatUnits(consolidationCsv75UnlockedAmount, 8),
+                consolidation_csv3_unlocked_amount: BitcoinUtils.formatUnits(consolidationCsv3UnlockedAmount, 8),
                 consolidation_csv2_unlocked_amount: BitcoinUtils.formatUnits(consolidationCsv2UnlockedAmount, 8),
                 consolidation_csv1_unlocked_amount: BitcoinUtils.formatUnits(consolidationCsv1UnlockedAmount, 8),
                 consolidation_p2wda_unspent_amount: BitcoinUtils.formatUnits(consolidationP2wdaUnspentAmount, 8),
@@ -4635,6 +4680,8 @@ export class WalletController {
                 unspent_utxos_count: unspentUTXOsCount,
                 csv75_locked_utxos_count: csv75LockedUTXOsCount,
                 csv75_unlocked_utxos_count: csv75UnlockedUTXOsCount,
+                csv3_locked_utxos_count: csv3LockedUTXOsCount,
+                csv3_unlocked_utxos_count: csv3UnlockedUTXOsCount,
                 csv2_locked_utxos_count: csv2LockedUTXOsCount,
                 csv2_unlocked_utxos_count: csv2UnlockedUTXOsCount,
                 csv1_locked_utxos_count: csv1LockedUTXOsCount,
@@ -4835,10 +4882,11 @@ export class WalletController {
             );
 
             const csv75 = addressInst.toCSV(75, Web3API.network).address;
+            const csv3 = addressInst.toCSV(3, Web3API.network).address;
             const csv2 = addressInst.toCSV(2, Web3API.network).address;
             const csv1 = addressInst.toCSV(1, Web3API.network).address;
             const p2wda = addressInst.p2wda(Web3API.network).address;
-            return `${chainType}:${address}:${csv75}:${csv2}:${csv1}:${p2wda}`;
+            return `${chainType}:${address}:${csv75}:${csv3}:${csv2}:${csv1}:${p2wda}`;
         }
 
         // No pubKey = simple balance only
