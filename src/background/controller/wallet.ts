@@ -623,7 +623,7 @@ export class WalletController {
      * Export a private key for internal use. Similar to getPrivateKey, but no password verification.
      * @returns null if the keyring is not found
      */
-    public getInternalPrivateKey = ({
+    private getInternalPrivateKey = ({
         pubkey,
         type
     }: {
@@ -661,6 +661,10 @@ export class WalletController {
         pubkey: string;
         type: string;
     }): Promise<[string, string, string]> => {
+        if (!this.isUnlocked()) {
+            throw new WalletControllerError('Wallet is locked');
+        }
+
         let pubkey: string;
         let type: string;
 
@@ -2787,6 +2791,10 @@ export class WalletController {
      * @throws WalletControllerError
      */
     public setQuantumKey = async (quantumPrivateKey: string): Promise<void> => {
+        if (!this.isUnlocked()) {
+            throw new WalletControllerError('Wallet is locked');
+        }
+
         const account = await this.getCurrentAccount();
         if (!account) {
             throw new WalletControllerError('No current account');
@@ -2806,6 +2814,10 @@ export class WalletController {
      * @throws WalletControllerError
      */
     public generateQuantumKey = async (): Promise<void> => {
+        if (!this.isUnlocked()) {
+            throw new WalletControllerError('Wallet is locked');
+        }
+
         const account = await this.getCurrentAccount();
         if (!account) {
             throw new WalletControllerError('No current account');
@@ -3271,37 +3283,6 @@ export class WalletController {
 
         // Clear backup
         await duplicationBackupService.clearBackup();
-    };
-
-    /**
-     * Export both classical and quantum private keys for the current account.
-     * Only works for SimpleKeyring (WIF-imported) wallets.
-     * @throws WalletControllerError
-     */
-    public exportPrivateKeyWithQuantum = async (): Promise<{
-        classicalPrivateKey: string;
-        quantumPrivateKey?: string;
-        chainCode?: string;
-    }> => {
-        const account = await this.getCurrentAccount();
-        if (!account) {
-            throw new WalletControllerError('No current account');
-        }
-        try {
-            const classicalPrivateKey = keyringService.exportAccount(account.pubkey);
-            const quantumPrivateKey = keyringService.exportQuantumAccount(account.pubkey);
-
-            let privateKey: string | undefined;
-            let chainCode: string | undefined;
-            if (quantumPrivateKey) {
-                privateKey = quantumPrivateKey.slice(0, quantumPrivateKey.length - 64);
-                chainCode = quantumPrivateKey.slice(quantumPrivateKey.length - 64);
-            }
-
-            return { classicalPrivateKey, quantumPrivateKey: privateKey, chainCode };
-        } catch (err) {
-            throw new WalletControllerError(`Failed to export private keys: ${String(err)}`);
-        }
     };
 
     public getAutoLockTimeId = (): number => {
@@ -4169,6 +4150,10 @@ export class WalletController {
      * Returns [wif, mldsaPrivateKey, chainCode, pubkey]
      */
     public getColdStorageWallet = async (): Promise<[string, string, string, string]> => {
+        if (!this.isUnlocked()) {
+            throw new WalletControllerError('Wallet is locked');
+        }
+
         const keyring = await this.getCurrentKeyring();
         if (!keyring) {
             throw new Error('No current keyring');
@@ -4206,6 +4191,10 @@ export class WalletController {
         chainCode: string;
         derivationIndex: number;
     }> => {
+        if (!this.isUnlocked()) {
+            throw new WalletControllerError('Wallet is locked');
+        }
+
         const account = await this.getCurrentAccount();
         const keyring = await this.getCurrentKeyring();
         if (!keyring || !account) {
@@ -4239,6 +4228,10 @@ export class WalletController {
     public getConsolidationWallets = async (
         sourcePubkeys: string[]
     ): Promise<Array<[string, string, string, string]>> => {
+        if (!this.isUnlocked()) {
+            throw new WalletControllerError('Wallet is locked');
+        }
+
         const account = await this.getCurrentAccount();
         const keyring = await this.getCurrentKeyring();
 

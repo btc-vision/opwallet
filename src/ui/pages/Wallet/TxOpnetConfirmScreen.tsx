@@ -487,7 +487,7 @@ export default function TxOpnetConfirmScreen() {
                     signer: userWallet.keypair,
                     mldsaSigner: userWallet.mldsaKeypair,
                     refundTo: refundAddress,
-                    maximumAllowedSatToSpend: basePriorityFee,
+                    maximumAllowedSatToSpend: basePriorityFee + 5000n,
                     feeRate: feeRate,
                     network: Web3API.network,
                     priorityFee: basePriorityFee,
@@ -611,7 +611,7 @@ export default function TxOpnetConfirmScreen() {
                         symbol = `${rawTxInfo.domainName}.btc`;
                         interactionParameters = {
                             ...interactionParameters,
-                            maximumAllowedSatToSpend: basePriorityFee + domainPrice,
+                            maximumAllowedSatToSpend: basePriorityFee + domainPrice + 5000n,
                             extraOutputs: [
                                 {
                                     address: rawTxInfo.treasuryAddress,
