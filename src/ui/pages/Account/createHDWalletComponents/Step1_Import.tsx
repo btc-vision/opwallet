@@ -149,19 +149,6 @@ export function Step1_Import({
             <Column gap="lg">
                 {/* Header */}
                 <div style={{ textAlign: 'center', marginBottom: '8px' }}>
-                    <div
-                        style={{
-                            width: '60px',
-                            height: '60px',
-                            borderRadius: '50%',
-                            background: `linear-gradient(135deg, ${colors.main}20 0%, ${colors.main}10 100%)`,
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            margin: '0 auto 16px'
-                        }}>
-                        <LockOutlined style={{ fontSize: 28, color: colors.main }} />
-                    </div>
                     <div style={{ display: 'flex', justifyContent: 'center' }}>
                         <Text text="Secret Recovery Phrase" preset="bold" size="lg" />
                     </div>

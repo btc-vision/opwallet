@@ -2,6 +2,8 @@ export const UTXO_SECTION_LABELS = {
     PRIMARY: 'Primary Account',
     CSV75_LOCKED: 'CSV75 Locked',
     CSV75_UNLOCKED: 'CSV75 Unlocked',
+    CSV3_LOCKED: 'CSV3 Locked',
+    CSV3_UNLOCKED: 'CSV3 Unlocked',
     CSV2_LOCKED: 'CSV2 Locked',
     CSV2_UNLOCKED: 'CSV2 Unlocked',
     CSV1_LOCKED: 'CSV1 Locked',

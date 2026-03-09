@@ -106,7 +106,7 @@ class TransactionStatusPoller {
      * Only checks transactions for the CURRENT chain to avoid network switching race conditions
      */
     private async pollTransactionsNeedingTracking(): Promise<void> {
-        const currentChainType = preferenceService.getChainType();
+        /*const currentChainType = preferenceService.getChainType();
         const allTxsNeedingTracking = await transactionHistoryService.getTransactionsNeedingConfirmationTracking();
 
         // Filter to only transactions on the current chain
@@ -144,7 +144,7 @@ class TransactionStatusPoller {
                     );
                 }
             }
-        }
+        }*/
     }
 
     /**

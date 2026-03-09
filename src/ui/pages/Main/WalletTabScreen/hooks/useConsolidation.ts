@@ -10,7 +10,7 @@ import { RouteTypes, useNavigate } from '../../../routeTypes';
 /**
  * Type of account for UTXO consolidation
  */
-export type ConsolidationType = 'unspent' | 'csv75' | 'csv2' | 'csv1' | 'p2wda';
+export type ConsolidationType = 'unspent' | 'csv75' | 'csv3' | 'csv2' | 'csv1' | 'p2wda';
 
 /**
  * Optimization status for the wallet
@@ -79,6 +79,8 @@ export function useConsolidation() {
             accountBalance.unspent_utxos_count >= warningThreshold ||
             accountBalance.csv75_locked_utxos_count >= warningThreshold ||
             accountBalance.csv75_unlocked_utxos_count >= warningThreshold ||
+            accountBalance.csv3_locked_utxos_count >= warningThreshold ||
+            accountBalance.csv3_unlocked_utxos_count >= warningThreshold ||
             accountBalance.csv2_locked_utxos_count >= warningThreshold ||
             accountBalance.csv2_unlocked_utxos_count >= warningThreshold ||
             accountBalance.csv1_locked_utxos_count >= warningThreshold ||
@@ -104,6 +106,8 @@ export function useConsolidation() {
             accountBalance.unspent_utxos_count >= maxUTXOs ||
             accountBalance.csv75_locked_utxos_count >= maxUTXOs ||
             accountBalance.csv75_unlocked_utxos_count >= maxUTXOs ||
+            accountBalance.csv3_locked_utxos_count >= maxUTXOs ||
+            accountBalance.csv3_unlocked_utxos_count >= maxUTXOs ||
             accountBalance.csv2_locked_utxos_count >= maxUTXOs ||
             accountBalance.csv2_unlocked_utxos_count >= maxUTXOs ||
             accountBalance.csv1_locked_utxos_count >= maxUTXOs ||
@@ -153,7 +157,7 @@ export function useConsolidation() {
 
     /**
      * Determine which account type has the most UTXOs available for consolidation
-     * Priority order (in case of equality): unspent > csv1 > csv2 > p2wda > csv75
+     * Priority order (in case of equality): unspent > csv1 > csv3 > csv2 > p2wda > csv75
      */
     const selectConsolidationType = useCallback(
         (
@@ -165,6 +169,7 @@ export function useConsolidation() {
             const consolidationCounts = {
                 unspent: freshBalance.unspent_utxos_count,
                 csv75: freshBalance.csv75_unlocked_utxos_count,
+                csv3: freshBalance.csv3_unlocked_utxos_count,
                 csv2: freshBalance.csv2_unlocked_utxos_count,
                 csv1: freshBalance.csv1_unlocked_utxos_count,
                 p2wda: freshBalance.p2wda_utxos_count
@@ -182,6 +187,10 @@ export function useConsolidation() {
             if (consolidationCounts.p2wda >= maxCount) {
                 selectedType = 'p2wda';
                 maxCount = consolidationCounts.p2wda;
+            }
+            if (consolidationCounts.csv3 >= maxCount) {
+                selectedType = 'csv3';
+                maxCount = consolidationCounts.csv3;
             }
             if (consolidationCounts.csv2 >= maxCount) {
                 selectedType = 'csv2';

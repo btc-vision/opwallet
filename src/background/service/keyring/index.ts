@@ -732,7 +732,7 @@ class KeyringService extends EventEmitter {
 
         const vault = (await this.encryptor.decrypt(password, encryptedVault)) as SavedVault[];
 
-        const failedKeyrings: { index: number; error: unknown; data: SavedVault }[] = [];
+        const failedKeyrings: { index: number; error: unknown; type: string; addressType?: string }[] = [];
         const corruptedKeyrings: {
             index: number;
             originalType: string;
@@ -784,16 +784,15 @@ ${hasSalvageableData ? `║  Salvageable Fields: ${salvageableFields.join(', ').
 ╚══════════════════════════════════════════════════════════════════╝`);
 
                     if (hasSalvageableData) {
-                        console.warn('[unlockKeyrings] Salvageable data found! The wallet may be recoverable.');
-                        console.warn('[unlockKeyrings] Raw vault data for recovery:', JSON.stringify(key, null, 2));
+                        console.warn(`[unlockKeyrings] Salvageable data found for keyring type=${key.type} addressType=${key.addressType}. The wallet may be recoverable.`);
                     }
                 }
                 this.keyrings.push(keyring);
                 this.addressTypes.push(addressType);
                 this.rotationModes.push(key.rotationModeEnabled ?? false);
             } catch (e) {
-                console.error(`Failed to restore keyring at index ${i}:`, e, 'Data:', JSON.stringify(key));
-                failedKeyrings.push({ index: i, error: e, data: key });
+                console.error(`Failed to restore keyring at index ${i} (type=${key.type}, addressType=${key.addressType}):`, e);
+                failedKeyrings.push({ index: i, error: e, type: key.type, addressType: key.addressType != null ? String(key.addressType) : undefined });
             }
         }
 

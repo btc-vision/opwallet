@@ -13,6 +13,10 @@ export const DEFAULT_BITCOIN_BALANCE: BitcoinBalance = {
     csv75_unlocked_amount: '0',
     csv75_locked_amount: '0',
 
+    csv3_total_amount: '0',
+    csv3_unlocked_amount: '0',
+    csv3_locked_amount: '0',
+
     csv2_total_amount: '0',
     csv2_unlocked_amount: '0',
     csv2_locked_amount: '0',
@@ -27,6 +31,7 @@ export const DEFAULT_BITCOIN_BALANCE: BitcoinBalance = {
     consolidation_amount: '0',
     consolidation_unspent_amount: '0',
     consolidation_csv75_unlocked_amount: '0',
+    consolidation_csv3_unlocked_amount: '0',
     consolidation_csv2_unlocked_amount: '0',
     consolidation_csv1_unlocked_amount: '0',
     consolidation_p2wda_unspent_amount: '0',
@@ -37,6 +42,8 @@ export const DEFAULT_BITCOIN_BALANCE: BitcoinBalance = {
     unspent_utxos_count: 0,
     csv75_locked_utxos_count: 0,
     csv75_unlocked_utxos_count: 0,
+    csv3_locked_utxos_count: 0,
+    csv3_unlocked_utxos_count: 0,
     csv2_locked_utxos_count: 0,
     csv2_unlocked_utxos_count: 0,
     csv1_locked_utxos_count: 0,

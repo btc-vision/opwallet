@@ -1,6 +1,6 @@
 {
     "name": "opwallet",
-    "version": "1.8.4-alpha.0",
+    "version": "1.8.4-rc.0",
     "private": true,
     "type": "module",
     "homepage": "https://github.com/btc-vision/opwallet#readme",
@@ -102,7 +102,7 @@
         "loglevel": "^1.9.2",
         "lru-cache": "^11.2.6",
         "nanoid": "^5.1.6",
-        "opnet": "^1.8.2",
+        "opnet": "^1.8.3",
         "postcss": "^8.5.8",
         "postcss-preset-env": "^11.2.0",
         "process": "0.11.10",

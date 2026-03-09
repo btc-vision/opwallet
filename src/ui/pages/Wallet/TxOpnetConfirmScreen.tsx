@@ -487,7 +487,7 @@ export default function TxOpnetConfirmScreen() {
                     signer: userWallet.keypair,
                     mldsaSigner: userWallet.mldsaKeypair,
                     refundTo: refundAddress,
-                    maximumAllowedSatToSpend: basePriorityFee,
+                    maximumAllowedSatToSpend: basePriorityFee + 5000n,
                     feeRate: feeRate,
                     network: Web3API.network,
                     priorityFee: basePriorityFee,
@@ -611,7 +611,7 @@ export default function TxOpnetConfirmScreen() {
                         symbol = `${rawTxInfo.domainName}.btc`;
                         interactionParameters = {
                             ...interactionParameters,
-                            maximumAllowedSatToSpend: basePriorityFee + domainPrice,
+                            maximumAllowedSatToSpend: basePriorityFee + domainPrice + 5000n,
                             extraOutputs: [
                                 {
                                     address: rawTxInfo.treasuryAddress,
@@ -875,6 +875,16 @@ export default function TxOpnetConfirmScreen() {
                             [fromAddress],
                             BitcoinUtils.expandToDecimals(btcInputAmount, 8) + feeMin,
                             1n,
+                            parameters.optimize
+                        );
+                    } else if (parameters.sourceType === SourceType.CSV3) {
+                        const csv3Address = currentAddress.toCSV(3, Web3API.network);
+                        fromAddress = csv3Address.address;
+                        witnessScript = csv3Address.witnessScript;
+                        utxos = await Web3API.getAllUTXOsForAddresses(
+                            [fromAddress],
+                            BitcoinUtils.expandToDecimals(btcInputAmount, 8) + feeMin,
+                            3n,
                             parameters.optimize
                         );
                     } else if (parameters.sourceType === SourceType.CSV2) {
@@ -1609,11 +1619,13 @@ export default function TxOpnetConfirmScreen() {
             const sourceLabel =
                 parameters.sourceType === SourceType.CSV75
                     ? ' from CSV-75'
-                    : parameters.sourceType === SourceType.CSV1
-                      ? ' from CSV-1'
-                      : parameters.sourceType === SourceType.CSV2
-                        ? ' from CSV-2'
-                        : '';
+                    : parameters.sourceType === SourceType.CSV3
+                      ? ' from CSV-3'
+                      : parameters.sourceType === SourceType.CSV1
+                        ? ' from CSV-1'
+                        : parameters.sourceType === SourceType.CSV2
+                          ? ' from CSV-2'
+                          : '';
             tools.toastSuccess(`You have successfully transferred ${amountA} ${btcUnit}${sourceLabel}`);
 
             // Determine the from address for UTXO management

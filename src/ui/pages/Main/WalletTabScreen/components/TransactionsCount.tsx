@@ -7,6 +7,8 @@ interface TransactionsCountProps {
     unspent_utxos_count: number;
     csv75_locked_utxos_count: number;
     csv75_unlocked_utxos_count: number;
+    csv3_locked_utxos_count: number;
+    csv3_unlocked_utxos_count: number;
     csv2_locked_utxos_count: number;
     csv2_unlocked_utxos_count: number;
     csv1_locked_utxos_count: number;
@@ -28,6 +30,8 @@ export const TransactionsCount: React.FC<TransactionsCountProps> = ({
     unspent_utxos_count,
     csv75_locked_utxos_count,
     csv75_unlocked_utxos_count,
+    csv3_locked_utxos_count,
+    csv3_unlocked_utxos_count,
     csv2_locked_utxos_count,
     csv2_unlocked_utxos_count,
     csv1_locked_utxos_count,
@@ -83,6 +87,26 @@ export const TransactionsCount: React.FC<TransactionsCountProps> = ({
             <ProgressSection
                 label={UTXO_SECTION_LABELS.CSV75_UNLOCKED}
                 currentValue={csv75_unlocked_utxos_count}
+                maxValue={maxUTXOs}
+                warningThreshold={warningThreshold}
+                colors={colors}
+                noBreakStyle={noBreakStyle}
+            />
+
+            {/* CSV3 Locked UTXOs */}
+            <ProgressSection
+                label={UTXO_SECTION_LABELS.CSV3_LOCKED}
+                currentValue={csv3_locked_utxos_count}
+                maxValue={maxUTXOs}
+                warningThreshold={warningThreshold}
+                colors={colors}
+                noBreakStyle={noBreakStyle}
+            />
+
+            {/* CSV3 Unlocked UTXOs */}
+            <ProgressSection
+                label={UTXO_SECTION_LABELS.CSV3_UNLOCKED}
+                currentValue={csv3_unlocked_utxos_count}
                 maxValue={maxUTXOs}
                 warningThreshold={warningThreshold}
                 colors={colors}

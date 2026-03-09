@@ -102,6 +102,10 @@ export function useFetchBalanceCallback() {
             csv75_unlocked_amount: accountBalance.csv75_unlocked_amount ?? '0',
             csv75_locked_amount: accountBalance.csv75_locked_amount ?? '0',
 
+            csv3_total_amount: accountBalance.csv3_total_amount ?? '0',
+            csv3_unlocked_amount: accountBalance.csv3_unlocked_amount ?? '0',
+            csv3_locked_amount: accountBalance.csv3_locked_amount ?? '0',
+
             csv2_total_amount: accountBalance.csv2_total_amount ?? '0',
             csv2_unlocked_amount: accountBalance.csv2_unlocked_amount ?? '0',
             csv2_locked_amount: accountBalance.csv2_locked_amount ?? '0',
@@ -116,6 +120,7 @@ export function useFetchBalanceCallback() {
             consolidation_amount: accountBalance.consolidation_amount,
             consolidation_unspent_amount: accountBalance.consolidation_unspent_amount,
             consolidation_csv75_unlocked_amount: accountBalance.consolidation_csv75_unlocked_amount,
+            consolidation_csv3_unlocked_amount: accountBalance.consolidation_csv3_unlocked_amount,
             consolidation_csv2_unlocked_amount: accountBalance.consolidation_csv2_unlocked_amount,
             consolidation_csv1_unlocked_amount: accountBalance.consolidation_csv1_unlocked_amount,
             consolidation_p2wda_unspent_amount: accountBalance.consolidation_p2wda_unspent_amount,
@@ -126,6 +131,8 @@ export function useFetchBalanceCallback() {
             unspent_utxos_count: accountBalance.unspent_utxos_count,
             csv75_locked_utxos_count: accountBalance.csv75_locked_utxos_count,
             csv75_unlocked_utxos_count: accountBalance.csv75_unlocked_utxos_count,
+            csv3_locked_utxos_count: accountBalance.csv3_locked_utxos_count,
+            csv3_unlocked_utxos_count: accountBalance.csv3_unlocked_utxos_count,
             csv2_locked_utxos_count: accountBalance.csv2_locked_utxos_count,
             csv2_unlocked_utxos_count: accountBalance.csv2_unlocked_utxos_count,
             csv1_locked_utxos_count: accountBalance.csv1_locked_utxos_count,

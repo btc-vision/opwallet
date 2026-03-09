@@ -267,17 +267,19 @@ export default function WalletTabScreen() {
     const totalBalance = useMemo(() => {
         const main = parseFloat(accountBalance.btc_total_amount || '0');
         const csv75 = parseFloat(accountBalance.csv75_total_amount || '0');
+        const csv3 = parseFloat(accountBalance.csv3_total_amount || '0');
         const csv2 = parseFloat(accountBalance.csv2_total_amount || '0');
         const csv1 = parseFloat(accountBalance.csv1_total_amount || '0');
-        return (main + csv75 + csv2 + csv1).toFixed(8).replace(/\.?0+$/, '');
+        return (main + csv75 + csv3 + csv2 + csv1).toFixed(8).replace(/\.?0+$/, '');
     }, [accountBalance]);
 
     // Helper function to check if there are CSV balances
     const hasCSVBalances = () => {
         const csv75Total = parseFloat(accountBalance.csv75_total_amount || '0');
+        const csv3Total = parseFloat(accountBalance.csv3_total_amount || '0');
         const csv2Total = parseFloat(accountBalance.csv2_total_amount || '0');
         const csv1Total = parseFloat(accountBalance.csv1_total_amount || '0');
-        return csv75Total > 0 || csv2Total > 0 || csv1Total > 0;
+        return csv75Total > 0 || csv3Total > 0 || csv2Total > 0 || csv1Total > 0;
     };
 
 
@@ -466,6 +468,9 @@ export default function WalletTabScreen() {
                         csv75_total_amount={accountBalance.csv75_total_amount}
                         csv75_unlocked_amount={accountBalance.csv75_unlocked_amount}
                         csv75_locked_amount={accountBalance.csv75_locked_amount}
+                        csv3_total_amount={accountBalance.csv3_total_amount}
+                        csv3_unlocked_amount={accountBalance.csv3_unlocked_amount}
+                        csv3_locked_amount={accountBalance.csv3_locked_amount}
                         csv2_total_amount={accountBalance.csv2_total_amount}
                         csv2_unlocked_amount={accountBalance.csv2_unlocked_amount}
                         csv2_locked_amount={accountBalance.csv2_locked_amount}
@@ -558,6 +563,8 @@ export default function WalletTabScreen() {
                                         accountBalance.unspent_utxos_count >= errorThreshold ||
                                         accountBalance.csv75_locked_utxos_count >= errorThreshold ||
                                         accountBalance.csv75_unlocked_utxos_count >= errorThreshold ||
+                                        accountBalance.csv3_locked_utxos_count >= errorThreshold ||
+                                        accountBalance.csv3_unlocked_utxos_count >= errorThreshold ||
                                         accountBalance.csv2_locked_utxos_count >= errorThreshold ||
                                         accountBalance.csv2_unlocked_utxos_count >= errorThreshold ||
                                         accountBalance.csv1_locked_utxos_count >= errorThreshold ||
