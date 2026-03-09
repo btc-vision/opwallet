@@ -101,8 +101,6 @@ export interface WalletController {
         account: { address: string; type: string }
     ): Promise<{ hex: string; wif: string } | null>;
 
-    getInternalPrivateKey(account: { pubkey: string; type: string }): Promise<{ hex: string; wif: string }>;
-
     getOPNetWallet(account?: { pubkey: string; type: string }): Promise<[string, string, string]>;
 
     getQuantumPublicKey(): Promise<string | undefined>;
