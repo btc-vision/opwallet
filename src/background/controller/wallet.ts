@@ -2791,6 +2791,10 @@ export class WalletController {
      * @throws WalletControllerError
      */
     public setQuantumKey = async (quantumPrivateKey: string): Promise<void> => {
+        if (!this.isUnlocked()) {
+            throw new WalletControllerError('Wallet is locked');
+        }
+
         const account = await this.getCurrentAccount();
         if (!account) {
             throw new WalletControllerError('No current account');
@@ -2810,6 +2814,10 @@ export class WalletController {
      * @throws WalletControllerError
      */
     public generateQuantumKey = async (): Promise<void> => {
+        if (!this.isUnlocked()) {
+            throw new WalletControllerError('Wallet is locked');
+        }
+
         const account = await this.getCurrentAccount();
         if (!account) {
             throw new WalletControllerError('No current account');
@@ -3275,42 +3283,6 @@ export class WalletController {
 
         // Clear backup
         await duplicationBackupService.clearBackup();
-    };
-
-    /**
-     * Export both classical and quantum private keys for the current account.
-     * Only works for SimpleKeyring (WIF-imported) wallets.
-     * @throws WalletControllerError
-     */
-    public exportPrivateKeyWithQuantum = async (password: string): Promise<{
-        classicalPrivateKey: string;
-        quantumPrivateKey?: string;
-        chainCode?: string;
-    }> => {
-        const isValid = await this.verifyPassword(password);
-        if (!isValid) {
-            throw new WalletControllerError('Invalid password');
-        }
-
-        const account = await this.getCurrentAccount();
-        if (!account) {
-            throw new WalletControllerError('No current account');
-        }
-        try {
-            const classicalPrivateKey = keyringService.exportAccount(account.pubkey);
-            const quantumPrivateKey = keyringService.exportQuantumAccount(account.pubkey);
-
-            let privateKey: string | undefined;
-            let chainCode: string | undefined;
-            if (quantumPrivateKey) {
-                privateKey = quantumPrivateKey.slice(0, quantumPrivateKey.length - 64);
-                chainCode = quantumPrivateKey.slice(quantumPrivateKey.length - 64);
-            }
-
-            return { classicalPrivateKey, quantumPrivateKey: privateKey, chainCode };
-        } catch (err) {
-            throw new WalletControllerError(`Failed to export private keys: ${String(err)}`);
-        }
     };
 
     public getAutoLockTimeId = (): number => {
