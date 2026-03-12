@@ -1,12 +1,12 @@
 import Web3API from '@/shared/web3/Web3API';
-import { Column, Content, Header, Input, Layout, OPNetLoader } from '@/ui/components';
+import { Content, Header, Input, Layout, OPNetLoader } from '@/ui/components';
 import { useTools } from '@/ui/components/ActionComponent';
 import { Image } from '@/ui/components/Image';
 import { fontSizes } from '@/ui/theme/font';
 import { RouteTypes, useNavigate } from '@/ui/pages/routeTypes';
 import { useCurrentAccount } from '@/ui/state/accounts/hooks';
 import { useChain, useChainType } from '@/ui/state/settings/hooks';
-import { DollarOutlined } from '@ant-design/icons';
+import { CheckCircleOutlined, DollarOutlined, PlusCircleOutlined, SearchOutlined, StarOutlined } from '@ant-design/icons';
 import { Address, AddressTypes, AddressVerificator } from '@btc-vision/transaction';
 import { useEffect, useState } from 'react';
 
@@ -222,20 +222,60 @@ export default function ImportTokenScreen() {
             <Header title="Import OP_20 Token" onBack={() => navigate(RouteTypes.ImportSelectionScreen)} />
 
             <Content style={{ padding: '16px' }}>
-                <Column gap="lg">
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                    {/* Hero Header */}
+                    <div
+                        style={{
+                            textAlign: 'center',
+                            padding: '20px 16px 16px'
+                        }}>
+                        <div
+                            style={{
+                                width: '48px',
+                                height: '48px',
+                                borderRadius: '14px',
+                                background: `linear-gradient(135deg, ${colors.main}20 0%, ${colors.main}08 100%)`,
+                                border: `1px solid ${colors.main}25`,
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                margin: '0 auto 12px'
+                            }}>
+                            <PlusCircleOutlined style={{ fontSize: 22, color: colors.main }} />
+                        </div>
+                        <div
+                            style={{
+                                fontSize: '12px',
+                                color: colors.textFaded,
+                                lineHeight: '1.5'
+                            }}>
+                            {suggestedTokens.length > 0
+                                ? 'Pick a suggested token or enter a contract address'
+                                : 'Enter the OP_20 token contract address to import'}
+                        </div>
+                    </div>
+
                     {/* Suggested Tokens */}
                     {suggestedTokens.length > 0 && (
-                        <div style={{ marginBottom: '16px' }}>
+                        <div>
                             <div
                                 style={{
-                                    fontSize: '12px',
-                                    fontWeight: 600,
-                                    color: colors.textFaded,
-                                    textTransform: 'uppercase',
-                                    letterSpacing: '0.5px',
-                                    marginBottom: '12px'
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '6px',
+                                    marginBottom: '10px'
                                 }}>
-                                Suggested Tokens
+                                <StarOutlined style={{ fontSize: 11, color: colors.main }} />
+                                <span
+                                    style={{
+                                        fontSize: '11px',
+                                        fontWeight: 600,
+                                        color: colors.textFaded,
+                                        textTransform: 'uppercase',
+                                        letterSpacing: '0.5px'
+                                    }}>
+                                    Suggested Tokens
+                                </span>
                             </div>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                                 {suggestedTokens.map((token) => (
@@ -243,45 +283,65 @@ export default function ImportTokenScreen() {
                                         key={token.address}
                                         style={{
                                             width: '100%',
-                                            background: colors.containerBgFaded,
-                                            border: `1px solid ${colors.containerBorder}`,
-                                            borderRadius: '10px',
-                                            padding: '12px',
+                                            background: `linear-gradient(135deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.01) 100%)`,
+                                            border: `1px solid rgba(255,255,255,0.06)`,
+                                            borderRadius: '12px',
+                                            padding: '12px 14px',
                                             cursor: 'pointer',
-                                            transition: 'all 0.2s',
+                                            transition: 'all 0.2s ease',
                                             display: 'flex',
                                             alignItems: 'center',
                                             justifyContent: 'space-between'
                                         }}
                                         onClick={() => handleAddressChange(token.address)}
                                         onMouseOver={(e) => {
-                                            e.currentTarget.style.borderColor = colors.main;
-                                            e.currentTarget.style.background = colors.buttonHoverBg;
+                                            e.currentTarget.style.borderColor = `${colors.main}50`;
+                                            e.currentTarget.style.background = `linear-gradient(135deg, ${colors.main}08 0%, ${colors.main}03 100%)`;
+                                            e.currentTarget.style.transform = 'translateY(-1px)';
                                         }}
                                         onMouseOut={(e) => {
-                                            e.currentTarget.style.borderColor = colors.containerBorder;
-                                            e.currentTarget.style.background = colors.containerBgFaded;
+                                            e.currentTarget.style.borderColor = 'rgba(255,255,255,0.06)';
+                                            e.currentTarget.style.background = `linear-gradient(135deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.01) 100%)`;
+                                            e.currentTarget.style.transform = 'translateY(0)';
                                         }}>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                                             <div
                                                 style={{
-                                                    width: '32px',
-                                                    height: '32px',
-                                                    borderRadius: '8px',
+                                                    width: '36px',
+                                                    height: '36px',
+                                                    borderRadius: '10px',
                                                     display: 'flex',
                                                     alignItems: 'center',
                                                     justifyContent: 'center',
-                                                    overflow: 'hidden'
+                                                    overflow: 'hidden',
+                                                    background: token.logo ? 'transparent' : `${colors.main}15`,
+                                                    flexShrink: 0
                                                 }}>
                                                 {token.logo ? (
                                                     <Image src={token.logo} size={fontSizes.iconMiddle} />
                                                 ) : (
-                                                    <div style={{ fontSize: '16px' }}>🪙</div>
+                                                    <DollarOutlined
+                                                        style={{ fontSize: '16px', color: colors.main }}
+                                                    />
                                                 )}
                                             </div>
                                             <div style={{ textAlign: 'left' }}>
-                                                <div style={{ fontSize: '14px', fontWeight: 600, color: colors.text }}>
+                                                <div
+                                                    style={{
+                                                        fontSize: '13px',
+                                                        fontWeight: 600,
+                                                        color: colors.text
+                                                    }}>
                                                     {token.name}
+                                                </div>
+                                                <div
+                                                    style={{
+                                                        fontSize: '10px',
+                                                        color: colors.textFaded,
+                                                        marginTop: '2px',
+                                                        fontFamily: 'monospace'
+                                                    }}>
+                                                    {token.address.slice(0, 8)}...{token.address.slice(-6)}
                                                 </div>
                                             </div>
                                         </div>
@@ -289,7 +349,11 @@ export default function ImportTokenScreen() {
                                             style={{
                                                 fontSize: '11px',
                                                 color: colors.main,
-                                                fontWeight: 600
+                                                fontWeight: 600,
+                                                background: `${colors.main}12`,
+                                                padding: '4px 10px',
+                                                borderRadius: '6px',
+                                                transition: 'all 0.2s'
                                             }}>
                                             Import
                                         </div>
@@ -299,28 +363,43 @@ export default function ImportTokenScreen() {
                         </div>
                     )}
 
-                    <div style={{ marginBottom: '8px' }}>
-                        <p
+                    {/* Divider between suggestions and manual input */}
+                    {suggestedTokens.length > 0 && (
+                        <div
                             style={{
-                                fontSize: '12px',
-                                color: colors.textFaded,
-                                marginBottom: '16px'
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '12px'
                             }}>
-                            {suggestedTokens.length > 0
-                                ? 'Pick a suggested token or enter the OP_20 token contract address to import'
-                                : 'Enter the OP_20 token contract address to import'}
-                        </p>
-                    </div>
+                            <div style={{ flex: 1, height: '1px', background: 'rgba(255,255,255,0.06)' }} />
+                            <span
+                                style={{
+                                    fontSize: '10px',
+                                    color: 'rgba(255,255,255,0.25)',
+                                    textTransform: 'uppercase',
+                                    letterSpacing: '1px',
+                                    fontWeight: 600
+                                }}>
+                                or
+                            </span>
+                            <div style={{ flex: 1, height: '1px', background: 'rgba(255,255,255,0.06)' }} />
+                        </div>
+                    )}
 
+                    {/* Contract Address Input */}
                     <div
                         style={{
-                            background: colors.containerBgFaded,
-                            borderRadius: '12px',
-                            padding: '14px'
+                            background: `linear-gradient(135deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.01) 100%)`,
+                            borderRadius: '14px',
+                            padding: '14px',
+                            border: contractAddress
+                                ? `1px solid ${error ? colors.error + '40' : tokenInfo ? colors.success + '30' : colors.main + '25'}`
+                                : '1px solid rgba(255,255,255,0.06)',
+                            transition: 'border-color 0.3s ease'
                         }}>
                         <div
                             style={{
-                                fontSize: '12px',
+                                fontSize: '11px',
                                 fontWeight: 600,
                                 color: colors.textFaded,
                                 textTransform: 'uppercase',
@@ -330,132 +409,301 @@ export default function ImportTokenScreen() {
                                 alignItems: 'center',
                                 gap: '6px'
                             }}>
+                            <SearchOutlined style={{ fontSize: 11 }} />
                             Contract Address
                         </div>
                         <Input
-                            placeholder="Enter token address (0x...)"
+                            placeholder="Enter token address (bcrt1p... or 0x...)"
                             value={contractAddress}
                             onChange={(e) => handleAddressChange(e.target.value)}
                             style={{
                                 background: colors.inputBg,
                                 border: `1px solid ${colors.containerBorder}`,
-                                borderRadius: '8px'
+                                borderRadius: '10px',
+                                padding: '10px 12px',
+                                fontSize: '13px',
+                                fontFamily: 'monospace'
                             }}
                         />
                     </div>
 
+                    {/* Loading State */}
                     {loading && (
                         <div
                             style={{
                                 textAlign: 'center',
-                                padding: '20px'
+                                padding: '24px',
+                                background: 'rgba(255,255,255,0.02)',
+                                borderRadius: '14px',
+                                border: '1px solid rgba(255,255,255,0.04)'
                             }}>
                             <OPNetLoader size={50} text="Fetching token" />
                         </div>
                     )}
 
+                    {/* Token Info Preview */}
                     {tokenInfo && !loading && (
                         <div
                             style={{
-                                background: colors.containerBgFaded,
-                                borderRadius: '12px',
+                                background: `linear-gradient(135deg, ${colors.main}08 0%, rgba(255,255,255,0.02) 100%)`,
+                                borderRadius: '14px',
                                 padding: '16px',
-                                border: `1px solid ${colors.main}30`
+                                border: `1px solid ${colors.main}20`,
+                                position: 'relative',
+                                overflow: 'hidden'
                             }}>
-                            <div style={{ display: 'flex', gap: '12px', marginBottom: '16px' }}>
+                            {/* Subtle glow accent */}
+                            <div
+                                style={{
+                                    position: 'absolute',
+                                    top: '-30px',
+                                    right: '-30px',
+                                    width: '80px',
+                                    height: '80px',
+                                    borderRadius: '50%',
+                                    background: `radial-gradient(circle, ${colors.main}15 0%, transparent 70%)`,
+                                    pointerEvents: 'none'
+                                }}
+                            />
+
+                            {/* Token header */}
+                            <div
+                                style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '14px',
+                                    marginBottom: '16px',
+                                    position: 'relative'
+                                }}>
                                 <div
                                     style={{
-                                        width: '48px',
-                                        height: '48px',
-                                        background: tokenInfo.icon ? 'transparent' : colors.main,
-                                        borderRadius: '12px',
+                                        width: '52px',
+                                        height: '52px',
+                                        background: tokenInfo.icon
+                                            ? 'transparent'
+                                            : `linear-gradient(135deg, ${colors.main}30 0%, ${colors.main}10 100%)`,
+                                        borderRadius: '14px',
                                         display: 'flex',
                                         alignItems: 'center',
                                         justifyContent: 'center',
-                                        fontSize: '24px',
                                         overflow: 'hidden',
-                                        flexShrink: 0
+                                        flexShrink: 0,
+                                        border: tokenInfo.icon ? 'none' : `1px solid ${colors.main}20`
                                     }}>
                                     {tokenInfo.icon ? (
                                         <img
                                             src={tokenInfo.icon}
                                             alt={tokenInfo.name}
-                                            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                                            style={{
+                                                width: '100%',
+                                                height: '100%',
+                                                objectFit: 'cover',
+                                                borderRadius: '14px'
+                                            }}
                                         />
                                     ) : (
-                                        <DollarOutlined style={{ fontSize: '24px', color: colors.textFaded }} />
+                                        <DollarOutlined style={{ fontSize: '24px', color: colors.main }} />
                                     )}
                                 </div>
-                                <div style={{ flex: 1 }}>
-                                    <div style={{ fontSize: '16px', fontWeight: 600, color: colors.text }}>
+                                <div style={{ flex: 1, minWidth: 0 }}>
+                                    <div
+                                        style={{
+                                            fontSize: '17px',
+                                            fontWeight: 700,
+                                            color: colors.text,
+                                            lineHeight: '1.2'
+                                        }}>
                                         {tokenInfo.name}
                                     </div>
-                                    <div style={{ fontSize: '12px', color: colors.textFaded, marginTop: '4px' }}>
+                                    <div
+                                        style={{
+                                            fontSize: '12px',
+                                            color: colors.main,
+                                            fontWeight: 600,
+                                            marginTop: '3px'
+                                        }}>
                                         {tokenInfo.symbol}
                                     </div>
                                 </div>
+                                <CheckCircleOutlined
+                                    style={{ fontSize: 18, color: colors.success, flexShrink: 0 }}
+                                />
                             </div>
 
+                            {/* Token details grid */}
                             <div
                                 style={{
                                     display: 'grid',
-                                    gridTemplateColumns: '1fr',
-                                    gap: '12px',
-                                    padding: '12px',
-                                    background: colors.inputBg,
-                                    borderRadius: '8px'
+                                    gridTemplateColumns: '1fr 1fr',
+                                    gap: '1px',
+                                    background: 'rgba(255,255,255,0.04)',
+                                    borderRadius: '10px',
+                                    overflow: 'hidden'
                                 }}>
-                                <div>
-                                    <div style={{ fontSize: '10px', color: colors.textFaded, marginBottom: '4px' }}>
-                                        DECIMALS
+                                <div
+                                    style={{
+                                        padding: '12px',
+                                        background: colors.inputBg
+                                    }}>
+                                    <div
+                                        style={{
+                                            fontSize: '10px',
+                                            color: colors.textFaded,
+                                            textTransform: 'uppercase',
+                                            letterSpacing: '0.5px',
+                                            marginBottom: '4px',
+                                            fontWeight: 600
+                                        }}>
+                                        Decimals
                                     </div>
-                                    <div style={{ fontSize: '14px', color: colors.text }}>{tokenInfo.decimals}</div>
+                                    <div
+                                        style={{
+                                            fontSize: '15px',
+                                            color: colors.text,
+                                            fontWeight: 600,
+                                            fontVariantNumeric: 'tabular-nums'
+                                        }}>
+                                        {tokenInfo.decimals}
+                                    </div>
                                 </div>
-                                <div>
-                                    <div style={{ fontSize: '10px', color: colors.textFaded, marginBottom: '4px' }}>
-                                        TOTAL SUPPLY
+                                <div
+                                    style={{
+                                        padding: '12px',
+                                        background: colors.inputBg
+                                    }}>
+                                    <div
+                                        style={{
+                                            fontSize: '10px',
+                                            color: colors.textFaded,
+                                            textTransform: 'uppercase',
+                                            letterSpacing: '0.5px',
+                                            marginBottom: '4px',
+                                            fontWeight: 600
+                                        }}>
+                                        Total Supply
                                     </div>
-                                    <div style={{ fontSize: '14px', color: colors.text }}>
-                                        {formatSupply(tokenInfo.totalSupply, tokenInfo.decimals)} {tokenInfo.symbol}
+                                    <div
+                                        style={{
+                                            fontSize: '14px',
+                                            color: colors.text,
+                                            fontWeight: 600,
+                                            fontVariantNumeric: 'tabular-nums',
+                                            overflow: 'hidden',
+                                            textOverflow: 'ellipsis',
+                                            whiteSpace: 'nowrap'
+                                        }}>
+                                        {formatSupply(tokenInfo.totalSupply, tokenInfo.decimals)}{' '}
+                                        <span style={{ fontSize: '11px', color: colors.textFaded, fontWeight: 500 }}>
+                                            {tokenInfo.symbol}
+                                        </span>
                                     </div>
                                 </div>
+                            </div>
+
+                            {/* Contract address */}
+                            <div
+                                style={{
+                                    marginTop: '12px',
+                                    padding: '8px 10px',
+                                    background: 'rgba(0,0,0,0.15)',
+                                    borderRadius: '8px',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '8px'
+                                }}>
+                                <span
+                                    style={{
+                                        fontSize: '9px',
+                                        fontWeight: 600,
+                                        color: colors.textFaded,
+                                        textTransform: 'uppercase',
+                                        letterSpacing: '0.3px',
+                                        flexShrink: 0
+                                    }}>
+                                    Contract
+                                </span>
+                                <span
+                                    style={{
+                                        fontSize: '11px',
+                                        color: 'rgba(255,255,255,0.5)',
+                                        fontFamily: 'monospace',
+                                        overflow: 'hidden',
+                                        textOverflow: 'ellipsis',
+                                        whiteSpace: 'nowrap'
+                                    }}>
+                                    {tokenInfo.address}
+                                </span>
                             </div>
                         </div>
                     )}
 
+                    {/* Error Message */}
                     {error && (
                         <div
                             style={{
-                                padding: '12px',
-                                background: `${colors.error}15`,
-                                border: `1px solid ${colors.error}30`,
-                                borderRadius: '8px',
-                                textAlign: 'center'
+                                padding: '10px 14px',
+                                background: `linear-gradient(135deg, ${colors.error}10 0%, ${colors.error}05 100%)`,
+                                border: `1px solid ${colors.error}25`,
+                                borderRadius: '10px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '8px'
                             }}>
-                            <span style={{ fontSize: '12px', color: colors.error }}>{error}</span>
+                            <div
+                                style={{
+                                    width: '6px',
+                                    height: '6px',
+                                    borderRadius: '50%',
+                                    background: colors.error,
+                                    flexShrink: 0
+                                }}
+                            />
+                            <span style={{ fontSize: '12px', color: colors.error, fontWeight: 500 }}>{error}</span>
                         </div>
                     )}
 
+                    {/* Import Button */}
                     <button
                         style={{
                             width: '100%',
                             padding: '14px',
-                            background: tokenInfo && !loading ? colors.main : colors.buttonBg,
+                            background:
+                                tokenInfo && !loading
+                                    ? `linear-gradient(135deg, ${colors.main} 0%, #d5640f 100%)`
+                                    : colors.buttonBg,
                             border: 'none',
                             borderRadius: '12px',
-                            color: tokenInfo && !loading ? colors.background : colors.textFaded,
+                            color: tokenInfo && !loading ? '#000' : colors.textFaded,
                             fontSize: '14px',
-                            fontWeight: 600,
+                            fontWeight: 700,
                             cursor: tokenInfo && !loading ? 'pointer' : 'not-allowed',
                             opacity: tokenInfo && !loading ? 1 : 0.5,
-                            transition: 'all 0.2s',
-                            marginTop: '24px'
+                            transition: 'all 0.2s ease',
+                            marginTop: '8px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '8px',
+                            boxShadow:
+                                tokenInfo && !loading ? `0 4px 16px ${colors.main}30` : 'none'
                         }}
                         disabled={!tokenInfo || loading}
-                        onClick={handleImport}>
+                        onClick={handleImport}
+                        onMouseEnter={(e) => {
+                            if (tokenInfo && !loading) {
+                                e.currentTarget.style.transform = 'translateY(-1px)';
+                                e.currentTarget.style.boxShadow = `0 6px 20px ${colors.main}40`;
+                            }
+                        }}
+                        onMouseLeave={(e) => {
+                            e.currentTarget.style.transform = 'translateY(0)';
+                            e.currentTarget.style.boxShadow =
+                                tokenInfo && !loading ? `0 4px 16px ${colors.main}30` : 'none';
+                        }}>
+                        <PlusCircleOutlined style={{ fontSize: 16 }} />
                         Import Token
                     </button>
-                </Column>
+                </div>
             </Content>
         </Layout>
     );

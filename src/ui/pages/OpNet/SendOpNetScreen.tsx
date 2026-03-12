@@ -449,36 +449,77 @@ export default function SendOpNetScreen() {
                 {/* Optional Note */}
                 <div
                     style={{
-                        background: colors.containerBgFaded,
+                        background: `linear-gradient(135deg, ${colors.containerBgFaded} 0%, rgba(41, 40, 40, 0.6) 100%)`,
                         borderRadius: '12px',
-                        padding: '12px'
+                        padding: '14px',
+                        border: note
+                            ? `1px solid ${colors.main}30`
+                            : `1px solid transparent`,
+                        transition: 'border-color 0.3s ease'
                     }}>
                     <div
                         style={{
-                            fontSize: '11px',
-                            fontWeight: 600,
-                            color: colors.textFaded,
-                            textTransform: 'uppercase',
-                            letterSpacing: '0.5px',
-                            marginBottom: '8px',
                             display: 'flex',
+                            justifyContent: 'space-between',
                             alignItems: 'center',
-                            gap: '6px'
+                            marginBottom: '10px'
                         }}>
-                        <EditOutlined style={{ fontSize: 10 }} />
-                        Note (Optional)
+                        <div
+                            style={{
+                                fontSize: '11px',
+                                fontWeight: 600,
+                                color: note ? colors.main : colors.textFaded,
+                                textTransform: 'uppercase',
+                                letterSpacing: '0.5px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '6px',
+                                transition: 'color 0.3s ease'
+                            }}>
+                            <EditOutlined style={{ fontSize: 11 }} />
+                            Note
+                            <span
+                                style={{
+                                    fontSize: '9px',
+                                    fontWeight: 400,
+                                    color: colors.textFaded,
+                                    textTransform: 'none',
+                                    letterSpacing: 'normal',
+                                    background: 'rgba(255,255,255,0.05)',
+                                    padding: '2px 6px',
+                                    borderRadius: '4px'
+                                }}>
+                                Optional
+                            </span>
+                        </div>
+                        {note && (
+                            <span
+                                style={{
+                                    fontSize: '10px',
+                                    color: note.length > 200 ? colors.error : colors.textFaded,
+                                    fontWeight: 500,
+                                    fontVariantNumeric: 'tabular-nums',
+                                    transition: 'color 0.2s ease'
+                                }}>
+                                {note.length}/256
+                            </span>
+                        )}
                     </div>
                     <Input
                         preset="text"
-                        placeholder="Add a note..."
+                        placeholder="Add a memo or note for this transaction..."
                         value={note}
-                        onChange={(e) => setNote(e.target.value)}
+                        onChange={(e) => {
+                            if (e.target.value.length <= 256) setNote(e.target.value);
+                        }}
                         style={{
                             background: colors.inputBg,
                             border: `1px solid ${colors.containerBorder}`,
-                            borderRadius: '8px',
-                            padding: '8px 10px',
-                            fontSize: '12px'
+                            borderRadius: '10px',
+                            padding: '10px 12px',
+                            fontSize: '13px',
+                            lineHeight: '1.4',
+                            transition: 'border-color 0.2s ease'
                         }}
                     />
                 </div>
