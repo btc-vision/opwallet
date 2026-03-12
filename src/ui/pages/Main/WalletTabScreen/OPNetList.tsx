@@ -727,18 +727,6 @@ export function OPNetList() {
                         textAlign: 'center',
                         marginBottom: '12px'
                     }}>
-                    <div style={{
-                        width: '48px',
-                        height: '48px',
-                        borderRadius: '50%',
-                        background: `${colors.main}10`,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        margin: '0 auto 12px'
-                    }}>
-                        <FontAwesomeIcon icon={faPlus} style={{ fontSize: 18, color: colors.main, opacity: 0.6 }} />
-                    </div>
                     <Text text="No tokens found" color="text" size="md" style={{ marginBottom: 4 }} />
                     <Text text="Import or deploy a token to get started" color="textDim" size="sm" />
                 </div>

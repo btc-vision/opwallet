@@ -73,40 +73,20 @@ export const TransactionsCount: React.FC<TransactionsCountProps> = ({
                 noBreakStyle={noBreakStyle}
             />
 
-            {/* CSV75 Locked UTXOs */}
+            {/* CSV1 Locked UTXOs */}
             <ProgressSection
-                label={UTXO_SECTION_LABELS.CSV75_LOCKED}
-                currentValue={csv75_locked_utxos_count}
+                label={UTXO_SECTION_LABELS.CSV1_LOCKED}
+                currentValue={csv1_locked_utxos_count}
                 maxValue={maxUTXOs}
                 warningThreshold={warningThreshold}
                 colors={colors}
                 noBreakStyle={noBreakStyle}
             />
 
-            {/* CSV75 Unlocked UTXOs */}
+            {/* CSV1 Unlocked UTXOs */}
             <ProgressSection
-                label={UTXO_SECTION_LABELS.CSV75_UNLOCKED}
-                currentValue={csv75_unlocked_utxos_count}
-                maxValue={maxUTXOs}
-                warningThreshold={warningThreshold}
-                colors={colors}
-                noBreakStyle={noBreakStyle}
-            />
-
-            {/* CSV3 Locked UTXOs */}
-            <ProgressSection
-                label={UTXO_SECTION_LABELS.CSV3_LOCKED}
-                currentValue={csv3_locked_utxos_count}
-                maxValue={maxUTXOs}
-                warningThreshold={warningThreshold}
-                colors={colors}
-                noBreakStyle={noBreakStyle}
-            />
-
-            {/* CSV3 Unlocked UTXOs */}
-            <ProgressSection
-                label={UTXO_SECTION_LABELS.CSV3_UNLOCKED}
-                currentValue={csv3_unlocked_utxos_count}
+                label={UTXO_SECTION_LABELS.CSV1_UNLOCKED}
+                currentValue={csv1_unlocked_utxos_count}
                 maxValue={maxUTXOs}
                 warningThreshold={warningThreshold}
                 colors={colors}
@@ -133,20 +113,40 @@ export const TransactionsCount: React.FC<TransactionsCountProps> = ({
                 noBreakStyle={noBreakStyle}
             />
 
-            {/* CSV1 Locked UTXOs */}
+            {/* CSV3 Locked UTXOs */}
             <ProgressSection
-                label={UTXO_SECTION_LABELS.CSV1_LOCKED}
-                currentValue={csv1_locked_utxos_count}
+                label={UTXO_SECTION_LABELS.CSV3_LOCKED}
+                currentValue={csv3_locked_utxos_count}
                 maxValue={maxUTXOs}
                 warningThreshold={warningThreshold}
                 colors={colors}
                 noBreakStyle={noBreakStyle}
             />
 
-            {/* CSV1 Unlocked UTXOs */}
+            {/* CSV3 Unlocked UTXOs */}
             <ProgressSection
-                label={UTXO_SECTION_LABELS.CSV1_UNLOCKED}
-                currentValue={csv1_unlocked_utxos_count}
+                label={UTXO_SECTION_LABELS.CSV3_UNLOCKED}
+                currentValue={csv3_unlocked_utxos_count}
+                maxValue={maxUTXOs}
+                warningThreshold={warningThreshold}
+                colors={colors}
+                noBreakStyle={noBreakStyle}
+            />
+
+            {/* CSV75 Locked UTXOs */}
+            <ProgressSection
+                label={UTXO_SECTION_LABELS.CSV75_LOCKED}
+                currentValue={csv75_locked_utxos_count}
+                maxValue={maxUTXOs}
+                warningThreshold={warningThreshold}
+                colors={colors}
+                noBreakStyle={noBreakStyle}
+            />
+
+            {/* CSV75 Unlocked UTXOs */}
+            <ProgressSection
+                label={UTXO_SECTION_LABELS.CSV75_UNLOCKED}
+                currentValue={csv75_unlocked_utxos_count}
                 maxValue={maxUTXOs}
                 warningThreshold={warningThreshold}
                 colors={colors}
