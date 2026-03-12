@@ -1,0 +1,43 @@
+diff --git a/node_modules/@btc-vision/transaction/browser/.index.js.swp b/node_modules/@btc-vision/transaction/browser/.index.js.swp
+new file mode 100644
+index 0000000..fcc54bf
+Binary files /dev/null and b/node_modules/@btc-vision/transaction/browser/.index.js.swp differ
+diff --git a/node_modules/@btc-vision/transaction/browser/index.js b/node_modules/@btc-vision/transaction/browser/index.js
+index ddde286..56686f9 100644
+--- a/node_modules/@btc-vision/transaction/browser/index.js
++++ b/node_modules/@btc-vision/transaction/browser/index.js
+@@ -7902,7 +7902,7 @@ class ci {
+         1
+       ),
+       challenge: a.toRaw(),
+-      fundingUTXOs: h,
++      fundingUTXOs: [...h, ...r],
+       fundingInputUtxos: t.utxos,
+       compiledTargetScript: g(p.exportCompiledTargetScript())
+     };
+diff --git a/node_modules/@btc-vision/transaction/build/transaction/TransactionFactory.js b/node_modules/@btc-vision/transaction/build/transaction/TransactionFactory.js
+index 5491b7a..4694478 100644
+--- a/node_modules/@btc-vision/transaction/build/transaction/TransactionFactory.js
++++ b/node_modules/@btc-vision/transaction/build/transaction/TransactionFactory.js
+@@ -193,7 +193,7 @@ export class TransactionFactory {
+             estimatedFees: interactionTx.transactionFee,
+             nextUTXOs: this.getUTXOAsTransaction(signedTransaction.tx, interactionParameters.from, 1),
+             challenge: challenge.toRaw(),
+-            fundingUTXOs: fundingUTXO,
++            fundingUTXOs: [...fundingUTXO, ...inputs],
+             fundingInputUtxos: interactionParameters.utxos,
+             compiledTargetScript: toHex(interactionTx.exportCompiledTargetScript()),
+         };
+diff --git a/node_modules/@btc-vision/transaction/src/transaction/TransactionFactory.ts b/node_modules/@btc-vision/transaction/src/transaction/TransactionFactory.ts
+index c13c726..b730b7c 100644
+--- a/node_modules/@btc-vision/transaction/src/transaction/TransactionFactory.ts
++++ b/node_modules/@btc-vision/transaction/src/transaction/TransactionFactory.ts
+@@ -345,7 +354,7 @@ export class TransactionFactory {
+                 1,
+             ),
+             challenge: challenge.toRaw(),
+-            fundingUTXOs: fundingUTXO,
++            fundingUTXOs: [...fundingUTXO, ...inputs],
+             fundingInputUtxos: interactionParameters.utxos,
+             compiledTargetScript: toHex(interactionTx.exportCompiledTargetScript()),
+         };

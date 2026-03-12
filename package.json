@@ -52,7 +52,8 @@
         "prebuild:edge": "npm run check:circular",
         "prebuild:opera": "npm run check:circular",
         "test": "vitest run",
-        "test:watch": "vitest"
+        "test:watch": "vitest",
+        "postinstall": "patch-package"
     },
     "dependencies": {
         "@ant-design/icons": "^6.1.0",
@@ -190,6 +191,7 @@
         "lint-staged": "^16.3.2",
         "madge": "^8.0.0",
         "minimist": "^1.2.8",
+        "patch-package": "^8.0.1",
         "prettier": "^3.8.1",
         "tailwindcss": "^4.2.1",
         "terser": "^5.46.0",
