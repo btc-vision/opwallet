@@ -8,7 +8,7 @@ import { Column, Content, Footer, Header, Image, Layout } from '@/ui/components'
 import AccountSelect from '@/ui/components/AccountSelect';
 import { DuplicationAlertModal } from '@/ui/components/DuplicationAlertModal';
 import { MldsaBackupReminder } from '@/ui/components/MldsaBackupReminder';
-import { LowBalanceCsvPopup, LowBalancePopup, LowUtxoPopup } from '@/ui/components/WalletHealthPopup';
+import { CsvFundsWarningPopup, LowBalancePopup, LowUtxoPopup } from '@/ui/components/WalletHealthPopup';
 import { NavTabBar } from '@/ui/components/NavTabBar';
 import { QuantumMigrationBanner } from '@/ui/components/QuantumMigrationBanner';
 import { UpgradePopover } from '@/ui/components/UpgradePopover';
@@ -274,20 +274,27 @@ export default function WalletTabScreen() {
 
         const primarySats = amountToSatoshis(accountBalance.btc_total_amount || '0');
 
-        if (primarySats < 10000) {
-            const csv1UnlockedSats = amountToSatoshis(accountBalance.csv1_unlocked_amount || '0');
-            const hasLockedCsvFunds =
-                parseFloat(accountBalance.csv75_total_amount || '0') > 0 ||
-                parseFloat(accountBalance.csv3_total_amount || '0') > 0 ||
-                parseFloat(accountBalance.csv2_total_amount || '0') > 0;
+        // 1) Primary balance critically low
+        if (primarySats < 10000) return { type: 'low-balance' } as const;
 
-            if (csv1UnlockedSats > 10000) {
-                return { type: 'low-balance-csv', hasLockedCsvFunds } as const;
-            }
-            return { type: 'low-balance', hasLockedCsvFunds } as const;
+        // 2) CSV UTXOs > 5 total — need consolidation with per-type warnings
+        const totalCsvUtxos =
+            accountBalance.csv1_locked_utxos_count + accountBalance.csv1_unlocked_utxos_count +
+            accountBalance.csv2_locked_utxos_count + accountBalance.csv2_unlocked_utxos_count +
+            accountBalance.csv3_locked_utxos_count + accountBalance.csv3_unlocked_utxos_count +
+            accountBalance.csv75_locked_utxos_count + accountBalance.csv75_unlocked_utxos_count;
+
+        if (totalCsvUtxos > 5) {
+            const hasCsv1 = (accountBalance.csv1_locked_utxos_count + accountBalance.csv1_unlocked_utxos_count) > 0;
+            const hasCsv2 = (accountBalance.csv2_locked_utxos_count + accountBalance.csv2_unlocked_utxos_count) > 0;
+            const hasCsv3 = (accountBalance.csv3_locked_utxos_count + accountBalance.csv3_unlocked_utxos_count) > 0;
+            const hasCsv75 = (accountBalance.csv75_locked_utxos_count + accountBalance.csv75_unlocked_utxos_count) > 0;
+            return { type: 'csv-consolidation', hasCsv1, hasCsv2, hasCsv3, hasCsv75 } as const;
         }
 
+        // 3) Primary UTXOs too few for concurrent transactions
         if (accountBalance.unspent_utxos_count < 5) return { type: 'low-utxos' } as const;
+
         return null;
     }, [accountBalance, addressSummary.address, currentAccount.address]);
 
@@ -1012,16 +1019,16 @@ export default function WalletTabScreen() {
             )}
 
             {/* Wallet Health Popups - only show when no higher-priority modal is active */}
-            {walletHealthCheck?.type === 'low-balance-csv' && !healthPopupDismissed && !showMldsaBackupReminder && !showDuplicationAlert && (
-                <LowBalanceCsvPopup
-                    hasLockedCsvFunds={walletHealthCheck.hasLockedCsvFunds}
-                    onClose={() => setHealthPopupDismissed(true)}
-                />
+            {walletHealthCheck?.type === 'low-balance' && !healthPopupDismissed && !showMldsaBackupReminder && !showDuplicationAlert && (
+                <LowBalancePopup onClose={() => setHealthPopupDismissed(true)} />
             )}
 
-            {walletHealthCheck?.type === 'low-balance' && !healthPopupDismissed && !showMldsaBackupReminder && !showDuplicationAlert && (
-                <LowBalancePopup
-                    hasLockedCsvFunds={walletHealthCheck.hasLockedCsvFunds}
+            {walletHealthCheck?.type === 'csv-consolidation' && !healthPopupDismissed && !showMldsaBackupReminder && !showDuplicationAlert && (
+                <CsvFundsWarningPopup
+                    hasCsv1={walletHealthCheck.hasCsv1}
+                    hasCsv2={walletHealthCheck.hasCsv2}
+                    hasCsv3={walletHealthCheck.hasCsv3}
+                    hasCsv75={walletHealthCheck.hasCsv75}
                     onClose={() => setHealthPopupDismissed(true)}
                 />
             )}
