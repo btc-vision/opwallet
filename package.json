@@ -61,7 +61,7 @@
         "@btc-vision/bitcoin": "^7.0.0",
         "@btc-vision/ecpair": "^4.0.5",
         "@btc-vision/passworder": "1.0.0",
-        "@btc-vision/transaction": "^1.8.0",
+        "@btc-vision/transaction": "^1.8.2",
         "@btc-vision/wallet-sdk": "^2.2.0",
         "@eslint-react/eslint-plugin": "^2.13.0",
         "@eslint/js": "^10.0.1",
