@@ -264,13 +264,21 @@ export default function WalletTabScreen() {
     }, [addressSummary, currentAccount, dispatch, wallet]);
 
     useEffect(() => {
-        void fetchBalance();
+        void fetchBalance().catch((err) => {
+            console.error('[WalletTabScreen] Balance fetch failed:', err);
+        });
     }, [fetchBalance]);
 
     // Wallet health check: derived from balance data, no effect needed
     const walletHealthCheck = useMemo(() => {
         // Only evaluate once balance data is loaded for the current account
         if (currentAccount.address !== addressSummary.address) return null;
+
+        // Don't show popups if balance hasn't actually loaded (all zeros = likely fetch failed)
+        if (accountBalance.btc_total_amount === '0' && accountBalance.all_utxos_count === 0 &&
+            accountBalance.csv1_unlocked_utxos_count === 0 && accountBalance.csv1_locked_utxos_count === 0) {
+            return null;
+        }
 
         const primarySats = amountToSatoshis(accountBalance.btc_total_amount || '0');
 
