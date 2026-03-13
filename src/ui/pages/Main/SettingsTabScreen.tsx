@@ -16,6 +16,7 @@ import {
     CheckCircleFilled,
     ChromeOutlined,
     ExpandOutlined,
+    FileTextOutlined,
     GithubOutlined,
     GlobalOutlined,
     FontSizeOutlined,
@@ -415,6 +416,89 @@ export default function SettingsTabScreen() {
                                 </span>
                             </button>
                         ))}
+                    </div>
+
+                    {/* Documentation Section */}
+                    <div
+                        style={{
+                            marginBottom: '16px'
+                        }}>
+                        <div
+                            style={{
+                                fontSize: '11px',
+                                fontWeight: 600,
+                                color: colors.textFaded,
+                                textTransform: 'uppercase',
+                                letterSpacing: '0.5px',
+                                marginBottom: '8px',
+                                paddingLeft: '4px'
+                            }}>
+                            Documentation
+                        </div>
+                        <div
+                            style={{
+                                background: colors.containerBgFaded,
+                                borderRadius: '14px',
+                                overflow: 'hidden'
+                            }}>
+                            <div
+                                style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    padding: '14px 12px',
+                                    cursor: 'pointer',
+                                    transition: 'all 0.15s'
+                                }}
+                                onClick={() => navigate('/settings/legal-documents')}
+                                onMouseEnter={(e) => {
+                                    e.currentTarget.style.background = colors.buttonHoverBg;
+                                }}
+                                onMouseLeave={(e) => {
+                                    e.currentTarget.style.background = 'transparent';
+                                }}>
+                                <div
+                                    style={{
+                                        width: '36px',
+                                        height: '36px',
+                                        borderRadius: '10px',
+                                        background: colors.buttonHoverBg,
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        marginRight: '12px'
+                                    }}>
+                                    <span style={{ fontSize: '18px', color: colors.main }}>
+                                        <FileTextOutlined />
+                                    </span>
+                                </div>
+                                <div style={{ flex: 1 }}>
+                                    <div
+                                        style={{
+                                            fontSize: '14px',
+                                            fontWeight: 500,
+                                            color: colors.text,
+                                            marginBottom: '2px',
+                                            fontFamily: 'Inter-Regular, serif'
+                                        }}>
+                                        Legal Documents
+                                    </div>
+                                    <div
+                                        style={{
+                                            fontSize: '11px',
+                                            color: colors.textFaded,
+                                            marginTop: '2px'
+                                        }}>
+                                        Terms of Use & Privacy Policy
+                                    </div>
+                                </div>
+                                <RightOutlined
+                                    style={{
+                                        fontSize: 12,
+                                        color: colors.textFaded
+                                    }}
+                                />
+                            </div>
+                        </div>
                     </div>
 
                     {/* About Section */}

@@ -1,4 +1,4 @@
-import React, { type CSSProperties } from 'react';
+﻿import React, { type CSSProperties } from 'react';
 
 export type LegalDocStyles = {
     baseText: CSSProperties;
@@ -10,535 +10,1153 @@ export type LegalDocStyles = {
     callout: CSSProperties;
 };
 
+type TermsTextProps = {
+    effectiveDate: string;
+    styles: LegalDocStyles;
+};
+
 /**
- * Renders the FULL OPWALLET Terms of Use.
- * This component is intentionally "text only" so you can drop it into your modal scroll area.
+ * Renders the full OP_WALLET Terms of Use.
+ * Text-only component intended for use inside a modal scroll area.
  */
-export function TermsText({ effectiveDate, styles }: { effectiveDate: string; styles: LegalDocStyles }) {
+export function TermsText({ effectiveDate, styles }: TermsTextProps) {
     return (
         <>
             <div style={{ marginBottom: 10 }}>
-                <div style={{ ...styles.h2, fontSize: 14, marginTop: 2 }}>OPWALLET</div>
+                <div style={{ ...styles.h2, fontSize: 14, marginTop: 2 }}>OP_WALLET</div>
                 <div style={{ ...styles.h2, fontSize: 14, marginTop: 2 }}>TERMS OF USE</div>
 
                 <p style={{ ...styles.baseText, marginTop: 6, color: 'rgba(255,255,255,0.70)' }}>
-                    ORANGE PILL LABS HOLDING LTD
-                    <br />
-                    Effective Date: {effectiveDate}
+                    Last Updated: {effectiveDate}
                 </p>
             </div>
 
             <div style={styles.callout}>
-                <strong>IMPORTANT NOTICE:</strong> THIS AGREEMENT CONTAINS A BINDING ARBITRATION PROVISION AND CLASS
-                ACTION WAIVER IN ARTICLE 12. PLEASE READ THIS AGREEMENT CAREFULLY AS IT AFFECTS YOUR LEGAL RIGHTS.
+                <strong>Please read these Terms carefully.</strong> By accessing or using the Platform or the OP_WALLET
+                Services, You agree that You have read, understood, and agree to be bound by these Terms, including the
+                binding arbitration clause below. If You do not agree, please do not use the Platform.
             </div>
 
-            <h2 style={styles.h2}>PREAMBLE</h2>
-            <p style={styles.baseText}>
-                ORANGE PILL LABS HOLDING LTD, a company incorporated in Abu Dhabi Global Market, United Arab Emirates
-                (&#34;OPNET,&#34; &#34;Company,&#34; &#34;we,&#34; &#34;us,&#34; or &#34;our&#34;), develops and
-                publishes OPWALLET, a non-custodial cryptocurrency wallet browser extension enabling users to manage
-                digital assets on the Bitcoin blockchain and the OPNet consensus layer. These Terms of Use
-                (&#34;Terms,&#34; &#34;Terms of Use,&#34; or &#34;Agreement&#34;) contain the terms and conditions
-                governing your access to and use of the OPWALLET browser extension, associated websites, and all related
-                services (collectively, the &#34;Wallet&#34; or &#34;Software&#34;).
-            </p>
-            <p style={styles.baseText}>
-                By installing, accessing, or using the Wallet, by clicking a button or checkbox to accept these Terms,
-                or by taking any action that indicates acceptance, you (1) accept and agree to be bound by these Terms
-                and all policies incorporated by reference, and (2) consent to the collection, use, and disclosure of
-                information as described herein. If you do not agree to these Terms, you must not install, access, or
-                use the Wallet. You represent that you are legally able to enter into contracts in your jurisdiction. If
-                you are entering into this Agreement on behalf of an entity, you represent that you have authority to
-                bind that entity to these Terms.
-            </p>
-            <p style={styles.baseText}>
-                You represent and warrant that you and your financial institutions, or any party that owns or controls
-                you or your financial institutions, are (1) not subject to sanctions or otherwise designated on any list
-                of prohibited or restricted parties, including lists maintained by the United Nations Security Council,
-                the United States Government, the European Union or its Member States, the United Arab Emirates, or
-                other applicable government authority, and (2) not located in any country subject to comprehensive
-                sanctions programs implemented by any of the foregoing jurisdictions.
-            </p>
-
-            <h2 style={styles.h2}>ARTICLE 1: DEFINITIONS</h2>
-            <p style={styles.baseText}>
-                In these Terms: &#34;Bitcoin&#34; means the decentralised peer-to-peer electronic cash system operating
-                on the Bitcoin blockchain. &#34;BTC&#34; means the native cryptocurrency of the Bitcoin network.
-                &#34;OPNet&#34; means the trustless, permissionless consensus layer enabling smart contract execution
-                directly on Bitcoin Layer 1. &#34;OP20 Token&#34; means a fungible token standard deployed on the OPNet
-                consensus layer. &#34;OP721 Token&#34; or &#34;NFT&#34; means a non-fungible token standard deployed on
-                the OPNet consensus layer. &#34;.btc Domain&#34; means a human-readable identifier registered on the
-                Bitcoin blockchain within the .btc namespace. &#34;Private Key&#34; means a cryptographic key that
-                controls access to digital assets and enables transaction signing. &#34;Seed Phrase&#34; or
-                &#34;Recovery Phrase&#34; means a series of words generated by the Wallet that can be used to recover
-                Private Keys. &#34;Smart Contract&#34; means self-executing code deployed on OPNet. &#34;Third-Party
-                Service&#34; means any product, service, or content provided by parties other than OPNET. &#34;Your
-                Content&#34; means any data or content you submit through the Wallet.
-            </p>
-
-            <h2 style={styles.h2}>ARTICLE 2: THE WALLET AND ITS FUNCTIONALITY</h2>
-
-            <h3 style={styles.h3}>2.1 Wallet Functionality</h3>
-            <p style={styles.baseText}>
-                OPWALLET is a browser extension that provides the following functionality: generation and management of
-                cryptographic key pairs for Bitcoin and OPNet addresses, storage of Private Keys locally on your device
-                in encrypted form, signing and broadcasting of Bitcoin transactions, management and transfer of BTC and
-                OP20 Tokens, management and transfer of OP721 Tokens (NFTs), registration and management of .btc
-                Domains, resolution and navigation to .btc Domain addresses, and interaction with decentralised
-                applications and Smart Contracts on OPNet. The Wallet is provided as a tool to facilitate your direct
-                interaction with the Bitcoin blockchain and OPNet consensus layer.
-            </p>
-
-            <h3 style={styles.h3}>2.2 Non-Custodial Architecture</h3>
-            <p style={styles.baseText}>
-                <strong>THE WALLET IS ENTIRELY NON-CUSTODIAL.</strong> OPNET DOES NOT STORE, HAVE ACCESS TO, OR MAINTAIN
-                CUSTODY OF YOUR PRIVATE KEYS, SEED PHRASES, PASSWORDS, OR ANY DIGITAL ASSETS. YOUR PRIVATE KEYS ARE
-                GENERATED LOCALLY ON YOUR DEVICE AND STORED ONLY ON YOUR DEVICE IN ENCRYPTED FORM. OPNET CANNOT ACCESS
-                YOUR PRIVATE KEYS, CANNOT RECOVER YOUR PRIVATE KEYS IF LOST, CANNOT REVERSE OR MODIFY ANY TRANSACTION
-                YOU EXECUTE, CANNOT FREEZE OR SEIZE YOUR ASSETS, AND CANNOT RECOVER ASSETS SENT TO INCORRECT ADDRESSES.
-                YOU ARE SOLELY AND EXCLUSIVELY RESPONSIBLE FOR THE SECURITY AND BACKUP OF YOUR PRIVATE KEYS AND SEED
-                PHRASES.
-            </p>
-
-            <h3 style={styles.h3}>2.3 OPNet Consensus Layer</h3>
-            <p style={styles.baseText}>
-                The Wallet enables interaction with OPNet, a consensus layer that reads Bitcoin transactions and
-                executes Smart Contract logic. OPNet operates directly on Bitcoin Layer 1 without introducing a separate
-                gas token; all transactions use native BTC for fees. You must understand a critical characteristic:
-                OPNet can revert Smart Contract execution if contract logic fails, but OPNet cannot reverse Bitcoin
-                transfers that have already been broadcast. Once you send BTC in a Bitcoin transaction, that transfer is
-                governed by Bitcoin&#39;s consensus rules and is irreversible regardless of whether the corresponding
-                OPNet execution succeeds or fails. This creates the possibility of partial transaction reversion where
-                you send BTC but do not receive expected tokens or other consideration.
-            </p>
-
-            <h3 style={styles.h3}>2.4 .btc Domain Functionality</h3>
-            <p style={styles.baseText}>
-                The Wallet provides functionality for registering, managing, and resolving .btc Domains. Domain
-                registrations occur directly on the Bitcoin blockchain through transactions you broadcast; OPNET does
-                not intermediate registrations. Once confirmed on Bitcoin, domain registrations are immutable and OPNET
-                cannot modify, revoke, or transfer them. However, OPNET reserves the absolute right to block any .btc
-                Domain from resolution through the Wallet at any time, for any reason, without notice. Blocking prevents
-                the domain from resolving through OPNET services but does not affect on-chain ownership. Grounds for
-                blocking include but are not limited to trademark infringement, illegal content, fraud, or any other
-                reason OPNET deems appropriate. Separate .btc Domain Terms of Service may apply and are incorporated by
-                reference.
-            </p>
-
-            <h3 style={styles.h3}>2.5 Integration with Third-Party Services</h3>
-            <p style={styles.baseText}>
-                The Wallet integrates with MotoSwap for token swapping functionality. When you execute swaps through the
-                Wallet, you interact directly with MotoSwap Smart Contracts. Your use of MotoSwap is governed by the
-                MotoSwap Terms of Service, which are separate from and in addition to these Terms. OPNET does not
-                control MotoSwap Smart Contracts and is not responsible for swap execution, pricing, slippage, failed
-                transactions, or any losses arising from swap functionality. The Wallet may also enable interaction with
-                other decentralised applications and Smart Contracts deployed on OPNet. OPNET does not control, audit,
-                endorse, or guarantee any third-party Smart Contract or decentralised application.
-            </p>
-
-            <h2 style={styles.h2}>ARTICLE 3: YOUR RESPONSIBILITIES</h2>
-
-            <h3 style={styles.h3}>3.1 Key Security</h3>
-            <p style={styles.baseText}>
-                YOU ARE SOLELY AND EXCLUSIVELY RESPONSIBLE FOR MAINTAINING THE SECURITY AND CONFIDENTIALITY OF YOUR
-                PRIVATE KEYS, SEED PHRASES, AND PASSWORDS. YOU MUST RECORD YOUR SEED PHRASE SECURELY AND MAINTAIN BACKUP
-                COPIES IN SECURE LOCATIONS. YOU MUST NOT SHARE YOUR PRIVATE KEYS, SEED PHRASES, OR PASSWORDS WITH ANY
-                PERSON OR ENTITY. OPNET WILL NEVER ASK FOR YOUR PRIVATE KEYS OR SEED PHRASES. ANYONE WHO OBTAINS YOUR
-                PRIVATE KEYS OR SEED PHRASES CAN ACCESS AND TRANSFER ALL ASSETS IN YOUR WALLET. LOSS OF YOUR PRIVATE
-                KEYS OR SEED PHRASES WILL RESULT IN PERMANENT, IRRECOVERABLE LOSS OF ALL ASSOCIATED ASSETS. OPNET HAS NO
-                ABILITY TO RECOVER LOST KEYS OR PHRASES.
-            </p>
-
-            <h3 style={styles.h3}>3.2 Transaction Verification</h3>
-            <p style={styles.baseText}>
-                You are solely responsible for verifying all transaction details before signing and broadcasting. This
-                includes verifying recipient addresses, token amounts, fee amounts, and Smart Contract interactions.
-                Blockchain transactions are irreversible once broadcast and confirmed. OPNET cannot reverse, cancel, or
-                modify any transaction you execute. Sending assets to incorrect addresses, interacting with malicious
-                Smart Contracts, or approving fraudulent transactions will result in permanent loss that OPNET cannot
-                recover.
-            </p>
-
-            <h3 style={styles.h3}>3.3 Software Updates</h3>
-            <p style={styles.baseText}>
-                You are responsible for keeping the Wallet software updated. We may release updates that contain
-                security patches, bug fixes, or protocol compatibility changes. Failure to update may result in degraded
-                functionality, security vulnerabilities, or incompatibility with network upgrades. OPNET is not
-                responsible for any losses arising from your failure to maintain updated software.
-            </p>
-
-            <h3 style={styles.h3}>3.4 Compliance with Law</h3>
-            <p style={styles.baseText}>
-                You are solely responsible for compliance with all applicable laws, regulations, and rules in your
-                jurisdiction. The legal status of cryptocurrency, digital assets, and blockchain technology varies by
-                jurisdiction. You must independently determine whether your use of the Wallet complies with applicable
-                law. OPNET does not provide legal, tax, or regulatory advice.
-            </p>
-
-            <h3 style={styles.h3}>3.5 Account Security for Third-Party Services</h3>
-            <p style={styles.baseText}>
-                To the extent you create accounts with Third-Party Services accessed through the Wallet, you are
-                responsible for all activities occurring under those accounts. OPNET is not responsible for unauthorised
-                access to third-party accounts, including access resulting from fraud, phishing, or other criminal
-                activity.
-            </p>
-
-            <h2 style={styles.h2}>ARTICLE 4: THIRD-PARTY CONTENT AND SERVICES</h2>
-
-            <h3 style={styles.h3}>4.1 Price Data</h3>
-            <p style={styles.baseText}>
-                The Wallet displays USD pricing information sourced from CoinGecko and potentially other third-party
-                data providers. This pricing data is provided for informational convenience only. OPNET does not
-                guarantee the accuracy, completeness, timeliness, or reliability of any price data. Price data may be
-                delayed, inaccurate, or manipulated. Displayed prices may not reflect actual executable prices. You must
-                not rely on displayed price data for trading decisions, financial planning, or any other purpose. OPNET
-                disclaims all liability for decisions made based on displayed price data.
-            </p>
-
-            <h3 style={styles.h3}>4.2 Third-Party Smart Contracts and Tokens</h3>
-            <p style={styles.baseText}>
-                The Wallet enables interaction with Smart Contracts and tokens created by third parties. OPNET does not
-                create, control, audit, endorse, or verify any third-party Smart Contract or token. Third-party tokens
-                may be fraudulent, worthless, or designed to steal assets. Smart Contracts may contain bugs,
-                vulnerabilities, or malicious code. Interacting with third-party Smart Contracts may result in total
-                loss of assets. The appearance of a token in the Wallet does not constitute endorsement. You are solely
-                responsible for evaluating the risks of any Smart Contract or token interaction.
-            </p>
-
-            <h3 style={styles.h3}>4.3 Third-Party Websites and Services</h3>
-            <p style={styles.baseText}>
-                The Wallet may contain links to or integrations with third-party websites and services. OPNET does not
-                control and is not responsible for the content, privacy policies, terms of service, or practices of any
-                third-party website or service. Your interactions with third-party services are governed by those
-                services&#39; terms and policies. OPNET disclaims all liability arising from your use of third-party
-                services.
-            </p>
-
-            <h3 style={styles.h3}>4.4 Analytics</h3>
-            <p style={styles.baseText}>
-                The Wallet uses Google Analytics and potentially other analytics services to collect usage data.
-                Analytics data may include device information, browser type, usage patterns, and other technical
-                information. Analytics data is used to improve the Wallet and understand user behaviour. By using the
-                Wallet, you consent to the collection of analytics data. You may disable certain analytics through
-                browser settings, though this may affect functionality.
-            </p>
-
-            <h2 style={styles.h2}>ARTICLE 5: PROHIBITED USES</h2>
-            <p style={styles.baseText}>
-                You agree not to use the Wallet to: violate any applicable law, regulation, or rule; engage in money
-                laundering, terrorist financing, or sanctions evasion; facilitate fraud, phishing, or other deceptive
-                practices; distribute malware or malicious code; infringe intellectual property rights of any party;
-                engage in market manipulation or wash trading; circumvent security measures or access controls;
-                interfere with the operation of the Wallet or related systems; reverse engineer, decompile, or
-                disassemble the Wallet except as permitted by law; use the Wallet in any manner that could damage,
-                disable, or impair OPNET systems; or assist any third party in any of the foregoing activities.
-            </p>
-
-            <h2 style={styles.h2}>ARTICLE 6: CHANGES</h2>
-
-            <h3 style={styles.h3}>6.1 Changes to the Wallet</h3>
-            <p style={styles.baseText}>
-                We may change, update, or discontinue any or all functionality of the Wallet at any time. We will use
-                commercially reasonable efforts to communicate material changes through the Wallet interface, our
-                website, or public communication channels. Some changes may be required to maintain compatibility with
-                Bitcoin network upgrades, OPNet protocol changes, or browser updates. We are not liable for any
-                modification, suspension, or discontinuation of the Wallet or any functionality thereof.
-            </p>
-
-            <h3 style={styles.h3}>6.2 Changes to These Terms</h3>
-            <p style={styles.baseText}>
-                We may modify these Terms at any time by posting updated Terms on our website or through the Wallet. For
-                material changes that significantly affect your rights, we will provide thirty (30) days advance notice.
-                Your continued use of the Wallet after the effective date of any modification constitutes acceptance of
-                the modified Terms. If you do not agree to modified Terms, you must cease using the Wallet before the
-                effective date.
-            </p>
-
-            <h2 style={styles.h2}>ARTICLE 7: PROPRIETARY RIGHTS</h2>
-
-            <h3 style={styles.h3}>7.1 OPNET Intellectual Property</h3>
-            <p style={styles.baseText}>
-                We and our licensors own all right, title, and interest in the Wallet, including all intellectual
-                property rights. Subject to these Terms, we grant you a limited, revocable, non-exclusive,
-                non-transferable, non-sublicensable license to use the Wallet solely for your personal, non-commercial
-                use in accordance with these Terms. You obtain no ownership rights in the Wallet. All rights not
-                expressly granted are reserved.
-            </p>
-
-            <h3 style={styles.h3}>7.2 Restrictions</h3>
-            <p style={styles.baseText}>
-                You may not: modify, adapt, translate, or create derivative works of the Wallet; reverse engineer,
-                disassemble, decompile, or otherwise attempt to derive source code except as permitted by applicable
-                law; remove, alter, or obscure any proprietary notices; use the Wallet for any commercial purpose
-                without our written consent; sublicense, sell, rent, lease, or transfer the Wallet; use our trademarks,
-                logos, or branding without our written consent; or misrepresent your relationship with OPNET.
-            </p>
-
-            <h3 style={styles.h3}>7.3 Feedback</h3>
-            <p style={styles.baseText}>
-                If you provide suggestions, ideas, or feedback regarding the Wallet, you grant us a perpetual,
-                irrevocable, worldwide, royalty-free license to use, modify, and incorporate such feedback without any
-                obligation to you.
-            </p>
-
-            <h2 style={styles.h2}>ARTICLE 8: DISCLAIMERS</h2>
-
-            <h3 style={styles.h3}>8.1 No Warranties</h3>
-            <p style={styles.baseText}>
-                THE WALLET IS PROVIDED &#34;AS IS&#34; AND &#34;AS AVAILABLE&#34; WITHOUT WARRANTIES OF ANY KIND,
-                WHETHER EXPRESS, IMPLIED, STATUTORY, OR OTHERWISE. TO THE FULLEST EXTENT PERMITTED BY LAW, OPNET
-                DISCLAIMS ALL WARRANTIES INCLUDING IMPLIED WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR
-                PURPOSE, TITLE, NON-INFRINGEMENT, AND QUIET ENJOYMENT. OPNET DOES NOT WARRANT THAT THE WALLET WILL BE
-                UNINTERRUPTED, ERROR-FREE, SECURE, OR FREE FROM VIRUSES OR HARMFUL COMPONENTS. OPNET DOES NOT WARRANT
-                THAT ANY DEFECTS WILL BE CORRECTED. OPNET DOES NOT WARRANT THE ACCURACY OF ANY INFORMATION PROVIDED
-                THROUGH THE WALLET.
-            </p>
-
-            <h3 style={styles.h3}>8.2 Blockchain and Cryptographic Risks</h3>
-            <p style={styles.baseText}>
-                THE WALLET RELIES ON BLOCKCHAIN TECHNOLOGY AND CRYPTOGRAPHIC SYSTEMS THAT PRESENT INHERENT RISKS. YOU
-                ACKNOWLEDGE AND ACCEPT: BLOCKCHAIN TRANSACTIONS ARE IRREVERSIBLE AND OPNET CANNOT REVERSE OR MODIFY ANY
-                TRANSACTION; PRIVATE KEY LOSS RESULTS IN PERMANENT ASSET LOSS; SMART CONTRACTS MAY CONTAIN BUGS OR
-                VULNERABILITIES RESULTING IN ASSET LOSS; OPNET EXECUTIONS MAY FAIL WHILE BITCOIN TRANSFERS SUCCEED,
-                RESULTING IN PARTIAL TRANSACTION REVERSION; DIGITAL ASSET VALUES ARE VOLATILE AND MAY DECLINE TO ZERO;
-                NETWORK CONGESTION MAY DELAY OR PREVENT TRANSACTION CONFIRMATION; PROTOCOL UPGRADES MAY AFFECT WALLET
-                FUNCTIONALITY; REGULATORY CHANGES MAY AFFECT THE LEGALITY OR AVAILABILITY OF SERVICES; AND CYBERSECURITY
-                THREATS MAY COMPROMISE YOUR DEVICE OR THE WALLET.
-            </p>
-
-            <h3 style={styles.h3}>8.3 No Financial Advice</h3>
-            <p style={styles.baseText}>
-                OPNET DOES NOT PROVIDE FINANCIAL, INVESTMENT, LEGAL, OR TAX ADVICE. NOTHING IN THE WALLET OR THESE TERMS
-                CONSTITUTES A RECOMMENDATION TO BUY, SELL, OR HOLD ANY DIGITAL ASSET. PRICE DATA DISPLAYED IN THE WALLET
-                IS FOR INFORMATIONAL PURPOSES ONLY AND MUST NOT BE RELIED UPON FOR TRADING DECISIONS. YOU ARE SOLELY
-                RESPONSIBLE FOR YOUR FINANCIAL DECISIONS.
-            </p>
-
-            <h3 style={styles.h3}>8.4 Third-Party Disclaimer</h3>
-            <p style={styles.baseText}>
-                OPNET DOES NOT CONTROL AND IS NOT RESPONSIBLE FOR ANY THIRD-PARTY SERVICE, SMART CONTRACT, TOKEN,
-                DECENTRALISED APPLICATION, OR CONTENT ACCESSED THROUGH THE WALLET. OPNET MAKES NO REPRESENTATIONS OR
-                WARRANTIES REGARDING THIRD-PARTY SERVICES. YOUR USE OF THIRD-PARTY SERVICES IS AT YOUR SOLE RISK.
-            </p>
-
-            <h2 style={styles.h2}>ARTICLE 9: LIMITATION OF LIABILITY</h2>
-
-            <h3 style={styles.h3}>9.1 Exclusion of Damages</h3>
-            <p style={styles.baseText}>
-                TO THE MAXIMUM EXTENT PERMITTED BY LAW, IN NO EVENT SHALL OPNET OR ITS DIRECTORS, OFFICERS, EMPLOYEES,
-                AGENTS, AFFILIATES, SUCCESSORS, OR ASSIGNS BE LIABLE FOR ANY INDIRECT, INCIDENTAL, SPECIAL,
-                CONSEQUENTIAL, PUNITIVE, OR EXEMPLARY DAMAGES, INCLUDING DAMAGES FOR LOSS OF PROFITS, REVENUE, GOODWILL,
-                DATA, DIGITAL ASSETS, USE, OR OTHER INTANGIBLE LOSSES, ARISING FROM OR RELATED TO THESE TERMS OR THE
-                WALLET, REGARDLESS OF THE THEORY OF LIABILITY AND REGARDLESS OF WHETHER OPNET WAS ADVISED OF THE
-                POSSIBILITY OF SUCH DAMAGES. THIS EXCLUSION APPLIES TO: LOSS OF DIGITAL ASSETS DUE TO PRIVATE KEY LOSS
-                OR COMPROMISE; LOSS OF DIGITAL ASSETS DUE TO TRANSACTION ERRORS OR INCORRECT ADDRESSES; LOSS OF DIGITAL
-                ASSETS DUE TO SMART CONTRACT BUGS OR EXPLOITS; LOSS OF DIGITAL ASSETS DUE TO PARTIAL TRANSACTION
-                REVERSION; LOSS OF VALUE DUE TO MARKET FLUCTUATIONS; INABILITY TO ACCESS THE WALLET OR YOUR ASSETS;
-                UNAUTHORISED ACCESS TO YOUR WALLET OR ACCOUNTS; ACTIONS OF THIRD PARTIES; AND ANY OTHER LOSSES ARISING
-                FROM YOUR USE OF THE WALLET.
-            </p>
-
-            <h3 style={styles.h3}>9.2 Maximum Liability</h3>
-            <p style={styles.baseText}>
-                TO THE MAXIMUM EXTENT PERMITTED BY LAW, OPNET&#39;S TOTAL AGGREGATE LIABILITY ARISING FROM OR RELATED TO
-                THESE TERMS OR THE WALLET SHALL NOT EXCEED ONE HUNDRED UNITED STATES DOLLARS (USD 100.00). THIS
-                LIMITATION APPLIES REGARDLESS OF THE NUMBER OF CLAIMS AND REGARDLESS OF WHETHER OPNET HAS BEEN ADVISED
-                OF THE POSSIBILITY OF SUCH DAMAGES.
-            </p>
-
-            <h3 style={styles.h3}>9.3 Essential Basis</h3>
-            <p style={styles.baseText}>
-                You acknowledge that the disclaimers and limitations in these Terms reflect a reasonable allocation of
-                risk, form an essential basis of the bargain between you and OPNET, and that OPNET would not provide the
-                Wallet without these limitations.
-            </p>
-
-            <h3 style={styles.h3}>9.4 Jurisdictional Limitations</h3>
-            <p style={styles.baseText}>
-                Some jurisdictions do not allow exclusion of certain warranties or limitation of certain damages. In
-                such jurisdictions, OPNET&#39;s liability shall be limited to the fullest extent permitted by applicable
-                law.
-            </p>
-
-            <h2 style={styles.h2}>ARTICLE 10: INDEMNIFICATION</h2>
-            <p style={styles.baseText}>
-                You agree to indemnify, defend, and hold harmless OPNET and its directors, officers, employees, agents,
-                affiliates, successors, and assigns from and against any claims, damages, losses, liabilities, costs,
-                and expenses (including reasonable legal fees) arising from or related to: your use of the Wallet; your
-                violation of these Terms; your violation of any applicable law or third-party rights; your negligence or
-                misconduct; your transactions or interactions with third parties; any content you submit through the
-                Wallet; and any dispute between you and any third party. OPNET reserves the right to assume exclusive
-                defence and control of any matter subject to indemnification by you, and you agree to cooperate with our
-                defence.
-            </p>
-
-            <h2 style={styles.h2}>ARTICLE 11: TERMINATION</h2>
-
-            <h3 style={styles.h3}>11.1 Termination by You</h3>
-            <p style={styles.baseText}>
-                You may terminate this Agreement at any time by uninstalling the Wallet and ceasing all use. Termination
-                does not affect any transactions already broadcast to the blockchain or any assets stored in addresses
-                associated with your Private Keys.
-            </p>
-
-            <h3 style={styles.h3}>11.2 Termination by OPNET</h3>
-            <p style={styles.baseText}>
-                We may terminate or suspend your access to the Wallet at any time, for any reason, with or without
-                cause, with or without notice. Grounds for termination include but are not limited to: violation of
-                these Terms; violation of applicable law; conduct harmful to OPNET or third parties; discontinuation of
-                the Wallet; or any other reason in our sole discretion.
-            </p>
-
-            <h3 style={styles.h3}>11.3 Effect of Termination</h3>
-            <p style={styles.baseText}>
-                Upon termination: your license to use the Wallet immediately terminates; you must cease all use of the
-                Wallet; your Private Keys and Seed Phrases remain under your control and can be used with compatible
-                wallet software; your assets remain in your blockchain addresses and are not affected by termination;
-                and Articles 7 through 13 and any other provisions that by their nature should survive termination shall
-                survive.
-            </p>
-
-            <h2 style={styles.h2}>ARTICLE 12: DISPUTE RESOLUTION AND ARBITRATION</h2>
             <div style={styles.callout}>
-                <strong>PLEASE READ THIS SECTION CAREFULLY.</strong> IT AFFECTS YOUR LEGAL RIGHTS, INCLUDING YOUR RIGHT
-                TO FILE A LAWSUIT IN COURT.
+                <strong>RESTRICTED JURISDICTIONS NOTICE</strong>
+                <br />
+                THE OPWALLET SERVICES (AS DEFINED HEREIN) WERE NOT DEVELOPED FOR, AND ARE NOT OFFERED TO PERSONS OR
+                ENTITIES WHO RESIDE IN, ARE CITIZENS OF, ARE LOCATED IN, ARE INCORPORATED IN, OR HAVE A REGISTERED
+                OFFICE OR PRINCIPAL PLACE OF BUSINESS IN ANY RESTRICTED JURISDICTION OR COUNTRY SUBJECT TO ANY SANCTIONS
+                OR RESTRICTIONS PURSUANT TO ANY APPLICABLE LAW, INCLUDING THE CRIMEA REGION, CHINA, PAKISTAN,
+                BANGLADESH, BHUTAN, NEPAL, MYANMAR, AFGHANISTAN, CUBA, IRAN, NORTH KOREA, PANAMA, SYRIA, RUSSIA, OR ANY
+                JURISDICTIONS IN WHICH THE TRANSACTING OF CRYPTOCURRENCIES IS PROHIBITED OR RESTRICTED IN ANY FORM OR
+                MANNER (COLLECTIVELY, THE â€œRESTRICTED JURISDICTIONSâ€) OR ANY PERSON OWNED, CONTROLLED, LOCATED IN OR
+                ORGANIZED UNDER THE LAWS OF ANY RESTRICTED JURISDICTION OR A RESIDENT OF OR LOCATED IN ANY COUNTRY OR
+                JURISDICTION THAT RESTRICTS ACCESS TO OR PROHIBITS USE OF DIGITAL ASSETS OR CRYPTO CURRENCIES
+                (COLLECTIVELY, â€œRESTRICTED PERSONSâ€).
             </div>
 
-            <h3 style={styles.h3}>12.1 Governing Law</h3>
+            <div style={styles.callout}>
+                <strong>BY USING THE OPWALLET SERVICES, YOU REPRESENT THAT:</strong>
+                <br />
+                (I) YOU ARE NOT A RESTRICTED PERSON; AND
+                <br />
+                (II) YOU (INCLUDING, IF APPLICABLE, YOUR REPRESENTATIVES, EMPLOYEES, OR ANY OTHER PERSON WITH ACCESS TO
+                YOUR ACCOUNT) WILL NOT CONTROL YOUR USE OF THE OPWALLET SERVICES FROM WITHIN ANY RESTRICTED
+                JURISDICTION.
+                <br />
+                <br />
+                YOU FURTHER REPRESENT AND WARRANT THAT YOU ARE NOT SUBJECT TO ECONOMIC OR TRADE SANCTIONS ADMINISTERED
+                OR ENFORCED BY ANY GOVERNMENTAL AUTHORITY OR OTHERWISE DESIGNATED ON ANY LISTS OF PROHIBITED OR
+                RESTRICTED PARTIES (INCLUDING BUT NOT LIMITED TO THE LIST MAINTAINED BY THE OFFICE OF FOREIGN ASSETS OR
+                CONTROL (OFAC) OF THE U.S. DEPARTMENT OF THE TREASURY) AND YOU ARE NOT LOCATED, INCORPORATED, OTHERWISE
+                ESTABLISHED IN, A CITIZEN OF, OR RESIDENT OF, OR HAVE BUSINESS OPERATIONS IN ANY COUNTRY OR REGION
+                SUBJECT TO A SANCTION REGIME.
+            </div>
+
+            <h2 style={styles.h2}>OP_WALLET TERMS OF USE</h2>
             <p style={styles.baseText}>
-                These Terms and any dispute arising from or related to these Terms or the Wallet shall be governed by
-                and construed in accordance with the laws of Abu Dhabi Global Market, United Arab Emirates, and, to the
-                extent applicable, the federal laws of the United Arab Emirates, without regard to conflict of laws
-                principles.
+                These terms and conditions, together with any documents, policies, and additional terms that expressly
+                incorporate them by reference, including the privacy policy [insert link] and any other applicable
+                supplemental terms (as may be amended from time to time, the â€œTermsâ€), govern Your access to and use of
+                all products, websites, subdomains, browser extensions, mobile and web applications, desktop
+                applications, content, features, functionality, and services (collectively, the â€œOP_WALLET Servicesâ€)
+                made available exclusively or non-exclusively on or through opnet.org, and any other website, mobile
+                application, web application, or interface operated by Us (collectively, the â€œPlatformâ€, â€œWalletâ€, â€œWeâ€
+                or â€œUsâ€).
+            </p>
+            <p style={styles.baseText}>
+                These Terms apply to all Users who engage with the Platform, including, but not limited to, users of the
+                OP_WALLET Services, developers, node operators, token holders, traders, or other participants
+                (collectively referred to as â€œUsersâ€, â€œYouâ€ or â€œYourâ€).
+            </p>
+            <p style={styles.baseText}>
+                These Terms apply solely to the Wallet and the OP_WALLET Services made available directly by the Company
+                through the Platform. Additional terms may apply to specific OP_WALLET Services, programmes, features,
+                or interfaces made available through the Platform. Where such terms apply, they will be provided
+                separately and shall supplement these Terms. In the event of any inconsistency between these Terms and
+                any additional terms, these Terms shall prevail unless expressly stated otherwise in the additional
+                terms.
+            </p>
+            <p style={styles.baseText}>
+                By accessing or using the Platform, You acknowledge that you have read, understood, and agree to be
+                bound by these Terms. If You do not agree, do not access or use the Platform.
+            </p>
+            <p style={styles.baseText}>
+                By using the OP_WALLET Service, You consent to receive communications from the Company via email, in-app
+                notifications, or other digital means. These communications may include service-related messages,
+                updates, legal notices, or administrative communications.
             </p>
 
-            <h3 style={styles.h3}>12.2 Binding Arbitration</h3>
+            <h2 style={styles.h2}>ACCESS, MODIFICATIONS &amp; ELIGIBILITY</h2>
             <p style={styles.baseText}>
-                Any dispute, claim, or controversy arising from or related to these Terms or the Wallet shall be
-                resolved by binding arbitration rather than in court, except that you may assert claims in small claims
-                court if your claims qualify. The arbitration shall be conducted under the rules of the Abu Dhabi
-                Commercial Conciliation and Arbitration Centre, or such other arbitral institution as the parties may
-                agree. The seat of arbitration shall be Abu Dhabi. The language of arbitration shall be English. The
-                arbitrator&#39;s decision shall be final, binding, and non-appealable. Judgment upon the award may be
-                entered in any court having jurisdiction.
+                You may access and use the Wallet only if You are at legal age in Your respective jurisdiction and have
+                the legal capacity to enter into a binding agreement under Applicable Law. If You are using the Wallet
+                on behalf of an entity, You represent and warrant that You have the authority to bind that entity to
+                these Terms.
+            </p>
+            <p style={styles.baseText}>
+                The Wallet is provided for Your personal or internal business use only, unless otherwise expressly
+                agreed in writing by the Company. You must not use the Wallet if You are prohibited from doing so under
+                Applicable Law or if Your access to the Wallet has been suspended or terminated by the Company.
+            </p>
+            <p style={styles.baseText}>
+                The Wallet does not require You to create an account with the Company. All Private Keys, Recovery
+                Phrases, and authentication credentials are generated and stored locally on Your device and remain
+                solely under Your control.
+            </p>
+            <p style={styles.baseText}>
+                You are responsible, at Your own cost, for obtaining and maintaining the devices, software, and internet
+                connectivity necessary to access and use the Wallet. You are solely responsible for maintaining the
+                security of Your device and key material.
+            </p>
+            <p style={styles.baseText}>
+                You are solely responsible for ensuring that Your access to and use of the Wallet complies with all
+                Applicable Laws in Your jurisdiction.
+            </p>
+            <p style={styles.baseText}>
+                We may from time to time make updates available for the Wallet (including security patches and
+                compatibility changes). You are responsible for promptly installing updates.
             </p>
 
-            <h3 style={styles.h3}>12.3 Class Action Waiver</h3>
+            <h2 style={styles.h2}>SCOPE OF SERVICES</h2>
             <p style={styles.baseText}>
-                YOU AND OPNET AGREE THAT EACH MAY BRING CLAIMS AGAINST THE OTHER ONLY IN YOUR OR ITS INDIVIDUAL
-                CAPACITY, AND NOT AS A PLAINTIFF OR CLASS MEMBER IN ANY PURPORTED CLASS, COLLECTIVE, OR REPRESENTATIVE
-                PROCEEDING. YOU AND OPNET EXPRESSLY WAIVE ANY RIGHT TO FILE OR PARTICIPATE IN A CLASS ACTION OR SEEK
-                RELIEF ON A CLASS BASIS. Unless both you and OPNET agree, no arbitrator or judge may consolidate more
-                than one person&#39;s claims or otherwise preside over any form of representative or class proceeding.
+                Wallet provides a technical, non-custodial software interface intended to help Users generate and manage
+                self-hosted cryptographic credentials, view and interact with supported blockchain networks, and
+                initiate transactions by signing with credentials controlled solely by the User.
             </p>
-
-            <h3 style={styles.h3}>12.4 Jury Trial Waiver</h3>
             <p style={styles.baseText}>
-                TO THE FULLEST EXTENT PERMITTED BY LAW, YOU AND OPNET EACH WAIVE ANY RIGHT TO A JURY TRIAL IN ANY
-                PROCEEDING ARISING FROM OR RELATED TO THESE TERMS OR THE WALLET.
+                The Wallet is a non-custodial software application and technical interface, made available as a browser
+                extension and, where released, as a mobile application and/or desktop application, that enables Users to
+                generate cryptographic key pairs locally, sign transactions on their device, and interact with supported
+                blockchain networks, including:
             </p>
-
-            <h3 style={styles.h3}>12.5 International Users</h3>
-            <p style={styles.baseText}>
-                The Wallet is operated from the United Arab Emirates. If you access the Wallet from outside the United
-                Arab Emirates, you do so at your own risk and are solely responsible for compliance with all applicable
-                local, national, and international laws. The legal status of cryptocurrency wallets, digital assets, and
-                blockchain technology varies by jurisdiction. OPNET makes no representation that the Wallet is
-                appropriate, lawful, or available in any particular jurisdiction.
-            </p>
-
-            <h3 style={styles.h3}>12.6 Pre-Litigation Contact</h3>
-            <p style={styles.baseText}>
-                If any governmental authority, regulatory body, or law enforcement agency has concerns regarding the
-                Wallet or wishes to take enforcement action, OPNET respectfully requests contact at report@opnet.org
-                prior to initiating formal legal proceedings. OPNET commits to good-faith cooperation with legitimate
-                regulatory inquiries and will take appropriate action to address valid concerns, including restricting
-                access from affected jurisdictions if required by law.
-            </p>
-
-            <h2 style={styles.h2}>ARTICLE 13: GENERAL PROVISIONS</h2>
-
-            <h3 style={styles.h3}>13.1 Entire Agreement</h3>
-            <p style={styles.baseText}>
-                These Terms, together with any documents incorporated by reference, constitute the entire agreement
-                between you and OPNET regarding the Wallet and supersede all prior agreements and communications.
-            </p>
-
-            <h3 style={styles.h3}>13.2 Severability</h3>
-            <p style={styles.baseText}>
-                If any provision of these Terms is held invalid or unenforceable, such provision shall be modified to
-                the minimum extent necessary to make it valid and enforceable, or if modification is not possible, shall
-                be severed, and the remaining provisions shall continue in full force and effect.
-            </p>
-
-            <h3 style={styles.h3}>13.3 No Waiver</h3>
-            <p style={styles.baseText}>
-                No failure or delay by OPNET in exercising any right shall constitute a waiver of that right. Any waiver
-                must be in writing and signed by OPNET.
-            </p>
-
-            <h3 style={styles.h3}>13.4 Assignment</h3>
-            <p style={styles.baseText}>
-                You may not assign these Terms without OPNET&#39;s prior written consent. OPNET may assign these Terms
-                without notice in connection with a merger, acquisition, sale of assets, or corporate reorganisation, or
-                to any affiliate. Subject to the foregoing, these Terms shall bind and inure to the benefit of the
-                parties and their permitted successors and assigns.
-            </p>
-
-            <h3 style={styles.h3}>13.5 Force Majeure</h3>
-            <p style={styles.baseText}>
-                OPNET shall not be liable for any failure or delay in performance due to causes beyond reasonable
-                control, including acts of God, war, terrorism, civil unrest, government action, network failures,
-                blockchain congestion, protocol changes, cyberattacks, or other events beyond OPNET&#39;s control.
-            </p>
-
-            <h3 style={styles.h3}>13.6 Independent Contractors</h3>
-            <p style={styles.baseText}>
-                You and OPNET are independent contractors. These Terms do not create any partnership, joint venture,
-                agency, or employment relationship.
-            </p>
-
-            <h3 style={styles.h3}>13.7 No Third-Party Beneficiaries</h3>
-            <p style={styles.baseText}>
-                These Terms do not create any third-party beneficiary rights in any person or entity.
-            </p>
-
-            <h3 style={styles.h3}>13.8 Export Compliance</h3>
-            <p style={styles.baseText}>
-                You agree to comply with all applicable export control laws, sanctions, and regulations. You may not use
-                the Wallet if you are subject to sanctions or located in a jurisdiction subject to comprehensive
-                sanctions.
-            </p>
-
-            <h3 style={styles.h3}>13.9 Language</h3>
-            <p style={styles.baseText}>
-                These Terms are drafted in English. If translated into another language, the English version shall
-                prevail in the event of any conflict.
-            </p>
-
-            <h3 style={styles.h3}>13.10 Notices</h3>
-            <p style={styles.baseText}>
-                OPNET may provide notices to you through the Wallet interface, our website, or public communication
-                channels. Notices are effective upon posting or transmission. Notices to OPNET must be sent to
-                report@opnet.org or to our registered address.
-            </p>
-
-            <h2 style={styles.h2}>ACKNOWLEDGMENT AND ACCEPTANCE</h2>
-            <p style={styles.baseText}>BY INSTALLING, ACCESSING, OR USING OPWALLET, YOU ACKNOWLEDGE THAT:</p>
             <ul style={styles.ul}>
-                <li style={styles.li}>YOU HAVE READ AND UNDERSTAND THESE TERMS IN THEIR ENTIRETY.</li>
+                <li style={styles.li}>the Bitcoin blockchain; and</li>
                 <li style={styles.li}>
-                    YOU UNDERSTAND THAT THE WALLET IS NON-CUSTODIAL AND OPNET CANNOT RECOVER LOST KEYS.
+                    the OPNet protocol and consensus layer implemented on or in connection with the Bitcoin network.
                 </li>
-                <li style={styles.li}>YOU ARE SOLELY RESPONSIBLE FOR SECURING YOUR PRIVATE KEYS AND SEED PHRASES.</li>
-                <li style={styles.li}>YOU UNDERSTAND THAT BLOCKCHAIN TRANSACTIONS ARE IRREVERSIBLE.</li>
-                <li style={styles.li}>YOU UNDERSTAND AND ACCEPT THE RISK OF PARTIAL TRANSACTION REVERSION.</li>
-                <li style={styles.li}>YOU ACCEPT ALL RISKS DESCRIBED IN THESE TERMS.</li>
-                <li style={styles.li}>YOU AGREE TO BE BOUND BY THE ARBITRATION AND CLASS ACTION WAIVER PROVISIONS.</li>
-                <li style={styles.li}>YOU HAVE THE LEGAL CAPACITY TO ENTER INTO THIS AGREEMENT.</li>
-                <li style={styles.li}>IF YOU DO NOT AGREE TO THESE TERMS, DO NOT INSTALL OR USE OPWALLET.</li>
             </ul>
+            <p style={styles.baseText}>
+                Wallet is currently free to use. We do not charge subscription fees or user charges for access to the
+                basic Platform services at this time. However, We reserve the right to introduce paid features or
+                subscription tiers in the future. If We introduce paid features, additional terms (including pricing,
+                billing, payment, refund, and cancellation terms) will apply, and We will make such terms available to
+                You and require Your acceptance prior to Your purchase, subscription to, or use of any paid feature. We
+                may modify pricing for paid features at any time with notice as provided in these Terms.
+            </p>
+            <p style={styles.baseText}>
+                You acknowledge and agree that connecting a Wallet is entirely at Your sole risk and discretion. The
+                Wallet does not custody Digital Assets, operate a node on Your behalf, or act as an exchange, broker,
+                custodian, settlement agent, or other financial intermediary.
+            </p>
+            <p style={styles.baseText}>
+                All OP_WALLET Services are provided on an â€œas isâ€ and â€œas availableâ€ basis without warranties of any
+                kind.
+            </p>
+
+            <h2 style={styles.h2}>DEFINITIONS</h2>
+            <p style={styles.baseText}>
+                Unless otherwise defined in these Terms or the context otherwise requires, the following capitalised
+                terms shall have the meanings set out below:
+            </p>
+
+            <h3 style={styles.h3}>Defined Terms</h3>
+            <ul style={styles.ul}>
+                <li style={styles.li}>
+                    <strong>.btc Domain</strong>: means a human-readable identifier registered on the Bitcoin blockchain
+                    within the .btc namespace.
+                </li>
+                <li style={styles.li}>
+                    <strong>ADIAC Arbitration Rules</strong>: means the arbitration rules of the ADIAC in force at the
+                    time a Dispute is referred to arbitration under clause 15.
+                </li>
+                <li style={styles.li}>
+                    <strong>Applicable Law</strong>: means all statutes, laws, regulations, ordinances, enactments,
+                    rules, judgements, orders, notifications, decrees, by-laws, approvals, government resolutions, acts
+                    of legislature or parliament, guidelines, policies, directions, or directives.
+                </li>
+                <li style={styles.li}>
+                    <strong>Bitcoin Layer 1</strong>: means the base-layer Bitcoin blockchain network that validates,
+                    records, and finalises transactions in accordance with the Bitcoin protocolâ€™s consensus rules.
+                </li>
+                <li style={styles.li}>
+                    <strong>BTC</strong>: means the native cryptocurrency of the Bitcoin Network.
+                </li>
+                <li style={styles.li}>
+                    <strong>Business Days</strong>: any day other than a Sunday or a day on which scheduled commercial
+                    banks in United Arab Emirates are authorised or required by Applicable Law to be closed.
+                </li>
+                <li style={styles.li}>
+                    <strong>Digital Asset</strong>: means any cryptocurrency, native blockchain token, fungible token
+                    (including OP20 tokens), non-fungible token (including OP721 tokens), or other blockchain-based
+                    digital asset that may be accessed, managed, or transferred using the Wallet.
+                </li>
+                <li style={styles.li}>
+                    <strong>Governmental Authority</strong>: means any relevant domestic or foreign governmental or
+                    quasi-governmental, statutory, regulatory, judicial, fiscal, or administrative body or authority.
+                </li>
+                <li style={styles.li}>
+                    <strong>Intellectual Property</strong>: includes all ideas, concepts, creations, discoveries,
+                    inventions, improvements, know-how, trade secrets, proprietary techniques, methods, processes,
+                    systems, algorithms, works of authorship, research, software programs, databases, electronic codes,
+                    and other confidential or proprietary information.
+                </li>
+                <li style={styles.li}>
+                    <strong>Intellectual Property Rights</strong>: means all rights, title, and interest under any
+                    statute or common law in respect of Intellectual Property, including patent rights, copyrights,
+                    moral rights, licences, permissions, applications, renewals, and causes of action.
+                </li>
+                <li style={styles.li}>
+                    <strong>MotoSwap</strong>: means the decentralised token swap protocol and related smart contracts,
+                    interfaces, and applications made available at motoswap.org (and any successor domain), which may be
+                    accessible through the Wallet and which are governed by separate terms and conditions.
+                </li>
+                <li style={styles.li}>
+                    <strong>OP_WALLET</strong>: means the Wallet, including any browser extension, mobile application,
+                    desktop application, website, and any related software or interfaces made available by the Company.
+                </li>
+                <li style={styles.li}>
+                    <strong>OP20 Token</strong>: means a fungible token standard deployed on the OPNet consensus layer.
+                </li>
+                <li style={styles.li}>
+                    <strong>OP721 Token</strong>: means a non-fungible token standard deployed on the OPNet consensus
+                    layer.
+                </li>
+                <li style={styles.li}>
+                    <strong>OPNet</strong>: means the trustless, permissionless consensus layer and protocol implemented
+                    on or in connection with the Bitcoin network that reads Bitcoin Layer 1 transactions and executes
+                    Smart Contract logic in accordance with OPNet protocol rules.
+                </li>
+                <li style={styles.li}>
+                    <strong>Personal Data</strong>: any information, whether true or not, that can identify an
+                    individual on its own or when combined with other information.
+                </li>
+                <li style={styles.li}>
+                    <strong>Privacy Policy</strong>: means the Companyâ€™s privacy policy, as updated from time to time
+                    and made available through the Wallet or the Companyâ€™s website.
+                </li>
+                <li style={styles.li}>
+                    <strong>Private Key</strong>: means a cryptographic key that is used to sign blockchain transactions
+                    and control access to Digital Assets associated with a particular blockchain address.
+                </li>
+                <li style={styles.li}>
+                    <strong>Recovery Phrase</strong>: means a series of words generated by the Wallet that can be used
+                    to derive or restore Private Keys.
+                </li>
+                <li style={styles.li}>
+                    <strong>Smart Contract</strong>: means self-executing code deployed on a blockchain network that
+                    automatically performs functions in accordance with its programmed logic.
+                </li>
+                <li style={styles.li}>
+                    <strong>Third-Party Partners</strong>: means any person that develops, owns, operates, provides, or
+                    makes available a Third-Party Service or other service provider whose products or services may be
+                    accessed or interacted with through the Wallet.
+                </li>
+                <li style={styles.li}>
+                    <strong>Third-Party Services</strong>: means any protocol, blockchain network, decentralised
+                    application, Smart Contract, website, exchange interface, token issuer, or other service that is not
+                    governed by these Terms, including any such service that may be accessed or interacted with through
+                    the Wallet.
+                </li>
+            </ul>
+
+            <h3 style={styles.h3}>Interpretation</h3>
+            <ul style={styles.ul}>
+                <li style={styles.li}>
+                    Headings and defined terms are for convenience only and do not affect interpretation.
+                </li>
+                <li style={styles.li}>
+                    The meaning of general words is not limited by specific examples introduced by â€œincluding,â€ â€œfor
+                    example,â€ â€œsuch as,â€ or similar expressions.
+                </li>
+                <li style={styles.li}>
+                    Unless otherwise indicated, a reference to a specified clause is a reference to that clause of these
+                    Terms.
+                </li>
+                <li style={styles.li}>The singular includes the plural and vice versa.</li>
+                <li style={styles.li}>
+                    All terms and conditions of these Terms, including introductory paragraphs, recitals, schedules, and
+                    any attached documents, are contractual, binding, and incorporated by reference.
+                </li>
+                <li style={styles.li}>
+                    A reference to a particular person includes that person&apos;s executors, administrators,
+                    successors, permitted assigns, and legal representatives.
+                </li>
+                <li style={styles.li}>
+                    A reference to any date or time is determined in accordance with the relevant jurisdiction
+                    applicable to these Terms.
+                </li>
+                <li style={styles.li}>
+                    Any period of time calculated from a specific date or event excludes the starting date unless
+                    expressly stated otherwise.
+                </li>
+            </ul>
+
+            <h2 style={styles.h2}>USE RESTRICTIONS</h2>
+            <p style={styles.baseText}>You agree not to, and not to attempt to:</p>
+            <ul style={styles.ul}>
+                <li style={styles.li}>
+                    use the Platform, Wallet, or OP_WALLET Services in any manner that could interfere with, disrupt,
+                    negatively affect, or inhibit other users from fully enjoying the OP_WALLET Services;
+                </li>
+                <li style={styles.li}>
+                    bypass, disable, defeat, circumvent, or otherwise attempt to override access controls, rate limits,
+                    security features, content protections, geographic restrictions, compliance controls, or
+                    jurisdictional restrictions;
+                </li>
+                <li style={styles.li}>
+                    probe, scan, or test the vulnerability of any system or network, or breach or circumvent any
+                    security or authentication measures;
+                </li>
+                <li style={styles.li}>
+                    introduce, transmit, distribute, or deploy malware, exploits, viruses, trojan horses, worms, logic
+                    bombs, spyware, denial-of-service activity, or other harmful code;
+                </li>
+                <li style={styles.li}>
+                    use the Platform, Wallet, or OP_WALLET Services for illegal, fraudulent, deceptive, or prohibited
+                    activities;
+                </li>
+                <li style={styles.li}>transmit, facilitate, or promote spam, phishing, or deceptive communications;</li>
+                <li style={styles.li}>
+                    reverse engineer, decompile, disassemble, decrypt, or otherwise attempt to derive source code, trade
+                    secrets, proprietary algorithms, non-public data, or other proprietary information;
+                </li>
+                <li style={styles.li}>
+                    copy, reproduce, modify, adapt, translate, distribute, sublicense, license, sell, resell, transfer,
+                    assign, lease, rent, or otherwise commercially exploit the Platform, the Wallet, or the OP_WALLET
+                    Services;
+                </li>
+                <li style={styles.li}>
+                    use automated systems, bots, crawlers, scrapers, or data-mining tools to access, monitor, or extract
+                    data, except where explicitly authorised in writing;
+                </li>
+                <li style={styles.li}>
+                    use anonymising technologies, VPNs, proxy servers, Tor networks, or similar methods to circumvent
+                    jurisdictional restrictions or compliance controls;
+                </li>
+                <li style={styles.li}>
+                    infringe, misappropriate, or otherwise violate the Intellectual Property Rights or other rights of
+                    the Company or any third party;
+                </li>
+                <li style={styles.li}>
+                    remove, alter, obscure, or circumvent any proprietary notices, risk disclosures, disclaimers,
+                    warnings, branding, or other notices;
+                </li>
+                <li style={styles.li}>
+                    use the Platform, Wallet, or OP_WALLET Services in any manner that could reasonably be expected to
+                    harm the legitimate business interests, reputation, or goodwill of the Company; or
+                </li>
+                <li style={styles.li}>
+                    assist, encourage, or enable any third party to engage in any of the foregoing activities.
+                </li>
+            </ul>
+
+            <p style={styles.baseText}>
+                We reserve the right, but are not obligated, to implement technical controls (including rate limits,
+                blocks, and access restrictions) and to restrict, suspend, disable, or terminate access to the Platform,
+                the Wallet, the OP_WALLET Services, or any related functionality at Our sole discretion, without prior
+                notice, where We determine that:
+            </p>
+            <ul style={styles.ul}>
+                <li style={styles.li}>You have violated these Terms or engaged in prohibited conduct;</li>
+                <li style={styles.li}>
+                    Your use presents legal, regulatory, security, operational, or reputational risk;
+                </li>
+                <li style={styles.li}>
+                    such action is necessary to maintain the integrity, security, or availability of the Platform or OP
+                    Wallet Services; or
+                </li>
+                <li style={styles.li}>
+                    such action is required to comply with Applicable Law or a request or order from a Governmental
+                    Authority.
+                </li>
+            </ul>
+            <p style={styles.baseText}>
+                Nothing in this clause affects Your control over Your Private Keys or Digital Assets, which remain
+                solely under Your control.
+            </p>
+
+            <h2 style={styles.h2}>LIMITATIONS OF SERVICE</h2>
+
+            <h3 style={styles.h3}>No Control Over Digital Assets or Transactions</h3>
+            <p style={styles.baseText}>
+                The Company does not initiate, authorise, validate, execute, cancel, reverse, freeze, seize, or
+                otherwise control any transaction or Digital Asset. Any transaction submitted through the Wallet is
+                signed by the User and transmitted directly to the applicable blockchain network or Third-Party Partner
+                by the User.
+            </p>
+            <p style={styles.baseText}>
+                Blockchain transactions are irreversible once broadcast. The Company has no ability to reverse, modify,
+                or cancel any transaction, including transactions sent to incorrect addresses or involving incorrect
+                parameters.
+            </p>
+
+            <h3 style={styles.h3}>User Responsibility for Keys and Assets</h3>
+            <p style={styles.baseText}>
+                You acknowledge and agree that, due to the non-custodial and self-custody nature of the Wallet:
+            </p>
+            <ul style={styles.ul}>
+                <li style={styles.li}>
+                    you are solely responsible for safeguarding your Private Keys, Recovery Phrase, and any
+                    authentication credentials associated with your Wallet;
+                </li>
+                <li style={styles.li}>
+                    you are solely responsible for verifying all transaction details prior to signing or broadcasting
+                    any transaction;
+                </li>
+                <li style={styles.li}>
+                    you are solely responsible for maintaining the security of your device, software environment, and
+                    internet connection;
+                </li>
+                <li style={styles.li}>
+                    you are solely responsible for determining whether your access to and use of the Wallet complies
+                    with Applicable Law in your jurisdiction; and
+                </li>
+                <li style={styles.li}>you are solely responsible for any interaction with Third-Party Services.</li>
+            </ul>
+            <p style={styles.baseText}>
+                Nothing in this clause creates any monitoring obligation, supervisory duty, or fiduciary responsibility
+                on the part of the Company. The Company does not act as a financial institution, exchange, broker,
+                custodian, or payment service provider.
+            </p>
+            <p style={styles.baseText}>
+                The Platform is provided solely as a technical interface enabling Users to interact directly with
+                blockchain networks and Third-Party Partners.
+            </p>
+
+            <h2 style={styles.h2}>WALLET ARCHITECTURE AND PRODUCT FUNCTIONALITY</h2>
+
+            <h3 style={styles.h3}>Core Functionalities of the Wallet</h3>
+            <p style={styles.baseText}>
+                Subject to these Terms, the Wallet enables you to perform certain on-chain and protocol-level actions
+                directly through supported blockchain networks and the OPNet protocol, including:
+            </p>
+            <ul style={styles.ul}>
+                <li style={styles.li}>
+                    generating, importing, and managing Private Keys and associated blockchain addresses;
+                </li>
+                <li style={styles.li}>
+                    viewing balances and transaction history associated with blockchain addresses;
+                </li>
+                <li style={styles.li}>creating, signing, and broadcasting Bitcoin transactions;</li>
+                <li style={styles.li}>
+                    interacting with the OPNet protocol and supported Smart Contracts implemented on or in connection
+                    with the Bitcoin network;
+                </li>
+                <li style={styles.li}>
+                    sending, receiving, and managing Digital Assets supported by the Wallet, including BTC, OP20
+                    fungible tokens and OP721 non-fungible tokens;
+                </li>
+                <li style={styles.li}>
+                    managing display preferences for supported Digital Assets, including adding, hiding, or removing
+                    token representations from the Wallet interface;
+                </li>
+                <li style={styles.li}>
+                    registering, resolving, managing, accessing, and browsing supported blockchain-based domain names
+                    (including .btc Domains where available);
+                </li>
+                <li style={styles.li}>
+                    switching between supported blockchain networks (including mainnet, testnet, or other supported
+                    environments);
+                </li>
+                <li style={styles.li}>
+                    configuring Wallet settings, including address formats, auto-lock timers, notification preferences,
+                    connected site permissions, and security preferences; and
+                </li>
+                <li style={styles.li}>
+                    accessing integrated swap or exchange interfaces made available through Third-Party Services
+                    (including MotoSwap, where applicable).
+                </li>
+            </ul>
+            <p style={styles.baseText}>
+                The specific features and supported functionalities of the Wallet may change from time to time. The
+                Company may add, modify, suspend, restrict, or discontinue any feature or functionality without prior
+                notice and without liability.
+            </p>
+            <p style={styles.baseText}>
+                The Wallet functions solely as a technical interface. The Company does not control, validate, guarantee,
+                or assume responsibility for the execution, confirmation, or outcome of any transaction, Smart Contract
+                interaction, token transfer, swap, or domain registration initiated through the Wallet.
+            </p>
+
+            <h3 style={styles.h3}>Wallet Creation, Key Management and Address Architecture</h3>
+            <p style={styles.baseText}>
+                The Wallet supports key generation and derivation in accordance with widely adopted industry standards,
+                enabling the generation of multiple accounts, address types, and cryptographic keys from a single
+                Recovery Phrase.
+            </p>
+            <p style={styles.baseText}>
+                During Wallet creation, you may, where supported through the Wallet interface:
+            </p>
+            <ul style={styles.ul}>
+                <li style={styles.li}>generate a new Recovery Phrase locally on your device;</li>
+                <li style={styles.li}>import an existing Recovery Phrase or supported Private Key format;</li>
+                <li style={styles.li}>
+                    select from supported address types and corresponding derivation standards, including Legacy
+                    (P2PKH), Native SegWit (P2WPKH), and Taproot (P2TR);
+                </li>
+                <li style={styles.li}>configure optional advanced settings, including custom derivation paths; and</li>
+                <li style={styles.li}>configure an optional passphrase extension, where available.</li>
+            </ul>
+            <p style={styles.baseText}>The Wallet may offer selectable privacy configurations, including:</p>
+            <ul style={styles.ul}>
+                <li style={styles.li}>a standard mode utilising a single primary receiving address; and</li>
+                <li style={styles.li}>
+                    a privacy-oriented mode that may generate rotating or one-time-use receiving addresses and implement
+                    enhanced UTXO management logic.
+                </li>
+            </ul>
+
+            <h3 style={styles.h3}>OPNet Consensus Layer and Execution Model</h3>
+            <p style={styles.baseText}>
+                The Wallet enables interaction with OPNet, a consensus layer that reads and interprets Bitcoin Layer 1
+                transactions and executes Smart Contract logic in accordance with OPNet protocol rules.
+            </p>
+            <p style={styles.baseText}>
+                OPNet operates directly on Bitcoin Layer 1 and does not introduce a separate gas token. All underlying
+                transactions require native BTC for Bitcoin network fees.
+            </p>
+            <p style={styles.baseText}>
+                You expressly acknowledge and understand the following critical characteristic of OPNet:
+            </p>
+            <ul style={styles.ul}>
+                <li style={styles.li}>
+                    OPNet may revert or invalidate Smart Contract execution where contract logic conditions are not
+                    satisfied;
+                </li>
+                <li style={styles.li}>
+                    however, OPNet cannot reverse, cancel, or modify Bitcoin Layer 1 transfers that have already been
+                    broadcast or confirmed; and
+                </li>
+                <li style={styles.li}>
+                    once BTC is transferred in a Bitcoin transaction, that transfer is governed solely by Bitcoin
+                    consensus rules and is irreversible, regardless of whether the corresponding OPNet execution
+                    succeeds or fails.
+                </li>
+            </ul>
+            <p style={styles.baseText}>
+                As a result, partial transaction reversion may occur, including circumstances where BTC is transferred
+                on Bitcoin Layer 1 but the expected Smart Contract outcome, token issuance, or protocol-level state
+                change does not occur.
+            </p>
+            <p style={styles.baseText}>
+                The Wallet does not guarantee execution outcomes, contract validity, token delivery, or economic results
+                arising from OPNet interactions.
+            </p>
+
+            <h3 style={styles.h3}>.btc Domain Functionality</h3>
+            <p style={styles.baseText}>
+                The Wallet enables the registration, management, and resolution of .btc Domain names implemented on or
+                in connection with the Bitcoin blockchain.
+            </p>
+            <p style={styles.baseText}>
+                Domain registration transactions are broadcast directly to the Bitcoin network and are immutable once
+                confirmed under Bitcoin consensus rules.
+            </p>
+            <p style={styles.baseText}>
+                The Company does not intermediate, custody, revoke, or transfer domain ownership recorded on-chain.
+            </p>
+            <p style={styles.baseText}>
+                Notwithstanding on-chain immutability, the Company reserves the right, in its sole discretion and
+                without prior notice, to restrict, suspend, or disable domain resolution through the Wallet interface in
+                cases involving unlawful activity, trademark or intellectual property disputes, fraud, phishing, harmful
+                content, or compliance with Applicable Law.
+            </p>
+            <p style={styles.baseText}>Such interface-level restrictions do not alter on-chain ownership.</p>
+            <p style={styles.baseText}>
+                Separate .btc Domain-specific terms and conditions, where published, shall apply and are incorporated
+                into these Terms by reference.
+            </p>
+
+            <h3 style={styles.h3}>Transaction Fees and Network Costs</h3>
+            <p style={styles.baseText}>
+                Your use of the Wallet may require the payment of transaction fees, network fees, protocol fees, or
+                other costs imposed by blockchain networks, validators, miners, decentralised protocols, or Third-Party
+                Services (collectively, â€œFeesâ€).
+            </p>
+            <p style={styles.baseText}>
+                Fees may be incurred regardless of whether a transaction, Smart Contract interaction, swap, or other
+                operation successfully completes, fails, or is reverted at the protocol level.
+            </p>
+            <p style={styles.baseText}>
+                You are solely responsible for reviewing and approving applicable Fees before signing or broadcasting
+                any transaction. Any fee information displayed through the Wallet is provided for informational purposes
+                only and is not guaranteed.
+            </p>
+
+            <h2 style={styles.h2}>REPRESENTATIONS AND WARRANTIES</h2>
+            <p style={styles.baseText}>
+                By accessing or using the Platform, You represent, warrant, acknowledge, and agree, on a continuing
+                basis, that:
+            </p>
+            <ul style={styles.ul}>
+                <li style={styles.li}>
+                    You have full legal capacity, authority, and power to enter into and be bound by these Terms;
+                </li>
+                <li style={styles.li}>
+                    if You access or use the Wallet on behalf of an entity, such entity is duly organised and validly
+                    existing under Applicable Law, and You are duly authorised to bind it to these Terms;
+                </li>
+                <li style={styles.li}>
+                    Your access to and use of the Wallet does not and will not violate any Applicable Law or any
+                    contractual or legal obligation binding upon You;
+                </li>
+                <li style={styles.li}>
+                    You are not named on, owned or controlled by, or acting on behalf of any person or entity named on,
+                    any sanctions or restricted party list maintained by relevant authorities, and You are not located,
+                    incorporated, organised, established in, or resident in any jurisdiction subject to comprehensive
+                    economic or trade sanctions under Applicable Law;
+                </li>
+                <li style={styles.li}>
+                    You have sufficient technical knowledge and understanding of blockchain technology, Digital Assets,
+                    Private Keys, Recovery Phrases, and Smart Contracts to evaluate the risks associated with their use;
+                </li>
+                <li style={styles.li}>
+                    You understand that blockchain transactions are irreversible, Digital Asset markets are highly
+                    volatile, Smart Contracts may contain bugs or malicious code, third-party protocols may fail, and
+                    transaction fees and network conditions may fluctuate significantly;
+                </li>
+                <li style={styles.li}>
+                    all decisions to use the Wallet, transfer Digital Assets, or interact with Third-Party Services are
+                    made solely on the basis of Your own independent judgment;
+                </li>
+                <li style={styles.li}>
+                    You will comply with all Applicable Laws in connection with Your access to and use of the Wallet;
+                </li>
+                <li style={styles.li}>
+                    any information and Personal Data You provide to the Company is and shall remain true, accurate,
+                    complete, up to date, not misleading, and lawfully obtained and disclosed; and
+                </li>
+                <li style={styles.li}>
+                    You are solely responsible for safeguarding Your device, communications, local environment, and any
+                    data stored locally in connection with Your use of the Wallet.
+                </li>
+            </ul>
+            <p style={styles.baseText}>
+                You acknowledge that You have not relied on any representation, warranty, statement, or promise not
+                expressly set out in these Terms.
+            </p>
+            <p style={styles.baseText}>
+                The representations and warranties set out in this clause are continuing and shall be deemed to be
+                reaffirmed each time You access or use the Wallet.
+            </p>
+
+            <h2 style={styles.h2}>THIRD PARTY SERVICES AND INTEGRATIONS</h2>
+            <p style={styles.baseText}>
+                The Wallet may provide integrated access to, display interfaces for, or otherwise facilitate interaction
+                with third-party services, protocols, decentralised applications, Smart Contracts, token issuers,
+                blockchain networks, data providers, domain registries/resolvers, or other third parties (collectively,
+                â€œThird-Party Servicesâ€). Third-Party Services are not owned, operated, or controlled by the Company.
+            </p>
+            <p style={styles.baseText}>
+                When You access or interact with any Third-Party Service through the Wallet, You interact directly with
+                the applicable Third-Party Service and/or underlying blockchain network. Your use of Third-Party
+                Services may be subject to separate terms, policies, documentation, fee schedules, risk disclosures, and
+                eligibility requirements imposed by the relevant third party and/or network.
+            </p>
+            <p style={styles.baseText}>
+                The Company does not endorse, audit, verify, guarantee, or assume responsibility for any Third-Party
+                Service, including any Smart Contract, protocol logic, routing, pricing, liquidity, execution,
+                settlement, data, content, availability, security, legality, or performance.
+            </p>
+            <p style={styles.baseText}>
+                Certain Wallet features may rely on or enable interaction with Third-Party Services, including swap or
+                exchange integrations and .btc domain functionality.
+            </p>
+            <p style={styles.baseText}>
+                Where the Wallet displays pricing information, charts, valuations, conversion rates, estimated balances,
+                token metadata, protocol data, or other information sourced from Third-Party Services (â€œThird-Party
+                Dataâ€), such Third-Party Data is provided for informational convenience only and may be delayed,
+                incomplete, inaccurate, or unavailable.
+            </p>
+            <p style={styles.baseText}>
+                The Company may add, modify, restrict, disable, or remove access to any Third-Party Service or
+                integration through the Wallet at any time.
+            </p>
+            <p style={styles.baseText}>
+                The Company may provide interface-level technical support for the Wallet, but does not provide support
+                for Third-Party Services and is not responsible for their customer support, refunds, reversals,
+                chargebacks, or remediation.
+            </p>
+
+            <h2 style={styles.h2}>INTELLECTUAL PROPERTY</h2>
+
+            <h3 style={styles.h3}>Ownership</h3>
+            <p style={styles.baseText}>
+                The Wallet, the Platform, the OP_WALLET Services, and all related software, interfaces, source code,
+                object code, architecture, content, design, user interface elements, documentation, text, graphics,
+                branding, logos, trademarks, and other Intellectual Property and materials made available by the Company
+                (collectively, the â€œCompany Materialsâ€) are and shall remain the exclusive property of the Company
+                and/or its licensors.
+            </p>
+            <p style={styles.baseText}>
+                Except for the limited licence expressly granted under these Terms, nothing in these Terms transfers or
+                assigns to You any right, title, or interest in or to any Company Materials or Intellectual Property
+                Rights.
+            </p>
+
+            <h3 style={styles.h3}>Limited Licence to Use the Wallet</h3>
+            <p style={styles.baseText}>
+                Subject to your ongoing compliance with these Terms, the Company grants you a limited, revocable,
+                non-exclusive, non-transferable, non-sublicensable licence to download, install, access, load, and use
+                the Wallet solely for your personal, lawful use in accordance with these Terms.
+            </p>
+
+            <h3 style={styles.h3}>Feedback</h3>
+            <p style={styles.baseText}>
+                If You provide the Company with any suggestions, ideas, feedback, improvements, or recommendations
+                relating to the Wallet or OP_WALLET Services (â€œFeedbackâ€), You grant the Company a perpetual,
+                irrevocable, worldwide, royalty-free, fully paid-up, sublicensable, transferable licence to use,
+                reproduce, modify, create derivative works from, distribute, communicate, and otherwise exploit such
+                Feedback for any purpose, without restriction and without any obligation to You.
+            </p>
+            <p style={styles.baseText}>
+                You represent and warrant that you have all rights necessary to provide the Feedback and to grant the
+                foregoing licence.
+            </p>
+
+            <h2 style={styles.h2}>INDEMNITY AND LIMITATION OF LIABILITY</h2>
+
+            <h3 style={styles.h3}>Indemnification</h3>
+            <p style={styles.baseText}>
+                To the maximum extent permitted under Applicable Law, You agree to indemnify, defend, and hold harmless
+                the Company and its directors, officers, employees, affiliates, agents, successors, and assigns from and
+                against any and all claims, demands, actions, proceedings, damages, losses, liabilities, judgments,
+                settlements, costs, and expenses (including reasonable legal fees) arising out of or in connection with:
+            </p>
+            <ul style={styles.ul}>
+                <li style={styles.li}>Your access to or use (or misuse) of the Wallet or OP_WALLET Services;</li>
+                <li style={styles.li}>Your breach or alleged breach of these Terms or Applicable Law;</li>
+                <li style={styles.li}>
+                    any Digital Asset transaction initiated, authorised, or signed by You using the Wallet;
+                </li>
+                <li style={styles.li}>Your interaction with or use of any Third-Party Services;</li>
+                <li style={styles.li}>
+                    any loss of Digital Assets arising from Your failure to safeguard Your Private Keys or Recovery
+                    Phrase;
+                </li>
+                <li style={styles.li}>
+                    any claim that Your use of the Wallet infringes, misappropriates, or otherwise violates the rights
+                    of any third party;
+                </li>
+                <li style={styles.li}>Your negligence, fraud, wilful misconduct, or misrepresentation;</li>
+                <li style={styles.li}>
+                    any investigation, inquiry, enforcement action, or proceeding by any regulatory, law enforcement, or
+                    Governmental Authority arising out of or relating to Your access to or use of the Wallet; or
+                </li>
+                <li style={styles.li}>any breach by You of Applicable Law relating to data protection or privacy.</li>
+            </ul>
+
+            <h3 style={styles.h3}>Release</h3>
+            <p style={styles.baseText}>
+                To the fullest extent permitted by Applicable Law, You irrevocably and unconditionally release and
+                discharge the Company and its affiliates from any and all claims, demands, actions, causes of action,
+                liabilities, or damages arising directly or indirectly out of or in connection with any interaction,
+                transaction, or dispute between You and any Third-Party Service, any Digital Asset transaction conducted
+                through the Wallet, or the subject matter of these Terms.
+            </p>
+
+            <h3 style={styles.h3}>Exclusion of Certain Damages</h3>
+            <p style={styles.baseText}>
+                To the fullest extent permitted by Applicable Law, in no event shall the Company or its directors,
+                officers, employees, affiliates, agents, successors, or assigns be liable for any indirect, incidental,
+                special, consequential, exemplary, or punitive damages, or any loss of profits, revenue, goodwill, data,
+                Digital Assets, business opportunity, or other intangible losses.
+            </p>
+            <p style={styles.baseText}>
+                Without limitation, the Company shall not be liable for any loss arising out of or relating to loss,
+                compromise, or disclosure of Your Private Keys or Recovery Phrase; irreversible blockchain transactions;
+                Smart Contract vulnerabilities; interaction with Third-Party Services; network congestion, forks,
+                protocol upgrades, or blockchain malfunctions; partial transaction reversion; volatility in Digital
+                Asset markets; unauthorised access to Your device or Wallet; any inability to access or use the Wallet;
+                or suspension, restriction, or termination in accordance with these Terms.
+            </p>
+
+            <h3 style={styles.h3}>Limitation of Liability</h3>
+            <p style={styles.baseText}>
+                To the maximum extent permitted by Applicable Law, the Companyâ€™s total aggregate liability arising out
+                of or relating to these Terms or the Wallet shall not exceed (i) the total fees paid by You to Opwallet
+                in the twelve (12) months preceding the event giving rise to the claim, or (ii) one Hundred United
+                States Dollars (USD 100), whichever is greater if applicable under the drafting intent you provided.
+            </p>
+
+            <h3 style={styles.h3}>Allocation of Risk</h3>
+            <p style={styles.baseText}>
+                You acknowledge and agree that the disclaimers, exclusions, and limitations set out in this clause
+                reflect a reasonable allocation of risk between You and the Company and form an essential basis of the
+                bargain between the parties.
+            </p>
+
+            <h3 style={styles.h3}>Jurisdictional Limitations</h3>
+            <p style={styles.baseText}>
+                Some jurisdictions do not allow the exclusion or limitation of certain damages or warranties. In such
+                jurisdictions, the Companyâ€™s liability and the scope of any disclaimers shall be limited to the fullest
+                extent permitted by Applicable Law.
+            </p>
+
+            <h2 style={styles.h2}>DISCLAIMERS</h2>
+            <p style={styles.baseText}>
+                To the fullest extent permitted by Applicable Law, the Wallet and the OP_WALLET Services are provided on
+                an â€œas isâ€ and â€œas availableâ€ basis, without any representation, warranty, guarantee, or condition of
+                any kind, whether express, implied, statutory, or otherwise.
+            </p>
+            <p style={styles.baseText}>
+                Without limiting the foregoing, the Company expressly disclaims all warranties and conditions, including
+                any implied warranties of merchantability, satisfactory quality, fitness for a particular purpose,
+                title, non-infringement, quiet enjoyment, and accuracy or completeness of information.
+            </p>
+            <p style={styles.baseText}>
+                The Company does not warrant that the Wallet will be uninterrupted, secure, error-free, compatible with
+                all devices or networks, free of harmful components, or that any defects will be corrected.
+            </p>
+            <p style={styles.baseText}>
+                Nothing in the Wallet, the OP_WALLET Services, or these Terms constitutes investment, financial, legal,
+                tax, or other professional advice, recommendation, endorsement, or solicitation.
+            </p>
+            <p style={styles.baseText}>
+                The Wallet may enable You to access or interact with Third-Party Services. The Company does not own,
+                control, endorse, audit, verify, or guarantee any Third-Party Service.
+            </p>
+            <p style={styles.baseText}>
+                Where the Wallet displays pricing information, valuations, conversion rates, charts, estimated balances,
+                or other market-related data (â€œMarket Dataâ€), such Market Data is provided solely for informational
+                convenience and may be sourced from Third-Party Services. The Company does not guarantee that any Market
+                Data is accurate, complete, current, available, error-free, or reflective of executable market prices.
+            </p>
+            <p style={styles.baseText}>
+                You acknowledge and accept that the Wallet relies on blockchain technology and cryptographic systems
+                that present inherent risks, including irreversible transactions, key loss, Smart Contract bugs,
+                execution failures, volatility, network events, regulatory changes, phishing, malware, and device
+                compromise.
+            </p>
+
+            <h2 style={styles.h2}>PERSONAL DATA AND PRIVACY</h2>
+            <p style={styles.baseText}>
+                The Company may collect and process certain Personal Data in connection with Your access to or use of
+                the Wallet, including where You contact Us for support, subscribe to communications, for security
+                monitoring, fraud prevention, technical diagnostics, compliance with Applicable Law, or otherwise
+                voluntarily provide information to Us.
+            </p>
+            <p style={styles.baseText}>
+                This clause, together with any applicable Privacy Policy, sets out the basis on which the Company
+                collects, uses, stores, discloses, and otherwise processes Personal Data.
+            </p>
+            <p style={styles.baseText}>
+                By accessing or using the Wallet, You acknowledge that You have read and understood these Terms and,
+                where applicable, the Privacy Policy, and You consent to such processing in accordance with Applicable
+                Law.
+            </p>
+
+            <h3 style={styles.h3}>Limited Data Collection</h3>
+            <p style={styles.baseText}>
+                The Wallet is non-custodial and does not require account creation. The Company does not collect, store,
+                or have access to:
+            </p>
+            <ul style={styles.ul}>
+                <li style={styles.li}>Private Keys;</li>
+                <li style={styles.li}>Recovery Phrases;</li>
+                <li style={styles.li}>passwords; or</li>
+                <li style={styles.li}>Digital Assets held in blockchain addresses controlled by You.</li>
+            </ul>
+            <p style={styles.baseText}>All such information remains solely under Your control on Your device.</p>
+            <p style={styles.baseText}>
+                The Wallet may enable access to or interaction with Third-Party Services. Any Personal Data shared
+                directly with, or collected by, such Third-Party Services is governed solely by their respective terms
+                and privacy policies.
+            </p>
+            <p style={styles.baseText}>
+                The Company endeavours to implement commercially reasonable technical and organisational measures
+                designed to protect Personal Data within its control in accordance with Applicable Law. However, no
+                method of transmission over the internet or electronic storage is completely secure.
+            </p>
+            <p style={styles.baseText}>
+                The Company may disclose Personal Data to the extent required or permitted by Applicable Law, including
+                pursuant to any court order, regulatory requirement, or request from law enforcement or a Governmental
+                Authority.
+            </p>
+            <p style={styles.baseText}>
+                The Wallet may use analytics tools to collect aggregated or pseudonymised technical and usage data, such
+                as device information, browser type, operating system, interaction patterns, feature usage, and
+                performance metrics. The Company does not use analytics tools to access or collect Private Keys,
+                Recovery Phrases, or Digital Assets.
+            </p>
+
+            <h2 style={styles.h2}>TERMINATION</h2>
+
+            <h3 style={styles.h3}>Termination by You</h3>
+            <p style={styles.baseText}>
+                You may terminate these Terms at any time by ceasing to use the Wallet and uninstalling or removing the
+                Wallet from Your device. Termination does not affect any transactions already broadcast to the
+                blockchain or any assets stored in addresses associated with Your Private Keys.
+            </p>
+
+            <h3 style={styles.h3}>Suspension or Termination by the Company</h3>
+            <p style={styles.baseText}>
+                To the fullest extent permitted by Applicable Law, the Company may, at any time and in its sole
+                discretion, with or without cause and with or without prior notice, suspend, restrict, disable, or
+                terminate Your access to the Wallet or any related functionality.
+            </p>
+            <p style={styles.baseText}>Grounds may include:</p>
+            <ul style={styles.ul}>
+                <li style={styles.li}>actual or suspected breach of these Terms or Applicable Law;</li>
+                <li style={styles.li}>unlawful, fraudulent, abusive, or harmful conduct;</li>
+                <li style={styles.li}>legal, regulatory, reputational, or operational risk;</li>
+                <li style={styles.li}>suspected misuse involving sanctions, financial crime, or prohibited use;</li>
+                <li style={styles.li}>compliance with a request or order from any Governmental Authority;</li>
+                <li style={styles.li}>security incidents, technical risks, or integrity concerns; or</li>
+                <li style={styles.li}>discontinuation, modification, or restructuring of the Wallet.</li>
+            </ul>
+
+            <h3 style={styles.h3}>Effect of Termination</h3>
+            <p style={styles.baseText}>Upon termination:</p>
+            <ul style={styles.ul}>
+                <li style={styles.li}>Your right to access and use the Wallet immediately ceases;</li>
+                <li style={styles.li}>
+                    the Company may disable access to the Wallet interface or related services; and
+                </li>
+                <li style={styles.li}>
+                    the Company shall have no obligation to provide continued access, updates, support, or
+                    functionality.
+                </li>
+            </ul>
+            <p style={styles.baseText}>
+                Due to the non-custodial nature of the Wallet, the Company cannot freeze, recover, transfer, or
+                otherwise control Your Digital Assets.
+            </p>
+
+            <h2 style={styles.h2}>GOVERNING LAW</h2>
+            <p style={styles.baseText}>
+                These Terms, and any dispute, controversy, claim, or difference arising out of or in connection with
+                these Terms, the Wallet, or the OP_WALLET Services (each, a â€œDisputeâ€), shall be governed by and
+                construed in accordance with the laws of the Abu Dhabi Global Market (â€œADGMâ€), including the ADGM
+                regulations and, to the extent applicable within ADGM, the federal laws of the United Arab Emirates,
+                without regard to conflict of laws principles.
+            </p>
+            <p style={styles.baseText}>
+                Nothing in these Terms shall exclude or limit any mandatory consumer protection rights that may apply to
+                You under Applicable Law in Your jurisdiction of residence, to the extent such rights cannot be lawfully
+                excluded.
+            </p>
+
+            <h2 style={styles.h2}>DISPUTE RESOLUTION PROCESS</h2>
+
+            <div style={styles.callout}>
+                <strong>IMPORTANT:</strong> THESE TERMS CONTAIN A BINDING ARBITRATION CLAUSE, WAIVER OF JURY TRIAL, AND
+                CLASS ACTION WAIVER.
+            </div>
+
+            <h3 style={styles.h3}>Good Faith Resolution Process</h3>
+            <p style={styles.baseText}>
+                Before initiating any formal legal proceedings, including arbitration or a small claims court action,
+                You and the Company agree to attempt to resolve in good faith any Dispute through the following process:
+            </p>
+            <ul style={styles.ul}>
+                <li style={styles.li}>
+                    <strong>Initial Notice:</strong> You must submit a written notice describing the Dispute in
+                    reasonable detail to the Company at support@opnet.org and, where available, raise a formal support
+                    request via the Platform.
+                </li>
+                <li style={styles.li}>
+                    <strong>Acknowledgement:</strong> The Company shall endeavour to acknowledge receipt of the
+                    complaint within 10 Business Days.
+                </li>
+                <li style={styles.li}>
+                    <strong>Resolution Period:</strong> The parties shall attempt in good faith to resolve the Dispute
+                    within 10 Business Days from the date the written notice is received.
+                </li>
+            </ul>
+
+            <h3 style={styles.h3}>Binding Arbitration</h3>
+            <p style={styles.baseText}>
+                Any Dispute shall be referred to and finally resolved by arbitration administered by the Abu Dhabi
+                International Arbitration Centre (â€œADIACâ€) in accordance with the ADIAC Arbitration Rules in force at
+                the time of commencement of the arbitration. The number of arbitrators shall be one (1). The seat of
+                arbitration shall be ADGM, Abu Dhabi, United Arab Emirates. The language of the arbitration shall be
+                English.
+            </p>
+            <p style={styles.baseText}>
+                The arbitrator&apos;s decision shall be final, binding, and non-appealable. Judgment upon the award may
+                be entered in any court having jurisdiction.
+            </p>
+
+            <h3 style={styles.h3}>Arbitration Costs</h3>
+            <p style={styles.baseText}>
+                The costs of arbitration, including filing and administrative fees, shall be allocated in accordance
+                with the ADIAC Arbitration Rules. Each party shall bear its own legal fees and expenses unless the
+                Tribunal determines otherwise.
+            </p>
+
+            <h3 style={styles.h3}>Exceptions</h3>
+            <ul style={styles.ul}>
+                <li style={styles.li}>
+                    <strong>Small Claims:</strong> Nothing in this clause prevents either party from bringing an
+                    individual claim in a court of competent jurisdiction that qualifies for small claims procedures.
+                </li>
+                <li style={styles.li}>
+                    <strong>Injunctive and Equitable Relief:</strong> Nothing in this clause prevents the Company from
+                    seeking temporary, interim, or permanent injunctive or equitable relief in any court of competent
+                    jurisdiction.
+                </li>
+            </ul>
+
+            <h3 style={styles.h3}>Waiver of Jury Trial and Class Actions</h3>
+            <ul style={styles.ul}>
+                <li style={styles.li}>You waive any right to a trial by jury.</li>
+                <li style={styles.li}>All Disputes shall be brought on an individual basis only.</li>
+                <li style={styles.li}>
+                    You agree not to bring or participate in any class action, representative action, consolidated
+                    proceeding, or collective arbitration.
+                </li>
+                <li style={styles.li}>
+                    Unless both the Company and You agree, the arbitrator or judge shall have no authority to
+                    consolidate claims or preside over any form of class or representative proceeding.
+                </li>
+            </ul>
+
+            <h3 style={styles.h3}>International Users</h3>
+            <p style={styles.baseText}>
+                The Wallet is operated from the ADGM, United Arab Emirates. If You access or use the Wallet from outside
+                the United Arab Emirates, You do so on Your own initiative and at Your own risk. You are solely
+                responsible for ensuring that Your access to and use of the Wallet complies with all Applicable Laws in
+                Your jurisdiction.
+            </p>
+
+            <h3 style={styles.h3}>Regulatory Contact</h3>
+            <p style={styles.baseText}>
+                If any Governmental Authority has concerns regarding the Wallet or the OP_WALLET Services, the Company
+                respectfully requests that such authority contact it at report@opnet.org prior to initiating formal
+                enforcement proceedings, where practicable.
+            </p>
+
+            <h2 style={styles.h2}>COMPANY&apos;S GENERAL TERMS</h2>
+            <p style={styles.baseText}>
+                These Terms are product-specific terms governing Your use of the OP_WALLET Services.
+            </p>
+            <p style={styles.baseText}>
+                To the extent that the Company or its affiliates make available separate general terms and conditions
+                governing the overall use of any website, platform, or other products or services (the â€œGeneral Termsâ€),
+                such General Terms shall apply in addition to these Terms, except as expressly modified herein.
+            </p>
+            <p style={styles.baseText}>
+                In the event of any conflict or inconsistency between these Terms and any applicable General Terms,
+                these Terms shall prevail with respect to the OP_WALLET Services, unless expressly stated otherwise.
+            </p>
+            <p style={styles.baseText}>
+                Any provision of the General Terms that contradicts, qualifies, or could reasonably be construed to
+                compromise the non-custodial and technology-only nature of the OP_WALLET Services shall not apply to the
+                OP_WALLET Services.
+            </p>
+
+            <h2 style={styles.h2}>MISCELLANEOUS</h2>
+            <ul style={styles.ul}>
+                <li style={styles.li}>
+                    <strong>Entire Agreement:</strong> These Terms, together with any policies or documents expressly
+                    incorporated by reference, constitute the entire agreement between You and the Company regarding the
+                    Wallet and OP_WALLET Services.
+                </li>
+                <li style={styles.li}>
+                    <strong>Changes to the Wallet:</strong> The Company may modify, enhance, suspend, restrict, or
+                    discontinue the Wallet or any functionality at any time.
+                </li>
+                <li style={styles.li}>
+                    <strong>Changes to These Terms:</strong> The Company may amend or update these Terms from time to
+                    time. Your continued use after the effective date of any amendment constitutes acceptance.
+                </li>
+                <li style={styles.li}>
+                    <strong>Assignment:</strong> You may not assign these Terms without prior written consent. The
+                    Company may assign its rights and obligations without restriction.
+                </li>
+                <li style={styles.li}>
+                    <strong>No Waiver:</strong> No failure or delay by the Company in exercising any right, power, or
+                    remedy under these Terms shall constitute a waiver.
+                </li>
+                <li style={styles.li}>
+                    <strong>Severability:</strong> If any provision is held invalid, illegal, or unenforceable, such
+                    provision shall be modified to the minimum extent necessary or severed.
+                </li>
+                <li style={styles.li}>
+                    <strong>Survival:</strong> Any provision of these Terms which by its nature is intended to survive
+                    termination shall survive.
+                </li>
+                <li style={styles.li}>
+                    <strong>Independent Contractors:</strong> You and the Company are independent contracting parties.
+                </li>
+                <li style={styles.li}>
+                    <strong>No Third-Party Beneficiaries:</strong> Except as expressly provided in these Terms, no
+                    person other than the parties shall have any rights under these Terms.
+                </li>
+                <li style={styles.li}>
+                    <strong>Export and Sanctions Compliance:</strong> You agree to comply with all applicable export
+                    control, sanctions, and trade restriction laws and regulations.
+                </li>
+                <li style={styles.li}>
+                    <strong>Language:</strong> These Terms are drafted in English. If translated, the English version
+                    shall prevail in the event of inconsistency.
+                </li>
+                <li style={styles.li}>
+                    <strong>Notices:</strong> Unless otherwise specified, all notices required or permitted under these
+                    Terms shall be provided electronically.
+                </li>
+            </ul>
+
+            <h3 style={styles.h3}>Support and Communications</h3>
+            <p style={styles.baseText}>
+                The Company may provide general support or communications through one or more of the following channels:
+            </p>
+            <ul style={styles.ul}>
+                <li style={styles.li}>Email: support@opnet.org</li>
+                <li style={styles.li}>OP_NET Discord: https://discord.gg/opnet</li>
+                <li style={styles.li}>OP_NET Telegram: https://t.me/opnetbtc</li>
+                <li style={styles.li}>OP_NET X (formerly Twitter): https://x.com/opnetbtc</li>
+            </ul>
+            <p style={styles.baseText}>
+                Support provided through these channels is for general informational and technical assistance only. The
+                Company does not guarantee response times, issue resolution, or continuous availability of any support
+                channel. The Company will never request your Private Keys or Recovery Phrase through any communication
+                channel.
+            </p>
+
+            <h3 style={styles.h3}>Access Restrictions</h3>
+            <p style={styles.baseText}>
+                The Company reserves the right, in its sole discretion and without prior notice, to restrict, suspend,
+                or block access to the Wallet or any feature thereof from specific jurisdictions, IP addresses, devices,
+                or users where necessary for legal, regulatory, security, or operational reasons.
+            </p>
+
+            <h3 style={styles.h3}>Force Majeure</h3>
+            <p style={styles.baseText}>
+                The Company shall not be liable for any delay, interruption, or failure in performance resulting from
+                events beyond its reasonable control, including changes in Applicable Law, regulatory action,
+                governmental orders, sanctions, acts of God, natural disasters, war, terrorism, public health
+                emergencies, blockchain congestion, node failures, protocol changes, cyberattacks, malware events, or
+                failures of internet infrastructure, telecommunications, utilities, or Third-Party Service Providers.
+            </p>
+
+            <h3 style={styles.h3}>Reporting Violations</h3>
+            <p style={styles.baseText}>
+                If You believe that any person is misusing the Wallet or violating these Terms, You may report the
+                matter to the Company using the contact details provided in these Terms. The Company does not
+                continuously monitor all blockchain transactions or user activity and is under no obligation to
+                investigate, verify, or take any action in response to any report unless required by Applicable Law or
+                unless the Company, in its sole discretion, determines that investigation is appropriate.
+            </p>
 
             <h2 style={styles.h2}>CONTACT INFORMATION</h2>
             <p style={styles.baseText}>
@@ -546,11 +1164,12 @@ export function TermsText({ effectiveDate, styles }: { effectiveDate: string; st
                 <br />
                 Abu Dhabi Global Market, United Arab Emirates
                 <br />
-                Email: report@opnet.org
+                Email: support@opnet.org
+                <br />
+                Regulatory Contact: report@opnet.org
             </p>
 
             <hr style={styles.hr} />
-
             <div style={{ height: 14 }} />
         </>
     );

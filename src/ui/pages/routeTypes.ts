@@ -57,7 +57,8 @@ export enum RouteTypes {
     UserExperienceModeScreen = 'UserExperienceModeScreen',
     DisplaySettingsScreen = 'DisplaySettingsScreen',
     UTXOOptimizeScreen = 'UTXOOptimizeScreen',
-    OnboardingScreen = 'OnboardingScreen'
+    OnboardingScreen = 'OnboardingScreen',
+    LegalDocumentsScreen = 'LegalDocumentsScreen'
 }
 
 export const routePaths: Record<RouteTypes, string> = {
@@ -116,7 +117,8 @@ export const routePaths: Record<RouteTypes, string> = {
     [RouteTypes.UserExperienceModeScreen]: '/settings/experience-mode',
     [RouteTypes.DisplaySettingsScreen]: '/settings/display',
     [RouteTypes.UTXOOptimizeScreen]: '/wallet/utxo-optimize',
-    [RouteTypes.OnboardingScreen]: '/onboarding'
+    [RouteTypes.OnboardingScreen]: '/onboarding',
+    [RouteTypes.LegalDocumentsScreen]: '/settings/legal-documents'
 };
 
 export type UseNavigate<T extends RouteTypes> = (routKey: T, state?: unknown) => void;

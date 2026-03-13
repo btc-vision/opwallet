@@ -1,4 +1,4 @@
-import { Button, Column, Row, Text } from '@/ui/components';
+import { Button, Column } from '@/ui/components';
 import { WarningOutlined } from '@ant-design/icons';
 import { FooterButtonContainer } from '@/ui/components/FooterButtonContainer';
 import { ContextData, TabType, UpdateContextDataParams } from './types';
@@ -10,12 +10,17 @@ import { usePrivacyModeEnabled } from '@/ui/hooks/useAppConfig';
 
 const colors = {
     warning: '#f59e0b',
-    warningBg: 'rgba(245, 158, 11, 0.1)',
-    warningBorder: 'rgba(245, 158, 11, 0.3)',
-    text: '#dbdbdb',
-    textDim: 'rgba(219, 219, 219, 0.7)',
-    info: '#3b82f6',
-    infoBg: 'rgba(59, 130, 246, 0.1)'
+    warningBg: 'rgba(245, 158, 11, 0.06)',
+    warningBorder: 'rgba(245, 158, 11, 0.2)',
+    text: '#e4e4e4',
+    textDim: 'rgba(219, 219, 219, 0.65)',
+    info: '#60a5fa',
+    infoBg: 'rgba(96, 165, 250, 0.06)',
+    infoBorder: 'rgba(96, 165, 250, 0.18)',
+    cardBg: 'rgba(255, 255, 255, 0.03)',
+    cardBorder: 'rgba(255, 255, 255, 0.06)',
+    divider: 'rgba(255, 255, 255, 0.06)',
+    main: '#f37413'
 };
 
 export function Step3_XVerseWarning({
@@ -60,111 +65,188 @@ export function Step3_XVerseWarning({
     return (
         <Column gap="lg">
             {/* Warning Header */}
-            <Row
+            <div
                 style={{
-                    padding: '16px',
-                    background: colors.warningBg,
-                    borderRadius: '8px',
-                    border: `1px solid ${colors.warningBorder}`
+                    padding: '14px 16px',
+                    background: `linear-gradient(135deg, ${colors.warningBg} 0%, rgba(245, 158, 11, 0.02) 100%)`,
+                    borderRadius: '12px',
+                    border: `1px solid ${colors.warningBorder}`,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '12px'
                 }}>
-                <Column gap="sm">
-                    <Row itemsCenter gap="sm">
-                        <WarningOutlined style={{ fontSize: 20, color: '#fbbf24' }} />
-                        <Text text="Important: XVerse Wallet Notice" preset="bold" color="warning" />
-                    </Row>
-                </Column>
-            </Row>
+                <div
+                    style={{
+                        width: '36px',
+                        height: '36px',
+                        borderRadius: '10px',
+                        background: 'rgba(245, 158, 11, 0.12)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        flexShrink: 0
+                    }}>
+                    <WarningOutlined style={{ fontSize: 18, color: '#fbbf24' }} />
+                </div>
+                <div>
+                    <div style={{ fontSize: '14px', fontWeight: 600, color: '#fbbf24', marginBottom: '2px' }}>
+                        XVerse Wallet Notice
+                    </div>
+                    <div style={{ fontSize: '11px', color: colors.textDim }}>
+                        Please read before continuing
+                    </div>
+                </div>
+            </div>
 
             {/* Main Warning Content */}
-            <Column
-                gap="md"
+            <div
                 style={{
                     padding: '16px',
-                    background: 'rgba(42, 38, 38, 0.8)',
-                    borderRadius: '8px'
+                    background: `linear-gradient(135deg, ${colors.cardBg} 0%, rgba(255,255,255,0.01) 100%)`,
+                    borderRadius: '12px',
+                    border: `1px solid ${colors.cardBorder}`,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '14px'
                 }}>
-                <Text
-                    text="XVerse uses two separate private keys:"
-                    preset="bold"
-                    style={{ color: colors.text }}
-                />
+                <div style={{ fontSize: '13px', fontWeight: 600, color: colors.text }}>
+                    XVerse uses two separate private keys:
+                </div>
 
-                <Column gap="sm" style={{ paddingLeft: '12px' }}>
-                    <Row itemsCenter gap="sm">
-                        <Text text="1." preset="bold" color="primary" />
-                        <Text
-                            text="SegWit address (Nested SegWit) - for regular BTC"
-                            style={{ color: colors.textDim }}
-                        />
-                    </Row>
-                    <Row itemsCenter gap="sm">
-                        <Text text="2." preset="bold" color="primary" />
-                        <Text
-                            text="Taproot address - for Ordinals/Inscriptions"
-                            style={{ color: colors.textDim }}
-                        />
-                    </Row>
-                </Column>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', paddingLeft: '4px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        <div
+                            style={{
+                                width: '22px',
+                                height: '22px',
+                                borderRadius: '6px',
+                                background: `${colors.main}18`,
+                                border: `1px solid ${colors.main}30`,
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                fontSize: '11px',
+                                fontWeight: 700,
+                                color: colors.main,
+                                flexShrink: 0
+                            }}>
+                            1
+                        </div>
+                        <span style={{ fontSize: '12.5px', color: colors.textDim, lineHeight: '1.4' }}>
+                            <strong style={{ color: colors.text }}>SegWit address</strong> (Nested SegWit) — for
+                            regular BTC
+                        </span>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        <div
+                            style={{
+                                width: '22px',
+                                height: '22px',
+                                borderRadius: '6px',
+                                background: `${colors.main}18`,
+                                border: `1px solid ${colors.main}30`,
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                fontSize: '11px',
+                                fontWeight: 700,
+                                color: colors.main,
+                                flexShrink: 0
+                            }}>
+                            2
+                        </div>
+                        <span style={{ fontSize: '12.5px', color: colors.textDim, lineHeight: '1.4' }}>
+                            <strong style={{ color: colors.text }}>Taproot address</strong> — for
+                            Ordinals/Inscriptions
+                        </span>
+                    </div>
+                </div>
+
+                <div style={{ height: '1px', background: colors.divider, margin: '2px 0' }} />
 
                 <div
                     style={{
-                        height: '1px',
-                        background: 'rgba(255,255,255,0.1)',
-                        margin: '8px 0'
-                    }}
-                />
-
-                <Text
-                    text="Your BTC funds are likely on your SegWit address"
-                    preset="bold"
-                    color="warning"
-                />
-
-                <Text
-                    text="When you import your XVerse mnemonic, OPWallet will show your Taproot address. If your balance shows as 0, your funds are still safe on your SegWit address in XVerse."
-                    style={{ color: colors.textDim, lineHeight: '1.5' }}
-                />
-            </Column>
+                        padding: '10px 12px',
+                        background: 'rgba(245, 158, 11, 0.06)',
+                        borderRadius: '8px',
+                        borderLeft: '3px solid rgba(245, 158, 11, 0.4)'
+                    }}>
+                    <div
+                        style={{
+                            fontSize: '12.5px',
+                            fontWeight: 600,
+                            color: '#fbbf24',
+                            marginBottom: '4px'
+                        }}>
+                        Your BTC funds are likely on your SegWit address
+                    </div>
+                    <div style={{ fontSize: '12px', color: colors.textDim, lineHeight: '1.5' }}>
+                        When you import your XVerse mnemonic, OPWallet will show your Taproot address. If your balance
+                        shows as 0, your funds are still safe on your SegWit address in XVerse.
+                    </div>
+                </div>
+            </div>
 
             {/* Action Required */}
-            <Column
-                gap="md"
+            <div
                 style={{
                     padding: '16px',
-                    background: colors.infoBg,
-                    borderRadius: '8px',
-                    border: '1px solid rgba(59, 130, 246, 0.3)'
+                    background: `linear-gradient(135deg, ${colors.infoBg} 0%, rgba(96, 165, 250, 0.02) 100%)`,
+                    borderRadius: '12px',
+                    border: `1px solid ${colors.infoBorder}`,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '12px'
                 }}>
-                <Row itemsCenter gap="sm">
-                    <Text text="💡" size="lg" />
-                    <Text text="What you need to do:" preset="bold" style={{ color: colors.info }} />
-                </Row>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span style={{ fontSize: '16px' }}>💡</span>
+                    <span style={{ fontSize: '13px', fontWeight: 600, color: colors.info }}>
+                        What you need to do
+                    </span>
+                </div>
 
-                <Column gap="sm" style={{ paddingLeft: '8px' }}>
-                    <Text
-                        text="Transfer your BTC from your XVerse SegWit address to your Taproot address before using OPWallet."
-                        style={{ color: colors.textDim, lineHeight: '1.5' }}
-                    />
-                    <Text
-                        text="You can do this within XVerse by sending BTC to your own Taproot address."
-                        style={{ color: colors.textDim, lineHeight: '1.5', fontStyle: 'italic' }}
-                    />
-                </Column>
-            </Column>
+                <div
+                    style={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '8px',
+                        paddingLeft: '4px'
+                    }}>
+                    <div style={{ fontSize: '12px', color: colors.textDim, lineHeight: '1.55' }}>
+                        Transfer your BTC from your XVerse SegWit address to your Taproot address before using OPWallet.
+                    </div>
+                    <div
+                        style={{
+                            fontSize: '12px',
+                            color: colors.textDim,
+                            lineHeight: '1.55',
+                            fontStyle: 'italic',
+                            opacity: 0.85
+                        }}>
+                        You can do this within XVerse by sending BTC to your own Taproot address.
+                    </div>
+                </div>
+            </div>
 
             {/* Acknowledgment */}
-            <Column
+            <div
                 style={{
-                    padding: '12px 16px',
-                    background: 'rgba(0,0,0,0.2)',
-                    borderRadius: '8px'
+                    padding: '12px 14px',
+                    background: 'rgba(255, 255, 255, 0.02)',
+                    borderRadius: '10px',
+                    border: `1px solid ${colors.divider}`
                 }}>
-                <Text
-                    text="By continuing, you acknowledge that you understand your funds may not appear until transferred to your Taproot address."
-                    size="xs"
-                    style={{ color: colors.textDim, lineHeight: '1.4' }}
-                />
-            </Column>
+                <div
+                    style={{
+                        fontSize: '11px',
+                        color: colors.textDim,
+                        lineHeight: '1.45',
+                        opacity: 0.8
+                    }}>
+                    By continuing, you acknowledge that you understand your funds may not appear until transferred to
+                    your Taproot address.
+                </div>
+            </div>
 
             <FooterButtonContainer>
                 <Button

@@ -184,11 +184,170 @@ export const BalanceTabs: React.FC<BalanceTabsProps> = ({
                             </Row>
                         </div>
 
+                        {/* CSV1 Section */}
+                        {hasCSV1 && (
+                            <div
+                                style={{
+                                    marginBottom: hasCSV2 || hasCSV3 || hasCSV75 ? '10px' : '0',
+                                    background: 'rgba(255, 255, 255, 0.03)',
+                                    borderRadius: '10px',
+                                    padding: '10px 12px'
+                                }}>
+                                <div
+                                    style={{
+                                        fontSize: '10px',
+                                        fontWeight: 700,
+                                        color: colors.main,
+                                        marginBottom: '8px',
+                                        textTransform: 'uppercase',
+                                        letterSpacing: '0.5px',
+                                        textAlign: 'left'
+                                    }}>
+                                    CSV 1 Balance
+                                </div>
+                                <Row justifyBetween style={{ marginBottom: '5px' }}>
+                                    <span style={{ ...noBreakStyle, color: colors.success, fontSize: '12px' }}>
+                                        Unlocked
+                                    </span>
+                                    <span style={{ ...noBreakStyle, color: colors.success, fontSize: '12px', fontWeight: 600 }}>
+                                        {`${accountBalance.csv1_unlocked_amount || '0'} ${btcUnit}`}
+                                    </span>
+                                </Row>
+                                <Row justifyBetween style={{ marginBottom: '5px' }}>
+                                    <span style={{ ...noBreakStyle, color: colors.warning, fontSize: '12px' }}>
+                                        Locked
+                                    </span>
+                                    <span style={{ ...noBreakStyle, color: colors.warning, fontSize: '12px', fontWeight: 600 }}>
+                                        {`${accountBalance.csv1_locked_amount || '0'} ${btcUnit}`}
+                                    </span>
+                                </Row>
+                                <Row
+                                    justifyBetween
+                                    style={{
+                                        marginTop: '6px',
+                                        paddingTop: '6px',
+                                        borderTop: `1px solid rgba(255, 255, 255, 0.06)`
+                                    }}>
+                                    <span style={{ ...noBreakStyle, fontWeight: 700, color: '#dbdbdb', fontSize: '12px' }}>
+                                        Total
+                                    </span>
+                                    <span style={{ ...noBreakStyle, fontWeight: 700, color: '#dbdbdb', fontSize: '12px' }}>
+                                        {`${accountBalance.csv1_total_amount} ${btcUnit}`}
+                                    </span>
+                                </Row>
+                            </div>
+                        )}
+
+                        {/* CSV2 Section */}
+                        {hasCSV2 && (
+                            <div
+                                style={{
+                                    marginBottom: hasCSV3 || hasCSV75 ? '10px' : '0',
+                                    background: 'rgba(255, 255, 255, 0.03)',
+                                    borderRadius: '10px',
+                                    padding: '10px 12px'
+                                }}>
+                                <div
+                                    style={{
+                                        fontSize: '10px',
+                                        fontWeight: 700,
+                                        color: colors.main,
+                                        marginBottom: '8px',
+                                        textTransform: 'uppercase',
+                                        letterSpacing: '0.5px'
+                                    }}>
+                                    CSV 2 Balance
+                                </div>
+                                <Row justifyBetween style={{ marginBottom: '5px' }}>
+                                    <span style={{ ...noBreakStyle, color: colors.success, fontSize: '12px' }}>
+                                        Unlocked
+                                    </span>
+                                    <span style={{ ...noBreakStyle, color: colors.success, fontSize: '12px', fontWeight: 600 }}>
+                                        {`${accountBalance.csv2_unlocked_amount || '0'} ${btcUnit}`}
+                                    </span>
+                                </Row>
+                                <Row justifyBetween style={{ marginBottom: '5px' }}>
+                                    <span style={{ ...noBreakStyle, color: colors.warning, fontSize: '12px' }}>
+                                        Locked
+                                    </span>
+                                    <span style={{ ...noBreakStyle, color: colors.warning, fontSize: '12px', fontWeight: 600 }}>
+                                        {`${accountBalance.csv2_locked_amount || '0'} ${btcUnit}`}
+                                    </span>
+                                </Row>
+                                <Row
+                                    justifyBetween
+                                    style={{
+                                        marginTop: '6px',
+                                        paddingTop: '6px',
+                                        borderTop: `1px solid rgba(255, 255, 255, 0.06)`
+                                    }}>
+                                    <span style={{ ...noBreakStyle, fontWeight: 700, color: '#dbdbdb', fontSize: '12px' }}>
+                                        Total
+                                    </span>
+                                    <span style={{ ...noBreakStyle, fontWeight: 700, color: '#dbdbdb', fontSize: '12px' }}>
+                                        {`${accountBalance.csv2_total_amount} ${btcUnit}`}
+                                    </span>
+                                </Row>
+                            </div>
+                        )}
+
+                        {/* CSV3 Section */}
+                        {hasCSV3 && (
+                            <div
+                                style={{
+                                    marginBottom: hasCSV75 ? '10px' : '0',
+                                    background: 'rgba(255, 255, 255, 0.03)',
+                                    borderRadius: '10px',
+                                    padding: '10px 12px'
+                                }}>
+                                <div
+                                    style={{
+                                        fontSize: '10px',
+                                        fontWeight: 700,
+                                        color: colors.main,
+                                        marginBottom: '8px',
+                                        textTransform: 'uppercase',
+                                        letterSpacing: '0.5px'
+                                    }}>
+                                    CSV 3 Balance
+                                </div>
+                                <Row justifyBetween style={{ marginBottom: '5px' }}>
+                                    <span style={{ ...noBreakStyle, color: colors.success, fontSize: '12px' }}>
+                                        Unlocked
+                                    </span>
+                                    <span style={{ ...noBreakStyle, color: colors.success, fontSize: '12px', fontWeight: 600 }}>
+                                        {`${accountBalance.csv3_unlocked_amount || '0'} ${btcUnit}`}
+                                    </span>
+                                </Row>
+                                <Row justifyBetween style={{ marginBottom: '5px' }}>
+                                    <span style={{ ...noBreakStyle, color: colors.warning, fontSize: '12px' }}>
+                                        Locked
+                                    </span>
+                                    <span style={{ ...noBreakStyle, color: colors.warning, fontSize: '12px', fontWeight: 600 }}>
+                                        {`${accountBalance.csv3_locked_amount || '0'} ${btcUnit}`}
+                                    </span>
+                                </Row>
+                                <Row
+                                    justifyBetween
+                                    style={{
+                                        marginTop: '6px',
+                                        paddingTop: '6px',
+                                        borderTop: `1px solid rgba(255, 255, 255, 0.06)`
+                                    }}>
+                                    <span style={{ ...noBreakStyle, fontWeight: 700, color: '#dbdbdb', fontSize: '12px' }}>
+                                        Total
+                                    </span>
+                                    <span style={{ ...noBreakStyle, fontWeight: 700, color: '#dbdbdb', fontSize: '12px' }}>
+                                        {`${accountBalance.csv3_total_amount} ${btcUnit}`}
+                                    </span>
+                                </Row>
+                            </div>
+                        )}
+
                         {/* CSV75 Section */}
                         {hasCSV75 && (
                             <div
                                 style={{
-                                    marginBottom: hasCSV3 || hasCSV2 || hasCSV1 ? '10px' : '0',
                                     background: 'rgba(255, 255, 255, 0.03)',
                                     borderRadius: '10px',
                                     padding: '10px 12px'
@@ -245,165 +404,6 @@ export const BalanceTabs: React.FC<BalanceTabsProps> = ({
                                             fontSize: '12px'
                                         }}>
                                         {`${accountBalance.csv75_total_amount} ${btcUnit}`}
-                                    </span>
-                                </Row>
-                            </div>
-                        )}
-
-                        {/* CSV3 Section */}
-                        {hasCSV3 && (
-                            <div
-                                style={{
-                                    marginBottom: hasCSV2 || hasCSV1 ? '10px' : '0',
-                                    background: 'rgba(255, 255, 255, 0.03)',
-                                    borderRadius: '10px',
-                                    padding: '10px 12px'
-                                }}>
-                                <div
-                                    style={{
-                                        fontSize: '10px',
-                                        fontWeight: 700,
-                                        color: colors.main,
-                                        marginBottom: '8px',
-                                        textTransform: 'uppercase',
-                                        letterSpacing: '0.5px'
-                                    }}>
-                                    CSV 3 Balance
-                                </div>
-                                <Row justifyBetween style={{ marginBottom: '5px' }}>
-                                    <span style={{ ...noBreakStyle, color: colors.success, fontSize: '12px' }}>
-                                        Unlocked
-                                    </span>
-                                    <span style={{ ...noBreakStyle, color: colors.success, fontSize: '12px', fontWeight: 600 }}>
-                                        {`${accountBalance.csv3_unlocked_amount || '0'} ${btcUnit}`}
-                                    </span>
-                                </Row>
-                                <Row justifyBetween style={{ marginBottom: '5px' }}>
-                                    <span style={{ ...noBreakStyle, color: colors.warning, fontSize: '12px' }}>
-                                        Locked
-                                    </span>
-                                    <span style={{ ...noBreakStyle, color: colors.warning, fontSize: '12px', fontWeight: 600 }}>
-                                        {`${accountBalance.csv3_locked_amount || '0'} ${btcUnit}`}
-                                    </span>
-                                </Row>
-                                <Row
-                                    justifyBetween
-                                    style={{
-                                        marginTop: '6px',
-                                        paddingTop: '6px',
-                                        borderTop: `1px solid rgba(255, 255, 255, 0.06)`
-                                    }}>
-                                    <span style={{ ...noBreakStyle, fontWeight: 700, color: '#dbdbdb', fontSize: '12px' }}>
-                                        Total
-                                    </span>
-                                    <span style={{ ...noBreakStyle, fontWeight: 700, color: '#dbdbdb', fontSize: '12px' }}>
-                                        {`${accountBalance.csv3_total_amount} ${btcUnit}`}
-                                    </span>
-                                </Row>
-                            </div>
-                        )}
-
-                        {/* CSV2 Section */}
-                        {hasCSV2 && (
-                            <div
-                                style={{
-                                    marginBottom: hasCSV1 ? '10px' : '0',
-                                    background: 'rgba(255, 255, 255, 0.03)',
-                                    borderRadius: '10px',
-                                    padding: '10px 12px'
-                                }}>
-                                <div
-                                    style={{
-                                        fontSize: '10px',
-                                        fontWeight: 700,
-                                        color: colors.main,
-                                        marginBottom: '8px',
-                                        textTransform: 'uppercase',
-                                        letterSpacing: '0.5px'
-                                    }}>
-                                    CSV 2 Balance
-                                </div>
-                                <Row justifyBetween style={{ marginBottom: '5px' }}>
-                                    <span style={{ ...noBreakStyle, color: colors.success, fontSize: '12px' }}>
-                                        Unlocked
-                                    </span>
-                                    <span style={{ ...noBreakStyle, color: colors.success, fontSize: '12px', fontWeight: 600 }}>
-                                        {`${accountBalance.csv2_unlocked_amount || '0'} ${btcUnit}`}
-                                    </span>
-                                </Row>
-                                <Row justifyBetween style={{ marginBottom: '5px' }}>
-                                    <span style={{ ...noBreakStyle, color: colors.warning, fontSize: '12px' }}>
-                                        Locked
-                                    </span>
-                                    <span style={{ ...noBreakStyle, color: colors.warning, fontSize: '12px', fontWeight: 600 }}>
-                                        {`${accountBalance.csv2_locked_amount || '0'} ${btcUnit}`}
-                                    </span>
-                                </Row>
-                                <Row
-                                    justifyBetween
-                                    style={{
-                                        marginTop: '6px',
-                                        paddingTop: '6px',
-                                        borderTop: `1px solid rgba(255, 255, 255, 0.06)`
-                                    }}>
-                                    <span style={{ ...noBreakStyle, fontWeight: 700, color: '#dbdbdb', fontSize: '12px' }}>
-                                        Total
-                                    </span>
-                                    <span style={{ ...noBreakStyle, fontWeight: 700, color: '#dbdbdb', fontSize: '12px' }}>
-                                        {`${accountBalance.csv2_total_amount} ${btcUnit}`}
-                                    </span>
-                                </Row>
-                            </div>
-                        )}
-
-                        {/* CSV1 Section */}
-                        {hasCSV1 && (
-                            <div
-                                style={{
-                                    background: 'rgba(255, 255, 255, 0.03)',
-                                    borderRadius: '10px',
-                                    padding: '10px 12px'
-                                }}>
-                                <div
-                                    style={{
-                                        fontSize: '10px',
-                                        fontWeight: 700,
-                                        color: colors.main,
-                                        marginBottom: '8px',
-                                        textTransform: 'uppercase',
-                                        letterSpacing: '0.5px',
-                                        textAlign: 'left'
-                                    }}>
-                                    CSV 1 Balance
-                                </div>
-                                <Row justifyBetween style={{ marginBottom: '5px' }}>
-                                    <span style={{ ...noBreakStyle, color: colors.success, fontSize: '12px' }}>
-                                        Unlocked
-                                    </span>
-                                    <span style={{ ...noBreakStyle, color: colors.success, fontSize: '12px', fontWeight: 600 }}>
-                                        {`${accountBalance.csv1_unlocked_amount || '0'} ${btcUnit}`}
-                                    </span>
-                                </Row>
-                                <Row justifyBetween style={{ marginBottom: '5px' }}>
-                                    <span style={{ ...noBreakStyle, color: colors.warning, fontSize: '12px' }}>
-                                        Locked
-                                    </span>
-                                    <span style={{ ...noBreakStyle, color: colors.warning, fontSize: '12px', fontWeight: 600 }}>
-                                        {`${accountBalance.csv1_locked_amount || '0'} ${btcUnit}`}
-                                    </span>
-                                </Row>
-                                <Row
-                                    justifyBetween
-                                    style={{
-                                        marginTop: '6px',
-                                        paddingTop: '6px',
-                                        borderTop: `1px solid rgba(255, 255, 255, 0.06)`
-                                    }}>
-                                    <span style={{ ...noBreakStyle, fontWeight: 700, color: '#dbdbdb', fontSize: '12px' }}>
-                                        Total
-                                    </span>
-                                    <span style={{ ...noBreakStyle, fontWeight: 700, color: '#dbdbdb', fontSize: '12px' }}>
-                                        {`${accountBalance.csv1_total_amount} ${btcUnit}`}
                                     </span>
                                 </Row>
                             </div>

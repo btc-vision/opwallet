@@ -1661,20 +1661,48 @@ export default function TxCreateScreen() {
                                 display: 'flex',
                                 alignItems: 'flex-start',
                                 gap: '12px',
-                                cursor: 'pointer'
+                                cursor: 'pointer',
+                                userSelect: 'none'
+                            }}
+                            onClick={(e) => {
+                                e.preventDefault();
+                                setChecked(!checked);
                             }}>
-                            <input
-                                type="checkbox"
-                                checked={checked}
-                                onChange={(e) => setChecked(e.target.checked)}
+                            <div
                                 style={{
-                                    width: '18px',
-                                    height: '18px',
-                                    marginTop: '2px',
+                                    width: '20px',
+                                    height: '20px',
+                                    minWidth: '20px',
+                                    marginTop: '1px',
+                                    borderRadius: '6px',
+                                    border: checked
+                                        ? `2px solid ${colors.warning}`
+                                        : '2px solid rgba(255, 255, 255, 0.2)',
+                                    background: checked ? colors.warning : 'rgba(255, 255, 255, 0.04)',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    transition: 'all 0.2s ease',
                                     cursor: 'pointer',
-                                    accentColor: colors.warning
-                                }}
-                            />
+                                    boxShadow: checked ? `0 0 8px ${colors.warning}40` : 'none'
+                                }}>
+                                {checked && (
+                                    <svg
+                                        width="12"
+                                        height="12"
+                                        viewBox="0 0 12 12"
+                                        fill="none"
+                                        style={{ transition: 'opacity 0.15s ease' }}>
+                                        <path
+                                            d="M2.5 6L5 8.5L9.5 3.5"
+                                            stroke="#000"
+                                            strokeWidth="2"
+                                            strokeLinecap="round"
+                                            strokeLinejoin="round"
+                                        />
+                                    </svg>
+                                )}
+                            </div>
                             <div style={{ flex: 1 }}>
                                 <div
                                     style={{
