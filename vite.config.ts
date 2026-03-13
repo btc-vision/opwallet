@@ -5,7 +5,6 @@ import fs from 'fs';
 import path, { resolve } from 'path';
 import { defineConfig, type PluginOption } from 'vite';
 import checker from 'vite-plugin-checker';
-import eslint from 'vite-plugin-eslint2';
 import { nodePolyfills } from 'vite-plugin-node-polyfills';
 // topLevelAwait removed - wraps chunks in async IIFEs breaking synchronous exports
 import wasm from 'vite-plugin-wasm';
@@ -396,15 +395,15 @@ export default defineConfig(({ mode }) => {
             tailwindcss(),
 
             // ESLint
-            eslint({
+            /*eslint({
                 cache: true,
-                fix: true,
-                include: ['src/**/*.{ts,tsx,js,jsx}'],
-                exclude: ['node_modules', 'dist'],
+                fix: true,*/
+            //include: ['src/**/*.{ts,tsx,js,jsx}'],
+            /*exclude: ['node_modules', 'dist'],
                 lintOnStart: true,
                 emitError: isProd,
                 emitWarning: !isProd
-            }),
+            }),*/
 
             // TypeScript type checking
             isProd &&

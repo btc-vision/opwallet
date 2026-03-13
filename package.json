@@ -21,7 +21,7 @@
         "dev:edge": "cross-env NODE_OPTIONS=--max-old-space-size=8192 BROWSER=edge MANIFEST=mv3 npm run build:content && cross-env NODE_OPTIONS=--max-old-space-size=8192 BROWSER=edge MANIFEST=mv3 vite build --config vite.config.background.ts --mode development && cross-env NODE_OPTIONS=--max-old-space-size=8192 BROWSER=edge MANIFEST=mv3 vite build --watch --mode development",
         "dev:opera": "cross-env NODE_OPTIONS=--max-old-space-size=8192 BROWSER=opera MANIFEST=mv3 npm run build:content && cross-env NODE_OPTIONS=--max-old-space-size=8192 BROWSER=opera MANIFEST=mv3 vite build --config vite.config.background.ts --mode development && cross-env NODE_OPTIONS=--max-old-space-size=8192 BROWSER=opera MANIFEST=mv3 vite build --watch --mode development",
         "// Production builds": "",
-        "build:chrome": "eslint src && cross-env NODE_OPTIONS=--max-old-space-size=8192 BROWSER=chrome MANIFEST=mv3 npm run build:content && cross-env NODE_OPTIONS=--max-old-space-size=8192 BROWSER=chrome MANIFEST=mv3 vite build --config vite.config.background.ts --mode production && cross-env NODE_OPTIONS=--max-old-space-size=8192 BROWSER=chrome MANIFEST=mv3 vite build --mode production && npm run package:chrome",
+        "build:chrome": "cross-env NODE_OPTIONS=--max-old-space-size=8192 BROWSER=chrome MANIFEST=mv3 npm run build:content && cross-env NODE_OPTIONS=--max-old-space-size=8192 BROWSER=chrome MANIFEST=mv3 vite build --config vite.config.background.ts --mode production && cross-env NODE_OPTIONS=--max-old-space-size=8192 BROWSER=chrome MANIFEST=mv3 vite build --mode production && npm run package:chrome",
         "build:firefox": "cross-env NODE_OPTIONS=--max-old-space-size=8192 BROWSER=firefox MANIFEST=mv3 npm run build:content && cross-env NODE_OPTIONS=--max-old-space-size=8192 BROWSER=firefox MANIFEST=mv3 vite build --config vite.config.background.ts --mode production && cross-env NODE_OPTIONS=--max-old-space-size=8192 BROWSER=firefox MANIFEST=mv3 vite build --mode production && npm run package:firefox",
         "build:brave": "cross-env NODE_OPTIONS=--max-old-space-size=8192 BROWSER=brave MANIFEST=mv3 npm run build:content && cross-env NODE_OPTIONS=--max-old-space-size=8192 BROWSER=brave MANIFEST=mv3 vite build --config vite.config.background.ts --mode production && cross-env NODE_OPTIONS=--max-old-space-size=8192 BROWSER=brave MANIFEST=mv3 vite build --mode production && npm run package:brave",
         "build:edge": "cross-env NODE_OPTIONS=--max-old-space-size=8192 BROWSER=edge MANIFEST=mv3 npm run build:content && cross-env NODE_OPTIONS=--max-old-space-size=8192 BROWSER=edge MANIFEST=mv3 vite build --config vite.config.background.ts --mode production && cross-env NODE_OPTIONS=--max-old-space-size=8192 BROWSER=edge vite build --mode production && npm run package:edge",
@@ -46,11 +46,11 @@
         "prepare": "npm run fix:modules",
         "// Circular dependency check": "",
         "check:circular": "madge --circular --extensions ts,tsx src/ && echo 'No circular dependencies found!'",
-        "prebuild:chrome": "npm run check:circular",
-        "prebuild:firefox": "npm run check:circular",
-        "prebuild:brave": "npm run check:circular",
-        "prebuild:edge": "npm run check:circular",
-        "prebuild:opera": "npm run check:circular",
+        "prebuild:chrome": "npm run check:circular && npm run lint:check",
+        "prebuild:firefox": "npm run check:circular && npm run lint:check",
+        "prebuild:brave": "npm run check:circular && npm run lint:check",
+        "prebuild:edge": "npm run check:circular && npm run lint:check",
+        "prebuild:opera": "npm run check:circular && npm run lint:check",
         "test": "vitest run",
         "test:watch": "vitest"
     },
@@ -209,15 +209,14 @@
         "eslint-plugin-react-hooks": {
             "eslint": "$eslint"
         },
-		"vite-plugin-node-polyfills": {
+        "vite-plugin-node-polyfills": {
             "vite": "$vite"
         },
-		"vite-plugin-wasm": {
-			"vite": "$vite"
-		},
-		"@tailwindcss/vite": {
-			"vite": "$vite"
-		}
+        "vite-plugin-wasm": {
+            "vite": "$vite"
+        },
+        "@tailwindcss/vite": {
+            "vite": "$vite"
+        }
     }
 }
-
