@@ -296,7 +296,9 @@ export default function WalletTabScreen() {
         }
 
         // 3) Primary UTXOs too few for concurrent transactions
-        if (accountBalance.unspent_utxos_count < 5) return { type: 'low-utxos' } as const;
+        //    Skip if multiple UTXOs are pending (all includes pending, unspent is confirmed only)
+        const pendingUtxoCount = accountBalance.all_utxos_count - accountBalance.unspent_utxos_count;
+        if (accountBalance.unspent_utxos_count < 5 && pendingUtxoCount < 2) return { type: 'low-utxos' } as const;
 
         return null;
     }, [accountBalance, addressSummary.address, currentAccount.address]);
