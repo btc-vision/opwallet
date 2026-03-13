@@ -315,7 +315,8 @@ export function TermsOfServiceModal({
             color: 'rgba(255,255,255,0.88)',
         };
 
-        const ul: CSSProperties = { ...baseText, paddingLeft: 18, margin: '8px 0' };
+        const ul: CSSProperties = { ...baseText, paddingLeft: 18, margin: '8px 0', listStyleType: 'disc' };
+        const ol: CSSProperties = { ...baseText, paddingLeft: 18, margin: '8px 0', listStyleType: 'decimal' };
         const li: CSSProperties = { ...baseText, margin: '6px 0' };
 
         const hr: CSSProperties = {
@@ -454,6 +455,7 @@ export function TermsOfServiceModal({
             h2: styles.h2,
             h3: styles.h3,
             ul: styles.ul,
+            ol: styles.ol,
             li: styles.li,
             hr: styles.hr,
             callout: styles.callout,

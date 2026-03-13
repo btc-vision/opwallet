@@ -56,7 +56,8 @@ export default function LegalDocumentsScreen() {
                 color: 'rgba(255,255,255,0.92)',
                 margin: '14px 0 6px'
             },
-            ul: { paddingLeft: 20, margin: '6px 0' },
+            ul: { paddingLeft: 20, margin: '6px 0', listStyleType: 'disc' },
+            ol: { paddingLeft: 20, margin: '6px 0', listStyleType: 'decimal' },
             li: { ...baseText, margin: '3px 0' },
             hr: {
                 border: 'none',
