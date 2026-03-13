@@ -249,9 +249,14 @@ export function useConsolidation() {
             // Fetch fresh balance to get accurate amount
             const freshBalance = await wallet.getAddressBalance(currentAccount.address, currentAccount.pubkey);
 
-            // Use confirmed amount from main wallet for splitting
-            const splitAmount = freshBalance.btc_confirm_amount || '0';
-            const inputAmount = parseFloat(splitAmount);
+            // Check both primary and CSV1 unlocked balances
+            const primaryAmount = parseFloat(freshBalance.btc_confirm_amount || '0');
+            const csv1Amount = parseFloat(freshBalance.csv1_unlocked_amount || '0');
+
+            // Use whichever source has more funds (CSV1 splits send to primary address)
+            const useCSV1 = csv1Amount > primaryAmount;
+            const inputAmount = useCSV1 ? csv1Amount : primaryAmount;
+            const sourceType = useCSV1 ? SourceType.CSV1 : SourceType.CURRENT;
 
             if (inputAmount <= 0) {
                 throw new Error('No available balance to split');
@@ -259,7 +264,7 @@ export function useConsolidation() {
 
             // Build the transaction parameters
             const txParams: SendBitcoinParameters = {
-                to: currentAccount.address, // Send to self
+                to: currentAccount.address, // Send to self (primary wallet)
                 inputAmount: inputAmount,
                 feeRate: feeRate,
                 features: { [Features.rbf]: true, [Features.taproot]: true },
@@ -269,7 +274,7 @@ export function useConsolidation() {
                 action: Action.SendBitcoin,
                 note: `UTXO Split - Creating ${splitCount} UTXOs`,
                 from: currentAccount.address,
-                sourceType: SourceType.CURRENT,
+                sourceType: sourceType,
                 optimize: !utxoProtectionDisabled,
                 splitInputsInto: splitCount,
                 autoAdjustAmount: true
