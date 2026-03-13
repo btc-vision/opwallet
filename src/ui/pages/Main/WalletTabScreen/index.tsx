@@ -157,10 +157,8 @@ export default function WalletTabScreen() {
     const [duplicationDetection, setDuplicationDetection] = useState<DuplicationDetectionResult | null>(null);
     const [showDuplicationAlert, setShowDuplicationAlert] = useState(false);
 
-    // Wallet health popup state
-    const [showLowBalancePopup, setShowLowBalancePopup] = useState(false);
-    const [showLowUtxoPopup, setShowLowUtxoPopup] = useState(false);
-    const [healthCheckDone, setHealthCheckDone] = useState(false);
+    // Wallet health popup dismissal state (resets on every mount)
+    const [healthPopupDismissed, setHealthPopupDismissed] = useState(false);
 
     // Check if quantum migration is needed (SimpleKeyring without quantum key)
     useEffect(() => {
@@ -269,24 +267,17 @@ export default function WalletTabScreen() {
         void fetchBalance();
     }, [fetchBalance]);
 
-    // Wallet health check: low balance or low UTXO count
-    useEffect(() => {
-        if (healthCheckDone) return;
+    // Wallet health check: derived from balance data, no effect needed
+    const walletHealthStatus = useMemo(() => {
+        // Only evaluate once balance data is loaded for the current account
+        if (currentAccount.address !== addressSummary.address) return null;
 
         const primarySats = amountToSatoshis(accountBalance.btc_total_amount || '0');
 
-        // Only run the check once we have actual balance data loaded
-        // (addressSummary.address matches means balance fetch has completed for this account)
-        if (currentAccount.address !== addressSummary.address) return;
-
-        setHealthCheckDone(true);
-
-        if (primarySats < 10000) {
-            setShowLowBalancePopup(true);
-        } else if (accountBalance.unspent_utxos_count < 5) {
-            setShowLowUtxoPopup(true);
-        }
-    }, [accountBalance, addressSummary.address, currentAccount.address, healthCheckDone]);
+        if (primarySats < 10000) return 'low-balance' as const;
+        if (accountBalance.unspent_utxos_count < 5) return 'low-utxos' as const;
+        return null;
+    }, [accountBalance, addressSummary.address, currentAccount.address]);
 
     const totalBalance = useMemo(() => {
         const main = parseFloat(accountBalance.btc_total_amount || '0');
@@ -1009,12 +1000,12 @@ export default function WalletTabScreen() {
             )}
 
             {/* Wallet Health Popups - only show when no higher-priority modal is active */}
-            {showLowBalancePopup && !showMldsaBackupReminder && !showDuplicationAlert && (
-                <LowBalancePopup onClose={() => setShowLowBalancePopup(false)} />
+            {walletHealthStatus === 'low-balance' && !healthPopupDismissed && !showMldsaBackupReminder && !showDuplicationAlert && (
+                <LowBalancePopup onClose={() => setHealthPopupDismissed(true)} />
             )}
 
-            {showLowUtxoPopup && !showMldsaBackupReminder && !showDuplicationAlert && (
-                <LowUtxoPopup onClose={() => setShowLowUtxoPopup(false)} />
+            {walletHealthStatus === 'low-utxos' && !healthPopupDismissed && !showMldsaBackupReminder && !showDuplicationAlert && (
+                <LowUtxoPopup onClose={() => setHealthPopupDismissed(true)} />
             )}
 
             {/* Duplication Alert Modal - blocks interaction until resolved */}
