@@ -450,7 +450,7 @@ export default defineConfig(({ mode }) => {
         define: {
             'process.env.version': JSON.stringify(version),
             'process.env.tosVersion': JSON.stringify('1.0.0'),
-            'process.env.domainTosVersion ': JSON.stringify('1.0.1'),
+            'process.env.domainTosVersion': JSON.stringify('1.0.1'),
             'process.env.tosLastUpdate': JSON.stringify('2026-03-12'),
             'process.env.domainTosLastUpdate': JSON.stringify('2026-03-12'),
             'process.env.release': JSON.stringify(version),
