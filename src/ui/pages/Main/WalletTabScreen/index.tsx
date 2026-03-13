@@ -274,8 +274,11 @@ export default function WalletTabScreen() {
 
         const primarySats = amountToSatoshis(accountBalance.btc_total_amount || '0');
 
-        // 1) Primary balance critically low
-        if (primarySats < 10000) return { type: 'low-balance' } as const;
+        // 1) Primary balance critically low (skip if CSV1 unlocked covers it)
+        if (primarySats < 10000) {
+            const csv1UnlockedSats = amountToSatoshis(accountBalance.csv1_unlocked_amount || '0');
+            if (csv1UnlockedSats <= 10000) return { type: 'low-balance' } as const;
+        }
 
         // 2) CSV UTXOs > 5 total — need consolidation with per-type warnings
         const totalCsvUtxos =

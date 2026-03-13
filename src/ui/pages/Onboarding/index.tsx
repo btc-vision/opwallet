@@ -11,7 +11,7 @@ import { OnboardingUTXO } from './steps/OnboardingUTXO';
 import './onboarding.css';
 
 const STEP_VERSIONS: Record<string, string> = {
-    tos: '3',
+    tos: '4',
     experience: '2',
     display: '2',
     utxo: '2'
