@@ -436,6 +436,7 @@ export function TermsOfServiceModal({
             h2,
             h3,
             ul,
+            ol,
             li,
             hr,
             callout,
