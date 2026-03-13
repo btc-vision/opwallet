@@ -486,12 +486,10 @@ export const TELEGRAM_URL = 'https://t.me/opnetbtc ';
 export const CHANNEL = process.env.channel ?? 'github';
 
 export const VERSION = process.env.release ?? '0.0.0';
-export const TOS_VERSION = process.env.tos ?? '0.0.4';
+export const TOS_VERSION = process.env.tos ?? '1.0.1';
 export const TOS_LAST_UPDATE = process.env.tosLastUpdate ?? '2026-03-12';
 
-export const DOMAIN_TOS_VERSION = process.env.domainTosVersion ?? '0.0.2';
-export const DOMAIN_TOS_LAST_UPDATE = process.env.domainTosLastUpdate ?? '2025-12-20';
-
+export const DOMAIN_TOS_VERSION = process.env.domainTosVersion ?? '1.0.1';
 export const MANIFEST_VERSION = process.env.manifest ?? 'mv3';
 
 export enum AddressFlagType {
