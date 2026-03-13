@@ -1,4 +1,4 @@
-import { CloseOutlined, SettingOutlined, WalletOutlined, WarningOutlined } from '@ant-design/icons';
+import { CloseOutlined, LockOutlined, SettingOutlined, SwapOutlined, WalletOutlined, WarningOutlined } from '@ant-design/icons';
 import { RouteTypes, useNavigate } from '@/ui/pages/routeTypes';
 
 const colors = {
@@ -15,46 +15,67 @@ const colors = {
     warning: '#fbbf24'
 };
 
+const KEYFRAMES_STYLE = `
+    @keyframes walletHealthFadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+    @keyframes walletHealthSlideUp {
+        from {
+            opacity: 0;
+            transform: translate(-50%, calc(-50% + 20px));
+        }
+        to {
+            opacity: 1;
+            transform: translate(-50%, -50%);
+        }
+    }
+`;
+
+const backdropStyle: React.CSSProperties = {
+    position: 'fixed',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    background: 'rgba(0, 0, 0, 0.85)',
+    backdropFilter: 'blur(4px)',
+    zIndex: 999,
+    animation: 'walletHealthFadeIn 0.2s ease'
+};
+
+const modalStyle: React.CSSProperties = {
+    position: 'fixed',
+    top: '50%',
+    left: '50%',
+    transform: 'translate(-50%, -50%)',
+    background: colors.containerBg,
+    borderRadius: '16px',
+    width: '90%',
+    maxWidth: '340px',
+    maxHeight: 'calc(100vh - 80px)',
+    overflow: 'hidden',
+    border: `1px solid ${colors.containerBorder}`,
+    boxShadow: '0 10px 40px rgba(0, 0, 0, 0.5)',
+    zIndex: 1000,
+    animation: 'walletHealthSlideUp 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
+};
+
+// ── Low Balance Popup (no CSV1 unlocked funds available) ──────────────
+
 interface LowBalancePopupProps {
+    hasLockedCsvFunds: boolean;
     onClose: () => void;
 }
 
-export const LowBalancePopup = ({ onClose }: LowBalancePopupProps) => {
+export const LowBalancePopup = ({ hasLockedCsvFunds, onClose }: LowBalancePopupProps) => {
     return (
         <>
             {/* Backdrop - no dismiss on click, user must press OK */}
-            <div
-                style={{
-                    position: 'fixed',
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    bottom: 0,
-                    background: 'rgba(0, 0, 0, 0.85)',
-                    backdropFilter: 'blur(4px)',
-                    zIndex: 999,
-                    animation: 'walletHealthFadeIn 0.2s ease'
-                }}
-            />
+            <div style={backdropStyle} />
 
             {/* Modal */}
-            <div
-                style={{
-                    position: 'fixed',
-                    top: '50%',
-                    left: '50%',
-                    transform: 'translate(-50%, -50%)',
-                    background: colors.containerBg,
-                    borderRadius: '16px',
-                    width: '90%',
-                    maxWidth: '340px',
-                    maxHeight: 'calc(100vh - 80px)',
-                    overflow: 'hidden',
-                    border: `1px solid ${colors.containerBorder}`,
-                    boxShadow: '0 10px 40px rgba(0, 0, 0, 0.5)',
-                    zIndex: 1000,
-                    animation: 'walletHealthSlideUp 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
-                }}>
+            <div style={modalStyle}>
                 {/* Header */}
                 <div
                     style={{
@@ -133,7 +154,7 @@ export const LowBalancePopup = ({ onClose }: LowBalancePopupProps) => {
                             background: `${colors.warning}10`,
                             border: `1px solid ${colors.warning}25`,
                             borderRadius: '10px',
-                            marginBottom: '20px'
+                            marginBottom: hasLockedCsvFunds ? '10px' : '20px'
                         }}>
                         <WarningOutlined
                             style={{
@@ -154,6 +175,39 @@ export const LowBalancePopup = ({ onClose }: LowBalancePopupProps) => {
                             and interact with smart contracts.
                         </p>
                     </div>
+
+                    {/* Locked CSV funds note */}
+                    {hasLockedCsvFunds && (
+                        <div
+                            style={{
+                                display: 'flex',
+                                gap: '8px',
+                                padding: '10px',
+                                background: `${colors.main}10`,
+                                border: `1px solid ${colors.main}25`,
+                                borderRadius: '10px',
+                                marginBottom: '20px'
+                            }}>
+                            <LockOutlined
+                                style={{
+                                    color: colors.main,
+                                    fontSize: '14px',
+                                    flexShrink: 0,
+                                    marginTop: '2px'
+                                }}
+                            />
+                            <p
+                                style={{
+                                    fontSize: '12px',
+                                    color: colors.textFaded,
+                                    margin: 0,
+                                    lineHeight: '1.4'
+                                }}>
+                                You have funds in CSV time-locked outputs (CSV2/CSV3/CSV75) that are not yet available
+                                for spending. These will unlock automatically after their lock period expires.
+                            </p>
+                        </div>
+                    )}
 
                     {/* OK Button */}
                     <button
@@ -184,25 +238,248 @@ export const LowBalancePopup = ({ onClose }: LowBalancePopupProps) => {
                 </div>
             </div>
 
-            <style>{`
-                @keyframes walletHealthFadeIn {
-                    from { opacity: 0; }
-                    to { opacity: 1; }
-                }
-                @keyframes walletHealthSlideUp {
-                    from {
-                        opacity: 0;
-                        transform: translate(-50%, calc(-50% + 20px));
-                    }
-                    to {
-                        opacity: 1;
-                        transform: translate(-50%, -50%);
-                    }
-                }
-            `}</style>
+            <style>{KEYFRAMES_STYLE}</style>
         </>
     );
 };
+
+// ── Low Balance + CSV1 Unlocked Popup (user can consolidate) ──────────
+
+interface LowBalanceCsvPopupProps {
+    hasLockedCsvFunds: boolean;
+    onClose: () => void;
+}
+
+export const LowBalanceCsvPopup = ({ hasLockedCsvFunds, onClose }: LowBalanceCsvPopupProps) => {
+    const navigate = useNavigate();
+
+    const handleConsolidate = () => {
+        onClose();
+        navigate(RouteTypes.ConsolidationScreen);
+    };
+
+    return (
+        <>
+            {/* Backdrop - no dismiss on click, user must press OK or Consolidate */}
+            <div style={backdropStyle} />
+
+            {/* Modal */}
+            <div style={modalStyle}>
+                {/* Header */}
+                <div
+                    style={{
+                        padding: '20px 20px 0',
+                        background: `linear-gradient(135deg, ${colors.main}15 0%, transparent 100%)`,
+                        borderRadius: '16px 16px 0 0'
+                    }}>
+                    {/* Icon */}
+                    <div
+                        style={{
+                            width: '56px',
+                            height: '56px',
+                            borderRadius: '14px',
+                            background: `linear-gradient(135deg, ${colors.main}20 0%, ${colors.main}10 100%)`,
+                            border: `1px solid ${colors.main}30`,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            margin: '0 auto 16px',
+                            position: 'relative'
+                        }}>
+                        <SwapOutlined
+                            style={{
+                                fontSize: 28,
+                                color: colors.main
+                            }}
+                        />
+                        <div
+                            style={{
+                                position: 'absolute',
+                                inset: '-1px',
+                                borderRadius: '14px',
+                                padding: '1px',
+                                background: `linear-gradient(135deg, ${colors.main}40 0%, transparent 100%)`,
+                                WebkitMask: 'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)',
+                                WebkitMaskComposite: 'xor',
+                                maskComposite: 'exclude',
+                                pointerEvents: 'none'
+                            }}
+                        />
+                    </div>
+
+                    <h3
+                        style={{
+                            fontSize: '20px',
+                            fontWeight: 600,
+                            color: colors.text,
+                            textAlign: 'center',
+                            margin: '0 0 8px 0',
+                            fontFamily: 'Inter-Regular, serif'
+                        }}>
+                        Low Primary Account Balance
+                    </h3>
+
+                    <p
+                        style={{
+                            fontSize: '13px',
+                            color: colors.textFaded,
+                            textAlign: 'center',
+                            margin: '0 0 20px 0',
+                            lineHeight: '1.5'
+                        }}>
+                        Move CSV funds to your primary wallet! You have unlocked CSV1 funds available that can be
+                        consolidated into your primary balance.
+                    </p>
+                </div>
+
+                {/* Content */}
+                <div style={{ padding: '0 20px 20px' }}>
+                    {/* Info card */}
+                    <div
+                        style={{
+                            background: colors.containerBgFaded,
+                            borderRadius: '12px',
+                            padding: '14px',
+                            marginBottom: hasLockedCsvFunds ? '10px' : '16px',
+                            border: `1px solid ${colors.containerBorder}`
+                        }}>
+                        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
+                            <div
+                                style={{
+                                    width: '36px',
+                                    height: '36px',
+                                    borderRadius: '8px',
+                                    background: `${colors.warning}20`,
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    flexShrink: 0
+                                }}>
+                                <WarningOutlined
+                                    style={{
+                                        fontSize: 18,
+                                        color: colors.warning
+                                    }}
+                                />
+                            </div>
+                            <div>
+                                <div
+                                    style={{
+                                        fontSize: '13px',
+                                        fontWeight: 500,
+                                        color: colors.text,
+                                        marginBottom: '4px'
+                                    }}>
+                                    Why consolidate?
+                                </div>
+                                <div
+                                    style={{
+                                        fontSize: '12px',
+                                        color: colors.textFaded,
+                                        lineHeight: '1.4'
+                                    }}>
+                                    Your primary balance is too low to cover transaction fees. Consolidating unlocked CSV1
+                                    funds will move them to your primary wallet so you can transact normally.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Locked CSV funds note */}
+                    {hasLockedCsvFunds && (
+                        <div
+                            style={{
+                                display: 'flex',
+                                gap: '8px',
+                                padding: '10px',
+                                background: `${colors.warning}10`,
+                                border: `1px solid ${colors.warning}25`,
+                                borderRadius: '10px',
+                                marginBottom: '16px'
+                            }}>
+                            <LockOutlined
+                                style={{
+                                    color: colors.warning,
+                                    fontSize: '14px',
+                                    flexShrink: 0,
+                                    marginTop: '2px'
+                                }}
+                            />
+                            <p
+                                style={{
+                                    fontSize: '12px',
+                                    color: colors.textFaded,
+                                    margin: 0,
+                                    lineHeight: '1.4'
+                                }}>
+                                You also have funds in CSV2/CSV3/CSV75 time-locked outputs that are not yet available for
+                                spending.
+                            </p>
+                        </div>
+                    )}
+
+                    {/* Action Buttons */}
+                    <div style={{ display: 'flex', gap: '10px' }}>
+                        <button
+                            style={{
+                                flex: 1,
+                                padding: '12px',
+                                background: colors.buttonHoverBg,
+                                border: `1px solid ${colors.containerBorder}`,
+                                borderRadius: '10px',
+                                color: colors.text,
+                                fontSize: '14px',
+                                fontWeight: 600,
+                                cursor: 'pointer',
+                                transition: 'all 0.15s',
+                                fontFamily: 'Inter-Regular, serif'
+                            }}
+                            onClick={onClose}
+                            onMouseEnter={(e) => {
+                                e.currentTarget.style.background = colors.buttonBg;
+                                e.currentTarget.style.transform = 'translateY(-1px)';
+                            }}
+                            onMouseLeave={(e) => {
+                                e.currentTarget.style.background = colors.buttonHoverBg;
+                                e.currentTarget.style.transform = 'translateY(0)';
+                            }}>
+                            Later
+                        </button>
+                        <button
+                            style={{
+                                flex: 1,
+                                padding: '12px',
+                                background: colors.main,
+                                border: 'none',
+                                borderRadius: '10px',
+                                color: '#fff',
+                                fontSize: '14px',
+                                fontWeight: 600,
+                                cursor: 'pointer',
+                                transition: 'all 0.15s',
+                                fontFamily: 'Inter-Regular, serif'
+                            }}
+                            onClick={handleConsolidate}
+                            onMouseEnter={(e) => {
+                                e.currentTarget.style.transform = 'translateY(-1px)';
+                                e.currentTarget.style.boxShadow = `0 4px 12px ${colors.main}40`;
+                            }}
+                            onMouseLeave={(e) => {
+                                e.currentTarget.style.transform = 'translateY(0)';
+                                e.currentTarget.style.boxShadow = 'none';
+                            }}>
+                            Consolidate Now
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <style>{KEYFRAMES_STYLE}</style>
+        </>
+    );
+};
+
+// ── Low UTXO Count Popup ──────────────────────────────────────────────
 
 interface LowUtxoPopupProps {
     onClose: () => void;
@@ -219,38 +496,10 @@ export const LowUtxoPopup = ({ onClose }: LowUtxoPopupProps) => {
     return (
         <>
             {/* Backdrop */}
-            <div
-                style={{
-                    position: 'fixed',
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    bottom: 0,
-                    background: 'rgba(0, 0, 0, 0.85)',
-                    backdropFilter: 'blur(4px)',
-                    zIndex: 999,
-                    animation: 'walletHealthFadeIn 0.2s ease'
-                }}
-            />
+            <div style={backdropStyle} />
 
             {/* Modal */}
-            <div
-                style={{
-                    position: 'fixed',
-                    top: '50%',
-                    left: '50%',
-                    transform: 'translate(-50%, -50%)',
-                    background: colors.containerBg,
-                    borderRadius: '16px',
-                    width: '90%',
-                    maxWidth: '340px',
-                    maxHeight: 'calc(100vh - 80px)',
-                    overflow: 'hidden',
-                    border: `1px solid ${colors.containerBorder}`,
-                    boxShadow: '0 10px 40px rgba(0, 0, 0, 0.5)',
-                    zIndex: 1000,
-                    animation: 'walletHealthSlideUp 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
-                }}>
+            <div style={modalStyle}>
                 {/* Close X button */}
                 <button
                     onClick={onClose}
@@ -429,22 +678,7 @@ export const LowUtxoPopup = ({ onClose }: LowUtxoPopupProps) => {
                 </div>
             </div>
 
-            <style>{`
-                @keyframes walletHealthFadeIn {
-                    from { opacity: 0; }
-                    to { opacity: 1; }
-                }
-                @keyframes walletHealthSlideUp {
-                    from {
-                        opacity: 0;
-                        transform: translate(-50%, calc(-50% + 20px));
-                    }
-                    to {
-                        opacity: 1;
-                        transform: translate(-50%, -50%);
-                    }
-                }
-            `}</style>
+            <style>{KEYFRAMES_STYLE}</style>
         </>
     );
 };

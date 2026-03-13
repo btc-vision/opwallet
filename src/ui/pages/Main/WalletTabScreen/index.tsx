@@ -8,7 +8,7 @@ import { Column, Content, Footer, Header, Image, Layout } from '@/ui/components'
 import AccountSelect from '@/ui/components/AccountSelect';
 import { DuplicationAlertModal } from '@/ui/components/DuplicationAlertModal';
 import { MldsaBackupReminder } from '@/ui/components/MldsaBackupReminder';
-import { LowBalancePopup, LowUtxoPopup } from '@/ui/components/WalletHealthPopup';
+import { LowBalanceCsvPopup, LowBalancePopup, LowUtxoPopup } from '@/ui/components/WalletHealthPopup';
 import { NavTabBar } from '@/ui/components/NavTabBar';
 import { QuantumMigrationBanner } from '@/ui/components/QuantumMigrationBanner';
 import { UpgradePopover } from '@/ui/components/UpgradePopover';
@@ -268,14 +268,26 @@ export default function WalletTabScreen() {
     }, [fetchBalance]);
 
     // Wallet health check: derived from balance data, no effect needed
-    const walletHealthStatus = useMemo(() => {
+    const walletHealthCheck = useMemo(() => {
         // Only evaluate once balance data is loaded for the current account
         if (currentAccount.address !== addressSummary.address) return null;
 
         const primarySats = amountToSatoshis(accountBalance.btc_total_amount || '0');
 
-        if (primarySats < 10000) return 'low-balance' as const;
-        if (accountBalance.unspent_utxos_count < 5) return 'low-utxos' as const;
+        if (primarySats < 10000) {
+            const csv1UnlockedSats = amountToSatoshis(accountBalance.csv1_unlocked_amount || '0');
+            const hasLockedCsvFunds =
+                parseFloat(accountBalance.csv75_total_amount || '0') > 0 ||
+                parseFloat(accountBalance.csv3_total_amount || '0') > 0 ||
+                parseFloat(accountBalance.csv2_total_amount || '0') > 0;
+
+            if (csv1UnlockedSats > 10000) {
+                return { type: 'low-balance-csv', hasLockedCsvFunds } as const;
+            }
+            return { type: 'low-balance', hasLockedCsvFunds } as const;
+        }
+
+        if (accountBalance.unspent_utxos_count < 5) return { type: 'low-utxos' } as const;
         return null;
     }, [accountBalance, addressSummary.address, currentAccount.address]);
 
@@ -1000,11 +1012,21 @@ export default function WalletTabScreen() {
             )}
 
             {/* Wallet Health Popups - only show when no higher-priority modal is active */}
-            {walletHealthStatus === 'low-balance' && !healthPopupDismissed && !showMldsaBackupReminder && !showDuplicationAlert && (
-                <LowBalancePopup onClose={() => setHealthPopupDismissed(true)} />
+            {walletHealthCheck?.type === 'low-balance-csv' && !healthPopupDismissed && !showMldsaBackupReminder && !showDuplicationAlert && (
+                <LowBalanceCsvPopup
+                    hasLockedCsvFunds={walletHealthCheck.hasLockedCsvFunds}
+                    onClose={() => setHealthPopupDismissed(true)}
+                />
             )}
 
-            {walletHealthStatus === 'low-utxos' && !healthPopupDismissed && !showMldsaBackupReminder && !showDuplicationAlert && (
+            {walletHealthCheck?.type === 'low-balance' && !healthPopupDismissed && !showMldsaBackupReminder && !showDuplicationAlert && (
+                <LowBalancePopup
+                    hasLockedCsvFunds={walletHealthCheck.hasLockedCsvFunds}
+                    onClose={() => setHealthPopupDismissed(true)}
+                />
+            )}
+
+            {walletHealthCheck?.type === 'low-utxos' && !healthPopupDismissed && !showMldsaBackupReminder && !showDuplicationAlert && (
                 <LowUtxoPopup onClose={() => setHealthPopupDismissed(true)} />
             )}
 
