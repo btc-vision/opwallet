@@ -264,7 +264,7 @@ export default function WalletTabScreen() {
     }, [addressSummary, currentAccount, dispatch, wallet]);
 
     useEffect(() => {
-        void fetchBalance().catch((err) => {
+        void fetchBalance().catch((err: unknown) => {
             console.error('[WalletTabScreen] Balance fetch failed:', err);
         });
     }, [fetchBalance]);

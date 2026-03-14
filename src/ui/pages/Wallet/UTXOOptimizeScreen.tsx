@@ -46,7 +46,9 @@ export default function UTXOOptimizeScreen() {
     );
 
     const primaryBalance = useMemo(
-        () => BigInt(Math.floor(parseFloat(accountBalance.btc_confirm_amount || '0') * 1e8)),
+        () => BigInt(Math.floor(
+            (parseFloat(accountBalance.btc_confirm_amount || '0') + parseFloat(accountBalance.btc_pending_amount || '0')) * 1e8
+        )),
         [accountBalance]
     );
 

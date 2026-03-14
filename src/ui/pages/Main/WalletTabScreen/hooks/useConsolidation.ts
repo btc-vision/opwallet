@@ -252,7 +252,7 @@ export function useConsolidation() {
             const inputAmount =
                 selectedSource === SourceType.CSV1
                     ? parseFloat(freshBalance.csv1_unlocked_amount || '0')
-                    : parseFloat(freshBalance.btc_confirm_amount || '0');
+                    : parseFloat(freshBalance.btc_confirm_amount || '0') + parseFloat(freshBalance.btc_pending_amount || '0');
             const sourceType = selectedSource;
 
             if (inputAmount <= 0) {
