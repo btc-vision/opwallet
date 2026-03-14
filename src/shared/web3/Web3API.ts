@@ -390,8 +390,8 @@ class Web3API {
                         olderThan
                     });
                 }
-            } catch {
-                //
+            } catch (e: unknown) {
+                console.error(`[Web3API] getUnspentUTXOsForAddresses failed for ${address}:`, e);
             }
 
             finalUTXOs = finalUTXOs.concat(utxos);
@@ -430,8 +430,8 @@ class Web3API {
                         olderThan
                     });
                 }
-            } catch {
-                //
+            } catch (e: unknown) {
+                console.error(`[Web3API] getAllUTXOsForAddresses failed for ${address}:`, e);
             }
 
             finalUTXOs = finalUTXOs.concat(utxos);

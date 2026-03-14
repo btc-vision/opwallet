@@ -243,20 +243,17 @@ export function useConsolidation() {
      * Navigate directly to the confirmation screen with split parameters
      */
     const navigateToSplit = useCallback(
-        async (splitCount: number, feeRate: number) => {
+        async (splitCount: number, feeRate: number, selectedSource: SourceType.CSV1 | SourceType.CURRENT) => {
             resetUiTxCreateScreen();
 
             // Fetch fresh balance to get accurate amount
             const freshBalance = await wallet.getAddressBalance(currentAccount.address, currentAccount.pubkey);
 
-            // Check both primary and CSV1 unlocked balances
-            const primaryAmount = parseFloat(freshBalance.btc_confirm_amount || '0');
-            const csv1Amount = parseFloat(freshBalance.csv1_unlocked_amount || '0');
-
-            // Use whichever source has more funds (CSV1 splits send to primary address)
-            const useCSV1 = csv1Amount > primaryAmount;
-            const inputAmount = useCSV1 ? csv1Amount : primaryAmount;
-            const sourceType = useCSV1 ? SourceType.CSV1 : SourceType.CURRENT;
+            const inputAmount =
+                selectedSource === SourceType.CSV1
+                    ? parseFloat(freshBalance.csv1_unlocked_amount || '0')
+                    : parseFloat(freshBalance.btc_confirm_amount || '0');
+            const sourceType = selectedSource;
 
             if (inputAmount <= 0) {
                 throw new Error('No available balance to split');

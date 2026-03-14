@@ -1,6 +1,7 @@
 import { useCallback, useMemo, useState } from 'react';
 
 import { UTXO_CONFIG } from '@/shared/config';
+import { SourceType } from '@/shared/interfaces/RawTxParameters';
 import { Content, Header, Layout } from '@/ui/components';
 import { FeeRateBar } from '@/ui/components/FeeRateBar';
 import { useAccountBalance } from '@/ui/state/accounts/hooks';
@@ -37,32 +38,48 @@ export default function UTXOOptimizeScreen() {
 
     const [splitCount, setSplitCount] = useState(25);
     const [splitFeeRate, setSplitFeeRate] = useState(5);
+    const [selectedSource, setSelectedSource] = useState<SourceType.CURRENT | SourceType.CSV1 | null>(null);
 
     const optimizationStatus = useMemo(
         () => checkOptimizationStatus(accountBalance),
         [accountBalance, checkOptimizationStatus]
     );
 
+    const primaryBalance = useMemo(
+        () => BigInt(Math.floor(parseFloat(accountBalance.btc_confirm_amount || '0') * 1e8)),
+        [accountBalance]
+    );
+
+    const csv1Balance = useMemo(
+        () => BigInt(Math.floor(parseFloat(accountBalance.csv1_unlocked_amount || '0') * 1e8)),
+        [accountBalance]
+    );
+
+    const selectedBalance = useMemo(() => {
+        if (!selectedSource) return 0n;
+        return selectedSource === SourceType.CSV1 ? csv1Balance : primaryBalance;
+    }, [selectedSource, primaryBalance, csv1Balance]);
+
     const isSplitValid = useMemo(
-        () => validateSplit(optimizationStatus.availableBalance, splitCount),
-        [optimizationStatus.availableBalance, splitCount, validateSplit]
+        () => selectedSource !== null && validateSplit(selectedBalance, splitCount),
+        [selectedSource, selectedBalance, splitCount, validateSplit]
     );
 
     const maxSplits = useMemo(
-        () => calculateMaxSplits(optimizationStatus.availableBalance),
-        [optimizationStatus.availableBalance, calculateMaxSplits]
+        () => calculateMaxSplits(selectedBalance),
+        [selectedBalance, calculateMaxSplits]
     );
 
     const outputPerSplit = useMemo(() => {
         if (splitCount <= 0) return 0n;
-        return optimizationStatus.availableBalance / BigInt(splitCount);
-    }, [optimizationStatus.availableBalance, splitCount]);
+        return selectedBalance / BigInt(splitCount);
+    }, [selectedBalance, splitCount]);
 
     const handleSplit = useCallback(async () => {
-        if (isSplitValid && splitFeeRate > 0) {
-            await navigateToSplit(splitCount, splitFeeRate);
+        if (isSplitValid && splitFeeRate > 0 && selectedSource) {
+            await navigateToSplit(splitCount, splitFeeRate, selectedSource);
         }
-    }, [isSplitValid, splitCount, splitFeeRate, navigateToSplit]);
+    }, [isSplitValid, splitCount, splitFeeRate, selectedSource, navigateToSplit]);
 
     const handleConsolidate = useCallback(async () => {
         await navigateToConsolidation();
@@ -165,7 +182,93 @@ export default function UTXOOptimizeScreen() {
                             </div>
                         </div>
 
+                        {/* Source Selection */}
+                        <div
+                            style={{
+                                background: colors.containerBgFaded,
+                                borderRadius: '12px',
+                                padding: '14px',
+                                border: `1px solid ${colors.containerBorder}`,
+                                marginBottom: '16px'
+                            }}>
+                            <div style={{ fontSize: '12px', color: colors.textFaded, marginBottom: '10px', fontWeight: 500 }}>
+                                Select source to split from
+                            </div>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                <button
+                                    onClick={() => setSelectedSource(SourceType.CURRENT)}
+                                    disabled={primaryBalance <= 0n}
+                                    style={{
+                                        display: 'flex',
+                                        justifyContent: 'space-between',
+                                        alignItems: 'center',
+                                        width: '100%',
+                                        padding: '12px',
+                                        background:
+                                            selectedSource === SourceType.CURRENT
+                                                ? `${colors.main}20`
+                                                : colors.background,
+                                        border: `1px solid ${
+                                            selectedSource === SourceType.CURRENT ? colors.main : colors.containerBorder
+                                        }`,
+                                        borderRadius: '8px',
+                                        cursor: primaryBalance > 0n ? 'pointer' : 'not-allowed',
+                                        opacity: primaryBalance > 0n ? 1 : 0.4,
+                                        transition: 'all 0.2s',
+                                        textAlign: 'left'
+                                    }}>
+                                    <div>
+                                        <div style={{ fontSize: '13px', fontWeight: 600, color: colors.text }}>
+                                            Primary Wallet
+                                        </div>
+                                        <div style={{ fontSize: '11px', color: colors.textFaded, marginTop: '2px' }}>
+                                            Standard wallet address
+                                        </div>
+                                    </div>
+                                    <div style={{ fontSize: '13px', fontWeight: 600, color: colors.text }}>
+                                        {(Number(primaryBalance) / 1e8).toFixed(8).replace(/\.?0+$/, '')} {btcUnit}
+                                    </div>
+                                </button>
+
+                                <button
+                                    onClick={() => setSelectedSource(SourceType.CSV1)}
+                                    disabled={csv1Balance <= 0n}
+                                    style={{
+                                        display: 'flex',
+                                        justifyContent: 'space-between',
+                                        alignItems: 'center',
+                                        width: '100%',
+                                        padding: '12px',
+                                        background:
+                                            selectedSource === SourceType.CSV1
+                                                ? `${colors.main}20`
+                                                : colors.background,
+                                        border: `1px solid ${
+                                            selectedSource === SourceType.CSV1 ? colors.main : colors.containerBorder
+                                        }`,
+                                        borderRadius: '8px',
+                                        cursor: csv1Balance > 0n ? 'pointer' : 'not-allowed',
+                                        opacity: csv1Balance > 0n ? 1 : 0.4,
+                                        transition: 'all 0.2s',
+                                        textAlign: 'left'
+                                    }}>
+                                    <div>
+                                        <div style={{ fontSize: '13px', fontWeight: 600, color: colors.text }}>
+                                            CSV-1 Fast Access
+                                        </div>
+                                        <div style={{ fontSize: '11px', color: colors.textFaded, marginTop: '2px' }}>
+                                            Anti-pinning protection (1 block lock)
+                                        </div>
+                                    </div>
+                                    <div style={{ fontSize: '13px', fontWeight: 600, color: colors.text }}>
+                                        {(Number(csv1Balance) / 1e8).toFixed(8).replace(/\.?0+$/, '')} {btcUnit}
+                                    </div>
+                                </button>
+                            </div>
+                        </div>
+
                         {/* Split Config */}
+                        {selectedSource && (<>
                         <div
                             style={{
                                 background: colors.containerBgFaded,
@@ -251,6 +354,7 @@ export default function UTXOOptimizeScreen() {
                             }}>
                             Split UTXOs
                         </button>
+                        </>)}
                     </div>
                 )}
 
