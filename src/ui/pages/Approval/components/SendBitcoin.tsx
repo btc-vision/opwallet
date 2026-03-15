@@ -104,10 +104,7 @@ export default function SendBitcoin(props: Props) {
         <Layout>
             <Content style={{ padding: 12, overflowY: 'auto' }}>
                 {/* Ordinal Protection Warning */}
-                <OrdinalProtectionWarning
-                    utxos={data.utxos}
-                    optionalInputs={data.optionalInputs}
-                />
+                <OrdinalProtectionWarning address={fromAddress} />
 
                 {/* Site Header */}
                 <div
