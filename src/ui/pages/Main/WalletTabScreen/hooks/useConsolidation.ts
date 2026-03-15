@@ -4,6 +4,7 @@ import { BitcoinBalance } from '@/shared/types';
 import { useCurrentAccount } from '@/ui/state/accounts/hooks';
 import { useResetUiTxCreateScreen } from '@/ui/state/ui/hooks';
 import { useWallet } from '@/ui/utils';
+import { BitcoinUtils } from 'opnet';
 import { useCallback, useEffect, useState } from 'react';
 import { RouteTypes, useNavigate } from '../../../routeTypes';
 
@@ -133,8 +134,8 @@ export function useConsolidation() {
         const utxoCount = accountBalance.csv1_unlocked_utxos_count + accountBalance.unspent_utxos_count;
 
         // Available balance for splitting (csv1 unlocked + main wallet confirmed)
-        const csv1UnlockedAmount = BigInt(Math.floor(parseFloat(accountBalance.csv1_unlocked_amount || '0') * 1e8));
-        const mainConfirmedAmount = BigInt(Math.floor(parseFloat(accountBalance.btc_confirm_amount || '0') * 1e8));
+        const csv1UnlockedAmount = BitcoinUtils.expandToDecimals(accountBalance.csv1_unlocked_amount || '0', 8);
+        const mainConfirmedAmount = BitcoinUtils.expandToDecimals(accountBalance.btc_confirm_amount || '0', 8);
         const availableBalance = csv1UnlockedAmount + mainConfirmedAmount;
 
         let status: OptimizationStatus;
@@ -249,13 +250,15 @@ export function useConsolidation() {
             // Fetch fresh balance to get accurate amount
             const freshBalance = await wallet.getAddressBalance(currentAccount.address, currentAccount.pubkey);
 
-            const inputAmount =
+            const inputSatoshis =
                 selectedSource === SourceType.CSV1
-                    ? parseFloat(freshBalance.csv1_unlocked_amount || '0')
-                    : parseFloat(freshBalance.btc_confirm_amount || '0') + parseFloat(freshBalance.btc_pending_amount || '0');
+                    ? BitcoinUtils.expandToDecimals(freshBalance.csv1_unlocked_amount || '0', 8)
+                    : BitcoinUtils.expandToDecimals(freshBalance.btc_confirm_amount || '0', 8) +
+                      BitcoinUtils.expandToDecimals(freshBalance.btc_pending_amount || '0', 8);
+            const inputAmount = Number(BitcoinUtils.formatUnits(inputSatoshis, 8));
             const sourceType = selectedSource;
 
-            if (inputAmount <= 0) {
+            if (inputSatoshis <= 0n) {
                 throw new Error('No available balance to split');
             }
 

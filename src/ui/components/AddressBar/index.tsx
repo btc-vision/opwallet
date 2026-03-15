@@ -12,6 +12,7 @@ import {
     WalletOutlined
 } from '@ant-design/icons';
 import { Address } from '@btc-vision/transaction';
+import { BitcoinUtils } from 'opnet';
 import { useState } from 'react';
 import { useTools } from '../ActionComponent';
 
@@ -94,9 +95,9 @@ export function AddressBar({
 
     const formatAmount = (amount: string | undefined) => {
         if (!amount || amount === '0') return '0';
-        const num = parseFloat(amount);
-        if (num < 0.00001) return '< 0.00001';
-        return num.toFixed(5);
+        const sats = BitcoinUtils.expandToDecimals(amount, 8);
+        if (sats < 1000n) return '< 0.00001';
+        return BitcoinUtils.formatUnits(sats / 1000n, 5);
     };
 
     const otherAddresses = [

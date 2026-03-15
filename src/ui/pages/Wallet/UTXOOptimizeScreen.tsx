@@ -3,6 +3,7 @@ import { useCallback, useMemo, useState } from 'react';
 import { UTXO_CONFIG } from '@/shared/config';
 import { SourceType } from '@/shared/interfaces/RawTxParameters';
 import { Content, Header, Layout } from '@/ui/components';
+import { BitcoinUtils } from 'opnet';
 import { FeeRateBar } from '@/ui/components/FeeRateBar';
 import { useAccountBalance } from '@/ui/state/accounts/hooks';
 import { useBTCUnit } from '@/ui/state/settings/hooks';
@@ -46,14 +47,14 @@ export default function UTXOOptimizeScreen() {
     );
 
     const primaryBalance = useMemo(
-        () => BigInt(Math.floor(
-            (parseFloat(accountBalance.btc_confirm_amount || '0') + parseFloat(accountBalance.btc_pending_amount || '0')) * 1e8
-        )),
+        () =>
+            BitcoinUtils.expandToDecimals(accountBalance.btc_confirm_amount || '0', 8) +
+            BitcoinUtils.expandToDecimals(accountBalance.btc_pending_amount || '0', 8),
         [accountBalance]
     );
 
     const csv1Balance = useMemo(
-        () => BigInt(Math.floor(parseFloat(accountBalance.csv1_unlocked_amount || '0') * 1e8)),
+        () => BitcoinUtils.expandToDecimals(accountBalance.csv1_unlocked_amount || '0', 8),
         [accountBalance]
     );
 

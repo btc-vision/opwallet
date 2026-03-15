@@ -37,6 +37,7 @@ import {
 } from '@/ui/state/settings/hooks';
 import { useResetUiTxCreateScreen } from '@/ui/state/ui/hooks';
 import { amountToSatoshis, copyToClipboard, useWallet } from '@/ui/utils';
+import { BitcoinUtils } from 'opnet';
 
 import { BTCDomainModal, TOS_DOMAIN_ACCEPTED_KEY } from "@/ui/components/AcceptModals/btcDomainTermsModal";
 import { useTools } from '@/ui/components/ActionComponent';
@@ -312,21 +313,22 @@ export default function WalletTabScreen() {
     }, [accountBalance, addressSummary.address, currentAccount.address]);
 
     const totalBalance = useMemo(() => {
-        const main = parseFloat(accountBalance.btc_total_amount || '0');
-        const csv75 = parseFloat(accountBalance.csv75_total_amount || '0');
-        const csv3 = parseFloat(accountBalance.csv3_total_amount || '0');
-        const csv2 = parseFloat(accountBalance.csv2_total_amount || '0');
-        const csv1 = parseFloat(accountBalance.csv1_total_amount || '0');
-        return (main + csv75 + csv3 + csv2 + csv1).toFixed(8).replace(/\.?0+$/, '');
+        const main = BitcoinUtils.expandToDecimals(accountBalance.btc_total_amount || '0', 8);
+        const csv75 = BitcoinUtils.expandToDecimals(accountBalance.csv75_total_amount || '0', 8);
+        const csv3 = BitcoinUtils.expandToDecimals(accountBalance.csv3_total_amount || '0', 8);
+        const csv2 = BitcoinUtils.expandToDecimals(accountBalance.csv2_total_amount || '0', 8);
+        const csv1 = BitcoinUtils.expandToDecimals(accountBalance.csv1_total_amount || '0', 8);
+        const total = main + csv75 + csv3 + csv2 + csv1;
+        return BitcoinUtils.formatUnits(total, 8).replace(/\.?0+$/, '') || '0';
     }, [accountBalance]);
 
     // Helper function to check if there are CSV balances
     const hasCSVBalances = () => {
-        const csv75Total = parseFloat(accountBalance.csv75_total_amount || '0');
-        const csv3Total = parseFloat(accountBalance.csv3_total_amount || '0');
-        const csv2Total = parseFloat(accountBalance.csv2_total_amount || '0');
-        const csv1Total = parseFloat(accountBalance.csv1_total_amount || '0');
-        return csv75Total > 0 || csv3Total > 0 || csv2Total > 0 || csv1Total > 0;
+        const csv75Total = BitcoinUtils.expandToDecimals(accountBalance.csv75_total_amount || '0', 8);
+        const csv3Total = BitcoinUtils.expandToDecimals(accountBalance.csv3_total_amount || '0', 8);
+        const csv2Total = BitcoinUtils.expandToDecimals(accountBalance.csv2_total_amount || '0', 8);
+        const csv1Total = BitcoinUtils.expandToDecimals(accountBalance.csv1_total_amount || '0', 8);
+        return csv75Total > 0n || csv3Total > 0n || csv2Total > 0n || csv1Total > 0n;
     };
 
 
