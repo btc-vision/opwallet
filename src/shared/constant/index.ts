@@ -233,7 +233,7 @@ export const DEFAULT_CHAINS_MAP: { [key in ChainType]?: TypeChain<key> } = {
         faucetUrl: '',
         okxExplorerUrl: '',
         disable: false,
-        opnetDisabled: true,
+        opnetDisabled: false,
         showPrice: true,
         defaultExplorer: 'mempool-space',
         contractAddresses: {}
