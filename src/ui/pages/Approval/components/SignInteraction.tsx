@@ -14,6 +14,7 @@ import { Address } from '@btc-vision/transaction';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Decoded } from '../../OpNet/decoded/DecodedTypes';
 import { InteractionHeader } from './Headers/InteractionHeader';
+import { OrdinalProtectionWarning } from './OrdinalProtectionWarning';
 import { ChangeFeeRate } from './SignInteraction/ChangeFeeRate';
 import { ChangePriorityFee } from './SignInteraction/ChangePriorityFee';
 
@@ -355,6 +356,12 @@ export default function SignInteraction(props: Props) {
             )}
 
             <Content style={{ padding: '12px', overflowY: 'auto', position: 'relative' }}>
+                {/* Ordinal Protection Warning */}
+                <OrdinalProtectionWarning
+                    utxos={interactionParameters.utxos}
+                    optionalInputs={interactionParameters.optionalInputs}
+                />
+
                 {/* Timeout Counter - Top Right */}
                 <div
                     style={{

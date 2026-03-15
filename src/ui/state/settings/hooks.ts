@@ -73,7 +73,7 @@ export function useTxExplorerUrl(txId: string) {
         case ChainType.BITCOIN_REGTEST:
             return `https://opscan.org/transactions/${txId}?network=regtest`;
         case ChainType.OPNET_TESTNET:
-            return `https://opscan.org/transactions/${txId}?network=testnet`;
+            return `https://opscan.org/transactions/${txId}?network=op_testnet`;
         default:
             return `https://opscan.org/transactions/${txId}`;
     }
@@ -90,7 +90,7 @@ export function useAddressExplorerUrl(address: string) {
         case ChainType.BITCOIN_REGTEST:
             return `https://opscan.org/accounts/${address}?network=regtest`;
         case ChainType.OPNET_TESTNET:
-            return `https://opscan.org/accounts/${address}?network=testnet`;
+            return `https://opscan.org/accounts/${address}?network=op_testnet`;
         default:
             return `https://opscan.org/accounts/${address}`;
     }
@@ -176,11 +176,13 @@ export function useCompleteDisplaySetup() {
 
 export function useDisplaySettings(): DisplaySettings {
     const state = useSettingsState();
-    return state.displaySettings || {
-        decimalPrecision: -1,
-        useKMBNotation: false,
-        useCommas: false
-    };
+    return (
+        state.displaySettings || {
+            decimalPrecision: -1,
+            useKMBNotation: false,
+            useCommas: false
+        }
+    );
 }
 
 export function useUpdateDisplaySettings() {

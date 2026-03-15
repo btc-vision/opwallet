@@ -1,6 +1,7 @@
 import { BitcoinBalance } from '@/shared/types';
 import { BtcUsd } from '@/ui/components/BtcUsd';
 import { amountToSatoshis } from '@/ui/utils';
+import { BitcoinUtils } from 'opnet';
 import React, { CSSProperties } from 'react';
 import { BalanceTabs } from './BalanceTabs';
 import { BtcDisplay } from './BtcDisplay';
@@ -42,14 +43,13 @@ export const BalanceDisplay: React.FC<BalanceDisplayProps> = ({
 }) => {
     // Helper function to calculate total balance including CSV amounts
     const calculateTotalBalance = () => {
-        const mainBalance = parseFloat(accountBalance.btc_total_amount || '0');
-        const csv75Total = parseFloat(accountBalance.csv75_total_amount || '0');
-        const csv3Total = parseFloat(accountBalance.csv3_total_amount || '0');
-        const csv2Total = parseFloat(accountBalance.csv2_total_amount || '0');
-        const csv1Total = parseFloat(accountBalance.csv1_total_amount || '0');
-
+        const mainBalance = BitcoinUtils.expandToDecimals(accountBalance.btc_total_amount || '0', 8);
+        const csv75Total = BitcoinUtils.expandToDecimals(accountBalance.csv75_total_amount || '0', 8);
+        const csv3Total = BitcoinUtils.expandToDecimals(accountBalance.csv3_total_amount || '0', 8);
+        const csv2Total = BitcoinUtils.expandToDecimals(accountBalance.csv2_total_amount || '0', 8);
+        const csv1Total = BitcoinUtils.expandToDecimals(accountBalance.csv1_total_amount || '0', 8);
         const total = mainBalance + csv75Total + csv3Total + csv2Total + csv1Total;
-        return total.toFixed(8).replace(/\.?0+$/, '');
+        return BitcoinUtils.formatUnits(total, 8).replace(/\.?0+$/, '') || '0';
     };
 
     if (showDetails) {

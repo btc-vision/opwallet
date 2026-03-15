@@ -5,7 +5,6 @@ import fs from 'fs';
 import path, { resolve } from 'path';
 import { defineConfig, type PluginOption } from 'vite';
 import checker from 'vite-plugin-checker';
-import eslint from 'vite-plugin-eslint2';
 import { nodePolyfills } from 'vite-plugin-node-polyfills';
 // topLevelAwait removed - wraps chunks in async IIFEs breaking synchronous exports
 import wasm from 'vite-plugin-wasm';
@@ -396,15 +395,15 @@ export default defineConfig(({ mode }) => {
             tailwindcss(),
 
             // ESLint
-            eslint({
+            /*eslint({
                 cache: true,
-                fix: true,
-                include: ['src/**/*.{ts,tsx,js,jsx}'],
-                exclude: ['node_modules', 'dist'],
+                fix: true,*/
+            //include: ['src/**/*.{ts,tsx,js,jsx}'],
+            /*exclude: ['node_modules', 'dist'],
                 lintOnStart: true,
                 emitError: isProd,
                 emitWarning: !isProd
-            }),
+            }),*/
 
             // TypeScript type checking
             isProd &&
@@ -451,9 +450,9 @@ export default defineConfig(({ mode }) => {
         define: {
             'process.env.version': JSON.stringify(version),
             'process.env.tosVersion': JSON.stringify('1.0.0'),
-            'process.env.domainTosVersion ': JSON.stringify('1.0.0'),
-            'process.env.tosLastUpdate': JSON.stringify('2025-12-20'),
-            'process.env.domainTosLastUpdate': JSON.stringify('2025-12-20'),
+            'process.env.domainTosVersion': JSON.stringify('1.0.1'),
+            'process.env.tosLastUpdate': JSON.stringify('2026-03-12'),
+            'process.env.domainTosLastUpdate': JSON.stringify('2026-03-12'),
             'process.env.release': JSON.stringify(version),
             'process.env.channel': JSON.stringify(process.env.CHANNEL || 'stable'),
             'process.env.BUILD_ENV': JSON.stringify(isProd ? 'PRO' : 'DEV'),

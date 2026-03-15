@@ -1,4 +1,5 @@
 import { Row } from '@/ui/components';
+import { BitcoinUtils } from 'opnet';
 import React, { CSSProperties, useState } from 'react';
 import { BalanceTabType } from '../constants';
 
@@ -61,10 +62,10 @@ export const BalanceTabs: React.FC<BalanceTabsProps> = ({
 }) => {
     const [activeTab, setActiveTab] = useState<BalanceTabType>(defaultActiveTab);
 
-    const hasCSV75 = accountBalance.csv75_total_amount && parseFloat(accountBalance.csv75_total_amount) > 0;
-    const hasCSV3 = accountBalance.csv3_total_amount && parseFloat(accountBalance.csv3_total_amount) > 0;
-    const hasCSV2 = accountBalance.csv2_total_amount && parseFloat(accountBalance.csv2_total_amount) > 0;
-    const hasCSV1 = accountBalance.csv1_total_amount && parseFloat(accountBalance.csv1_total_amount) > 0;
+    const hasCSV75 = accountBalance.csv75_total_amount && BitcoinUtils.expandToDecimals(accountBalance.csv75_total_amount, 8) > 0n;
+    const hasCSV3 = accountBalance.csv3_total_amount && BitcoinUtils.expandToDecimals(accountBalance.csv3_total_amount, 8) > 0n;
+    const hasCSV2 = accountBalance.csv2_total_amount && BitcoinUtils.expandToDecimals(accountBalance.csv2_total_amount, 8) > 0n;
+    const hasCSV1 = accountBalance.csv1_total_amount && BitcoinUtils.expandToDecimals(accountBalance.csv1_total_amount, 8) > 0n;
 
     const tabs: { id: BalanceTabType; label: string; visible: boolean }[] = [
         { id: 'balance', label: 'Balance', visible: true },
@@ -74,13 +75,13 @@ export const BalanceTabs: React.FC<BalanceTabsProps> = ({
     const visibleTabs = tabs.filter((tab) => tab.visible);
 
     const calculateTotalBalance = () => {
-        const mainBalance = parseFloat(accountBalance.btc_total_amount || '0');
-        const csv75Total = parseFloat(accountBalance.csv75_total_amount || '0');
-        const csv3Total = parseFloat(accountBalance.csv3_total_amount || '0');
-        const csv2Total = parseFloat(accountBalance.csv2_total_amount || '0');
-        const csv1Total = parseFloat(accountBalance.csv1_total_amount || '0');
+        const mainBalance = BitcoinUtils.expandToDecimals(accountBalance.btc_total_amount || '0', 8);
+        const csv75Total = BitcoinUtils.expandToDecimals(accountBalance.csv75_total_amount || '0', 8);
+        const csv3Total = BitcoinUtils.expandToDecimals(accountBalance.csv3_total_amount || '0', 8);
+        const csv2Total = BitcoinUtils.expandToDecimals(accountBalance.csv2_total_amount || '0', 8);
+        const csv1Total = BitcoinUtils.expandToDecimals(accountBalance.csv1_total_amount || '0', 8);
         const total = mainBalance + csv75Total + csv3Total + csv2Total + csv1Total;
-        return total.toFixed(8).replace(/\.?0+$/, '');
+        return BitcoinUtils.formatUnits(total, 8).replace(/\.?0+$/, '') || '0';
     };
 
     return (

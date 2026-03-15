@@ -150,6 +150,7 @@ export default function ReceiveScreen() {
 
     // Additional address/key state (BTC mode only)
     const [csv1Address, setCsv1Address] = useState<string>('');
+    const [csv2Address, setCsv2Address] = useState<string>('');
     const [csv3Address, setCsv3Address] = useState<string>('');
     const [csv75Address, setCsv75Address] = useState<string>('');
     const [tweakedPublicKey, setTweakedPublicKey] = useState<string>('');
@@ -212,6 +213,7 @@ export default function ReceiveScreen() {
 
             // Compute additional addresses/keys
             setCsv1Address(addr.toCSV(1, network).address);
+            setCsv2Address(addr.toCSV(2, network).address);
             setCsv3Address(addr.toCSV(3, network).address);
             setCsv75Address(addr.toCSV(75, network).address);
             setTweakedPublicKey(addr.tweakedToHex());
@@ -715,6 +717,7 @@ export default function ReceiveScreen() {
                                 border: `1px solid ${colors.border}`
                             }}>
                             <CopyableRow label="CSV1 ADDRESS" value={csv1Address} tools={tools} />
+                            <CopyableRow label="CSV2 ADDRESS" value={csv2Address} tools={tools} />
                             <CopyableRow label="CSV3 ADDRESS" value={csv3Address} tools={tools} />
                             <CopyableRow label="CSV75 ADDRESS" value={csv75Address} tools={tools} />
                             <CopyableRow label="TWEAKED PUBLIC KEY" value={tweakedPublicKey} tools={tools} />

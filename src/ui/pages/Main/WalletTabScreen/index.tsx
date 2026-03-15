@@ -8,6 +8,7 @@ import { Column, Content, Footer, Header, Image, Layout } from '@/ui/components'
 import AccountSelect from '@/ui/components/AccountSelect';
 import { DuplicationAlertModal } from '@/ui/components/DuplicationAlertModal';
 import { MldsaBackupReminder } from '@/ui/components/MldsaBackupReminder';
+import { CsvFundsWarningPopup, LowBalancePopup, LowUtxoPopup } from '@/ui/components/WalletHealthPopup';
 import { NavTabBar } from '@/ui/components/NavTabBar';
 import { QuantumMigrationBanner } from '@/ui/components/QuantumMigrationBanner';
 import { UpgradePopover } from '@/ui/components/UpgradePopover';
@@ -36,6 +37,7 @@ import {
 } from '@/ui/state/settings/hooks';
 import { useResetUiTxCreateScreen } from '@/ui/state/ui/hooks';
 import { amountToSatoshis, copyToClipboard, useWallet } from '@/ui/utils';
+import { BitcoinUtils } from 'opnet';
 
 import { BTCDomainModal, TOS_DOMAIN_ACCEPTED_KEY } from "@/ui/components/AcceptModals/btcDomainTermsModal";
 import { useTools } from '@/ui/components/ActionComponent';
@@ -156,6 +158,8 @@ export default function WalletTabScreen() {
     const [duplicationDetection, setDuplicationDetection] = useState<DuplicationDetectionResult | null>(null);
     const [showDuplicationAlert, setShowDuplicationAlert] = useState(false);
 
+    // Wallet health popup dismissal state (resets on every mount)
+    const [healthPopupDismissed, setHealthPopupDismissed] = useState(false);
 
     // Check if quantum migration is needed (SimpleKeyring without quantum key)
     useEffect(() => {
@@ -261,25 +265,70 @@ export default function WalletTabScreen() {
     }, [addressSummary, currentAccount, dispatch, wallet]);
 
     useEffect(() => {
-        void fetchBalance();
+        void fetchBalance().catch((err: unknown) => {
+            console.error('[WalletTabScreen] Balance fetch failed:', err);
+        });
     }, [fetchBalance]);
 
+    // Wallet health check: derived from balance data, no effect needed
+    const walletHealthCheck = useMemo(() => {
+        // Only evaluate once balance data is loaded for the current account
+        if (currentAccount.address !== addressSummary.address) return null;
+
+        // Don't show popups if balance hasn't actually loaded (all zeros = likely fetch failed)
+        if (accountBalance.btc_total_amount === '0' && accountBalance.all_utxos_count === 0 &&
+            accountBalance.csv1_unlocked_utxos_count === 0 && accountBalance.csv1_locked_utxos_count === 0) {
+            return null;
+        }
+
+        const primarySats = amountToSatoshis(accountBalance.btc_total_amount || '0');
+
+        // 1) Primary balance critically low (skip if CSV1 unlocked covers it)
+        if (primarySats < 10000) {
+            const csv1UnlockedSats = amountToSatoshis(accountBalance.csv1_unlocked_amount || '0');
+            if (csv1UnlockedSats <= 10000) return { type: 'low-balance' } as const;
+        }
+
+        // 2) CSV UTXOs > 5 total — need consolidation with per-type warnings
+        const totalCsvUtxos =
+            accountBalance.csv1_locked_utxos_count + accountBalance.csv1_unlocked_utxos_count +
+            accountBalance.csv2_locked_utxos_count + accountBalance.csv2_unlocked_utxos_count +
+            accountBalance.csv3_locked_utxos_count + accountBalance.csv3_unlocked_utxos_count +
+            accountBalance.csv75_locked_utxos_count + accountBalance.csv75_unlocked_utxos_count;
+
+        if (totalCsvUtxos > 5) {
+            const hasCsv1 = (accountBalance.csv1_locked_utxos_count + accountBalance.csv1_unlocked_utxos_count) > 0;
+            const hasCsv2 = (accountBalance.csv2_locked_utxos_count + accountBalance.csv2_unlocked_utxos_count) > 0;
+            const hasCsv3 = (accountBalance.csv3_locked_utxos_count + accountBalance.csv3_unlocked_utxos_count) > 0;
+            const hasCsv75 = (accountBalance.csv75_locked_utxos_count + accountBalance.csv75_unlocked_utxos_count) > 0;
+            return { type: 'csv-consolidation', hasCsv1, hasCsv2, hasCsv3, hasCsv75 } as const;
+        }
+
+        // 3) Primary UTXOs too few for concurrent transactions
+        //    Skip if multiple UTXOs are pending (all includes pending, unspent is confirmed only)
+        const pendingUtxoCount = accountBalance.all_utxos_count - accountBalance.unspent_utxos_count;
+        if (accountBalance.unspent_utxos_count < 5 && pendingUtxoCount < 2) return { type: 'low-utxos' } as const;
+
+        return null;
+    }, [accountBalance, addressSummary.address, currentAccount.address]);
+
     const totalBalance = useMemo(() => {
-        const main = parseFloat(accountBalance.btc_total_amount || '0');
-        const csv75 = parseFloat(accountBalance.csv75_total_amount || '0');
-        const csv3 = parseFloat(accountBalance.csv3_total_amount || '0');
-        const csv2 = parseFloat(accountBalance.csv2_total_amount || '0');
-        const csv1 = parseFloat(accountBalance.csv1_total_amount || '0');
-        return (main + csv75 + csv3 + csv2 + csv1).toFixed(8).replace(/\.?0+$/, '');
+        const main = BitcoinUtils.expandToDecimals(accountBalance.btc_total_amount || '0', 8);
+        const csv75 = BitcoinUtils.expandToDecimals(accountBalance.csv75_total_amount || '0', 8);
+        const csv3 = BitcoinUtils.expandToDecimals(accountBalance.csv3_total_amount || '0', 8);
+        const csv2 = BitcoinUtils.expandToDecimals(accountBalance.csv2_total_amount || '0', 8);
+        const csv1 = BitcoinUtils.expandToDecimals(accountBalance.csv1_total_amount || '0', 8);
+        const total = main + csv75 + csv3 + csv2 + csv1;
+        return BitcoinUtils.formatUnits(total, 8).replace(/\.?0+$/, '') || '0';
     }, [accountBalance]);
 
     // Helper function to check if there are CSV balances
     const hasCSVBalances = () => {
-        const csv75Total = parseFloat(accountBalance.csv75_total_amount || '0');
-        const csv3Total = parseFloat(accountBalance.csv3_total_amount || '0');
-        const csv2Total = parseFloat(accountBalance.csv2_total_amount || '0');
-        const csv1Total = parseFloat(accountBalance.csv1_total_amount || '0');
-        return csv75Total > 0 || csv3Total > 0 || csv2Total > 0 || csv1Total > 0;
+        const csv75Total = BitcoinUtils.expandToDecimals(accountBalance.csv75_total_amount || '0', 8);
+        const csv3Total = BitcoinUtils.expandToDecimals(accountBalance.csv3_total_amount || '0', 8);
+        const csv2Total = BitcoinUtils.expandToDecimals(accountBalance.csv2_total_amount || '0', 8);
+        const csv1Total = BitcoinUtils.expandToDecimals(accountBalance.csv1_total_amount || '0', 8);
+        return csv75Total > 0n || csv3Total > 0n || csv2Total > 0n || csv1Total > 0n;
     };
 
 
@@ -982,6 +1031,25 @@ export default function WalletTabScreen() {
                     btcUnit={btcUnit}
                     onClose={() => setShowBalanceDetails(false)}
                 />
+            )}
+
+            {/* Wallet Health Popups - only show when no higher-priority modal is active */}
+            {walletHealthCheck?.type === 'low-balance' && !healthPopupDismissed && !showMldsaBackupReminder && !showDuplicationAlert && (
+                <LowBalancePopup onClose={() => setHealthPopupDismissed(true)} />
+            )}
+
+            {walletHealthCheck?.type === 'csv-consolidation' && !healthPopupDismissed && !showMldsaBackupReminder && !showDuplicationAlert && (
+                <CsvFundsWarningPopup
+                    hasCsv1={walletHealthCheck.hasCsv1}
+                    hasCsv2={walletHealthCheck.hasCsv2}
+                    hasCsv3={walletHealthCheck.hasCsv3}
+                    hasCsv75={walletHealthCheck.hasCsv75}
+                    onClose={() => setHealthPopupDismissed(true)}
+                />
+            )}
+
+            {walletHealthCheck?.type === 'low-utxos' && !healthPopupDismissed && !showMldsaBackupReminder && !showDuplicationAlert && (
+                <LowUtxoPopup onClose={() => setHealthPopupDismissed(true)} />
             )}
 
             {/* Duplication Alert Modal - blocks interaction until resolved */}

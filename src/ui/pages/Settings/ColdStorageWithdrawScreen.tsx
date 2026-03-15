@@ -13,6 +13,7 @@ import { RouteTypes, useNavigate } from '@/ui/pages/routeTypes';
 import { useRotationState, useRefreshRotation } from '@/ui/state/rotation/hooks';
 import Web3API from '@/shared/web3/Web3API';
 import { Action, SendBitcoinParameters, SourceType } from '@/shared/interfaces/RawTxParameters';
+import { BitcoinUtils } from 'opnet';
 
 const colors = {
     main: '#f37413',
@@ -102,7 +103,7 @@ export default function ColdStorageWithdrawScreen() {
             return false;
         }
 
-        if (!amount.trim() || parseFloat(amount) <= 0) {
+        if (!amount.trim() || BitcoinUtils.expandToDecimals(amount, 8) <= 0n) {
             setError('Please enter a valid amount');
             return false;
         }
@@ -133,7 +134,7 @@ export default function ColdStorageWithdrawScreen() {
             feeRate: parseInt(feeRate),
             priorityFee: 0n,
             to: destinationAddress.trim(),
-            inputAmount: parseFloat(amount), // BTC amount, will be converted to satoshis by TxOpnetConfirmScreen
+            inputAmount: Number(BitcoinUtils.formatUnits(BitcoinUtils.expandToDecimals(amount, 8), 8)),
             from: coldWalletAddress,
             sourceType: SourceType.COLD_STORAGE,
             optimize: !utxoProtectionDisabled

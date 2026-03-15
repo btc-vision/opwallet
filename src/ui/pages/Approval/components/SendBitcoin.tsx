@@ -5,6 +5,7 @@ import { useBTCUnit } from '@/ui/state/settings/hooks';
 import { satoshisToAmount } from '@/ui/utils';
 import { useApproval } from '@/ui/utils/hooks';
 import { SendOutlined, WalletOutlined, WarningOutlined } from '@ant-design/icons';
+import { OrdinalProtectionWarning } from './OrdinalProtectionWarning';
 
 export interface Props {
     params: SendBitcoinApprovalParams;
@@ -102,6 +103,9 @@ export default function SendBitcoin(props: Props) {
     return (
         <Layout>
             <Content style={{ padding: 12, overflowY: 'auto' }}>
+                {/* Ordinal Protection Warning */}
+                <OrdinalProtectionWarning address={fromAddress} />
+
                 {/* Site Header */}
                 <div
                     style={{

@@ -84,6 +84,8 @@ export interface WalletController {
 
     getAddressBalance(address: string, pubKey?: string): Promise<BitcoinBalance>;
 
+    getAddressUtxo(address: string): Promise<{ txid: string; vout: number; satoshis: number; scriptPk: string; addressType: number }[]>;
+
     getMultiAddressAssets(addresses: string): Promise<AddressSummary[]>;
 
     getLocale(): Promise<string>;
