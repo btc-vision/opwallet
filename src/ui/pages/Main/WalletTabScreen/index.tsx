@@ -151,7 +151,7 @@ export default function WalletTabScreen() {
         navigateToConsolidation
     } = useConsolidation();
 
-    const [needsQuantumMigration, setNeedsQuantumMigration] = useState(false);
+    const [needsQuantumMigration, setNeedsQuantumMigration] = useState<boolean | null>(null);
     const [showMldsaBackupReminder, setShowMldsaBackupReminder] = useState(false);
 
     // Duplication detection state
@@ -224,6 +224,11 @@ export default function WalletTabScreen() {
     useEffect(() => {
         const checkMldsaBackupReminder = async () => {
             try {
+                // Wait for quantum migration check to complete before deciding
+                if (needsQuantumMigration === null) {
+                    return;
+                }
+
                 // Only show for SimpleKeyring (WIF imports) - HD wallets derive MLDSA from seed phrase
                 if (currentKeyring.type !== KEYRING_TYPE.SimpleKeyring) {
                     setShowMldsaBackupReminder(false);
