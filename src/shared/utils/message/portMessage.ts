@@ -64,7 +64,10 @@ class PortMessage extends Message {
     };
 
     send = (type: string, data: SendPayload) => {
-        if (!this.port) return;
+        if (!this.port) {
+            console.warn('[PortMessage] send() called but port is null — message dropped', type);
+            return;
+        }
 
         const messageDetails: MessageDetails = {
             _type_: `${this._EVENT_PRE}${type}`,
@@ -74,7 +77,7 @@ class PortMessage extends Message {
         try {
             this.port.postMessage(messageDetails);
         } catch (e) {
-            //
+            console.warn('[PortMessage] postMessage failed — message dropped', type, e);
         }
     };
 

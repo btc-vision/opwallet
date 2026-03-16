@@ -620,38 +620,6 @@ export class WalletController {
     };
 
     /**
-     * Export a private key for internal use. Similar to getPrivateKey, but no password verification.
-     * @returns null if the keyring is not found
-     */
-    private getInternalPrivateKey = ({
-        pubkey,
-        type
-    }: {
-        pubkey: string;
-        type: string;
-    }): { hex: string; wif: string } | null => {
-        if (!pubkey) {
-            throw new WalletControllerError('No pubkey found in parameters');
-        }
-        const keyring = keyringService.getKeyringForAccount(pubkey, type);
-        if (!keyring) return null;
-
-        const privateKey = keyringService.exportAccount(pubkey);
-        if (!privateKey) {
-            throw new WalletControllerError('No private key found for the given pubkey');
-        }
-
-        const networkType = this.getNetworkType();
-        const network = getBitcoinLibJSNetwork(networkType, this.getChainType());
-
-        const wif = EcKeyPair.fromPrivateKey(fromHex(privateKey), network).toWIF();
-        return {
-            hex: privateKey,
-            wif
-        };
-    };
-
-    /**
      * Get the OPNet Wallet instance with quantum keys for a specific account or the current account.
      * This is needed for OPNet transaction signing which requires both classical and quantum keys.
      * @param accountInfo Optional account info (pubkey, type). If not provided, uses current account.
@@ -1053,9 +1021,6 @@ export class WalletController {
         return accounts.filter((x) => x).length;
     };
 
-    // Note: Keystone hardware wallet support has been deprecated in wallet-sdk 2.0
-    // createTmpKeyringWithKeystone and createKeyringWithKeystone methods removed
-
     /**
      * Switch to a different keyring and optionally select which account in that keyring is active.
      */
@@ -1065,6 +1030,9 @@ export class WalletController {
         const flag = preferenceService.getAddressFlag(keyring.accounts[accountIndex].address);
         opnetApi.setClientAddress(keyring.accounts[accountIndex].address, flag);
     };
+
+    // Note: Keystone hardware wallet support has been deprecated in wallet-sdk 2.0
+    // createTmpKeyringWithKeystone and createKeyringWithKeystone methods removed
 
     /**
      * Change the active addressType for a keyring. This can refresh the derived addresses, etc.
@@ -2149,7 +2117,7 @@ export class WalletController {
         // The wallet fetches UTXOs internally to prevent injection attacks.
         let utxos = isExternal ? undefined : params.utxos;
         if (!utxos || utxos.length === 0) {
-            utxos = await Web3API.getAllUTXOsForAddresses([fromAddress], params.amount, undefined, false);
+            utxos = await Web3API.getAllUTXOsForAddresses([fromAddress], params.amount, undefined, true);
 
             if (!utxos.length) {
                 throw new WalletControllerError('No UTXOs available to fund this transaction');
@@ -2783,9 +2751,6 @@ export class WalletController {
         return keyringService.needsQuantumMigration(account.pubkey);
     };
 
-    // Note: Keystone hardware wallet methods (checkKeyringMethod, genSignPsbtUr, parseSignPsbtUr,
-    // genSignMsgUr, parseSignMsgUr) have been removed in wallet-sdk 2.0
-
     /**
      * Set/migrate quantum key for a WIF-imported wallet.
      * @throws WalletControllerError
@@ -2808,6 +2773,9 @@ export class WalletController {
             throw new WalletControllerError(`Failed to set quantum key: ${String(err)}`);
         }
     };
+
+    // Note: Keystone hardware wallet methods (checkKeyringMethod, genSignPsbtUr, parseSignPsbtUr,
+    // genSignMsgUr, parseSignMsgUr) have been removed in wallet-sdk 2.0
 
     /**
      * Generate a new quantum key for a WIF-imported wallet.
@@ -2854,14 +2822,14 @@ export class WalletController {
         return preferenceService.shouldSkipDuplicateCheck(thresholdMs);
     };
 
-    // ==================== DUPLICATION DETECTION AND RESOLUTION ====================
-
     /**
      * Mark duplicate check as done for this session
      */
     public setDuplicateCheckDone = async (): Promise<void> => {
         return preferenceService.setDuplicateCheckDone();
     };
+
+    // ==================== DUPLICATION DETECTION AND RESOLUTION ====================
 
     /**
      * Verify password and create backup before resolution
@@ -3294,11 +3262,11 @@ export class WalletController {
         this._resetTimeout();
     };
 
-    // ==================== END DUPLICATION DETECTION ====================
-
     public getNotificationWindowMode = (): 'auto' | 'popup' | 'fullscreen' => {
         return preferenceService.getNotificationWindowMode();
     };
+
+    // ==================== END DUPLICATION DETECTION ====================
 
     public setNotificationWindowMode = async (mode: 'auto' | 'popup' | 'fullscreen'): Promise<void> => {
         await preferenceService.setNotificationWindowMode(mode);
@@ -3777,10 +3745,6 @@ export class WalletController {
         return keyring?.type === KEYRING_TYPE.HdKeyring;
     };
 
-    // =========================================================================
-    // OPNet Browser / Protocol Methods
-    // =========================================================================
-
     /**
      * Check if rotation mode is enabled for current account
      */
@@ -3789,6 +3753,10 @@ export class WalletController {
         if (!account) return false;
         return addressRotationService.isRotationEnabled(account.pubkey);
     };
+
+    // =========================================================================
+    // OPNet Browser / Protocol Methods
+    // =========================================================================
 
     /**
      * Enable rotation mode for current account
@@ -4219,8 +4187,6 @@ export class WalletController {
         await addressRotationService.deriveNextHotAddress(keyring.index, account.pubkey, network);
     };
 
-    // ==================== ADDRESS ROTATION MODE ====================
-
     /**
      * Get wallet data for consolidation signers
      * Returns [wif, pubkey, mldsaPrivateKey, chainCode] for each source pubkey
@@ -4263,6 +4229,8 @@ export class WalletController {
         return results;
     };
 
+    // ==================== ADDRESS ROTATION MODE ====================
+
     /**
      * Mark addresses as consolidated after successful broadcast
      */
@@ -4283,6 +4251,38 @@ export class WalletController {
     public invalidateBalanceAndUtxoCache = (address?: string): void => {
         this.balanceCache.clear();
         Web3API.provider.utxoManager.clean(address);
+    };
+
+    /**
+     * Export a private key for internal use. Similar to getPrivateKey, but no password verification.
+     * @returns null if the keyring is not found
+     */
+    private getInternalPrivateKey = ({
+        pubkey,
+        type
+    }: {
+        pubkey: string;
+        type: string;
+    }): { hex: string; wif: string } | null => {
+        if (!pubkey) {
+            throw new WalletControllerError('No pubkey found in parameters');
+        }
+        const keyring = keyringService.getKeyringForAccount(pubkey, type);
+        if (!keyring) return null;
+
+        const privateKey = keyringService.exportAccount(pubkey);
+        if (!privateKey) {
+            throw new WalletControllerError('No private key found for the given pubkey');
+        }
+
+        const networkType = this.getNetworkType();
+        const network = getBitcoinLibJSNetwork(networkType, this.getChainType());
+
+        const wif = EcKeyPair.fromPrivateKey(fromHex(privateKey), network).toWIF();
+        return {
+            hex: privateKey,
+            wif
+        };
     };
 
     /**

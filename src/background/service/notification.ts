@@ -339,6 +339,10 @@ class NotificationService extends Events {
 
     requestApproval = async (data: ApprovalData, winProps?: WindowProps): Promise<ApprovalResponse | undefined> => {
         if (this.approval) {
+            console.warn('[NotificationService] requestApproval blocked — an approval is already pending', {
+                existingApproval: this.approval.data,
+                incomingApproval: data
+            });
             throw rpcErrors.limitExceeded({
                 message: 'An approval request is already pending. Please complete or cancel the current request first.'
             });

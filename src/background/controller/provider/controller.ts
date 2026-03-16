@@ -419,14 +419,17 @@ export class ProviderController {
         (_req: ProviderControllerRequest) => {
             // SAFETY: Reject if another approval or pre-signing is already in progress
             if (notificationService.hasActiveApproval()) {
+                console.warn('[signInteraction] Blocked: another approval is already active');
                 throw new Error('Another approval request is already active. Please complete or reject it first.');
             }
             if (notificationService.isPreSigningInProgress()) {
+                console.warn('[signInteraction] Blocked: pre-signing is in progress');
                 throw new Error('A transaction is currently being built. Please wait for it to complete.');
             }
 
             const interactionParams = _req.data.params as DetailedInteractionParameters;
             if (!Web3API.isValidAddress(interactionParams.interactionParameters.to)) {
+                console.warn('[signInteraction] Blocked: invalid contract address', interactionParams.interactionParameters.to);
                 throw new Error('Invalid contract address. Are you on the right network / are you using segwit?');
             }
 
