@@ -6,13 +6,10 @@ import path, { resolve } from 'path';
 import { defineConfig, type PluginOption } from 'vite';
 import checker from 'vite-plugin-checker';
 import { nodePolyfills } from 'vite-plugin-node-polyfills';
-// topLevelAwait removed - wraps chunks in async IIFEs breaking synchronous exports
 import wasm from 'vite-plugin-wasm';
 import tsconfigPaths from 'vite-tsconfig-paths';
 
-// Get package version
 const packageJson = JSON.parse(fs.readFileSync('./package.json', 'utf-8'));
-// Strip prerelease suffixes (-alpha, -beta, -rc) for valid extension version
 const version = packageJson.version.replace(/-(alpha|beta|rc).*$/, '');
 
 // Custom plugin to handle manifest generation for MV3
