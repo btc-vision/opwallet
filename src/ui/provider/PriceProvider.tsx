@@ -40,9 +40,11 @@ export function PriceProvider({ children }: { children: ReactNode }) {
         refreshBtcPriceTime = Date.now();
         wallet
             .getBtcPrice()
-            .then(setBtcPrice)
+            .then((price) => {
+                if (price > 0) setBtcPrice(price);
+            })
             .catch((_e: unknown) => {
-                setBtcPrice(0);
+                // Keep previous price on error instead of resetting to 0
             })
             .finally(() => {
                 setIsLoadingBtcPrice(false);
