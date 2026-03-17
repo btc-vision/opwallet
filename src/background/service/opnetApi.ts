@@ -36,6 +36,7 @@ class OPNetAPI {
     private clientAddress = '';
     private addressFlag = 0;
     private cachedBtcPrice = 0;
+    private priceInitialized = false;
 
     async init(): Promise<void> {
         // Load or create device ID
@@ -73,6 +74,13 @@ class OPNetAPI {
         if (!saved) {
             this.persist();
         }
+
+        // Restore cached BTC price from storage
+        const priceData = await browser.storage.local.get('cachedBtcPrice');
+        if (typeof priceData.cachedBtcPrice === 'number' && priceData.cachedBtcPrice > 0) {
+            this.cachedBtcPrice = priceData.cachedBtcPrice;
+        }
+        this.priceInitialized = true;
     }
 
     setClientAddress(address: string, flag: number): void {
@@ -153,16 +161,52 @@ class OPNetAPI {
     }
 
     /**
-     * Get current BTC price from Motoswap API
+     * Fetch with a timeout to prevent hanging requests.
+     */
+    private async fetchWithTimeout(url: string, options: RequestInit, timeoutMs = 8000): Promise<Response> {
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), timeoutMs);
+        try {
+            return await fetch(url, { ...options, signal: controller.signal });
+        } finally {
+            clearTimeout(timeout);
+        }
+    }
+
+    /**
+     * Update the cached BTC price and persist to storage.
+     */
+    private updateCachedPrice(price: number): void {
+        this.cachedBtcPrice = price;
+        browser.storage.local.set({ cachedBtcPrice: price });
+    }
+
+    /**
+     * Get current BTC price with fallback chain:
+     * 1. Motoswap sync API (user-specific)
+     * 2. CoinGecko public API
+     * 3. Blockchain.info ticker
+     * 4. Cached/persisted price
      */
     async getBtcPrice(): Promise<number> {
+        // Try Motoswap first
+        const motoswapPrice = await this.fetchPriceFromMotoswap();
+        if (motoswapPrice > 0) return motoswapPrice;
+
+        // Fallback to public APIs
+        const publicPrice = await this.fetchPriceFromPublicAPIs();
+        if (publicPrice > 0) return publicPrice;
+
+        return this.cachedBtcPrice;
+    }
+
+    private async fetchPriceFromMotoswap(): Promise<number> {
         try {
             const chainType = preferenceService.getChainType();
             const currentAccount = preferenceService.getCurrentAccount();
 
             if (!currentAccount?.quantumPublicKeyHash) {
-                // No MLDSA key, return cached or default price
-                return this.cachedBtcPrice;
+                return 0;
             }
 
             const { chain, network } = this.getChainAndNetwork(chainType);
@@ -172,29 +216,69 @@ class OPNetAPI {
 
             const url = `https://api.motoswap.org/api/v1/${chain}/${network}/${mldsaKey}/sync`;
 
-            const response = await fetch(url, {
+            const response = await this.fetchWithTimeout(url, {
                 method: 'GET',
-                headers: { 'Content-Type': 'application/json' }
+                headers: { 'Content-Type': 'application/json', 'X-App-Platform': 'web' }
             });
 
             if (!response.ok) {
-                console.warn(`[OPNetAPI] Failed to fetch BTC price: ${response.status}`);
-                return this.cachedBtcPrice;
+                return 0;
             }
 
             const data = (await response.json()) as MotoswapSyncResponse;
             const usdRate = data.exchangeRates?.rates?.usd?.value;
 
             if (typeof usdRate === 'number' && usdRate > 0) {
-                this.cachedBtcPrice = usdRate;
+                this.updateCachedPrice(usdRate);
                 return usdRate;
             }
 
-            return this.cachedBtcPrice;
-        } catch (error) {
-            console.warn('[OPNetAPI] Error fetching BTC price:', error);
-            return this.cachedBtcPrice;
+            return 0;
+        } catch {
+            return 0;
         }
+    }
+
+    private async fetchPriceFromPublicAPIs(): Promise<number> {
+        // Try CoinGecko
+        try {
+            const response = await this.fetchWithTimeout(
+                'https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd',
+                { method: 'GET' },
+                5000
+            );
+            if (response.ok) {
+                const data = (await response.json()) as { bitcoin?: { usd?: number } };
+                const price = data?.bitcoin?.usd;
+                if (typeof price === 'number' && price > 0) {
+                    this.updateCachedPrice(price);
+                    return price;
+                }
+            }
+        } catch {
+            // Fall through to next provider
+        }
+
+        // Try Blockchain.info
+        try {
+            const response = await this.fetchWithTimeout(
+                'https://blockchain.info/ticker',
+                { method: 'GET' },
+                5000
+            );
+            if (response.ok) {
+                const data = (await response.json()) as { USD?: { last?: number } };
+                const price = data?.USD?.last;
+                if (typeof price === 'number' && price > 0) {
+                    this.updateCachedPrice(price);
+                    return price;
+                }
+            }
+        } catch {
+            // Fall through to cached
+        }
+
+        return 0;
     }
 
     /**

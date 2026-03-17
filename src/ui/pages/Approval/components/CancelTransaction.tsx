@@ -12,6 +12,7 @@ import { Address } from '@btc-vision/transaction';
 import { PsbtOutputExtended } from '@btc-vision/bitcoin';
 import { useEffect, useMemo, useState } from 'react';
 import Web3API from '@/shared/web3/Web3API';
+import { OrdinalProtectionWarning } from './OrdinalProtectionWarning';
 
 export interface Props {
     params: CancelApprovalParams;
@@ -170,6 +171,12 @@ export default function CancelTransaction(props: Props) {
                         </Column>
                     </Column>
                 </Header>
+
+                {/* Ordinal Protection Warning */}
+                <OrdinalProtectionWarning
+                    utxos={data.utxos}
+                    optionalInputs={data.optionalInputs}
+                />
 
                 <Column gap="lg">
                     {/* Warning Section */}

@@ -828,7 +828,7 @@ export default function TxOpnetConfirmScreen() {
 
                 let utxos: UTXO[] = [];
                 let witnessScript: Uint8Array | undefined;
-                const feeMin = 10_000n;
+                const feeMin = 2_000n;
 
                 // Handle special source types (CONSOLIDATION and ROTATION_ALL don't require 'from')
                 // SourceType is a string enum, so we can compare directly

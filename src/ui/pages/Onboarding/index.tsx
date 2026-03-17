@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 
-import { Layout, Content } from '@/ui/components';
+import { Content, Layout } from '@/ui/components';
 import { useWallet } from '@/ui/utils';
 import { RouteTypes, useNavigate } from '../routeTypes';
 
@@ -10,11 +10,8 @@ import { OnboardingDisplay } from './steps/OnboardingDisplay';
 import { OnboardingUTXO } from './steps/OnboardingUTXO';
 import './onboarding.css';
 
-// ─── Versioned step registry ───
-// Bump a step's version to force it to re-show for existing users.
-// Add new steps here — they'll auto-show for anyone who hasn't completed them.
 const STEP_VERSIONS: Record<string, string> = {
-    tos: '2',
+    tos: '4',
     experience: '2',
     display: '2',
     utxo: '2'
@@ -97,11 +94,7 @@ export default function OnboardingScreen() {
                     <div className="onboarding__progress">
                         <div className="onboarding__progress-bar">
                             {pendingSteps.map((_, i) => (
-                                <div
-                                    key={i}
-                                    className="onboarding__progress-segment"
-                                    data-active={i <= pendingIndex}
-                                />
+                                <div key={i} className="onboarding__progress-segment" data-active={i <= pendingIndex} />
                             ))}
                         </div>
                         <div className="onboarding__progress-count">

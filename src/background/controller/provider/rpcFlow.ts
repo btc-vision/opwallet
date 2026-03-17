@@ -154,6 +154,7 @@ const flowContext = flow
                 return result;
             })
             .catch((e: unknown) => {
+                console.warn('[rpcFlow] requestDefer rejected:', isWalletError(e) ? e.message : e);
                 if (isSignApproval(approvalType)) {
                     eventBus.emit(EVENTS.broadcastToUI, {
                         method: EVENTS.SIGN_FINISHED,

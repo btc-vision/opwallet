@@ -11,6 +11,7 @@ import { useApproval } from '@/ui/utils/hooks';
 import { Address } from '@btc-vision/transaction';
 import { PsbtOutputExtended } from '@btc-vision/bitcoin';
 import { useEffect, useState } from 'react';
+import { OrdinalProtectionWarning } from './OrdinalProtectionWarning';
 
 export interface Props {
     params: SignDeploymentApprovalParams;
@@ -139,6 +140,13 @@ export default function SignDeployment(props: Props) {
                         </Column>
                     </Column>
                 </Header>
+
+                {/* Ordinal Protection Warning */}
+                <OrdinalProtectionWarning
+                    utxos={data.utxos}
+                    optionalInputs={data.optionalInputs}
+                />
+
                 <Column>
                     <Text
                         text="You are about to deploy a contract with the following bytecode:"

@@ -1,10 +1,11 @@
-﻿import React, { type CSSProperties } from 'react';
+import React, { type CSSProperties } from 'react';
 
 export type LegalDocStyles = {
     baseText: CSSProperties;
     h2: CSSProperties;
     h3: CSSProperties;
     ul: CSSProperties;
+    ol: CSSProperties;
     li: CSSProperties;
     hr: CSSProperties;
     callout: CSSProperties;
@@ -46,10 +47,10 @@ export function TermsText({ effectiveDate, styles }: TermsTextProps) {
                 OR RESTRICTIONS PURSUANT TO ANY APPLICABLE LAW, INCLUDING THE CRIMEA REGION, CHINA, PAKISTAN,
                 BANGLADESH, BHUTAN, NEPAL, MYANMAR, AFGHANISTAN, CUBA, IRAN, NORTH KOREA, PANAMA, SYRIA, RUSSIA, OR ANY
                 JURISDICTIONS IN WHICH THE TRANSACTING OF CRYPTOCURRENCIES IS PROHIBITED OR RESTRICTED IN ANY FORM OR
-                MANNER (COLLECTIVELY, THE â€œRESTRICTED JURISDICTIONSâ€) OR ANY PERSON OWNED, CONTROLLED, LOCATED IN OR
+                MANNER (COLLECTIVELY, THE “RESTRICTED JURISDICTIONS”) OR ANY PERSON OWNED, CONTROLLED, LOCATED IN OR
                 ORGANIZED UNDER THE LAWS OF ANY RESTRICTED JURISDICTION OR A RESIDENT OF OR LOCATED IN ANY COUNTRY OR
                 JURISDICTION THAT RESTRICTS ACCESS TO OR PROHIBITS USE OF DIGITAL ASSETS OR CRYPTO CURRENCIES
-                (COLLECTIVELY, â€œRESTRICTED PERSONSâ€).
+                (COLLECTIVELY, “RESTRICTED PERSONS”).
             </div>
 
             <div style={styles.callout}>
@@ -74,17 +75,17 @@ export function TermsText({ effectiveDate, styles }: TermsTextProps) {
             <p style={styles.baseText}>
                 These terms and conditions, together with any documents, policies, and additional terms that expressly
                 incorporate them by reference, including the privacy policy [insert link] and any other applicable
-                supplemental terms (as may be amended from time to time, the â€œTermsâ€), govern Your access to and use of
+                supplemental terms (as may be amended from time to time, the “Terms”), govern Your access to and use of
                 all products, websites, subdomains, browser extensions, mobile and web applications, desktop
-                applications, content, features, functionality, and services (collectively, the â€œOP_WALLET Servicesâ€)
+                applications, content, features, functionality, and services (collectively, the “OP_WALLET Services”)
                 made available exclusively or non-exclusively on or through opnet.org, and any other website, mobile
-                application, web application, or interface operated by Us (collectively, the â€œPlatformâ€, â€œWalletâ€, â€œWeâ€
-                or â€œUsâ€).
+                application, web application, or interface operated by Us (collectively, the “Platform”, “Wallet”, “We”
+                or “Us”).
             </p>
             <p style={styles.baseText}>
                 These Terms apply to all Users who engage with the Platform, including, but not limited to, users of the
                 OP_WALLET Services, developers, node operators, token holders, traders, or other participants
-                (collectively referred to as â€œUsersâ€, â€œYouâ€ or â€œYourâ€).
+                (collectively referred to as “Users”, “You” or “Your”).
             </p>
             <p style={styles.baseText}>
                 These Terms apply solely to the Wallet and the OP_WALLET Services made available directly by the Company
@@ -167,7 +168,7 @@ export function TermsText({ effectiveDate, styles }: TermsTextProps) {
                 custodian, settlement agent, or other financial intermediary.
             </p>
             <p style={styles.baseText}>
-                All OP_WALLET Services are provided on an â€œas isâ€ and â€œas availableâ€ basis without warranties of any
+                All OP_WALLET Services are provided on an “as is” and “as available” basis without warranties of any
                 kind.
             </p>
 
@@ -194,7 +195,7 @@ export function TermsText({ effectiveDate, styles }: TermsTextProps) {
                 </li>
                 <li style={styles.li}>
                     <strong>Bitcoin Layer 1</strong>: means the base-layer Bitcoin blockchain network that validates,
-                    records, and finalises transactions in accordance with the Bitcoin protocolâ€™s consensus rules.
+                    records, and finalises transactions in accordance with the Bitcoin protocol’s consensus rules.
                 </li>
                 <li style={styles.li}>
                     <strong>BTC</strong>: means the native cryptocurrency of the Bitcoin Network.
@@ -249,8 +250,8 @@ export function TermsText({ effectiveDate, styles }: TermsTextProps) {
                     individual on its own or when combined with other information.
                 </li>
                 <li style={styles.li}>
-                    <strong>Privacy Policy</strong>: means the Companyâ€™s privacy policy, as updated from time to time
-                    and made available through the Wallet or the Companyâ€™s website.
+                    <strong>Privacy Policy</strong>: means the Company’s privacy policy, as updated from time to time
+                    and made available through the Wallet or the Company’s website.
                 </li>
                 <li style={styles.li}>
                     <strong>Private Key</strong>: means a cryptographic key that is used to sign blockchain transactions
@@ -283,8 +284,8 @@ export function TermsText({ effectiveDate, styles }: TermsTextProps) {
                     Headings and defined terms are for convenience only and do not affect interpretation.
                 </li>
                 <li style={styles.li}>
-                    The meaning of general words is not limited by specific examples introduced by â€œincluding,â€ â€œfor
-                    example,â€ â€œsuch as,â€ or similar expressions.
+                    The meaning of general words is not limited by specific examples introduced by “including,” “for
+                    example,” “such as,” or similar expressions.
                 </li>
                 <li style={styles.li}>
                     Unless otherwise indicated, a reference to a specified clause is a reference to that clause of these
@@ -311,7 +312,7 @@ export function TermsText({ effectiveDate, styles }: TermsTextProps) {
 
             <h2 style={styles.h2}>USE RESTRICTIONS</h2>
             <p style={styles.baseText}>You agree not to, and not to attempt to:</p>
-            <ul style={styles.ul}>
+            <ol style={styles.ol}>
                 <li style={styles.li}>
                     use the Platform, Wallet, or OP_WALLET Services in any manner that could interfere with, disrupt,
                     negatively affect, or inhibit other users from fully enjoying the OP_WALLET Services;
@@ -366,7 +367,7 @@ export function TermsText({ effectiveDate, styles }: TermsTextProps) {
                 <li style={styles.li}>
                     assist, encourage, or enable any third party to engage in any of the foregoing activities.
                 </li>
-            </ul>
+            </ol>
 
             <p style={styles.baseText}>
                 We reserve the right, but are not obligated, to implement technical controls (including rate limits,
@@ -589,7 +590,7 @@ export function TermsText({ effectiveDate, styles }: TermsTextProps) {
             <p style={styles.baseText}>
                 Your use of the Wallet may require the payment of transaction fees, network fees, protocol fees, or
                 other costs imposed by blockchain networks, validators, miners, decentralised protocols, or Third-Party
-                Services (collectively, â€œFeesâ€).
+                Services (collectively, “Fees”).
             </p>
             <p style={styles.baseText}>
                 Fees may be incurred regardless of whether a transaction, Smart Contract interaction, swap, or other
@@ -663,7 +664,7 @@ export function TermsText({ effectiveDate, styles }: TermsTextProps) {
                 The Wallet may provide integrated access to, display interfaces for, or otherwise facilitate interaction
                 with third-party services, protocols, decentralised applications, Smart Contracts, token issuers,
                 blockchain networks, data providers, domain registries/resolvers, or other third parties (collectively,
-                â€œThird-Party Servicesâ€). Third-Party Services are not owned, operated, or controlled by the Company.
+                “Third-Party Services”). Third-Party Services are not owned, operated, or controlled by the Company.
             </p>
             <p style={styles.baseText}>
                 When You access or interact with any Third-Party Service through the Wallet, You interact directly with
@@ -682,8 +683,8 @@ export function TermsText({ effectiveDate, styles }: TermsTextProps) {
             </p>
             <p style={styles.baseText}>
                 Where the Wallet displays pricing information, charts, valuations, conversion rates, estimated balances,
-                token metadata, protocol data, or other information sourced from Third-Party Services (â€œThird-Party
-                Dataâ€), such Third-Party Data is provided for informational convenience only and may be delayed,
+                token metadata, protocol data, or other information sourced from Third-Party Services (“Third-Party
+                Data”), such Third-Party Data is provided for informational convenience only and may be delayed,
                 incomplete, inaccurate, or unavailable.
             </p>
             <p style={styles.baseText}>
@@ -703,7 +704,7 @@ export function TermsText({ effectiveDate, styles }: TermsTextProps) {
                 The Wallet, the Platform, the OP_WALLET Services, and all related software, interfaces, source code,
                 object code, architecture, content, design, user interface elements, documentation, text, graphics,
                 branding, logos, trademarks, and other Intellectual Property and materials made available by the Company
-                (collectively, the â€œCompany Materialsâ€) are and shall remain the exclusive property of the Company
+                (collectively, the “Company Materials”) are and shall remain the exclusive property of the Company
                 and/or its licensors.
             </p>
             <p style={styles.baseText}>
@@ -722,7 +723,7 @@ export function TermsText({ effectiveDate, styles }: TermsTextProps) {
             <h3 style={styles.h3}>Feedback</h3>
             <p style={styles.baseText}>
                 If You provide the Company with any suggestions, ideas, feedback, improvements, or recommendations
-                relating to the Wallet or OP_WALLET Services (â€œFeedbackâ€), You grant the Company a perpetual,
+                relating to the Wallet or OP_WALLET Services (“Feedback”), You grant the Company a perpetual,
                 irrevocable, worldwide, royalty-free, fully paid-up, sublicensable, transferable licence to use,
                 reproduce, modify, create derivative works from, distribute, communicate, and otherwise exploit such
                 Feedback for any purpose, without restriction and without any obligation to You.
@@ -791,7 +792,7 @@ export function TermsText({ effectiveDate, styles }: TermsTextProps) {
 
             <h3 style={styles.h3}>Limitation of Liability</h3>
             <p style={styles.baseText}>
-                To the maximum extent permitted by Applicable Law, the Companyâ€™s total aggregate liability arising out
+                To the maximum extent permitted by Applicable Law, the Company’s total aggregate liability arising out
                 of or relating to these Terms or the Wallet shall not exceed (i) the total fees paid by You to Opwallet
                 in the twelve (12) months preceding the event giving rise to the claim, or (ii) one Hundred United
                 States Dollars (USD 100), whichever is greater if applicable under the drafting intent you provided.
@@ -807,14 +808,14 @@ export function TermsText({ effectiveDate, styles }: TermsTextProps) {
             <h3 style={styles.h3}>Jurisdictional Limitations</h3>
             <p style={styles.baseText}>
                 Some jurisdictions do not allow the exclusion or limitation of certain damages or warranties. In such
-                jurisdictions, the Companyâ€™s liability and the scope of any disclaimers shall be limited to the fullest
+                jurisdictions, the Company’s liability and the scope of any disclaimers shall be limited to the fullest
                 extent permitted by Applicable Law.
             </p>
 
             <h2 style={styles.h2}>DISCLAIMERS</h2>
             <p style={styles.baseText}>
                 To the fullest extent permitted by Applicable Law, the Wallet and the OP_WALLET Services are provided on
-                an â€œas isâ€ and â€œas availableâ€ basis, without any representation, warranty, guarantee, or condition of
+                an “as is” and “as available” basis, without any representation, warranty, guarantee, or condition of
                 any kind, whether express, implied, statutory, or otherwise.
             </p>
             <p style={styles.baseText}>
@@ -836,7 +837,7 @@ export function TermsText({ effectiveDate, styles }: TermsTextProps) {
             </p>
             <p style={styles.baseText}>
                 Where the Wallet displays pricing information, valuations, conversion rates, charts, estimated balances,
-                or other market-related data (â€œMarket Dataâ€), such Market Data is provided solely for informational
+                or other market-related data (“Market Data”), such Market Data is provided solely for informational
                 convenience and may be sourced from Third-Party Services. The Company does not guarantee that any Market
                 Data is accurate, complete, current, available, error-free, or reflective of executable market prices.
             </p>
@@ -944,8 +945,8 @@ export function TermsText({ effectiveDate, styles }: TermsTextProps) {
             <h2 style={styles.h2}>GOVERNING LAW</h2>
             <p style={styles.baseText}>
                 These Terms, and any dispute, controversy, claim, or difference arising out of or in connection with
-                these Terms, the Wallet, or the OP_WALLET Services (each, a â€œDisputeâ€), shall be governed by and
-                construed in accordance with the laws of the Abu Dhabi Global Market (â€œADGMâ€), including the ADGM
+                these Terms, the Wallet, or the OP_WALLET Services (each, a “Dispute”), shall be governed by and
+                construed in accordance with the laws of the Abu Dhabi Global Market (“ADGM”), including the ADGM
                 regulations and, to the extent applicable within ADGM, the federal laws of the United Arab Emirates,
                 without regard to conflict of laws principles.
             </p>
@@ -986,7 +987,7 @@ export function TermsText({ effectiveDate, styles }: TermsTextProps) {
             <h3 style={styles.h3}>Binding Arbitration</h3>
             <p style={styles.baseText}>
                 Any Dispute shall be referred to and finally resolved by arbitration administered by the Abu Dhabi
-                International Arbitration Centre (â€œADIACâ€) in accordance with the ADIAC Arbitration Rules in force at
+                International Arbitration Centre (“ADIAC”) in accordance with the ADIAC Arbitration Rules in force at
                 the time of commencement of the arbitration. The number of arbitrators shall be one (1). The seat of
                 arbitration shall be ADGM, Abu Dhabi, United Arab Emirates. The language of the arbitration shall be
                 English.
@@ -1051,7 +1052,7 @@ export function TermsText({ effectiveDate, styles }: TermsTextProps) {
             </p>
             <p style={styles.baseText}>
                 To the extent that the Company or its affiliates make available separate general terms and conditions
-                governing the overall use of any website, platform, or other products or services (the â€œGeneral Termsâ€),
+                governing the overall use of any website, platform, or other products or services (the “General Terms”),
                 such General Terms shall apply in addition to these Terms, except as expressly modified herein.
             </p>
             <p style={styles.baseText}>

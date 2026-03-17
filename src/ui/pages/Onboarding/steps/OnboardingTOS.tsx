@@ -96,7 +96,8 @@ export function OnboardingTOS({ onAccept }: { onAccept: () => void }) {
             baseText,
             h2: { ...baseText, fontSize: 13.5, fontWeight: 850, margin: '14px 0 6px 0', color: 'rgba(255,255,255,0.92)' },
             h3: { ...baseText, fontSize: 12.5, fontWeight: 850, margin: '12px 0 4px 0', color: 'rgba(255,255,255,0.88)' },
-            ul: { ...baseText, paddingLeft: 18, margin: '8px 0' },
+            ul: { ...baseText, paddingLeft: 18, margin: '8px 0', listStyleType: 'disc' },
+            ol: { ...baseText, paddingLeft: 18, margin: '8px 0', listStyleType: 'decimal' },
             li: { ...baseText, margin: '6px 0' },
             hr: { border: 0, borderTop: '1px solid rgba(255,255,255,0.10)', margin: '14px 0' },
             callout: {

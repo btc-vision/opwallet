@@ -22,16 +22,20 @@ import {
     FontSizeOutlined,
     KeyOutlined,
     LinkOutlined,
+    LoadingOutlined,
     LockOutlined,
     RightOutlined,
+    SafetyOutlined,
     SendOutlined,
     SettingOutlined,
     UserSwitchOutlined,
+    WarningOutlined,
     WifiOutlined,
     XOutlined
 } from '@ant-design/icons';
 
 import { Tabs } from 'webextension-polyfill';
+import { Popover } from '@/ui/components/Popover';
 import { SwitchChainModal } from '../Settings/network/SwitchChainModal';
 
 const colors = {
@@ -164,8 +168,16 @@ export default function SettingsTabScreen() {
     const wallet = useWallet();
     const { mode: experienceMode } = useExperienceMode();
     const [switchChainModalVisible, setSwitchChainModalVisible] = useState(false);
+    const [utxoProtectionDisabled, setUtxoProtectionDisabled] = useState(false);
+    const [utxoProtectionLoading, setUtxoProtectionLoading] = useState(false);
+    const [utxoConfirmStep, setUtxoConfirmStep] = useState(false);
+    const [utxoConfirmText, setUtxoConfirmText] = useState('');
     const tools = useTools();
     const openExtensionInTab = useOpenExtensionInTab();
+
+    useEffect(() => {
+        void wallet.getUTXOProtectionDisabled().then(setUtxoProtectionDisabled).catch(() => {});
+    }, [wallet]);
 
     useEffect(() => {
         const run = async () => {
@@ -360,6 +372,129 @@ export default function SettingsTabScreen() {
                                 )}
                             </div>
                         ))}
+                    </div>
+
+                    {/* Ordinal Protection */}
+                    <div
+                        style={{
+                            background: colors.containerBgFaded,
+                            borderRadius: '14px',
+                            overflow: 'hidden',
+                            marginBottom: '16px'
+                        }}>
+                        <div
+                            style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                padding: '14px 12px',
+                                cursor: utxoProtectionLoading ? 'not-allowed' : 'pointer',
+                                transition: 'all 0.15s',
+                                opacity: utxoProtectionLoading ? 0.7 : 1
+                            }}
+                            onClick={() => {
+                                if (utxoProtectionLoading) return;
+                                if (utxoProtectionDisabled) {
+                                    setUtxoProtectionLoading(true);
+                                    void wallet.setUTXOProtectionDisabled(false).then(() => {
+                                        setUtxoProtectionDisabled(false);
+                                        tools.toastSuccess('Ordinal protection enabled');
+                                    }).catch(() => {
+                                        tools.toastError('Failed to update setting');
+                                    }).finally(() => {
+                                        setUtxoProtectionLoading(false);
+                                    });
+                                } else {
+                                    setUtxoConfirmStep(true);
+                                }
+                            }}
+                            onMouseEnter={(e) => {
+                                if (!utxoProtectionLoading) e.currentTarget.style.background = colors.buttonHoverBg;
+                            }}
+                            onMouseLeave={(e) => {
+                                e.currentTarget.style.background = 'transparent';
+                            }}>
+                            {/* Icon */}
+                            <div
+                                style={{
+                                    width: '36px',
+                                    height: '36px',
+                                    borderRadius: '10px',
+                                    background: colors.buttonHoverBg,
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    marginRight: '12px'
+                                }}>
+                                <span style={{ fontSize: '18px', color: utxoProtectionDisabled ? colors.warning : colors.success }}>
+                                    <SafetyOutlined />
+                                </span>
+                            </div>
+
+                            {/* Text Content */}
+                            <div style={{ flex: 1 }}>
+                                <div
+                                    style={{
+                                        fontSize: '14px',
+                                        fontWeight: 500,
+                                        color: colors.text,
+                                        marginBottom: '2px',
+                                        fontFamily: 'Inter-Regular, serif'
+                                    }}>
+                                    Ordinal Protection
+                                </div>
+                                <div
+                                    style={{
+                                        fontSize: '12px',
+                                        color: utxoProtectionDisabled ? colors.warning : colors.success,
+                                        fontWeight: 500,
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '4px'
+                                    }}>
+                                    {!utxoProtectionDisabled && <CheckCircleFilled style={{ fontSize: 10 }} />}
+                                    {utxoProtectionDisabled ? 'Disabled' : 'Enabled'}
+                                </div>
+                                <div
+                                    style={{
+                                        fontSize: '11px',
+                                        color: colors.textFaded,
+                                        marginTop: '2px'
+                                    }}>
+                                    Filter UTXOs under 1,000 sat to protect ordinals
+                                </div>
+                            </div>
+
+                            {/* Toggle Switch */}
+                            <div
+                                style={{
+                                    width: '44px',
+                                    height: '24px',
+                                    borderRadius: '12px',
+                                    background: utxoProtectionDisabled ? colors.buttonBg : colors.success,
+                                    position: 'relative',
+                                    transition: 'background 0.2s',
+                                    flexShrink: 0
+                                }}>
+                                <div
+                                    style={{
+                                        width: '20px',
+                                        height: '20px',
+                                        borderRadius: '10px',
+                                        background: colors.text,
+                                        position: 'absolute',
+                                        top: '2px',
+                                        left: utxoProtectionDisabled ? '2px' : '22px',
+                                        transition: 'left 0.2s',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center'
+                                    }}>
+                                    {utxoProtectionLoading && (
+                                        <LoadingOutlined style={{ fontSize: 12, color: colors.main }} />
+                                    )}
+                                </div>
+                            </div>
+                        </div>
                     </div>
 
                     {/* Action Buttons */}
@@ -657,6 +792,119 @@ export default function SettingsTabScreen() {
                             setSwitchChainModalVisible(false);
                         }}
                     />
+                )}
+
+                {utxoConfirmStep && (
+                    <Popover onClose={() => { setUtxoConfirmStep(false); setUtxoConfirmText(''); }}>
+                        <div style={{ padding: '4px 0' }}>
+                            <div style={{ textAlign: 'center', marginBottom: '12px' }}>
+                                <WarningOutlined style={{ fontSize: 32, color: colors.error }} />
+                                <div
+                                    style={{
+                                        fontSize: '16px',
+                                        fontWeight: 700,
+                                        color: colors.error,
+                                        marginTop: '8px'
+                                    }}>
+                                    Disable Ordinal Protection?
+                                </div>
+                            </div>
+                            <div
+                                style={{
+                                    fontSize: '12px',
+                                    color: colors.text,
+                                    lineHeight: '1.6',
+                                    marginBottom: '12px',
+                                    background: `${colors.error}10`,
+                                    borderRadius: '10px',
+                                    padding: '12px',
+                                    border: `1px solid ${colors.error}30`
+                                }}>
+                                <strong style={{ color: colors.error }}>WARNING:</strong> This will allow OPWallet to
+                                spend UTXOs under 1,000 sat. If any of those UTXOs contain ordinals or inscriptions,
+                                they will be <strong>permanently lost</strong>.
+                            </div>
+                            <div style={{ marginBottom: '16px' }}>
+                                <div
+                                    style={{
+                                        fontSize: '12px',
+                                        color: colors.textFaded,
+                                        marginBottom: '8px'
+                                    }}>
+                                    Type <strong style={{ color: colors.error }}>DISABLE</strong> to confirm:
+                                </div>
+                                <input
+                                    type="text"
+                                    value={utxoConfirmText}
+                                    onChange={(e) => setUtxoConfirmText(e.target.value)}
+                                    placeholder="Type DISABLE"
+                                    style={{
+                                        width: '100%',
+                                        padding: '10px',
+                                        borderRadius: '8px',
+                                        border: `1px solid ${utxoConfirmText === 'DISABLE' ? colors.error : '#444'}`,
+                                        background: '#222',
+                                        color: colors.text,
+                                        fontSize: '14px',
+                                        fontWeight: 600,
+                                        textAlign: 'center',
+                                        letterSpacing: '2px',
+                                        outline: 'none',
+                                        boxSizing: 'border-box'
+                                    }}
+                                />
+                            </div>
+                            <div style={{ display: 'flex', gap: '10px' }}>
+                                <button
+                                    onClick={() => {
+                                        setUtxoConfirmStep(false);
+                                        setUtxoConfirmText('');
+                                    }}
+                                    style={{
+                                        flex: 1,
+                                        padding: '12px',
+                                        borderRadius: '10px',
+                                        border: `1px solid ${colors.success}60`,
+                                        background: `${colors.success}15`,
+                                        color: colors.success,
+                                        fontSize: '13px',
+                                        fontWeight: 600,
+                                        cursor: 'pointer'
+                                    }}>
+                                    Cancel
+                                </button>
+                                <button
+                                    disabled={utxoConfirmText !== 'DISABLE'}
+                                    onClick={() => {
+                                        setUtxoProtectionLoading(true);
+                                        void wallet.setUTXOProtectionDisabled(true).then(() => {
+                                            setUtxoProtectionDisabled(true);
+                                            setUtxoConfirmStep(false);
+                                            setUtxoConfirmText('');
+                                            tools.toastSuccess('Ordinal protection disabled');
+                                        }).catch(() => {
+                                            tools.toastError('Failed to update setting');
+                                        }).finally(() => {
+                                            setUtxoProtectionLoading(false);
+                                        });
+                                    }}
+                                    style={{
+                                        flex: 1,
+                                        padding: '12px',
+                                        borderRadius: '10px',
+                                        border: `1px solid ${utxoConfirmText === 'DISABLE' ? colors.error + '60' : '#333'}`,
+                                        background: utxoConfirmText === 'DISABLE' ? `${colors.error}15` : 'transparent',
+                                        color: utxoConfirmText === 'DISABLE' ? colors.error : '#555',
+                                        fontSize: '13px',
+                                        fontWeight: 600,
+                                        cursor: utxoConfirmText === 'DISABLE' ? 'pointer' : 'not-allowed',
+                                        opacity: utxoConfirmText === 'DISABLE' ? 1 : 0.5
+                                    }}>
+                                    Disable
+                                </button>
+                            </div>
+                        </div>
+                    </Popover>
                 )}
             </Content>
             <Footer px="zero" py="zero">

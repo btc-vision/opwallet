@@ -39,5 +39,5 @@ export const UTXO_CONFIG = {
      * Minimum satoshis per output when splitting UTXOs
      * Each split output must be at least this value to be valid
      */
-    MIN_SPLIT_OUTPUT: 20000
+    MIN_SPLIT_OUTPUT: 3000
 } as const;

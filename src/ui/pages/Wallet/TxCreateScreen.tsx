@@ -1,4 +1,5 @@
 import BigNumber from 'bignumber.js';
+import { BitcoinUtils } from 'opnet';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 
@@ -495,7 +496,7 @@ export default function TxCreateScreen() {
 
         const event: SendBitcoinParameters = {
             to: toInfo.address,
-            inputAmount: parseFloat(inputAmount),
+            inputAmount: Number(BitcoinUtils.formatUnits(BitcoinUtils.expandToDecimals(inputAmount, 8), 8)),
             feeRate,
             features: { [Features.rbf]: true, [Features.taproot]: true },
             priorityFee: 0n,
