@@ -1,4 +1,4 @@
-import { AddressFlagType, CHAINS, ChainType, CustomNetwork, DEFAULT_LOCKTIME_ID, EVENTS } from '@/shared/constant';
+import { AddressFlagType, CHAINS, ChainType, CustomNetwork, DEFAULT_LOCKTIME_ID, DEFAULT_WALLET_HEALTH_DELAY_ID, EVENTS } from '@/shared/constant';
 import eventBus from '@/shared/eventBus';
 import { SessionEvent } from '@/shared/interfaces/SessionEvent';
 import { Account, AppSummary, NetworkType, storageToAddressTypes, TxHistoryItem } from '@/shared/types';
@@ -51,6 +51,8 @@ export interface PreferenceStore {
     showSafeNotice: boolean;
     addressFlags: Record<string, number>;
     autoLockTimeId: number;
+    walletHealthDelayId: number;
+    walletHealthShowTime: number;
     customNetworks: Record<string, CustomNetwork>;
     notificationWindowMode: 'auto' | 'popup' | 'fullscreen';
     useSidePanel: boolean;
@@ -94,6 +96,8 @@ const DEFAULTS = {
         showSafeNotice: true,
         addressFlags: {},
         autoLockTimeId: DEFAULT_LOCKTIME_ID,
+        walletHealthDelayId: DEFAULT_WALLET_HEALTH_DELAY_ID,
+        walletHealthShowTime: 0,
         customNetworks: {},
         notificationWindowMode: 'popup',
         useSidePanel: false,
@@ -493,10 +497,6 @@ class PreferenceService {
         await this.persist();
     };
 
-    getAutoLockTimeId = () => {
-        return this.store.autoLockTimeId;
-    };
-
     getCustomNetworks = (): Record<string, CustomNetwork> => {
         return this.store.customNetworks || {};
     };
@@ -532,9 +532,30 @@ class PreferenceService {
     //     this.persist();
     // };
 
+    getAutoLockTimeId = () => {
+        return this.store.autoLockTimeId;
+    };
+
     setAutoLockTimeId = async (id: number) => {
         this.store.autoLockTimeId = id;
+        await this.persist();
+    };
 
+    getWalletHealthDelayId = () => {
+        return this.store.walletHealthDelayId || DEFAULT_WALLET_HEALTH_DELAY_ID;
+    };
+
+    setWalletHealthDelayId = async (id: number) => {
+        this.store.walletHealthDelayId = id;
+        await this.persist();
+    };
+
+    getWalletHealthShowTime = (): number => {
+        return this.store.walletHealthShowTime || 0;
+    };
+
+    updateWalletHealthShowTime = async () => {
+        this.store.walletHealthShowTime = new Date().getTime();
         await this.persist();
     };
 

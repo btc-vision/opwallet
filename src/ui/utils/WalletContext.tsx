@@ -84,7 +84,9 @@ export interface WalletController {
 
     getAddressBalance(address: string, pubKey?: string): Promise<BitcoinBalance>;
 
-    getAddressUtxo(address: string): Promise<{ txid: string; vout: number; satoshis: number; scriptPk: string; addressType: number }[]>;
+    getAddressUtxo(
+        address: string
+    ): Promise<{ txid: string; vout: number; satoshis: number; scriptPk: string; addressType: number }[]>;
 
     getMultiAddressAssets(addresses: string): Promise<AddressSummary[]>;
 
@@ -296,9 +298,14 @@ export interface WalletController {
 
     testRpcConnection(url: string): Promise<boolean>;
 
+    getAutoLockTimeId(): Promise<number>;
     setAutoLockTimeId(timeId: number): Promise<void>;
 
-    getAutoLockTimeId(): Promise<number>;
+    getWalletHealthDelayId(): Promise<number>;
+    setWalletHealthDelayId(delayId: number): Promise<void>;
+
+    getWalletHealthShowTime(): Promise<number>;
+    updateWalletHealthShowTime(): Promise<void>;
 
     setLastActiveTime(): Promise<void>;
 

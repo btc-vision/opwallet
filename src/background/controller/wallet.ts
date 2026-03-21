@@ -3258,8 +3258,24 @@ export class WalletController {
     };
 
     public setAutoLockTimeId = (timeId: number): void => {
-        preferenceService.setAutoLockTimeId(timeId);
+        void preferenceService.setAutoLockTimeId(timeId);
         this._resetTimeout();
+    };
+
+    public getWalletHealthDelayId = (): number => {
+        return preferenceService.getWalletHealthDelayId();
+    };
+
+    public setWalletHealthDelayId = (delayId: number): void => {
+        void preferenceService.setWalletHealthDelayId(delayId);
+    };
+
+    public getWalletHealthShowTime = (): number => {
+        return preferenceService.getWalletHealthShowTime();
+    };
+
+    public updateWalletHealthShowTime = async () => {
+        await preferenceService.updateWalletHealthShowTime();
     };
 
     public getNotificationWindowMode = (): 'auto' | 'popup' | 'fullscreen' => {

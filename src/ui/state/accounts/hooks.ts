@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 import { Account } from '@/shared/types';
 import { useWallet } from '@/ui/utils';
@@ -8,6 +8,7 @@ import { keyringsActions } from '../keyrings/reducer';
 import { settingsActions } from '../settings/reducer';
 import { DEFAULT_BITCOIN_BALANCE } from './constants';
 import { accountActions } from './reducer';
+import { WALLET_HEALTH_DELAYS } from '@/shared/constant';
 
 export function useAccountsState(): AppState['accounts'] {
     return useAppSelector((state) => state.accounts);
@@ -172,4 +173,42 @@ export function useReloadAccounts() {
         const configs = await wallet.getWalletConfig();
         dispatch(settingsActions.updateSettings({ walletConfig: configs }));
     }, [dispatch, wallet]);
+}
+
+export function useWalletHealthShowTime() {
+    const [now] = useState(() => Date.now());
+    const [lastShow, setLastShow] = useState<number>(0);
+    const [nextShow, setNextShow] = useState<number>(0);
+    const [mayShowWalletHealth, setMayShowWalletHealth] = useState(false);
+    const [healthBadgeOnly, setHealthBadgeOnly] = useState(false);
+
+    const wallet = useWallet();
+
+    useEffect(() => {
+        const updateValues = async () => {
+            const lastShow = await wallet.getWalletHealthShowTime();
+            const delayId = await wallet.getWalletHealthDelayId();
+            const config = WALLET_HEALTH_DELAYS[delayId];
+            setLastShow(lastShow);
+            setNextShow(lastShow + config.time);
+            if (config.time == 0) {
+                setHealthBadgeOnly(true);
+            } else {
+                setMayShowWalletHealth(now > lastShow + config.time);
+            }
+        }
+        void updateValues();
+    }, [now]);
+
+    const updateWalletHealthShowTime = async () => {
+        await wallet.updateWalletHealthShowTime();
+    }
+
+    return {
+        mayShowWalletHealth,
+        lastShow,
+        nextShow,
+        healthBadgeOnly,
+        updateWalletHealthShowTime
+    };
 }

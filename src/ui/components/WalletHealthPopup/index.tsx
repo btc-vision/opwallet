@@ -581,3 +581,63 @@ export const LowUtxoPopup = ({ onClose }: LowUtxoPopupProps) => {
         </>
     );
 };
+
+// ── Wallet Health Badge ──────────────────────────────────────────────
+
+interface WalletHealthBadgeProps {
+    type: 'low-balance' | 'low-utxos' | 'csv-consolidation' | undefined;
+    onClick: () => void;
+}
+
+export const WalletHealthBadge = ({ type, onClick }: WalletHealthBadgeProps) => {
+    let name;
+    let icon;
+    switch (type) {
+        case 'csv-consolidation':
+            name = 'CSV Funds Detected';
+            icon = <WarningOutlined style={{ fontSize: 20, color: colors.warning }} />;
+            break;
+        case 'low-balance':
+            name = 'Low Primary Wallet Balance';
+            icon = <WalletOutlined style={{ fontSize: 20, color: colors.warning }} />;
+            break;
+        case 'low-utxos':
+            name = 'UTXO Optimization Recommended';
+            icon = <SettingOutlined style={{ fontSize: 20, color: colors.main }} />;
+            break;
+    }
+    if (!type || !name || !icon) return;
+
+    return (
+        <div
+            onClick={onClick}
+            onMouseEnter={(e) => {
+                e.currentTarget.style.background = colors.buttonHoverBg;
+            }}
+            onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'none';
+            }}
+            title={name}
+            style={{
+                position: 'absolute',
+                top: '8px',
+                right: 0,
+                background: colors.containerBgFaded,
+                borderRadius: '12px',
+                padding: '4px',
+                border: `1px solid ${colors.containerBorder}`
+            }}>
+            {icon}
+            <ExclamationCircleOutlined
+                style={{
+                    fontSize: 12,
+                    color: colors.error,
+                    position: 'absolute',
+                    background: colors.containerBgFaded,
+                    top: 0,
+                    right: 0
+                }}
+            />
+        </div>
+    );
+}
