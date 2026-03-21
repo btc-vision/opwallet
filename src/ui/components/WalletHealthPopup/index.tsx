@@ -1,5 +1,8 @@
 import { CloseOutlined, ExclamationCircleOutlined, LockOutlined, SettingOutlined, WalletOutlined, WarningOutlined } from '@ant-design/icons';
 import { RouteTypes, useNavigate } from '@/ui/pages/routeTypes';
+import { WalletHealthCheck } from '@/ui/pages/Main/WalletTabScreen/health';
+import { type } from 'node:os';
+import { CSSProperties, ReactElement, useState } from 'react';
 
 const colors = {
     main: '#f37413',
@@ -585,14 +588,18 @@ export const LowUtxoPopup = ({ onClose }: LowUtxoPopupProps) => {
 // ── Wallet Health Badge ──────────────────────────────────────────────
 
 interface WalletHealthBadgeProps {
-    type: 'low-balance' | 'low-utxos' | 'csv-consolidation' | undefined;
+    checks: WalletHealthCheck[];
     onClick: () => void;
 }
+interface BadgeProps {
+    check: WalletHealthCheck;
+    count?: number|false;
+}
 
-export const WalletHealthBadge = ({ type, onClick }: WalletHealthBadgeProps) => {
+const HealthBadge = ({check,count}:BadgeProps) => {
     let name;
     let icon;
-    switch (type) {
+    switch (check.type) {
         case 'csv-consolidation':
             name = 'CSV Funds Detected';
             icon = <WarningOutlined style={{ fontSize: 20, color: colors.warning }} />;
@@ -606,38 +613,76 @@ export const WalletHealthBadge = ({ type, onClick }: WalletHealthBadgeProps) => 
             icon = <SettingOutlined style={{ fontSize: 20, color: colors.main }} />;
             break;
     }
-    if (!type || !name || !icon) return;
+
+    return (
+        <div title={name}>
+            {icon}
+            {count &&
+                <div style={styles.icon}>
+                    <div style={styles.digits}>{count}</div>
+                </div>
+            }
+        </div>
+    );
+}
+
+export const WalletHealthBadge = ({ checks, onClick }: WalletHealthBadgeProps) => {
+    const [expanded, setExpanded] = useState(false);
+    if (!checks || checks.length === 0) return null;
+
+    const count = checks.length;
 
     return (
         <div
             onClick={onClick}
             onMouseEnter={(e) => {
-                e.currentTarget.style.background = colors.buttonHoverBg;
+                //e.currentTarget.style.background = colors.buttonHoverBg;
+                e.currentTarget.style.borderColor = colors.text;
+                setExpanded(true);
             }}
             onMouseLeave={(e) => {
-                e.currentTarget.style.background = 'none';
+                //e.currentTarget.style.background = 'none';
+                e.currentTarget.style.borderColor = 'transparent';
+                setExpanded(false);
             }}
-            title={name}
-            style={{
-                position: 'absolute',
-                top: '8px',
-                right: 0,
-                background: colors.containerBgFaded,
-                borderRadius: '12px',
-                padding: '4px',
-                border: `1px solid ${colors.containerBorder}`
-            }}>
-            {icon}
-            <ExclamationCircleOutlined
-                style={{
-                    fontSize: 12,
-                    color: colors.error,
-                    position: 'absolute',
-                    background: colors.containerBgFaded,
-                    top: 0,
-                    right: 0
-                }}
-            />
+            style={styles.mainDiv}>
+            <HealthBadge check={checks[0]} count={!expanded && count} />
+            {expanded && checks.slice(1).map((check) =>
+                <HealthBadge key={check.type} check={check} />
+            )}
         </div>
     );
 }
+
+const styles: Record<string, CSSProperties> = {
+    mainDiv: {
+        position: 'absolute',
+        top: '8px',
+        right: 0,
+        background: colors.containerBgFaded,
+        borderRadius: '4px',
+        borderWidth: '1px',
+        padding: '4px',
+        border: `1px solid ${colors.containerBorder}`
+    },
+    icon: {
+        aspectRatio: '1',
+        fontSize: 10,
+        color: colors.error,
+        position: 'absolute',
+        borderColor: colors.error,
+        borderWidth: '1px',
+        borderRadius: '24px',
+        background: colors.containerBgFaded,
+        textAlign: 'center',
+        width: 12,
+        height: 12,
+        top: 0,
+        right: 0
+    },
+    digits: {
+        position: 'absolute',
+        top: -2,
+        left: 2.5
+    }
+};

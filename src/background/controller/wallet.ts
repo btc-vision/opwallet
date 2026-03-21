@@ -143,6 +143,7 @@ import type { UniversalSigner } from '@btc-vision/ecpair';
 import { createPublicKey, createSatoshi } from '@btc-vision/ecpair';
 import { ContactBookItem, ContactBookStore } from '../service/contactBook';
 import { ConnectedSite } from '../service/permission';
+import { WalletHealthShowTime, WalletHealthType } from '@/ui/pages/Main/WalletTabScreen/constants';
 
 // PsbtOutputExtendedAddress is not re-exported from the main index
 type PsbtOutputExtendedAddress = Extract<PsbtOutputExtended, { address: string }>;
@@ -3270,12 +3271,16 @@ export class WalletController {
         void preferenceService.setWalletHealthDelayId(delayId);
     };
 
-    public getWalletHealthShowTime = (): number => {
-        return preferenceService.getWalletHealthShowTime();
+    public getWalletHealthShowTime = async (): Promise<WalletHealthShowTime> => {
+        const account = await this.getCurrentAccount();
+        return account ? preferenceService.getWalletHealthShowTime(account.pubkey) : ({} as WalletHealthShowTime);
     };
 
-    public updateWalletHealthShowTime = async () => {
-        await preferenceService.updateWalletHealthShowTime();
+    public updateWalletHealthShowTime = async (type: WalletHealthType) => {
+        const account = await this.getCurrentAccount();
+        if (account) {
+            await preferenceService.updateWalletHealthShowTime(account.pubkey, type);
+        }
     };
 
     public getNotificationWindowMode = (): 'auto' | 'popup' | 'fullscreen' => {

@@ -9,6 +9,7 @@ import { cloneDeep } from 'lodash-es';
 import browser from '../webapi/browser';
 import i18n from './i18n';
 import sessionService from './session';
+import { WalletHealthShowTime, WalletHealthType } from '@/ui/pages/Main/WalletTabScreen/constants';
 
 const version = process.env.release ?? '0';
 
@@ -52,7 +53,7 @@ export interface PreferenceStore {
     addressFlags: Record<string, number>;
     autoLockTimeId: number;
     walletHealthDelayId: number;
-    walletHealthShowTime: number;
+    walletHealthShowTime: Record<string, WalletHealthShowTime>;
     customNetworks: Record<string, CustomNetwork>;
     notificationWindowMode: 'auto' | 'popup' | 'fullscreen';
     useSidePanel: boolean;
@@ -97,7 +98,7 @@ const DEFAULTS = {
         addressFlags: {},
         autoLockTimeId: DEFAULT_LOCKTIME_ID,
         walletHealthDelayId: DEFAULT_WALLET_HEALTH_DELAY_ID,
-        walletHealthShowTime: 0,
+        walletHealthShowTime: {} as Record<string, WalletHealthShowTime>,
         customNetworks: {},
         notificationWindowMode: 'popup',
         useSidePanel: false,
@@ -550,12 +551,21 @@ class PreferenceService {
         await this.persist();
     };
 
-    getWalletHealthShowTime = (): number => {
-        return this.store.walletHealthShowTime || 0;
+    getWalletHealthShowTime = (publicKey: string): WalletHealthShowTime => {
+        console.log("STORE1", this);
+        console.log('STORE2', this.store);
+        console.log('STORE3', this.store?.walletHealthShowTime);
+        console.log('STORE4', this.store?.walletHealthShowTime?.[publicKey]);
+        return this.store?.walletHealthShowTime?.[publicKey] || {};
     };
 
-    updateWalletHealthShowTime = async () => {
-        this.store.walletHealthShowTime = new Date().getTime();
+    updateWalletHealthShowTime = async (publicKey: string, type: WalletHealthType) => {
+        const showTime = this.getWalletHealthShowTime(publicKey);
+        this.store.walletHealthShowTime = this.store?.walletHealthShowTime || {};
+        this.store.walletHealthShowTime[publicKey] = {
+            ...showTime,
+            [type]:new Date().getTime()
+        };
         await this.persist();
     };
 

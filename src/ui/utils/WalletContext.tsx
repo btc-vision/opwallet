@@ -37,6 +37,7 @@ import { TransactionHistoryFilter, TransactionHistoryItem } from '@/shared/types
 import { Psbt } from '@btc-vision/bitcoin';
 import { AddressTypes, InteractionParametersWithoutSigner } from '@btc-vision/transaction';
 import { createContext, ReactNode, useContext } from 'react';
+import { WalletHealthShowTime, WalletHealthType } from '../pages/Main/WalletTabScreen/constants';
 
 export interface WalletController {
     changePassword: (password: string, newPassword: string) => Promise<void>;
@@ -304,8 +305,8 @@ export interface WalletController {
     getWalletHealthDelayId(): Promise<number>;
     setWalletHealthDelayId(delayId: number): Promise<void>;
 
-    getWalletHealthShowTime(): Promise<number>;
-    updateWalletHealthShowTime(): Promise<void>;
+    getWalletHealthShowTime(): Promise<WalletHealthShowTime>;
+    updateWalletHealthShowTime(type: WalletHealthType): Promise<void>;
 
     setLastActiveTime(): Promise<void>;
 

@@ -9,6 +9,7 @@ import { settingsActions } from '../settings/reducer';
 import { DEFAULT_BITCOIN_BALANCE } from './constants';
 import { accountActions } from './reducer';
 import { WALLET_HEALTH_DELAYS } from '@/shared/constant';
+import { WalletHealthShowTime, WalletHealthType } from '@/ui/pages/Main/WalletTabScreen/constants';
 
 export function useAccountsState(): AppState['accounts'] {
     return useAppSelector((state) => state.accounts);
@@ -176,10 +177,9 @@ export function useReloadAccounts() {
 }
 
 export function useWalletHealthShowTime() {
-    const [now] = useState(() => Date.now());
-    const [lastShow, setLastShow] = useState<number>(0);
-    const [nextShow, setNextShow] = useState<number>(0);
-    const [mayShowWalletHealth, setMayShowWalletHealth] = useState(false);
+    const [now, setNow] = useState(() => Date.now());
+    const [delay, setDelay] = useState(0);
+    const [lastShow, setLastShow] = useState<WalletHealthShowTime>({} as WalletHealthShowTime);
     const [healthBadgeOnly, setHealthBadgeOnly] = useState(false);
 
     const wallet = useWallet();
@@ -190,24 +190,42 @@ export function useWalletHealthShowTime() {
             const delayId = await wallet.getWalletHealthDelayId();
             const config = WALLET_HEALTH_DELAYS[delayId];
             setLastShow(lastShow);
-            setNextShow(lastShow + config.time);
+            setDelay(config.time);
             if (config.time == 0) {
                 setHealthBadgeOnly(true);
-            } else {
-                setMayShowWalletHealth(now > lastShow + config.time);
             }
         }
         void updateValues();
     }, [now]);
 
-    const updateWalletHealthShowTime = async () => {
-        await wallet.updateWalletHealthShowTime();
-    }
+    const updateWalletHealthShowTime = async (type?: WalletHealthType) => {
+        if (type) {
+            await wallet.updateWalletHealthShowTime(type);
+            setLastShow({...await wallet.getWalletHealthShowTime()});
+            setNow(Date.now);
+        }
+    };
+
+    const mayShowWalletHealth = (type?:WalletHealthType)=> {
+        try {
+        console.log("GET Type", type)
+        console.log('GET Delay', delay);
+        console.log('GET Now', now);
+        console.log('GET LastShow', lastShow);
+        if (type) {
+            console.log('GET Show', lastShow[type]);
+            console.log('GET ?', now > (lastShow[type] || 0) + delay);
+            return now > (lastShow[type] || 0) + delay;
+        }
+        } catch (e) {
+            console.log('mayShowWalletHealth...', e);
+        }
+        return false;
+    };
 
     return {
         mayShowWalletHealth,
         lastShow,
-        nextShow,
         healthBadgeOnly,
         updateWalletHealthShowTime
     };

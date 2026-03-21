@@ -18,3 +18,6 @@ export const UTXO_SECTION_LABELS = {
  * Tab types for the balance details section
  */
 export type BalanceTabType = 'balance' | 'quotas';
+
+export type WalletHealthType = 'low-balance' | 'low-utxos' | 'csv-consolidation';
+export type WalletHealthShowTime = Record<WalletHealthType, number>
