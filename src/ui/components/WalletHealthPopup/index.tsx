@@ -1,8 +1,7 @@
 import { CloseOutlined, ExclamationCircleOutlined, LockOutlined, SettingOutlined, WalletOutlined, WarningOutlined } from '@ant-design/icons';
 import { RouteTypes, useNavigate } from '@/ui/pages/routeTypes';
 import { WalletHealthCheck } from '@/ui/pages/Main/WalletTabScreen/health';
-import { type } from 'node:os';
-import { CSSProperties, ReactElement, useState } from 'react';
+import { CSSProperties, useState } from 'react';
 
 const colors = {
     main: '#f37413',
@@ -35,7 +34,7 @@ const KEYFRAMES_STYLE = `
     }
 `;
 
-const backdropStyle: React.CSSProperties = {
+const backdropStyle: CSSProperties = {
     position: 'fixed',
     top: 0,
     left: 0,
@@ -47,7 +46,7 @@ const backdropStyle: React.CSSProperties = {
     animation: 'walletHealthFadeIn 0.2s ease'
 };
 
-const modalStyle: React.CSSProperties = {
+const modalStyle: CSSProperties = {
     position: 'fixed',
     top: '50%',
     left: '50%',
@@ -62,6 +61,43 @@ const modalStyle: React.CSSProperties = {
     boxShadow: '0 10px 40px rgba(0, 0, 0, 0.5)',
     zIndex: 1000,
     animation: 'walletHealthSlideUp 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
+};
+
+const mainDivStyle: CSSProperties = {
+    position: 'absolute',
+    top: '8px',
+    right: 0,
+    background: colors.containerBgFaded,
+    borderRadius: '4px',
+    borderWidth: '1px',
+    padding: '4px',
+    border: `1px solid ${colors.containerBorder}`
+};
+
+const iconStyle: CSSProperties = {
+    borderRadius: '4px',
+}
+
+const circleStyle: CSSProperties = {
+    aspectRatio: '1',
+    fontSize: 10,
+    color: colors.error,
+    position: 'absolute',
+    borderColor: colors.error,
+    borderWidth: '1px',
+    borderRadius: '24px',
+    background: colors.containerBgFaded,
+    textAlign: 'center',
+    width: 12,
+    height: 12,
+    top: 0,
+    right: 0
+};
+
+const digitsStyle: CSSProperties = {
+    position: 'absolute',
+    top: -2,
+    left: 2.5
 };
 
 // ── Low Balance Popup ─────────────────────────────────────────────────
@@ -589,14 +625,15 @@ export const LowUtxoPopup = ({ onClose }: LowUtxoPopupProps) => {
 
 interface WalletHealthBadgeProps {
     checks: WalletHealthCheck[];
-    onClick: () => void;
+    onClick: (type: WalletHealthCheck) => void;
 }
 interface BadgeProps {
     check: WalletHealthCheck;
+    onClick: (type: WalletHealthCheck) => void;
     count?: number|false;
 }
 
-const HealthBadge = ({check,count}:BadgeProps) => {
+const HealthBadge = ({ check, onClick,count }: BadgeProps) => {
     let name;
     let icon;
     switch (check.type) {
@@ -615,74 +652,49 @@ const HealthBadge = ({check,count}:BadgeProps) => {
     }
 
     return (
-        <div title={name}>
+        <div
+            title={name}
+            style={iconStyle}
+            onClick={() => onClick(check)}
+            onMouseEnter={(e) => {
+                e.currentTarget.style.background = colors.textFaded;
+            }}
+            onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'none';
+            }}>
             {icon}
-            {count &&
-                <div style={styles.icon}>
-                    <div style={styles.digits}>{count}</div>
+            {count && (
+                <div style={circleStyle}>
+                    <div style={digitsStyle}>{count}</div>
                 </div>
-            }
+            )}
         </div>
     );
-}
+};
 
-export const WalletHealthBadge = ({ checks, onClick }: WalletHealthBadgeProps) => {
+export const WalletHealthBadge = ({ checks:allChecks, onClick }: WalletHealthBadgeProps) => {
     const [expanded, setExpanded] = useState(false);
-    if (!checks || checks.length === 0) return null;
+    if (!allChecks || allChecks.length === 0) return null;
 
+    const checks = allChecks.filter(check => check.show);
     const count = checks.length;
 
     return (
         <div
-            onClick={onClick}
             onMouseEnter={(e) => {
-                //e.currentTarget.style.background = colors.buttonHoverBg;
                 e.currentTarget.style.borderColor = colors.text;
                 setExpanded(true);
             }}
             onMouseLeave={(e) => {
-                //e.currentTarget.style.background = 'none';
                 e.currentTarget.style.borderColor = 'transparent';
                 setExpanded(false);
             }}
-            style={styles.mainDiv}>
-            <HealthBadge check={checks[0]} count={!expanded && count} />
+            style={mainDivStyle}>
+            <HealthBadge check={checks[0]} onClick={onClick} count={!expanded && count} />
             {expanded && checks.slice(1).map((check) =>
-                <HealthBadge key={check.type} check={check} />
+                <HealthBadge key={check.type} onClick={onClick} check={check} />
             )}
         </div>
     );
 }
 
-const styles: Record<string, CSSProperties> = {
-    mainDiv: {
-        position: 'absolute',
-        top: '8px',
-        right: 0,
-        background: colors.containerBgFaded,
-        borderRadius: '4px',
-        borderWidth: '1px',
-        padding: '4px',
-        border: `1px solid ${colors.containerBorder}`
-    },
-    icon: {
-        aspectRatio: '1',
-        fontSize: 10,
-        color: colors.error,
-        position: 'absolute',
-        borderColor: colors.error,
-        borderWidth: '1px',
-        borderRadius: '24px',
-        background: colors.containerBgFaded,
-        textAlign: 'center',
-        width: 12,
-        height: 12,
-        top: 0,
-        right: 0
-    },
-    digits: {
-        position: 'absolute',
-        top: -2,
-        left: 2.5
-    }
-};

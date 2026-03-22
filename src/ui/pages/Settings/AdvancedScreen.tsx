@@ -180,7 +180,8 @@ export default function AdvancedScreen() {
     const [testConflictsLoading, setTestConflictsLoading] = useState(false);
     const [clearConflictsLoading, setClearConflictsLoading] = useState(false);
     const autoLockTimeId = useAutoLockTimeId();
-    const lockTimeConfig = AUTO_LOCKTIMES[autoLockTimeId] || AUTO_LOCKTIMES[DEFAULT_LOCKTIME_ID];
+    const lockTimeConfig =
+        AUTO_LOCKTIMES[autoLockTimeId] || AUTO_LOCKTIMES[DEFAULT_LOCKTIME_ID];
     const walletHealthDelayId = useWalletHealthDelayId();
     const walletHealthConfig =
         WALLET_HEALTH_DELAYS[walletHealthDelayId] || WALLET_HEALTH_DELAYS[DEFAULT_WALLET_HEALTH_DELAY_ID];
@@ -1104,21 +1105,21 @@ export const LockTimePopover = ({ onNext, onCancel }: { onNext: () => void; onCa
                             </div>
                         );
                     })}
-
-                    {/* Scroll Indicator - shows when there are more items */}
-                    {AUTO_LOCKTIMES.length > 5 && (
-                        <div
-                            style={{
-                                textAlign: 'center',
-                                padding: '8px',
-                                fontSize: '10px',
-                                color: colors.textFaded,
-                                fontStyle: 'italic'
-                            }}>
-                            Scroll for more options
-                        </div>
-                    )}
                 </div>
+
+                {/* Scroll Indicator - shows when there are more items */}
+                {AUTO_LOCKTIMES.length > 5 && (
+                    <div
+                        style={{
+                            textAlign: 'center',
+                            padding: '8px',
+                            fontSize: '10px',
+                            color: colors.textFaded,
+                            fontStyle: 'italic'
+                        }}>
+                        Scroll for more options
+                    </div>
+                )}
 
                 {/* Fixed Cancel Button */}
                 <button
@@ -1369,21 +1370,21 @@ export const WalletHealthDelayPopover = ({ onNext, onCancel }: { onNext: () => v
                             </div>
                         );
                     })}
-
-                    {/* Scroll Indicator - shows when there are more items */}
-                    {AUTO_LOCKTIMES.length > 5 && (
-                        <div
-                            style={{
-                                textAlign: 'center',
-                                padding: '8px',
-                                fontSize: '10px',
-                                color: colors.textFaded,
-                                fontStyle: 'italic'
-                            }}>
-                            Scroll for more options
-                        </div>
-                    )}
                 </div>
+
+                {/* Scroll Indicator - shows when there are more items */}
+                {WALLET_HEALTH_DELAYS.length > 5 && (
+                    <div
+                        style={{
+                            textAlign: 'center',
+                            padding: '8px',
+                            fontSize: '10px',
+                            color: colors.textFaded,
+                            fontStyle: 'italic'
+                        }}>
+                        Scroll for more options
+                    </div>
+                )}
 
                 {/* Fixed Cancel Button */}
                 <button

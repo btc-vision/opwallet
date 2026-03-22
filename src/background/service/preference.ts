@@ -201,6 +201,10 @@ class PreferenceService {
             this.store.autoLockTimeId = DEFAULT_LOCKTIME_ID;
         }
 
+        if (typeof this.store.walletHealthDelayId !== 'number') {
+            this.store.walletHealthDelayId = DEFAULT_WALLET_HEALTH_DELAY_ID;
+        }
+
         if (!this.store.customNetworks) {
             this.store.customNetworks = {};
         }
@@ -552,10 +556,6 @@ class PreferenceService {
     };
 
     getWalletHealthShowTime = (publicKey: string): WalletHealthShowTime => {
-        console.log("STORE1", this);
-        console.log('STORE2', this.store);
-        console.log('STORE3', this.store?.walletHealthShowTime);
-        console.log('STORE4', this.store?.walletHealthShowTime?.[publicKey]);
         return this.store?.walletHealthShowTime?.[publicKey] || {};
     };
 

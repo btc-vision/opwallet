@@ -207,18 +207,8 @@ export function useWalletHealthShowTime() {
     };
 
     const mayShowWalletHealth = (type?:WalletHealthType)=> {
-        try {
-        console.log("GET Type", type)
-        console.log('GET Delay', delay);
-        console.log('GET Now', now);
-        console.log('GET LastShow', lastShow);
         if (type) {
-            console.log('GET Show', lastShow[type]);
-            console.log('GET ?', now > (lastShow[type] || 0) + delay);
             return now > (lastShow[type] || 0) + delay;
-        }
-        } catch (e) {
-            console.log('mayShowWalletHealth...', e);
         }
         return false;
     };

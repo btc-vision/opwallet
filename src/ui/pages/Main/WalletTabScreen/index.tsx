@@ -69,7 +69,7 @@ import { RouteTypes, useNavigate } from '../../routeTypes';
 import { SwitchChainModal } from '../../Settings/network/SwitchChainModal';
 import { useConsolidation } from './hooks';
 import { OPNetList } from './OPNetList';
-import { getWalletHealthChecks } from './health';
+import { getWalletHealthChecks, WalletHealthCheck } from './health';
 
 const colors = {
     main: '#f37413',
@@ -156,8 +156,7 @@ export default function WalletTabScreen() {
     const [showDuplicationAlert, setShowDuplicationAlert] = useState(false);
 
     // Wallet health popup dismissal state (resets on every mount)
-    const [showHealthPopup, setShowHealthPopup] = useState(false);
-    const [healthPopupDismissed, setHealthPopupDismissed] = useState(false);
+    const [showHealthPopup, setShowHealthPopup] = useState<WalletHealthCheck|undefined>(undefined);
 
     // Check if quantum migration is needed (SimpleKeyring without quantum key)
     useEffect(() => {
@@ -271,72 +270,24 @@ export default function WalletTabScreen() {
         });
     }, [fetchBalance]);
 
-    const [walletHealthCheck,walletHealthChecks] = useMemo(() => {
+    const [walletHealthCheck, walletHealthChecks] = useMemo(() => {
         // Only evaluate once balance data is loaded for the current account
         if (currentAccount.address !== addressSummary.address) return [undefined, []];
 
+        const noPopups = !healthBadgeOnly && !showMldsaBackupReminder && !showDuplicationAlert;
         const checks = getWalletHealthChecks(accountBalance);
-        console.log('CHECKS', checks);
-        return [checks.find((w) => w.show && mayShowWalletHealth(w.type)), checks];
-    }, [accountBalance, addressSummary.address, currentAccount.address, lastShow]);
-
-    // Wallet health check: derived from balance data, no effect needed
-    const old_walletHealthCheck = useMemo(() => {
-        // Only evaluate once balance data is loaded for the current account
-        if (currentAccount.address !== addressSummary.address) return null;
-
-        // Don't show popups if balance hasn't actually loaded (all zeros = likely fetch failed)
-        if (
-            accountBalance.btc_total_amount === '0' &&
-            accountBalance.all_utxos_count === 0 &&
-            accountBalance.csv1_unlocked_utxos_count === 0 &&
-            accountBalance.csv1_locked_utxos_count === 0
-        ) {
-            return null;
-        }
-
-        const primarySats = amountToSatoshis(accountBalance.btc_total_amount || '0');
-
-        // 1) Primary balance critically low (skip if CSV1 unlocked covers it)
-        if (primarySats < 10000) {
-            const csv1UnlockedSats = amountToSatoshis(accountBalance.csv1_unlocked_amount || '0');
-            if (csv1UnlockedSats <= 10000) {
-                if (mayShowWalletHealth('low-balance')) {
-                    return { type: 'low-balance' } as const;
-                }
-            }
-        }
-
-        // 2) CSV UTXOs > 5 total — need consolidation with per-type warnings
-        const totalCsvUtxos =
-            accountBalance.csv1_locked_utxos_count +
-            accountBalance.csv1_unlocked_utxos_count +
-            accountBalance.csv2_locked_utxos_count +
-            accountBalance.csv2_unlocked_utxos_count +
-            accountBalance.csv3_locked_utxos_count +
-            accountBalance.csv3_unlocked_utxos_count +
-            accountBalance.csv75_locked_utxos_count +
-            accountBalance.csv75_unlocked_utxos_count;
-
-        if (totalCsvUtxos > 5) {
-            const hasCsv1 = accountBalance.csv1_locked_utxos_count + accountBalance.csv1_unlocked_utxos_count > 0;
-            const hasCsv2 = accountBalance.csv2_locked_utxos_count + accountBalance.csv2_unlocked_utxos_count > 0;
-            const hasCsv3 = accountBalance.csv3_locked_utxos_count + accountBalance.csv3_unlocked_utxos_count > 0;
-            const hasCsv75 = accountBalance.csv75_locked_utxos_count + accountBalance.csv75_unlocked_utxos_count > 0;
-            if (mayShowWalletHealth('csv-consolidation')) {
-                return { type: 'csv-consolidation', hasCsv1, hasCsv2, hasCsv3, hasCsv75 } as const;
-            }
-        }
-
-        // 3) Primary UTXOs too few for concurrent transactions
-        //    Skip if multiple UTXOs are pending (all includes pending, unspent is confirmed only)
-        const pendingUtxoCount = accountBalance.all_utxos_count - accountBalance.unspent_utxos_count;
-        if (accountBalance.unspent_utxos_count < 5 && pendingUtxoCount < 2) {
-            if (mayShowWalletHealth('low-utxos')) return { type: 'low-utxos' } as const;
-        }
-
-        return null;
-    }, [accountBalance, addressSummary.address, currentAccount.address]);
+        const check = checks.find((w) => w.show && noPopups && mayShowWalletHealth(w.type));
+        setShowHealthPopup(check);
+        return [check, checks];
+    }, [
+        accountBalance,
+        addressSummary.address,
+        currentAccount.address,
+        healthBadgeOnly,
+        lastShow,
+        showMldsaBackupReminder,
+        showDuplicationAlert,
+    ]);
 
     const totalBalance = useMemo(() => {
         const main = BitcoinUtils.expandToDecimals(accountBalance.btc_total_amount || '0', 8);
@@ -371,27 +322,13 @@ export default function WalletTabScreen() {
     });
     const [showDomainTerms, setShowDomainTerms] = useState(false);
 
-    const canShowHealthPopup = useMemo(() => {
-        const noPopups = !healthPopupDismissed && !showMldsaBackupReminder && !showDuplicationAlert;
-        return noPopups && (mayShowWalletHealth(walletHealthCheck?.type) || showHealthPopup);
-    }, [
-        mayShowWalletHealth,
-        showHealthPopup,
-        healthPopupDismissed,
-        showMldsaBackupReminder,
-        showDuplicationAlert,
-        walletHealthCheck
-    ]);
-
-    const forceShowHealthPopup = () => {
-        setHealthPopupDismissed(false);
-        setShowHealthPopup(true);
+    const forceShowHealthPopup = (type: WalletHealthCheck) => {
+        setShowHealthPopup(type);
     };
 
     const dismissHealthPopup = () => {
-        setHealthPopupDismissed(true);
-        setShowHealthPopup(false);
-        void updateWalletHealthShowTime(walletHealthCheck?.type);
+        setShowHealthPopup(undefined);
+        void updateWalletHealthShowTime(showHealthPopup?.type);
     };
 
     return (
@@ -804,13 +741,11 @@ export default function WalletTabScreen() {
                                 </div>
 
                                 {/* Balance */}
-                                <div style={{position:'relative'}}>
+                                <div style={{ position: 'relative' }}>
                                     <BtcDisplay balance={totalBalance} />
-                                    { (
-                                        <WalletHealthBadge checks={walletHealthChecks}
-                                                           onClick={forceShowHealthPopup}
-                                        />
-                                    )}
+                                    {healthBadgeOnly &&
+                                        <WalletHealthBadge checks={walletHealthChecks} onClick={forceShowHealthPopup} />
+                                    }
                                 </div>
 
                                 <BtcUsd
@@ -1145,21 +1080,19 @@ export default function WalletTabScreen() {
             )}
 
             {/* Wallet Health Popups - only show when no higher-priority modal is active */}
-            {walletHealthCheck?.type === 'low-balance' && canShowHealthPopup && (
-                <LowBalancePopup onClose={dismissHealthPopup} />
-            )}
+            {showHealthPopup?.type === 'low-balance' && <LowBalancePopup onClose={dismissHealthPopup} />}
 
-            {walletHealthCheck?.type === 'csv-consolidation' && canShowHealthPopup && (
+            {showHealthPopup?.type === 'csv-consolidation' && (
                 <CsvFundsWarningPopup
-                    hasCsv1={!!walletHealthCheck.hasCsv1}
-                    hasCsv2={!!walletHealthCheck.hasCsv2}
-                    hasCsv3={!!walletHealthCheck.hasCsv3}
-                    hasCsv75={!!walletHealthCheck.hasCsv75}
+                    hasCsv1={!!showHealthPopup.hasCsv1}
+                    hasCsv2={!!showHealthPopup.hasCsv2}
+                    hasCsv3={!!showHealthPopup.hasCsv3}
+                    hasCsv75={!!showHealthPopup.hasCsv75}
                     onClose={dismissHealthPopup}
                 />
             )}
 
-            {walletHealthCheck?.type === 'low-utxos' && canShowHealthPopup && (
+            {showHealthPopup?.type === 'low-utxos' && (
                 <LowUtxoPopup onClose={dismissHealthPopup} />
             )}
 
