@@ -54,6 +54,7 @@ export const WALLET_CONTROLLER_METHODS = [
     'getAppSummary',
     'getAutoLockTimeId',
     'getBtcDomainInfo',
+    'getReservation',
     'getBtcPrice',
     'getChainType',
     'getColdWalletAddress',

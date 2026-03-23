@@ -47,7 +47,11 @@ export enum Action {
     Swap = 'swap',
     SendNFT = 'SendNFT',
     MintNFT = 'MintNFT',
-    RegisterDomain = 'registerDomain',
+    ReserveDomain = 'reserveDomain',
+    CompleteRegistration = 'completeRegistration',
+    RegisterDomainWithMoto = 'registerDomainWithMoto',
+    RenewDomain = 'renewDomain',
+    RenewDomainWithMoto = 'renewDomainWithMoto',
     PublishDomain = 'publishDomain',
     InitiateDomainTransfer = 'initiateDomainTransfer',
     AcceptDomainTransfer = 'acceptDomainTransfer',
@@ -145,10 +149,39 @@ export interface MintParameters extends BaseRawTxInfo<Action.Mint> {
     readonly to: string;
 }
 
-export interface RegisterDomainParameters extends BaseRawTxInfo<Action.RegisterDomain> {
+export interface ReserveDomainParameters extends BaseRawTxInfo<Action.ReserveDomain> {
     readonly domainName: string;
-    readonly price: bigint;
+    readonly years: number;
+    readonly reservationFee: bigint;
+    readonly reservationFeeAddress: string;
+}
+
+export interface CompleteRegistrationParameters extends BaseRawTxInfo<Action.CompleteRegistration> {
+    readonly domainName: string;
+    readonly years: number;
+    readonly totalPrice: bigint;
+    readonly auctionPrice: bigint;
+    readonly renewalPerYear: bigint;
     readonly treasuryAddress: string;
+}
+
+export interface RegisterDomainWithMotoParameters extends BaseRawTxInfo<Action.RegisterDomainWithMoto> {
+    readonly domainName: string;
+    readonly years: number;
+    readonly motoContractAddress: string;
+}
+
+export interface RenewDomainParameters extends BaseRawTxInfo<Action.RenewDomain> {
+    readonly domainName: string;
+    readonly years: number;
+    readonly totalPrice: bigint;
+    readonly treasuryAddress: string;
+}
+
+export interface RenewDomainWithMotoParameters extends BaseRawTxInfo<Action.RenewDomainWithMoto> {
+    readonly domainName: string;
+    readonly years: number;
+    readonly motoContractAddress: string;
 }
 
 export interface PublishDomainParameters extends BaseRawTxInfo<Action.PublishDomain> {
@@ -177,7 +210,11 @@ export type RawTxInfo =
     | MintParameters
     | SendNFTParameters
     | MintNFTParameters
-    | RegisterDomainParameters
+    | ReserveDomainParameters
+    | CompleteRegistrationParameters
+    | RegisterDomainWithMotoParameters
+    | RenewDomainParameters
+    | RenewDomainWithMotoParameters
     | PublishDomainParameters
     | InitiateDomainTransferParameters
     | AcceptDomainTransferParameters

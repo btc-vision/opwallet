@@ -360,11 +360,23 @@ export interface WalletController {
     removeOpnetGateway(url: string): Promise<void>;
     refreshOpnetGateways(): Promise<void>;
     resolveBtcDomain(domain: string): Promise<string | null>;
-    getBtcDomainInfo(domainName: string): Promise<{
+    getBtcDomainInfo(domainName: string, years?: number): Promise<{
         exists: boolean;
         owner: string | null;
-        price: bigint;
+        createdAt: bigint;
+        expiresAt: bigint;
+        isActive: boolean;
+        inGracePeriod: boolean;
+        totalPriceSats: bigint;
+        auctionPriceSats: bigint;
+        renewalPerYear: bigint;
         treasuryAddress: string;
+    }>;
+    getReservation(domainName: string): Promise<{
+        reserver: string | null;
+        reservedAt: bigint;
+        years: bigint;
+        isActive: boolean;
     }>;
     uploadToIpfs(fileData: string, fileName: string): Promise<string>;
     getTrackedDomains(): Promise<
@@ -373,6 +385,9 @@ export interface WalletController {
             registeredAt?: number;
             lastVerified?: number;
             isOwner: boolean;
+            expiresAt?: number;
+            isActive?: boolean;
+            inGracePeriod?: boolean;
         }>
     >;
     addTrackedDomain(domainName: string): Promise<void>;

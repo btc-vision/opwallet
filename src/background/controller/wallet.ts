@@ -3522,11 +3522,18 @@ export class WalletController {
      * Get .btc domain information including availability, owner, and price
      */
     public getBtcDomainInfo = async (
-        domainName: string
+        domainName: string,
+        years: number = 1
     ): Promise<{
         exists: boolean;
         owner: string | null;
-        price: bigint;
+        createdAt: bigint;
+        expiresAt: bigint;
+        isActive: boolean;
+        inGracePeriod: boolean;
+        totalPriceSats: bigint;
+        auctionPriceSats: bigint;
+        renewalPerYear: bigint;
         treasuryAddress: string;
     }> => {
         const normalizedDomain = domainName.toLowerCase().replace(/\.btc$/, '');
@@ -3543,9 +3550,12 @@ export class WalletController {
             Web3API.network
         );
 
-        // Get domain info
         const domainResult = await resolverContract.getDomain(normalizedDomain);
         const exists = domainResult.properties.exists;
+        const createdAt = domainResult.properties.createdAt;
+        const expiresAt = domainResult.properties.expiresAt;
+        const isActive = domainResult.properties.isActive;
+        const inGracePeriod = domainResult.properties.inGracePeriod;
 
         let owner: string | null = null;
         if (exists && domainResult.properties.owner && !domainResult.properties.owner.isDead()) {
@@ -3565,15 +3575,70 @@ export class WalletController {
             }
         }
 
-        // Get price for this domain
-        const priceResult = await resolverContract.getDomainPrice(normalizedDomain);
-        const price = priceResult.properties.priceSats;
+        const priceResult = await resolverContract.getDomainPrice(normalizedDomain, BigInt(years));
+        const totalPriceSats = priceResult.properties.totalPriceSats;
+        const auctionPriceSats = priceResult.properties.auctionPriceSats;
+        const renewalPerYear = priceResult.properties.renewalPerYear;
 
-        // Get treasury address
         const treasuryResult = await resolverContract.getTreasuryAddress();
         const treasuryAddress = treasuryResult.properties.treasuryAddress;
 
-        return { exists, owner, price, treasuryAddress };
+        return {
+            exists,
+            owner,
+            createdAt,
+            expiresAt,
+            isActive,
+            inGracePeriod,
+            totalPriceSats,
+            auctionPriceSats,
+            renewalPerYear,
+            treasuryAddress,
+        };
+    };
+
+    public getReservation = async (
+        domainName: string
+    ): Promise<{
+        reserver: string | null;
+        reservedAt: bigint;
+        years: bigint;
+        isActive: boolean;
+    }> => {
+        const normalizedDomain = domainName.toLowerCase().replace(/\.btc$/, '');
+
+        const resolverAddress = Web3API.btcResolverAddressP2OP;
+        if (!resolverAddress) {
+            throw new WalletControllerError('BtcNameResolver contract not configured for this network');
+        }
+
+        const resolverContract = getContract<IBtcNameResolverContract>(
+            resolverAddress,
+            BTC_NAME_RESOLVER_ABI,
+            Web3API.provider,
+            Web3API.network
+        );
+
+        const result = await resolverContract.getReservation(normalizedDomain);
+        let reserver: string | null = null;
+        if (result.properties.reserver && !result.properties.reserver.isDead()) {
+            try {
+                const publicKey = await Web3API.provider.getPublicKeyInfo(
+                    result.properties.reserver.toHex(),
+                    false
+                );
+                reserver = publicKey ? publicKey.p2tr(Web3API.network) : result.properties.reserver.toHex();
+            } catch {
+                reserver = result.properties.reserver.toHex();
+            }
+        }
+
+        return {
+            reserver,
+            reservedAt: result.properties.reservedAt,
+            years: result.properties.years,
+            isActive: result.properties.isActive,
+        };
     };
 
     /**
@@ -3614,6 +3679,9 @@ export class WalletController {
             registeredAt?: number;
             lastVerified?: number;
             isOwner: boolean;
+            expiresAt?: number;
+            isActive?: boolean;
+            inGracePeriod?: boolean;
         }>
     > => {
         const account = preferenceService.getCurrentAccount();
@@ -3622,13 +3690,11 @@ export class WalletController {
         const trackedDomains = preferenceService.getTrackedDomains(account.address);
         const results = [];
 
-        // Verify ownership for each domain
         for (const domain of trackedDomains) {
             try {
                 const info = await this.getBtcDomainInfo(domain.name);
                 const isOwner = info.owner?.toLowerCase() === account.address.toLowerCase();
 
-                // Update verification timestamp if still owner
                 if (isOwner) {
                     await preferenceService.updateTrackedDomainVerification(account.address, domain.name);
                 }
@@ -3637,10 +3703,12 @@ export class WalletController {
                     name: domain.name,
                     registeredAt: domain.registeredAt,
                     lastVerified: Date.now(),
-                    isOwner
+                    isOwner,
+                    expiresAt: Number(info.expiresAt),
+                    isActive: info.isActive,
+                    inGracePeriod: info.inGracePeriod,
                 });
             } catch {
-                // If verification fails, still show domain but mark as unverified
                 results.push({
                     name: domain.name,
                     registeredAt: domain.registeredAt,

@@ -5,10 +5,12 @@ import {
     Action,
     AcceptDomainTransferParameters,
     CancelDomainTransferParameters,
+    CompleteRegistrationParameters,
     Features,
     InitiateDomainTransferParameters,
     PublishDomainParameters,
-    RegisterDomainParameters
+    RenewDomainParameters,
+    ReserveDomainParameters
 } from '@/shared/interfaces/RawTxParameters';
 import { NetworkType } from '@/shared/types';
 import { Content, Header, Layout } from '@/ui/components';
@@ -55,21 +57,36 @@ const colors = {
     info: '#3b82f6'
 };
 
-type Tab = 'mydomains' | 'register' | 'publish' | 'transfer';
+type Tab = 'mydomains' | 'register' | 'renew' | 'publish' | 'transfer';
 
 interface TrackedDomainInfo {
     name: string;
     registeredAt?: number;
     lastVerified?: number;
     isOwner: boolean;
+    expiresAt?: number;
+    isActive?: boolean;
+    inGracePeriod?: boolean;
 }
 
 interface DomainInfo {
     exists: boolean;
     owner: string | null;
     isOwner: boolean;
-    price: bigint;
     treasuryAddress: string;
+    expiresAt: bigint;
+    isActive: boolean;
+    inGracePeriod: boolean;
+    totalPriceSats: bigint;
+    auctionPriceSats: bigint;
+    renewalPerYear: bigint;
+}
+
+interface ReservationInfo {
+    reserver: string;
+    reservedAt: bigint;
+    years: number;
+    isActive: boolean;
 }
 
 interface PendingTransferInfo {
@@ -77,6 +94,20 @@ interface PendingTransferInfo {
     newOwner: string;
     isOutgoing: boolean; // true if current user is transferring away, false if receiving
 }
+
+const RESERVATION_FEE = 2000n;
+const AUCTION_FLOOR_SATS = 100_000n;
+
+// Format sats with BTC equivalent
+const formatSats = (sats: bigint): string => {
+    const num = Number(sats);
+    const btc = num / 100_000_000;
+    const formattedSats = num.toLocaleString();
+    if (btc >= 0.00000001) {
+        return `${formattedSats} sats (${btc.toFixed(8).replace(/\.?0+$/, '')} BTC)`;
+    }
+    return `${formattedSats} sats`;
+};
 
 export default function BtcDomainScreen() {
     const navigate = useNavigate();
@@ -98,6 +129,17 @@ export default function BtcDomainScreen() {
     const [domainInfo, setDomainInfo] = useState<DomainInfo | null>(null);
     const [isCheckingDomain, setIsCheckingDomain] = useState(false);
     const [feeRate, setFeeRate] = useState(5);
+    const [registrationYears, setRegistrationYears] = useState(1);
+    const [reservationInfo, setReservationInfo] = useState<ReservationInfo | null>(null);
+    const [isCheckingReservation, setIsCheckingReservation] = useState(false);
+
+    // Renew state
+    const [renewDomainInput, setRenewDomainInput] = useState('');
+    const [renewDomainInfo, setRenewDomainInfo] = useState<DomainInfo | null>(null);
+    const [isCheckingRenewDomain, setIsCheckingRenewDomain] = useState(false);
+    const [renewYears, setRenewYears] = useState(1);
+    const [renewFeeRate, setRenewFeeRate] = useState(5);
+    const [renewPriceChecked, setRenewPriceChecked] = useState(false);
 
     // Publishing state
     const [publishDomain, setPublishDomain] = useState('');
@@ -134,7 +176,22 @@ export default function BtcDomainScreen() {
         setIsLoadingDomains(true);
         try {
             const domains = await wallet.getTrackedDomains();
-            setMyDomains(domains);
+            // Enrich domains with on-chain info
+            const enriched: TrackedDomainInfo[] = [];
+            for (const domain of domains) {
+                try {
+                    const info = await wallet.getBtcDomainInfo(domain.name);
+                    enriched.push({
+                        ...domain,
+                        expiresAt: Number(info.expiresAt ?? 0n),
+                        isActive: info.isActive ?? false,
+                        inGracePeriod: info.inGracePeriod ?? false
+                    });
+                } catch {
+                    enriched.push(domain);
+                }
+            }
+            setMyDomains(enriched);
         } catch (err) {
             console.error('Failed to load domains:', err);
         } finally {
@@ -194,7 +251,7 @@ export default function BtcDomainScreen() {
         return null;
     };
 
-    // Check domain availability
+    // Check domain availability and pricing
     const checkDomain = useCallback(async () => {
         const normalized = normalizeDomain(domainInput);
         const error = validateDomainName(normalized);
@@ -205,23 +262,44 @@ export default function BtcDomainScreen() {
 
         setIsCheckingDomain(true);
         setDomainInfo(null);
+        setReservationInfo(null);
 
         try {
-            const info = await wallet.getBtcDomainInfo(normalized);
+            const info = await wallet.getBtcDomainInfo(normalized, registrationYears);
             setDomainInfo({
                 exists: info.exists,
                 owner: info.owner,
                 isOwner: info.owner?.toLowerCase() === userAddress.toLowerCase(),
-                price: info.price,
-                treasuryAddress: info.treasuryAddress
+                treasuryAddress: info.treasuryAddress,
+                expiresAt: info.expiresAt ?? 0n,
+                isActive: info.isActive ?? false,
+                inGracePeriod: info.inGracePeriod ?? false,
+                totalPriceSats: info.totalPriceSats ?? 0n,
+                auctionPriceSats: info.auctionPriceSats ?? 0n,
+                renewalPerYear: info.renewalPerYear ?? 0n
             });
+
+            // Also check for existing reservation
+            try {
+                const reservation = await wallet.getReservation(normalized);
+                if (reservation && reservation.isActive) {
+                    setReservationInfo({
+                        reserver: reservation.reserver || '',
+                        reservedAt: reservation.reservedAt,
+                        years: Number(reservation.years),
+                        isActive: reservation.isActive
+                    });
+                }
+            } catch {
+                // No reservation found, that's fine
+            }
         } catch (err) {
             console.error('Failed to check domain:', err);
             tools.toastError('Failed to check domain availability');
         } finally {
             setIsCheckingDomain(false);
         }
-    }, [domainInput, wallet, userAddress, tools]);
+    }, [domainInput, wallet, userAddress, tools, registrationYears]);
 
     // Check publish domain ownership
     const checkPublishDomain = useCallback(async () => {
@@ -241,8 +319,13 @@ export default function BtcDomainScreen() {
                 exists: info.exists,
                 owner: info.owner,
                 isOwner: info.owner?.toLowerCase() === userAddress.toLowerCase(),
-                price: info.price,
-                treasuryAddress: info.treasuryAddress
+                treasuryAddress: info.treasuryAddress,
+                expiresAt: info.expiresAt ?? 0n,
+                isActive: info.isActive ?? false,
+                inGracePeriod: info.inGracePeriod ?? false,
+                totalPriceSats: info.totalPriceSats ?? 0n,
+                auctionPriceSats: info.auctionPriceSats ?? 0n,
+                renewalPerYear: info.renewalPerYear ?? 0n
             });
         } catch (err) {
             console.error('Failed to check domain:', err);
@@ -270,8 +353,13 @@ export default function BtcDomainScreen() {
                 exists: info.exists,
                 owner: info.owner,
                 isOwner: info.owner?.toLowerCase() === userAddress.toLowerCase(),
-                price: info.price,
-                treasuryAddress: info.treasuryAddress
+                treasuryAddress: info.treasuryAddress,
+                expiresAt: info.expiresAt ?? 0n,
+                isActive: info.isActive ?? false,
+                inGracePeriod: info.inGracePeriod ?? false,
+                totalPriceSats: info.totalPriceSats ?? 0n,
+                auctionPriceSats: info.auctionPriceSats ?? 0n,
+                renewalPerYear: info.renewalPerYear ?? 0n
             });
         } catch (err) {
             console.error('Failed to check domain:', err);
@@ -280,6 +368,42 @@ export default function BtcDomainScreen() {
             setIsCheckingTransferDomain(false);
         }
     }, [transferDomainInput, wallet, userAddress, tools]);
+
+    // Check renewal domain info and pricing
+    const checkRenewDomain = useCallback(async () => {
+        const normalized = normalizeDomain(renewDomainInput);
+        const error = validateDomainName(normalized);
+        if (error) {
+            tools.toastError(error);
+            return;
+        }
+
+        setIsCheckingRenewDomain(true);
+        setRenewDomainInfo(null);
+        setRenewPriceChecked(false);
+
+        try {
+            const info = await wallet.getBtcDomainInfo(normalized, renewYears);
+            setRenewDomainInfo({
+                exists: info.exists,
+                owner: info.owner,
+                isOwner: info.owner?.toLowerCase() === userAddress.toLowerCase(),
+                treasuryAddress: info.treasuryAddress,
+                expiresAt: info.expiresAt ?? 0n,
+                isActive: info.isActive ?? false,
+                inGracePeriod: info.inGracePeriod ?? false,
+                totalPriceSats: info.totalPriceSats ?? 0n,
+                auctionPriceSats: info.auctionPriceSats ?? 0n,
+                renewalPerYear: info.renewalPerYear ?? 0n
+            });
+            setRenewPriceChecked(true);
+        } catch (err) {
+            console.error('Failed to check domain for renewal:', err);
+            tools.toastError('Failed to check domain');
+        } finally {
+            setIsCheckingRenewDomain(false);
+        }
+    }, [renewDomainInput, wallet, userAddress, tools, renewYears]);
 
     // Check pending transfer for accept
     const checkPendingTransfer = useCallback(async () => {
@@ -348,7 +472,7 @@ export default function BtcDomainScreen() {
         if (activeTab === 'transfer' && myDomains.length > 0) {
             loadPendingTransfers();
         }
-         
+
     }, [activeTab, myDomains.length]);
 
     // Handle initiate transfer - navigate to TxOpnetConfirmScreen
@@ -462,13 +586,13 @@ export default function BtcDomainScreen() {
         return btc.toFixed(8).replace(/\.?0+$/, '');
     };
 
-    // Handle domain registration - navigate to TxOpnetConfirmScreen
-    const handleRegisterDomain = useCallback(() => {
+    // Handle domain reservation (step 1) - navigate to TxOpnetConfirmScreen
+    const handleReserveDomain = useCallback(() => {
         if (!domainInfo || domainInfo.exists) return;
 
         const normalizedDomain = normalizeDomain(domainInput);
-        const rawTxInfo: RegisterDomainParameters = {
-            header: `Register ${normalizedDomain}.btc`,
+        const rawTxInfo: ReserveDomainParameters = {
+            header: `Reserve ${normalizedDomain}.btc`,
             features: {
                 [Features.rbf]: true,
                 [Features.taproot]: true
@@ -476,14 +600,66 @@ export default function BtcDomainScreen() {
             tokens: [],
             feeRate: feeRate,
             priorityFee: 0n,
-            action: Action.RegisterDomain,
+            action: Action.ReserveDomain,
             domainName: normalizedDomain,
-            price: domainInfo.price,
+            years: registrationYears,
+            reservationFee: RESERVATION_FEE,
+            reservationFeeAddress: domainInfo.treasuryAddress
+        };
+
+        navigate(RouteTypes.TxOpnetConfirmScreen, { rawTxInfo });
+    }, [domainInfo, domainInput, feeRate, navigate, registrationYears]);
+
+    // Handle complete registration (step 2) - navigate to TxOpnetConfirmScreen
+    const handleCompleteRegistration = useCallback(() => {
+        if (!domainInfo || !reservationInfo) return;
+
+        const normalizedDomain = normalizeDomain(domainInput);
+        const rawTxInfo: CompleteRegistrationParameters = {
+            header: `Complete Registration ${normalizedDomain}.btc`,
+            features: {
+                [Features.rbf]: true,
+                [Features.taproot]: true
+            },
+            tokens: [],
+            feeRate: feeRate,
+            priorityFee: 0n,
+            action: Action.CompleteRegistration,
+            domainName: normalizedDomain,
+            years: reservationInfo.years,
+            totalPrice: domainInfo.totalPriceSats,
+            auctionPrice: domainInfo.auctionPriceSats,
+            renewalPerYear: domainInfo.renewalPerYear,
             treasuryAddress: domainInfo.treasuryAddress
         };
 
         navigate(RouteTypes.TxOpnetConfirmScreen, { rawTxInfo });
-    }, [domainInfo, domainInput, feeRate, navigate]);
+    }, [domainInfo, reservationInfo, domainInput, feeRate, navigate]);
+
+    // Handle domain renewal - navigate to TxOpnetConfirmScreen
+    const handleRenewDomain = useCallback(() => {
+        if (!renewDomainInfo || !renewDomainInfo.isOwner) return;
+
+        const normalizedDomain = normalizeDomain(renewDomainInput);
+        const totalPrice = renewDomainInfo.renewalPerYear * BigInt(renewYears);
+        const rawTxInfo: RenewDomainParameters = {
+            header: `Renew ${normalizedDomain}.btc`,
+            features: {
+                [Features.rbf]: true,
+                [Features.taproot]: true
+            },
+            tokens: [],
+            feeRate: renewFeeRate,
+            priorityFee: 0n,
+            action: Action.RenewDomain,
+            domainName: normalizedDomain,
+            years: renewYears,
+            totalPrice: totalPrice,
+            treasuryAddress: renewDomainInfo.treasuryAddress
+        };
+
+        navigate(RouteTypes.TxOpnetConfirmScreen, { rawTxInfo });
+    }, [renewDomainInfo, renewDomainInput, renewYears, renewFeeRate, navigate]);
 
     // Handle website publishing - navigate to TxOpnetConfirmScreen
     const handlePublishWebsite = useCallback(() => {
@@ -506,6 +682,87 @@ export default function BtcDomainScreen() {
 
         navigate(RouteTypes.TxOpnetConfirmScreen, { rawTxInfo });
     }, [publishDomainInfo, publishDomain, uploadedCid, publishFeeRate, navigate]);
+
+    // Helper: render domain expiry status
+    const renderExpiryStatus = (domain: TrackedDomainInfo) => {
+        if (!domain.expiresAt && domain.expiresAt !== 0) {
+            return null;
+        }
+        if (domain.inGracePeriod) {
+            return (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '10px' }}>
+                    <span style={{ color: colors.warning }}>
+                        Expires: Block #{domain.expiresAt?.toString() ?? '?'} (Grace Period)
+                    </span>
+                    <span
+                        style={{
+                            background: colors.warning,
+                            color: '#000',
+                            padding: '1px 6px',
+                            borderRadius: '4px',
+                            fontSize: '9px',
+                            fontWeight: 700
+                        }}>
+                        GRACE
+                    </span>
+                </div>
+            );
+        }
+        if (domain.isActive) {
+            return (
+                <div style={{ fontSize: '10px', color: colors.success }}>
+                    Expires: Block #{domain.expiresAt?.toString() ?? '?'} (Active)
+                </div>
+            );
+        }
+        return (
+            <div style={{ fontSize: '10px', color: colors.error }}>
+                Expired
+            </div>
+        );
+    };
+
+    // Helper: render years selector
+    const renderYearsSelector = (
+        value: number,
+        onChange: (val: number) => void,
+        label: string = 'Registration Period'
+    ) => (
+        <div style={{ marginBottom: '12px' }}>
+            <div style={{ fontSize: '12px', color: colors.textFaded, marginBottom: '8px' }}>
+                {label}
+            </div>
+            <div
+                style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    background: colors.inputBg,
+                    borderRadius: '8px',
+                    border: `1px solid ${colors.containerBorder}`,
+                    padding: '0 12px'
+                }}>
+                <select
+                    value={value}
+                    onChange={(e) => onChange(Number(e.target.value))}
+                    style={{
+                        flex: 1,
+                        background: 'transparent',
+                        border: 'none',
+                        outline: 'none',
+                        color: colors.text,
+                        fontSize: '14px',
+                        padding: '12px 0',
+                        cursor: 'pointer'
+                    }}>
+                    {Array.from({ length: 10 }, (_, i) => i + 1).map((y) => (
+                        <option key={y} value={y} style={{ background: colors.inputBg, color: colors.text }}>
+                            {y} {y === 1 ? 'year' : 'years'}
+                        </option>
+                    ))}
+                </select>
+            </div>
+        </div>
+    );
 
     // Feature flag check - .btc domains not available on this network
     if (!btcDomainsEnabled) {
@@ -580,6 +837,22 @@ export default function BtcDomainScreen() {
                             transition: 'all 0.2s'
                         }}>
                         Register
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('renew')}
+                        style={{
+                            flex: 1,
+                            padding: '8px 4px',
+                            border: 'none',
+                            borderRadius: '8px',
+                            cursor: 'pointer',
+                            fontSize: '11px',
+                            fontWeight: 600,
+                            background: activeTab === 'renew' ? colors.main : 'transparent',
+                            color: activeTab === 'renew' ? '#000' : colors.textFaded,
+                            transition: 'all 0.2s'
+                        }}>
+                        Renew
                     </button>
                     <button
                         onClick={() => setActiveTab('publish')}
@@ -721,7 +994,7 @@ export default function BtcDomainScreen() {
                                             background: colors.containerBgFaded,
                                             borderRadius: '10px',
                                             padding: '12px 14px',
-                                            border: `1px solid ${domain.isOwner ? colors.success : colors.error}20`,
+                                            border: `1px solid ${domain.isOwner ? (domain.inGracePeriod ? colors.warning : colors.success) : colors.error}20`,
                                             display: 'flex',
                                             alignItems: 'center',
                                             gap: '12px'
@@ -731,12 +1004,14 @@ export default function BtcDomainScreen() {
                                                 width: '36px',
                                                 height: '36px',
                                                 borderRadius: '8px',
-                                                background: domain.isOwner ? `${colors.success}15` : `${colors.error}15`,
+                                                background: domain.isOwner ? (domain.inGracePeriod ? `${colors.warning}15` : `${colors.success}15`) : `${colors.error}15`,
                                                 display: 'flex',
                                                 alignItems: 'center',
                                                 justifyContent: 'center'
                                             }}>
-                                            {domain.isOwner ? (
+                                            {domain.inGracePeriod ? (
+                                                <WarningOutlined style={{ color: colors.warning, fontSize: 18 }} />
+                                            ) : domain.isOwner ? (
                                                 <CheckCircleOutlined style={{ color: colors.success, fontSize: 18 }} />
                                             ) : (
                                                 <CloseCircleOutlined style={{ color: colors.error, fontSize: 18 }} />
@@ -749,7 +1024,28 @@ export default function BtcDomainScreen() {
                                             <div style={{ fontSize: '10px', color: colors.textFaded }}>
                                                 {domain.isOwner ? 'Verified owner' : 'Not owned'}
                                             </div>
+                                            {domain.isOwner && renderExpiryStatus(domain)}
                                         </div>
+                                        {domain.isOwner && domain.inGracePeriod && (
+                                            <button
+                                                onClick={() => {
+                                                    setRenewDomainInput(domain.name);
+                                                    setActiveTab('renew');
+                                                }}
+                                                title="Renew domain"
+                                                style={{
+                                                    background: `${colors.warning}15`,
+                                                    border: 'none',
+                                                    cursor: 'pointer',
+                                                    padding: '8px',
+                                                    borderRadius: '6px',
+                                                    color: colors.warning,
+                                                    fontSize: '10px',
+                                                    fontWeight: 600
+                                                }}>
+                                                Renew
+                                            </button>
+                                        )}
                                         {domain.isOwner && (
                                             <button
                                                 onClick={() => {
@@ -758,8 +1054,13 @@ export default function BtcDomainScreen() {
                                                         exists: true,
                                                         owner: userAddress,
                                                         isOwner: true,
-                                                        price: 0n,
-                                                        treasuryAddress: ''
+                                                        treasuryAddress: '',
+                                                        expiresAt: BigInt(domain.expiresAt ?? 0),
+                                                        isActive: domain.isActive ?? false,
+                                                        inGracePeriod: domain.inGracePeriod ?? false,
+                                                        totalPriceSats: 0n,
+                                                        auctionPriceSats: 0n,
+                                                        renewalPerYear: 0n
                                                     });
                                                     setActiveTab('transfer');
                                                 }}
@@ -818,6 +1119,7 @@ export default function BtcDomainScreen() {
                                         onChange={(e) => {
                                             setDomainInput(e.target.value);
                                             setDomainInfo(null); // Clear old info when input changes
+                                            setReservationInfo(null);
                                         }}
                                         onKeyDown={(e) => e.key === 'Enter' && checkDomain()}
                                         placeholder="yourdomain"
@@ -852,6 +1154,9 @@ export default function BtcDomainScreen() {
                                 </button>
                             </div>
                         </div>
+
+                        {/* Years Selector */}
+                        {renderYearsSelector(registrationYears, setRegistrationYears, 'Registration Period')}
 
                         {/* Domain Info */}
                         {domainInfo && (
@@ -889,50 +1194,219 @@ export default function BtcDomainScreen() {
 
                                 {!domainInfo.exists && (
                                     <>
+                                        {/* Premium Domain Badge */}
+                                        {domainInfo.auctionPriceSats > domainInfo.renewalPerYear && (
+                                            <div
+                                                style={{
+                                                    display: 'inline-block',
+                                                    padding: '4px 12px',
+                                                    background: `${colors.warning}20`,
+                                                    border: `1px solid ${colors.warning}40`,
+                                                    borderRadius: '6px',
+                                                    fontSize: '11px',
+                                                    fontWeight: 700,
+                                                    color: colors.warning,
+                                                    marginBottom: '12px'
+                                                }}>
+                                                Premium Domain
+                                            </div>
+                                        )}
+
+                                        {/* Dutch Auction Decay Info */}
+                                        {domainInfo.auctionPriceSats > AUCTION_FLOOR_SATS && (
+                                            <div
+                                                style={{
+                                                    background: `${colors.info || '#3b82f6'}10`,
+                                                    border: `1px solid ${colors.info || '#3b82f6'}30`,
+                                                    borderRadius: '8px',
+                                                    padding: '12px',
+                                                    marginBottom: '12px'
+                                                }}>
+                                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+                                                    <span style={{ color: colors.textFaded, fontSize: '11px' }}>Dutch Auction Active</span>
+                                                    <span style={{ color: colors.textFaded, fontSize: '11px' }}>
+                                                        Floor: {formatSats(AUCTION_FLOOR_SATS)}
+                                                    </span>
+                                                </div>
+                                                <div style={{
+                                                    height: '6px',
+                                                    background: colors.containerBorder,
+                                                    borderRadius: '3px',
+                                                    overflow: 'hidden',
+                                                    marginBottom: '6px'
+                                                }}>
+                                                    <div style={{
+                                                        height: '100%',
+                                                        width: `${Math.max(5, Math.round(Number(domainInfo.auctionPriceSats - AUCTION_FLOOR_SATS) / Number(domainInfo.auctionPriceSats) * 100))}%`,
+                                                        background: `linear-gradient(90deg, ${colors.warning}, ${colors.main})`,
+                                                        borderRadius: '3px',
+                                                        transition: 'width 0.3s ease'
+                                                    }} />
+                                                </div>
+                                                <span style={{ color: colors.textFaded, fontSize: '10px' }}>
+                                                    Price decreases every block toward {formatSats(AUCTION_FLOOR_SATS)}. ~26,280 blocks (~6 months) to reach floor.
+                                                </span>
+                                            </div>
+                                        )}
+                                        {domainInfo.auctionPriceSats <= AUCTION_FLOOR_SATS && domainInfo.auctionPriceSats > 0n && (
+                                            <div
+                                                style={{
+                                                    display: 'inline-block',
+                                                    padding: '4px 12px',
+                                                    background: `${colors.success}20`,
+                                                    border: `1px solid ${colors.success}40`,
+                                                    borderRadius: '6px',
+                                                    fontSize: '11px',
+                                                    color: colors.success,
+                                                    marginBottom: '12px'
+                                                }}>
+                                                Auction ended — at floor price
+                                            </div>
+                                        )}
+
+                                        {/* Pricing Breakdown */}
                                         <div
                                             style={{
-                                                display: 'flex',
-                                                justifyContent: 'space-between',
-                                                alignItems: 'center',
-                                                padding: '12px',
                                                 background: colors.background,
                                                 borderRadius: '8px',
+                                                padding: '12px',
                                                 marginBottom: '12px'
                                             }}>
-                                            <span style={{ color: colors.textFaded, fontSize: '12px' }}>
-                                                Registration Price
-                                            </span>
-                                            <span style={{ color: colors.main, fontWeight: 700, fontSize: '16px' }}>
-                                                {formatBtc(domainInfo.price)} BTC
-                                            </span>
+                                            <div
+                                                style={{
+                                                    display: 'flex',
+                                                    justifyContent: 'space-between',
+                                                    alignItems: 'center',
+                                                    marginBottom: '8px'
+                                                }}>
+                                                <span style={{ color: colors.textFaded, fontSize: '12px' }}>
+                                                    Auction Price
+                                                </span>
+                                                <span style={{ color: colors.text, fontWeight: 600, fontSize: '12px' }}>
+                                                    {formatSats(domainInfo.auctionPriceSats)}
+                                                </span>
+                                            </div>
+                                            <div
+                                                style={{
+                                                    display: 'flex',
+                                                    justifyContent: 'space-between',
+                                                    alignItems: 'center',
+                                                    marginBottom: '8px'
+                                                }}>
+                                                <span style={{ color: colors.textFaded, fontSize: '12px' }}>
+                                                    Renewal: {formatSats(domainInfo.renewalPerYear)}/year x {registrationYears} {registrationYears === 1 ? 'year' : 'years'}
+                                                </span>
+                                                <span style={{ color: colors.text, fontWeight: 600, fontSize: '12px' }}>
+                                                    {formatSats(domainInfo.renewalPerYear * BigInt(registrationYears))}
+                                                </span>
+                                            </div>
+                                            <div
+                                                style={{
+                                                    height: '1px',
+                                                    background: colors.containerBorder,
+                                                    margin: '8px 0'
+                                                }}
+                                            />
+                                            <div
+                                                style={{
+                                                    display: 'flex',
+                                                    justifyContent: 'space-between',
+                                                    alignItems: 'center'
+                                                }}>
+                                                <span style={{ color: colors.textFaded, fontSize: '13px', fontWeight: 600 }}>
+                                                    Total
+                                                </span>
+                                                <span style={{ color: colors.main, fontWeight: 700, fontSize: '16px' }}>
+                                                    {formatSats(domainInfo.totalPriceSats)}
+                                                </span>
+                                            </div>
                                         </div>
 
-                                        {/* Fee Rate Selector */}
-                                        <div style={{ marginBottom: '12px' }}>
-                                            <FeeRateBar onChange={(val) => setFeeRate(val)} />
-                                        </div>
+                                        {/* Reservation Info (if exists) */}
+                                        {reservationInfo && reservationInfo.isActive && (
+                                            <div
+                                                style={{
+                                                    background: `${colors.info}15`,
+                                                    border: `1px solid ${colors.info}30`,
+                                                    borderRadius: '8px',
+                                                    padding: '12px',
+                                                    marginBottom: '12px'
+                                                }}>
+                                                <div style={{ fontSize: '12px', fontWeight: 600, color: colors.info, marginBottom: '6px' }}>
+                                                    Pending Reservation
+                                                </div>
+                                                <div style={{ fontSize: '11px', color: colors.textFaded, marginBottom: '4px' }}>
+                                                    Reserved at block #{reservationInfo.reservedAt.toString()}
+                                                </div>
+                                                <div style={{ fontSize: '11px', color: colors.textFaded, marginBottom: '4px' }}>
+                                                    Period: {reservationInfo.years} {reservationInfo.years === 1 ? 'year' : 'years'}
+                                                </div>
+                                                <div style={{ fontSize: '11px', color: colors.textFaded, marginBottom: '12px' }}>
+                                                    Reserver: {reservationInfo.reserver.slice(0, 10)}...{reservationInfo.reserver.slice(-8)}
+                                                </div>
 
-                                        {/* Register Button */}
-                                        <button
-                                            onClick={handleRegisterDomain}
-                                            style={{
-                                                width: '100%',
-                                                padding: '14px',
-                                                background: colors.main,
-                                                border: 'none',
-                                                borderRadius: '8px',
-                                                cursor: 'pointer',
-                                                fontSize: '14px',
-                                                fontWeight: 600,
-                                                color: '#000',
-                                                marginBottom: '12px',
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                justifyContent: 'center',
-                                                gap: '8px'
-                                            }}>
-                                            <GlobalOutlined /> Register {normalizeDomain(domainInput)}.btc
-                                        </button>
+                                                {reservationInfo.reserver.toLowerCase() === userAddress.toLowerCase() && (
+                                                    <>
+                                                        {/* Fee Rate Selector */}
+                                                        <div style={{ marginBottom: '12px' }}>
+                                                            <FeeRateBar onChange={(val) => setFeeRate(val)} />
+                                                        </div>
+
+                                                        {/* Complete Registration Button */}
+                                                        <button
+                                                            onClick={handleCompleteRegistration}
+                                                            style={{
+                                                                width: '100%',
+                                                                padding: '14px',
+                                                                background: colors.success,
+                                                                border: 'none',
+                                                                borderRadius: '8px',
+                                                                cursor: 'pointer',
+                                                                fontSize: '14px',
+                                                                fontWeight: 600,
+                                                                color: '#000',
+                                                                display: 'flex',
+                                                                alignItems: 'center',
+                                                                justifyContent: 'center',
+                                                                gap: '8px'
+                                                            }}>
+                                                            <CheckCircleOutlined /> Complete Registration ({formatSats(domainInfo.totalPriceSats)})
+                                                        </button>
+                                                    </>
+                                                )}
+                                            </div>
+                                        )}
+
+                                        {/* Reserve Domain Button (show when no active reservation) */}
+                                        {(!reservationInfo || !reservationInfo.isActive) && (
+                                            <>
+                                                {/* Fee Rate Selector */}
+                                                <div style={{ marginBottom: '12px' }}>
+                                                    <FeeRateBar onChange={(val) => setFeeRate(val)} />
+                                                </div>
+
+                                                <button
+                                                    onClick={handleReserveDomain}
+                                                    style={{
+                                                        width: '100%',
+                                                        padding: '14px',
+                                                        background: colors.main,
+                                                        border: 'none',
+                                                        borderRadius: '8px',
+                                                        cursor: 'pointer',
+                                                        fontSize: '14px',
+                                                        fontWeight: 600,
+                                                        color: '#000',
+                                                        marginBottom: '12px',
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        justifyContent: 'center',
+                                                        gap: '8px'
+                                                    }}>
+                                                    <GlobalOutlined /> Reserve Domain ({formatSats(RESERVATION_FEE)})
+                                                </button>
+                                            </>
+                                        )}
 
                                         {/* CLI Command to register */}
                                         <div style={{ fontSize: '11px', color: colors.textFaded, marginBottom: '6px' }}>
@@ -977,8 +1451,291 @@ export default function BtcDomainScreen() {
                                 lineHeight: 1.5
                             }}>
                             <GlobalOutlined style={{ color: colors.info, marginRight: '8px' }} />
-                            Domain names are registered on Bitcoin directly. Once registered, you can publish
-                            websites and receive payments to your .btc address.
+                            Domain registration is a two-step process: first reserve your domain (2,000 sats fee),
+                            then complete the registration with the full payment. Domains are registered as yearly
+                            subscriptions on Bitcoin directly.
+                        </div>
+                    </div>
+                )}
+
+                {/* Renew Tab */}
+                {activeTab === 'renew' && (
+                    <div>
+                        {/* Domain Input */}
+                        <div style={{ marginBottom: '16px' }}>
+                            <div style={{ fontSize: '12px', color: colors.textFaded, marginBottom: '8px' }}>
+                                Domain Name
+                            </div>
+                            <div style={{ display: 'flex', gap: '8px' }}>
+                                <div
+                                    style={{
+                                        flex: 1,
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        background: colors.inputBg,
+                                        borderRadius: '8px',
+                                        border: `1px solid ${colors.containerBorder}`,
+                                        padding: '0 12px'
+                                    }}>
+                                    <input
+                                        type="text"
+                                        value={renewDomainInput}
+                                        onChange={(e) => {
+                                            setRenewDomainInput(e.target.value);
+                                            setRenewDomainInfo(null);
+                                            setRenewPriceChecked(false);
+                                        }}
+                                        onKeyDown={(e) => e.key === 'Enter' && checkRenewDomain()}
+                                        placeholder="yourdomain"
+                                        style={{
+                                            flex: 1,
+                                            background: 'transparent',
+                                            border: 'none',
+                                            outline: 'none',
+                                            color: colors.text,
+                                            fontSize: '14px',
+                                            padding: '12px 0'
+                                        }}
+                                    />
+                                    <span style={{ color: colors.main, fontWeight: 600 }}>.btc</span>
+                                </div>
+                                <button
+                                    onClick={checkRenewDomain}
+                                    disabled={isCheckingRenewDomain || !renewDomainInput.trim()}
+                                    style={{
+                                        padding: '12px 16px',
+                                        background: colors.main,
+                                        border: 'none',
+                                        borderRadius: '8px',
+                                        cursor: isCheckingRenewDomain || !renewDomainInput.trim() ? 'not-allowed' : 'pointer',
+                                        opacity: isCheckingRenewDomain || !renewDomainInput.trim() ? 0.5 : 1
+                                    }}>
+                                    {isCheckingRenewDomain ? (
+                                        <LoadingOutlined style={{ color: '#000' }} />
+                                    ) : (
+                                        <SearchOutlined style={{ color: '#000' }} />
+                                    )}
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Years Selector */}
+                        {renderYearsSelector(renewYears, setRenewYears, 'Renewal Period')}
+
+                        {/* Check Renewal Price Button */}
+                        {renewDomainInput.trim() && !renewPriceChecked && !isCheckingRenewDomain && (
+                            <button
+                                onClick={checkRenewDomain}
+                                style={{
+                                    width: '100%',
+                                    padding: '14px',
+                                    background: colors.info,
+                                    border: 'none',
+                                    borderRadius: '8px',
+                                    cursor: 'pointer',
+                                    fontSize: '14px',
+                                    fontWeight: 600,
+                                    color: '#fff',
+                                    marginBottom: '16px',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    gap: '8px'
+                                }}>
+                                <SearchOutlined /> Check Renewal Price
+                            </button>
+                        )}
+
+                        {/* Domain Info for Renewal */}
+                        {renewDomainInfo && (
+                            <div
+                                style={{
+                                    background: colors.containerBgFaded,
+                                    borderRadius: '12px',
+                                    padding: '16px',
+                                    marginBottom: '16px',
+                                    border: `1px solid ${renewDomainInfo.isOwner ? colors.success : colors.error}30`
+                                }}>
+                                {/* Domain Status */}
+                                {!renewDomainInfo.exists ? (
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
+                                        <CloseCircleOutlined style={{ fontSize: 20, color: colors.error }} />
+                                        <span style={{ color: colors.error, fontWeight: 600 }}>
+                                            Domain not registered
+                                        </span>
+                                    </div>
+                                ) : !renewDomainInfo.isOwner ? (
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
+                                        <CloseCircleOutlined style={{ fontSize: 20, color: colors.error }} />
+                                        <span style={{ color: colors.error, fontWeight: 600 }}>
+                                            You don&apos;t own this domain
+                                        </span>
+                                    </div>
+                                ) : (
+                                    <>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
+                                            <CheckCircleOutlined style={{ fontSize: 20, color: colors.success }} />
+                                            <span style={{ color: colors.success, fontWeight: 600 }}>
+                                                Domain verified - you are the owner
+                                            </span>
+                                        </div>
+
+                                        {/* Current Status */}
+                                        <div
+                                            style={{
+                                                background: colors.background,
+                                                borderRadius: '8px',
+                                                padding: '12px',
+                                                marginBottom: '12px'
+                                            }}>
+                                            <div style={{ fontSize: '12px', fontWeight: 600, color: colors.text, marginBottom: '8px' }}>
+                                                Current Status
+                                            </div>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                                                <span style={{ fontSize: '11px', color: colors.textFaded }}>Expires at</span>
+                                                <span style={{ fontSize: '11px', color: colors.text }}>
+                                                    Block #{renewDomainInfo.expiresAt.toString()}
+                                                </span>
+                                            </div>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                                                <span style={{ fontSize: '11px', color: colors.textFaded }}>Status</span>
+                                                <span
+                                                    style={{
+                                                        fontSize: '11px',
+                                                        color: renewDomainInfo.isActive
+                                                            ? colors.success
+                                                            : renewDomainInfo.inGracePeriod
+                                                                ? colors.warning
+                                                                : colors.error,
+                                                        fontWeight: 600
+                                                    }}>
+                                                    {renewDomainInfo.isActive
+                                                        ? 'Active'
+                                                        : renewDomainInfo.inGracePeriod
+                                                            ? 'Grace Period'
+                                                            : 'Expired'}
+                                                </span>
+                                            </div>
+                                        </div>
+
+                                        {/* Grace Period Warning */}
+                                        {renewDomainInfo.inGracePeriod && (
+                                            <div
+                                                style={{
+                                                    background: `${colors.warning}15`,
+                                                    border: `1px solid ${colors.warning}30`,
+                                                    borderRadius: '8px',
+                                                    padding: '10px 12px',
+                                                    marginBottom: '12px',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    gap: '8px'
+                                                }}>
+                                                <WarningOutlined style={{ color: colors.warning, fontSize: 16 }} />
+                                                <span style={{ fontSize: '11px', color: colors.warning, fontWeight: 600 }}>
+                                                    Domain is in grace period! Renew immediately to avoid losing ownership.
+                                                </span>
+                                            </div>
+                                        )}
+
+                                        {/* Renewal Pricing */}
+                                        {renewPriceChecked && (
+                                            <div
+                                                style={{
+                                                    background: colors.background,
+                                                    borderRadius: '8px',
+                                                    padding: '12px',
+                                                    marginBottom: '12px'
+                                                }}>
+                                                <div style={{ fontSize: '12px', fontWeight: 600, color: colors.text, marginBottom: '8px' }}>
+                                                    Renewal Price
+                                                </div>
+                                                <div
+                                                    style={{
+                                                        display: 'flex',
+                                                        justifyContent: 'space-between',
+                                                        alignItems: 'center',
+                                                        marginBottom: '8px'
+                                                    }}>
+                                                    <span style={{ color: colors.textFaded, fontSize: '12px' }}>
+                                                        {formatSats(renewDomainInfo.renewalPerYear)}/year x {renewYears} {renewYears === 1 ? 'year' : 'years'}
+                                                    </span>
+                                                    <span style={{ color: colors.text, fontWeight: 600, fontSize: '12px' }}>
+                                                        {formatSats(renewDomainInfo.renewalPerYear * BigInt(renewYears))}
+                                                    </span>
+                                                </div>
+                                                <div
+                                                    style={{
+                                                        height: '1px',
+                                                        background: colors.containerBorder,
+                                                        margin: '8px 0'
+                                                    }}
+                                                />
+                                                <div
+                                                    style={{
+                                                        display: 'flex',
+                                                        justifyContent: 'space-between',
+                                                        alignItems: 'center'
+                                                    }}>
+                                                    <span style={{ color: colors.textFaded, fontSize: '13px', fontWeight: 600 }}>
+                                                        Total
+                                                    </span>
+                                                    <span style={{ color: colors.main, fontWeight: 700, fontSize: '16px' }}>
+                                                        {formatSats(renewDomainInfo.renewalPerYear * BigInt(renewYears))}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {/* Fee Rate Selector */}
+                                        {renewPriceChecked && (
+                                            <div style={{ marginBottom: '12px' }}>
+                                                <FeeRateBar onChange={(val) => setRenewFeeRate(val)} />
+                                            </div>
+                                        )}
+
+                                        {/* Renew Button */}
+                                        {renewPriceChecked && (
+                                            <button
+                                                onClick={handleRenewDomain}
+                                                style={{
+                                                    width: '100%',
+                                                    padding: '14px',
+                                                    background: colors.main,
+                                                    border: 'none',
+                                                    borderRadius: '8px',
+                                                    cursor: 'pointer',
+                                                    fontSize: '14px',
+                                                    fontWeight: 600,
+                                                    color: '#000',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'center',
+                                                    gap: '8px'
+                                                }}>
+                                                <ReloadOutlined /> Renew Domain ({formatSats(renewDomainInfo.renewalPerYear * BigInt(renewYears))})
+                                            </button>
+                                        )}
+                                    </>
+                                )}
+                            </div>
+                        )}
+
+                        {/* Info Box */}
+                        <div
+                            style={{
+                                background: `${colors.info}10`,
+                                border: `1px solid ${colors.info}30`,
+                                borderRadius: '10px',
+                                padding: '12px',
+                                fontSize: '11px',
+                                color: colors.textFaded,
+                                lineHeight: 1.5
+                            }}>
+                            <ReloadOutlined style={{ color: colors.info, marginRight: '8px' }} />
+                            Domains require yearly renewal to stay active. After expiry, there is a grace period
+                            during which only the owner can renew. After the grace period, the domain becomes
+                            available for anyone to register.
                         </div>
                     </div>
                 )}

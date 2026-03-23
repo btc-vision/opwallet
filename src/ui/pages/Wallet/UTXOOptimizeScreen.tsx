@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { UTXO_CONFIG } from '@/shared/config';
 import { SourceType } from '@/shared/interfaces/RawTxParameters';
@@ -37,7 +37,7 @@ export default function UTXOOptimizeScreen() {
         calculateMaxSplits
     } = useConsolidation();
 
-    const [splitCount, setSplitCount] = useState(25);
+    const [splitCount, setSplitCount] = useState(20);
     const [splitFeeRate, setSplitFeeRate] = useState(5);
     const [selectedSource, setSelectedSource] = useState<SourceType.CURRENT | SourceType.CSV1 | null>(null);
 
@@ -57,6 +57,18 @@ export default function UTXOOptimizeScreen() {
         () => BitcoinUtils.expandToDecimals(accountBalance.csv1_unlocked_amount || '0', 8),
         [accountBalance]
     );
+
+    useEffect(() => {
+        if (selectedSource !== null) return;
+
+        if (primaryBalance > 0n && csv1Balance <= 0n) {
+            setSelectedSource(SourceType.CURRENT);
+        } else if (csv1Balance > 0n && primaryBalance <= 0n) {
+            setSelectedSource(SourceType.CSV1);
+        } else if (primaryBalance > 0n && csv1Balance > 0n) {
+            setSelectedSource(primaryBalance >= csv1Balance ? SourceType.CURRENT : SourceType.CSV1);
+        }
+    }, [primaryBalance, csv1Balance, selectedSource]);
 
     const selectedBalance = useMemo(() => {
         if (!selectedSource) return 0n;

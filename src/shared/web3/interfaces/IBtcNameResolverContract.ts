@@ -1,72 +1,76 @@
-import { Address } from '@btc-vision/transaction';
-import { CallResult, IOP_NETContract, OPNetEvent } from 'opnet';
+import { Address, AddressMap, ExtendedAddressMap, SchnorrSignature } from '@btc-vision/transaction';
+import { CallResult, OPNetEvent, IOP_NETContract } from 'opnet';
 
-// =============================================================================
-// Event Types
-// =============================================================================
-
+// ------------------------------------------------------------------
+// Event Definitions
+// ------------------------------------------------------------------
 export type TreasuryChangedEvent = {
     readonly previousAddressHash: bigint;
     readonly newAddressHash: bigint;
     readonly timestamp: bigint;
 };
-
 export type DomainPriceChangedEvent = {
     readonly oldPrice: bigint;
     readonly newPrice: bigint;
     readonly timestamp: bigint;
 };
-
 export type DomainRegisteredEvent = {
     readonly domainHash: bigint;
     readonly owner: Address;
     readonly timestamp: bigint;
 };
-
+export type ContractUpdatedEvent = {
+    readonly address: Address;
+};
+export type DomainRenewedEvent = {
+    readonly domainHash: bigint;
+    readonly owner: Address;
+    readonly newExpiry: bigint;
+    readonly timestamp: bigint;
+};
+export type DomainReservedEvent = {
+    readonly domainHash: bigint;
+    readonly reserver: Address;
+    readonly years: bigint;
+    readonly timestamp: bigint;
+};
 export type DomainTransferInitiatedEvent = {
     readonly domainHash: bigint;
     readonly currentOwner: Address;
     readonly newOwner: Address;
     readonly timestamp: bigint;
 };
-
 export type DomainTransferCompletedEvent = {
     readonly domainHash: bigint;
     readonly previousOwner: Address;
     readonly newOwner: Address;
     readonly timestamp: bigint;
 };
-
 export type DomainTransferCancelledEvent = {
     readonly domainHash: bigint;
     readonly owner: Address;
     readonly timestamp: bigint;
 };
-
 export type SubdomainCreatedEvent = {
     readonly parentDomainHash: bigint;
     readonly subdomainHash: bigint;
     readonly owner: Address;
     readonly timestamp: bigint;
 };
-
 export type SubdomainDeletedEvent = {
     readonly parentDomainHash: bigint;
     readonly subdomainHash: bigint;
     readonly timestamp: bigint;
 };
-
 export type ContenthashChangedEvent = {
     readonly nameHash: bigint;
     readonly contenthashType: number;
     readonly timestamp: bigint;
 };
-
 export type ContenthashClearedEvent = {
     readonly nameHash: bigint;
     readonly timestamp: bigint;
 };
-
 export type TTLChangedEvent = {
     readonly nameHash: bigint;
     readonly oldTTL: bigint;
@@ -74,73 +78,215 @@ export type TTLChangedEvent = {
     readonly timestamp: bigint;
 };
 
-// =============================================================================
-// Call Result Types
-// =============================================================================
+// ------------------------------------------------------------------
+// Call Results
+// ------------------------------------------------------------------
 
-export type SetTreasuryAddressResult = CallResult<
-    Record<string, never>,
-    OPNetEvent<TreasuryChangedEvent>[]
->;
+/**
+ * @description Represents the result of the setTreasuryAddress function call.
+ */
+export type SetTreasuryAddress = CallResult<{}, OPNetEvent<TreasuryChangedEvent>[]>;
 
-export type SetDomainPriceResult = CallResult<
-    Record<string, never>,
-    OPNetEvent<DomainPriceChangedEvent>[]
->;
+/**
+ * @description Represents the result of the setDomainPrice function call.
+ */
+export type SetDomainPrice = CallResult<{}, OPNetEvent<DomainPriceChangedEvent>[]>;
 
-export type RegisterDomainResult = CallResult<
-    Record<string, never>,
-    OPNetEvent<DomainRegisteredEvent>[]
->;
+/**
+ * @description Represents the result of the mintDomain function call.
+ */
+export type MintDomain = CallResult<{}, OPNetEvent<DomainRegisteredEvent>[]>;
 
-export type InitiateTransferResult = CallResult<
-    Record<string, never>,
-    OPNetEvent<DomainTransferInitiatedEvent>[]
->;
+/**
+ * @description Represents the result of the airdropDomains function call.
+ */
+export type AirdropDomains = CallResult<{}, OPNetEvent<never>[]>;
 
-export type AcceptTransferResult = CallResult<
-    Record<string, never>,
-    OPNetEvent<DomainTransferCompletedEvent>[]
->;
+/**
+ * @description Represents the result of the update function call.
+ */
+export type Update = CallResult<{}, OPNetEvent<ContractUpdatedEvent>[]>;
 
-export type CancelTransferResult = CallResult<
-    Record<string, never>,
-    OPNetEvent<DomainTransferCancelledEvent>[]
->;
-
-export type CreateSubdomainResult = CallResult<
-    Record<string, never>,
-    OPNetEvent<SubdomainCreatedEvent>[]
->;
-
-export type DeleteSubdomainResult = CallResult<
-    Record<string, never>,
-    OPNetEvent<SubdomainDeletedEvent>[]
->;
-
-export type SetContenthashResult = CallResult<
-    Record<string, never>,
-    OPNetEvent<ContenthashChangedEvent>[]
->;
-
-export type ClearContenthashResult = CallResult<
-    Record<string, never>,
-    OPNetEvent<ContenthashClearedEvent>[]
->;
-
-export type SetTTLResult = CallResult<Record<string, never>, OPNetEvent<TTLChangedEvent>[]>;
-
-export type GetDomainResult = CallResult<
+/**
+ * @description Represents the result of the onOP20Received function call.
+ */
+export type OnOP20Received = CallResult<
     {
-        exists: boolean;
-        owner: Address;
-        createdAt: bigint;
-        ttl: bigint;
+        selector: Uint8Array;
     },
     OPNetEvent<never>[]
 >;
 
-export type GetSubdomainResult = CallResult<
+/**
+ * @description Represents the result of the setMotoTokenAddress function call.
+ */
+export type SetMotoTokenAddress = CallResult<{}, OPNetEvent<never>[]>;
+
+/**
+ * @description Represents the result of the setMotoTierPrice function call.
+ */
+export type SetMotoTierPrice = CallResult<{}, OPNetEvent<never>[]>;
+
+/**
+ * @description Represents the result of the setMotoBasePrice function call.
+ */
+export type SetMotoBasePrice = CallResult<{}, OPNetEvent<never>[]>;
+
+/**
+ * @description Represents the result of the setMotoEnabled function call.
+ */
+export type SetMotoEnabled = CallResult<{}, OPNetEvent<never>[]>;
+
+/**
+ * @description Represents the result of the getMotoTierPrice function call.
+ */
+export type GetMotoTierPrice = CallResult<
+    {
+        price: bigint;
+    },
+    OPNetEvent<never>[]
+>;
+
+/**
+ * @description Represents the result of the getMotoBasePriceView function call.
+ */
+export type GetMotoBasePriceView = CallResult<
+    {
+        price: bigint;
+    },
+    OPNetEvent<never>[]
+>;
+
+/**
+ * @description Represents the result of the getMotoTokenAddressView function call.
+ */
+export type GetMotoTokenAddressView = CallResult<
+    {
+        tokenAddress: Address;
+    },
+    OPNetEvent<never>[]
+>;
+
+/**
+ * @description Represents the result of the withdrawOP20 function call.
+ */
+export type WithdrawOP20 = CallResult<
+    {
+        success: boolean;
+    },
+    OPNetEvent<never>[]
+>;
+
+/**
+ * @description Represents the result of the registerDomainWithMoto function call.
+ */
+export type RegisterDomainWithMoto = CallResult<{}, OPNetEvent<DomainRegisteredEvent>[]>;
+
+/**
+ * @description Represents the result of the renewDomainWithMoto function call.
+ */
+export type RenewDomainWithMoto = CallResult<{}, OPNetEvent<DomainRenewedEvent>[]>;
+
+/**
+ * @description Represents the result of the reserveDomain function call.
+ */
+export type ReserveDomain = CallResult<{}, OPNetEvent<DomainReservedEvent>[]>;
+
+/**
+ * @description Represents the result of the completeRegistration function call.
+ */
+export type CompleteRegistration = CallResult<{}, OPNetEvent<DomainRegisteredEvent>[]>;
+
+/**
+ * @description Represents the result of the renewDomain function call.
+ */
+export type RenewDomain = CallResult<{}, OPNetEvent<DomainRenewedEvent>[]>;
+
+/**
+ * @description Represents the result of the initiateTransfer function call.
+ */
+export type InitiateTransfer = CallResult<{}, OPNetEvent<DomainTransferInitiatedEvent>[]>;
+
+/**
+ * @description Represents the result of the acceptTransfer function call.
+ */
+export type AcceptTransfer = CallResult<{}, OPNetEvent<DomainTransferCompletedEvent>[]>;
+
+/**
+ * @description Represents the result of the cancelTransfer function call.
+ */
+export type CancelTransfer = CallResult<{}, OPNetEvent<DomainTransferCancelledEvent>[]>;
+
+/**
+ * @description Represents the result of the transferDomain function call.
+ */
+export type TransferDomain = CallResult<{}, OPNetEvent<DomainTransferCompletedEvent>[]>;
+
+/**
+ * @description Represents the result of the transferDomainBySignature function call.
+ */
+export type TransferDomainBySignature = CallResult<{}, OPNetEvent<DomainTransferCompletedEvent>[]>;
+
+/**
+ * @description Represents the result of the createSubdomain function call.
+ */
+export type CreateSubdomain = CallResult<{}, OPNetEvent<SubdomainCreatedEvent>[]>;
+
+/**
+ * @description Represents the result of the deleteSubdomain function call.
+ */
+export type DeleteSubdomain = CallResult<{}, OPNetEvent<SubdomainDeletedEvent>[]>;
+
+/**
+ * @description Represents the result of the setContenthashCIDv0 function call.
+ */
+export type SetContenthashCIDv0 = CallResult<{}, OPNetEvent<ContenthashChangedEvent>[]>;
+
+/**
+ * @description Represents the result of the setContenthashCIDv1 function call.
+ */
+export type SetContenthashCIDv1 = CallResult<{}, OPNetEvent<ContenthashChangedEvent>[]>;
+
+/**
+ * @description Represents the result of the setContenthashIPNS function call.
+ */
+export type SetContenthashIPNS = CallResult<{}, OPNetEvent<ContenthashChangedEvent>[]>;
+
+/**
+ * @description Represents the result of the setContenthashSHA256 function call.
+ */
+export type SetContenthashSHA256 = CallResult<{}, OPNetEvent<ContenthashChangedEvent>[]>;
+
+/**
+ * @description Represents the result of the clearContenthash function call.
+ */
+export type ClearContenthash = CallResult<{}, OPNetEvent<ContenthashClearedEvent>[]>;
+
+/**
+ * @description Represents the result of the setTTL function call.
+ */
+export type SetTTL = CallResult<{}, OPNetEvent<TTLChangedEvent>[]>;
+
+/**
+ * @description Represents the result of the getDomain function call.
+ */
+export type GetDomain = CallResult<
+    {
+        exists: boolean;
+        owner: Address;
+        createdAt: bigint;
+        expiresAt: bigint;
+        ttl: bigint;
+        isActive: boolean;
+        inGracePeriod: boolean;
+    },
+    OPNetEvent<never>[]
+>;
+
+/**
+ * @description Represents the result of the getSubdomain function call.
+ */
+export type GetSubdomain = CallResult<
     {
         exists: boolean;
         owner: Address;
@@ -150,7 +296,10 @@ export type GetSubdomainResult = CallResult<
     OPNetEvent<never>[]
 >;
 
-export type GetContenthashResult = CallResult<
+/**
+ * @description Represents the result of the getContenthash function call.
+ */
+export type GetContenthash = CallResult<
     {
         hashType: number;
         hashData: Uint8Array;
@@ -159,14 +308,20 @@ export type GetContenthashResult = CallResult<
     OPNetEvent<never>[]
 >;
 
-export type ResolveResult = CallResult<
+/**
+ * @description Represents the result of the resolve function call.
+ */
+export type Resolve = CallResult<
     {
         owner: Address;
     },
     OPNetEvent<never>[]
 >;
 
-export type GetPendingTransferResult = CallResult<
+/**
+ * @description Represents the result of the getPendingTransfer function call.
+ */
+export type GetPendingTransfer = CallResult<
     {
         pendingOwner: Address;
         initiatedAt: bigint;
@@ -174,71 +329,118 @@ export type GetPendingTransferResult = CallResult<
     OPNetEvent<never>[]
 >;
 
-export type GetTreasuryAddressResult = CallResult<
+/**
+ * @description Represents the result of the getTreasuryAddress function call.
+ */
+export type GetTreasuryAddress = CallResult<
     {
         treasuryAddress: string;
     },
     OPNetEvent<never>[]
 >;
 
-export type GetDomainPriceResult = CallResult<
+/**
+ * @description Represents the result of the getDomainPrice function call.
+ */
+export type GetDomainPrice = CallResult<
     {
-        priceSats: bigint;
+        totalPriceSats: bigint;
+        auctionPriceSats: bigint;
+        renewalPerYear: bigint;
     },
     OPNetEvent<never>[]
 >;
-
-export type GetBaseDomainPriceResult = CallResult<
-    {
-        priceSats: bigint;
-    },
-    OPNetEvent<never>[]
->;
-
-// =============================================================================
-// Contract Interface
-// =============================================================================
 
 /**
- * Interface for the BtcNameResolver contract.
- * Handles .btc domain registration, ownership, and contenthash resolution.
+ * @description Represents the result of the getBaseDomainPrice function call.
  */
-export interface IBtcNameResolverContract extends IOP_NETContract {
-    // Admin functions
-    setTreasuryAddress(treasuryAddress: string): Promise<SetTreasuryAddressResult>;
-    setDomainPrice(priceSats: bigint): Promise<SetDomainPriceResult>;
+export type GetBaseDomainPrice = CallResult<
+    {
+        priceSats: bigint;
+    },
+    OPNetEvent<never>[]
+>;
 
-    // Domain registration and transfer
-    registerDomain(domainName: string): Promise<RegisterDomainResult>;
-    initiateTransfer(domainName: string, newOwner: Address): Promise<InitiateTransferResult>;
-    acceptTransfer(domainName: string): Promise<AcceptTransferResult>;
-    cancelTransfer(domainName: string): Promise<CancelTransferResult>;
+/**
+ * @description Represents the result of the getDomainNonce function call.
+ */
+export type GetDomainNonce = CallResult<
+    {
+        nonce: bigint;
+    },
+    OPNetEvent<never>[]
+>;
 
-    // Subdomain management
-    createSubdomain(
-        parentDomain: string,
-        subdomainLabel: string,
-        subdomainOwner: Address
-    ): Promise<CreateSubdomainResult>;
-    deleteSubdomain(parentDomain: string, subdomainLabel: string): Promise<DeleteSubdomainResult>;
+/**
+ * @description Represents the result of the getReservation function call.
+ */
+export type GetReservation = CallResult<
+    {
+        reserver: Address;
+        reservedAt: bigint;
+        years: bigint;
+        isActive: boolean;
+    },
+    OPNetEvent<never>[]
+>;
 
-    // Contenthash management
-    setContenthashCIDv0(name: string, cid: string): Promise<SetContenthashResult>;
-    setContenthashCIDv1(name: string, cid: string): Promise<SetContenthashResult>;
-    setContenthashIPNS(name: string, ipnsId: string): Promise<SetContenthashResult>;
-    setContenthashSHA256(name: string, hash: Uint8Array): Promise<SetContenthashResult>;
-    clearContenthash(name: string): Promise<ClearContenthashResult>;
+// ------------------------------------------------------------------
+// Tuple Types
+// ------------------------------------------------------------------
+export type AirdropDomainsEntries = [string, bigint, Address];
 
-    // TTL management
-    setTTL(name: string, ttl: bigint): Promise<SetTTLResult>;
-
-    // View functions
-    getDomain(domainName: string): Promise<GetDomainResult>;
-    getSubdomain(fullName: string): Promise<GetSubdomainResult>;
-    getContenthash(name: string): Promise<GetContenthashResult>;
-    resolve(name: string): Promise<ResolveResult>;
-    getPendingTransfer(domainName: string): Promise<GetPendingTransferResult>;
-    getTreasuryAddress(): Promise<GetTreasuryAddressResult>;
-    getDomainPrice(domainName: string): Promise<GetDomainPriceResult>;
-    getBaseDomainPrice(): Promise<GetBaseDomainPriceResult>;
+// ------------------------------------------------------------------
+// IBtcNameResolver
+// ------------------------------------------------------------------
+export type IBtcNameResolverContract = IBtcNameResolver;
+export interface IBtcNameResolver extends IOP_NETContract {
+    setTreasuryAddress(treasuryAddress: string): Promise<SetTreasuryAddress>;
+    setDomainPrice(priceSats: bigint): Promise<SetDomainPrice>;
+    mintDomain(domainName: string, years: bigint, owner: Address): Promise<MintDomain>;
+    airdropDomains(entries: AirdropDomainsEntries[]): Promise<AirdropDomains>;
+    update(sourceAddress: Address, updateCalldata: Uint8Array): Promise<Update>;
+    onOP20Received(operator: Address, from: Address, amount: bigint, data: Uint8Array): Promise<OnOP20Received>;
+    setMotoTokenAddress(tokenAddress: Address): Promise<SetMotoTokenAddress>;
+    setMotoTierPrice(tier: number, price: bigint): Promise<SetMotoTierPrice>;
+    setMotoBasePrice(price: bigint): Promise<SetMotoBasePrice>;
+    setMotoEnabled(enabled: boolean): Promise<SetMotoEnabled>;
+    getMotoTierPrice(tier: number): Promise<GetMotoTierPrice>;
+    getMotoBasePriceView(): Promise<GetMotoBasePriceView>;
+    getMotoTokenAddressView(): Promise<GetMotoTokenAddressView>;
+    withdrawOP20(token: Address): Promise<WithdrawOP20>;
+    registerDomainWithMoto(domainName: string, years: bigint): Promise<RegisterDomainWithMoto>;
+    renewDomainWithMoto(domainName: string, years: bigint): Promise<RenewDomainWithMoto>;
+    reserveDomain(domainName: string, years: bigint): Promise<ReserveDomain>;
+    completeRegistration(domainName: string): Promise<CompleteRegistration>;
+    renewDomain(domainName: string, years: bigint): Promise<RenewDomain>;
+    initiateTransfer(domainName: string, newOwner: Address): Promise<InitiateTransfer>;
+    acceptTransfer(domainName: string): Promise<AcceptTransfer>;
+    cancelTransfer(domainName: string): Promise<CancelTransfer>;
+    transferDomain(domainName: string, newOwner: Address): Promise<TransferDomain>;
+    transferDomainBySignature(
+        ownerAddress: Uint8Array,
+        ownerTweakedPublicKey: Uint8Array,
+        domainName: string,
+        newOwner: Address,
+        deadline: bigint,
+        signature: Uint8Array,
+    ): Promise<TransferDomainBySignature>;
+    createSubdomain(parentDomain: string, subdomainLabel: string, subdomainOwner: Address): Promise<CreateSubdomain>;
+    deleteSubdomain(parentDomain: string, subdomainLabel: string): Promise<DeleteSubdomain>;
+    setContenthashCIDv0(name: string, cid: string): Promise<SetContenthashCIDv0>;
+    setContenthashCIDv1(name: string, cid: string): Promise<SetContenthashCIDv1>;
+    setContenthashIPNS(name: string, ipnsId: string): Promise<SetContenthashIPNS>;
+    setContenthashSHA256(name: string, hash: Uint8Array): Promise<SetContenthashSHA256>;
+    clearContenthash(name: string): Promise<ClearContenthash>;
+    setTTL(name: string, ttl: bigint): Promise<SetTTL>;
+    getDomain(domainName: string): Promise<GetDomain>;
+    getSubdomain(fullName: string): Promise<GetSubdomain>;
+    getContenthash(name: string): Promise<GetContenthash>;
+    resolve(name: string): Promise<Resolve>;
+    getPendingTransfer(domainName: string): Promise<GetPendingTransfer>;
+    getTreasuryAddress(): Promise<GetTreasuryAddress>;
+    getDomainPrice(domainName: string, years: bigint): Promise<GetDomainPrice>;
+    getBaseDomainPrice(): Promise<GetBaseDomainPrice>;
+    getDomainNonce(domainName: string): Promise<GetDomainNonce>;
+    getReservation(domainName: string): Promise<GetReservation>;
 }
