@@ -559,12 +559,12 @@ class PreferenceService {
         return this.store?.walletHealthShowTime?.[publicKey] || {};
     };
 
-    updateWalletHealthShowTime = async (publicKey: string, type: WalletHealthType) => {
+    updateWalletHealthShowTime = async (publicKey: string, type: WalletHealthType, clear: boolean) => {
         const showTime = this.getWalletHealthShowTime(publicKey);
         this.store.walletHealthShowTime = this.store?.walletHealthShowTime || {};
         this.store.walletHealthShowTime[publicKey] = {
             ...showTime,
-            [type]:new Date().getTime()
+            [type]: clear ? 0 : new Date().getTime()
         };
         await this.persist();
     };

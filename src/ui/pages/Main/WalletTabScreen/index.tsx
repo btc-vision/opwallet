@@ -129,7 +129,7 @@ export default function WalletTabScreen() {
     const addressSummary = useAddressSummary();
     const btcUnit = useBTCUnit();
     const faucetUrl = useFaucetUrl();
-    const { lastShow, mayShowWalletHealth, healthBadgeOnly, updateWalletHealthShowTime } = useWalletHealthShowTime();
+    const { lastShow, mayShowWalletHealth, manageWalletHealthShowTimes, healthBadgeOnly, updateWalletHealthShowTime } = useWalletHealthShowTime();
 
     const [switchChainModalVisible, setSwitchChainModalVisible] = useState(false);
     const [showBalanceDetails, setShowBalanceDetails] = useState(false);
@@ -281,6 +281,8 @@ export default function WalletTabScreen() {
         const checks = getWalletHealthChecks(accountBalance);
         const check = checks.find((w) => w.show && noPopups && mayShowWalletHealth(w.type));
         setShowHealthPopup(check);
+        // Clear all timers that are no more relevent
+        void manageWalletHealthShowTimes(checks);
         // In any case, return the full health check diagnostic
         return checks;
     }, [

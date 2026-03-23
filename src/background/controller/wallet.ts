@@ -3276,10 +3276,10 @@ export class WalletController {
         return account ? preferenceService.getWalletHealthShowTime(account.pubkey) : ({} as WalletHealthShowTime);
     };
 
-    public updateWalletHealthShowTime = async (type: WalletHealthType) => {
+    public updateWalletHealthShowTime = async (type: WalletHealthType, clear: boolean) => {
         const account = await this.getCurrentAccount();
         if (account) {
-            await preferenceService.updateWalletHealthShowTime(account.pubkey, type);
+            await preferenceService.updateWalletHealthShowTime(account.pubkey, type, clear);
         }
     };
 

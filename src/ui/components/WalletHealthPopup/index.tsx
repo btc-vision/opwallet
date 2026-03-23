@@ -676,8 +676,10 @@ export const WalletHealthBadge = ({ checks:allChecks, onClick }: WalletHealthBad
     const [expanded, setExpanded] = useState(false);
     if (!allChecks || allChecks.length === 0) return null;
 
+    // Filter only checks to show
     const checks = allChecks.filter(check => check.show);
     const count = checks.length;
+    if (!checks || checks.length === 0) return null;
 
     return (
         <div

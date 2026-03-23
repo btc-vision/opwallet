@@ -10,6 +10,7 @@ import { DEFAULT_BITCOIN_BALANCE } from './constants';
 import { accountActions } from './reducer';
 import { WALLET_HEALTH_DELAYS } from '@/shared/constant';
 import { WalletHealthShowTime, WalletHealthType } from '@/ui/pages/Main/WalletTabScreen/constants';
+import { WalletHealthCheck } from '@/ui/pages/Main/WalletTabScreen/health';
 
 export function useAccountsState(): AppState['accounts'] {
     return useAppSelector((state) => state.accounts);
@@ -200,9 +201,25 @@ export function useWalletHealthShowTime() {
 
     const updateWalletHealthShowTime = async (type?: WalletHealthType) => {
         if (type) {
-            await wallet.updateWalletHealthShowTime(type);
+            await wallet.updateWalletHealthShowTime(type, false);
             setLastShow({...await wallet.getWalletHealthShowTime()});
-            setNow(Date.now);
+            setNow(Date.now());
+        }
+    };
+
+    // This will clear timer for no more relevant checks.  To ensure that if they
+    // need to be shown again, they may be shown quickly.
+    const manageWalletHealthShowTimes = async (checks: WalletHealthCheck[]) => {
+        let updated = false;
+        for (const check of checks) {
+            if (!check.show && (lastShow[check.type] || 0) > 0) {
+                await wallet.updateWalletHealthShowTime(check.type, true);
+                updated = true;
+            }
+        }
+        if (updated) {
+            setLastShow({ ...(await wallet.getWalletHealthShowTime()) });
+            setNow(Date.now());
         }
     };
 
@@ -217,6 +234,7 @@ export function useWalletHealthShowTime() {
         mayShowWalletHealth,
         lastShow,
         healthBadgeOnly,
-        updateWalletHealthShowTime
+        updateWalletHealthShowTime,
+        manageWalletHealthShowTimes,
     };
 }

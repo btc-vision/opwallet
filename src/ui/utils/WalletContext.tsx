@@ -306,7 +306,7 @@ export interface WalletController {
     setWalletHealthDelayId(delayId: number): Promise<void>;
 
     getWalletHealthShowTime(): Promise<WalletHealthShowTime>;
-    updateWalletHealthShowTime(type: WalletHealthType): Promise<void>;
+    updateWalletHealthShowTime(type: WalletHealthType, clear: boolean): Promise<void>;
 
     setLastActiveTime(): Promise<void>;
 
