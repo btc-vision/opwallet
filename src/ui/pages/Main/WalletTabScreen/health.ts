@@ -2,6 +2,7 @@
 import { BitcoinBalance } from '@/shared/types';
 import { amountToSatoshis } from '@/ui/utils';
 import { WalletHealthType } from '@/ui/pages/Main/WalletTabScreen/constants';
+import { BitcoinUtils } from 'opnet';
 
 export type WalletHealthCheck = {
     type: WalletHealthType;
@@ -36,11 +37,18 @@ export const getWalletHealthChecks = (accountBalance: BitcoinBalance): WalletHea
             show = true;
         }
     }
-    //checks.push({ type: 'low-balance', show });
-    checks.push({ type: 'low-balance', show:true });
+    checks.push({ type: 'low-balance', show });
 
     // 2) CSV UTXOs > 5 total — need consolidation with per-type warnings
     show = false;
+    const mainBalance = BitcoinUtils.expandToDecimals(accountBalance.btc_total_amount || '0', 8);
+
+    const totalCsvBalances = 0n
+        + BitcoinUtils.expandToDecimals(accountBalance.csv75_total_amount || '0', 8)
+        + BitcoinUtils.expandToDecimals(accountBalance.csv3_total_amount || '0', 8)
+        + BitcoinUtils.expandToDecimals(accountBalance.csv2_total_amount || '0', 8)
+        + BitcoinUtils.expandToDecimals(accountBalance.csv1_total_amount || '0', 8)
+
     const totalCsvUtxos =
         accountBalance.csv1_locked_utxos_count +
         accountBalance.csv1_unlocked_utxos_count +
@@ -51,7 +59,8 @@ export const getWalletHealthChecks = (accountBalance: BitcoinBalance): WalletHea
         accountBalance.csv75_locked_utxos_count +
         accountBalance.csv75_unlocked_utxos_count;
 
-    if (totalCsvUtxos > 5) {
+    // Only show csv health result if most of 50% of account balance is in CSV instead of main
+    if (totalCsvUtxos > 5 && totalCsvBalances > mainBalance) {
         const hasCsv1 = accountBalance.csv1_locked_utxos_count + accountBalance.csv1_unlocked_utxos_count > 0;
         const hasCsv2 = accountBalance.csv2_locked_utxos_count + accountBalance.csv2_unlocked_utxos_count > 0;
         const hasCsv3 = accountBalance.csv3_locked_utxos_count + accountBalance.csv3_unlocked_utxos_count > 0;

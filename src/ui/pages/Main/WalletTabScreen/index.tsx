@@ -96,6 +96,7 @@ export default function WalletTabScreen() {
 
     const untweakedPublicKey = useAccountPublicKey();
     const baseAddress = useAccountAddress();
+    const tools = useTools();
 
     const rotationEnabled = useRotationEnabled();
     const currentRotationAddress = useCurrentRotationAddress();
@@ -156,7 +157,7 @@ export default function WalletTabScreen() {
     const [showDuplicationAlert, setShowDuplicationAlert] = useState(false);
 
     // Wallet health popup dismissal state (resets on every mount)
-    const [showHealthPopup, setShowHealthPopup] = useState<WalletHealthCheck|undefined>(undefined);
+    const [showHealthPopup, setShowHealthPopup] = useState<WalletHealthCheck | undefined>(undefined);
 
     // Check if quantum migration is needed (SimpleKeyring without quantum key)
     useEffect(() => {
@@ -270,15 +271,18 @@ export default function WalletTabScreen() {
         });
     }, [fetchBalance]);
 
-    const [walletHealthCheck, walletHealthChecks] = useMemo(() => {
+    const walletHealthChecks = useMemo(() => {
         // Only evaluate once balance data is loaded for the current account
-        if (currentAccount.address !== addressSummary.address) return [undefined, []];
+        if (currentAccount.address !== addressSummary.address) return [];
 
+        // If we can show popup (no other popup displayed and not badge only),
+        // find the most important failed wallet health check.
         const noPopups = !healthBadgeOnly && !showMldsaBackupReminder && !showDuplicationAlert;
         const checks = getWalletHealthChecks(accountBalance);
         const check = checks.find((w) => w.show && noPopups && mayShowWalletHealth(w.type));
         setShowHealthPopup(check);
-        return [check, checks];
+        // In any case, return the full health check diagnostic
+        return checks;
     }, [
         accountBalance,
         addressSummary.address,
@@ -286,26 +290,27 @@ export default function WalletTabScreen() {
         healthBadgeOnly,
         lastShow,
         showMldsaBackupReminder,
-        showDuplicationAlert,
+        showDuplicationAlert
     ]);
+
+    // Helper function to check if there are CSV balances
+    const cSVBalances = () => {
+        const csv75Total = BitcoinUtils.expandToDecimals(accountBalance.csv75_total_amount || '0', 8);
+        const csv3Total = BitcoinUtils.expandToDecimals(accountBalance.csv3_total_amount || '0', 8);
+        const csv2Total = BitcoinUtils.expandToDecimals(accountBalance.csv2_total_amount || '0', 8);
+        const csv1Total = BitcoinUtils.expandToDecimals(accountBalance.csv1_total_amount || '0', 8);
+        return csv75Total + csv3Total + csv2Total + csv1Total;
+    };
 
     const totalBalance = useMemo(() => {
         const main = BitcoinUtils.expandToDecimals(accountBalance.btc_total_amount || '0', 8);
-        const csv75 = BitcoinUtils.expandToDecimals(accountBalance.csv75_total_amount || '0', 8);
-        const csv3 = BitcoinUtils.expandToDecimals(accountBalance.csv3_total_amount || '0', 8);
-        const csv2 = BitcoinUtils.expandToDecimals(accountBalance.csv2_total_amount || '0', 8);
-        const csv1 = BitcoinUtils.expandToDecimals(accountBalance.csv1_total_amount || '0', 8);
-        const total = main + csv75 + csv3 + csv2 + csv1;
+        const total = main + cSVBalances();
         return BitcoinUtils.formatUnits(total, 8).replace(/\.?0+$/, '') || '0';
     }, [accountBalance]);
 
     // Helper function to check if there are CSV balances
     const hasCSVBalances = () => {
-        const csv75Total = BitcoinUtils.expandToDecimals(accountBalance.csv75_total_amount || '0', 8);
-        const csv3Total = BitcoinUtils.expandToDecimals(accountBalance.csv3_total_amount || '0', 8);
-        const csv2Total = BitcoinUtils.expandToDecimals(accountBalance.csv2_total_amount || '0', 8);
-        const csv1Total = BitcoinUtils.expandToDecimals(accountBalance.csv1_total_amount || '0', 8);
-        return csv75Total > 0n || csv3Total > 0n || csv2Total > 0n || csv1Total > 0n;
+        return cSVBalances() > 0n;
     };
 
     // Handle duplication resolution navigation
@@ -313,8 +318,6 @@ export default function WalletTabScreen() {
         setShowDuplicationAlert(false);
         navigate(RouteTypes.DuplicationResolutionScreen);
     }, [navigate]);
-
-    const tools = useTools();
 
     const [domainTermsVisible, setDomainTermsVisible] = useState(() => {
         if (typeof window === 'undefined') return false;
@@ -743,9 +746,9 @@ export default function WalletTabScreen() {
                                 {/* Balance */}
                                 <div style={{ position: 'relative' }}>
                                     <BtcDisplay balance={totalBalance} />
-                                    {healthBadgeOnly &&
+                                    {healthBadgeOnly && (
                                         <WalletHealthBadge checks={walletHealthChecks} onClick={forceShowHealthPopup} />
-                                    }
+                                    )}
                                 </div>
 
                                 <BtcUsd
@@ -1092,9 +1095,7 @@ export default function WalletTabScreen() {
                 />
             )}
 
-            {showHealthPopup?.type === 'low-utxos' && (
-                <LowUtxoPopup onClose={dismissHealthPopup} />
-            )}
+            {showHealthPopup?.type === 'low-utxos' && <LowUtxoPopup onClose={dismissHealthPopup} />}
 
             {/* Duplication Alert Modal - blocks interaction until resolved */}
             {duplicationDetection && showDuplicationAlert && (
