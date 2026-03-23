@@ -2078,7 +2078,8 @@ export default function TxOpnetConfirmScreen() {
         parameters: { domainName: string; priorityFee: bigint },
         contractMethod: string,
         successMsg: string,
-        trackDomain = false
+        trackDomain = false,
+        navigateAfter?: { route: RouteTypes; state?: Record<string, unknown> }
     ) => {
         try {
             const currentWalletAddress = await wallet.getCurrentAccount();
@@ -2119,10 +2120,14 @@ export default function TxOpnetConfirmScreen() {
 
             setCachedSignedTx(null);
 
-            navigate(RouteTypes.TxSuccessScreen, {
-                txid: sendTransaction.transactionId,
-                domainRegistered: trackDomain ? parameters.domainName : undefined
-            });
+            if (navigateAfter) {
+                navigate(navigateAfter.route, navigateAfter.state);
+            } else {
+                navigate(RouteTypes.TxSuccessScreen, {
+                    txid: sendTransaction.transactionId,
+                    domainRegistered: trackDomain ? parameters.domainName : undefined
+                });
+            }
         } catch (e) {
             const error = e as Error;
             console.error(e);
@@ -3130,7 +3135,19 @@ export default function TxOpnetConfirmScreen() {
                                     break;
                                 }
                                 case Action.ReserveDomain:
-                                    await broadcastDomainTx(rawTxInfo, 'reserveDomain', `Reserved ${rawTxInfo.domainName}.btc`);
+                                    await broadcastDomainTx(
+                                        rawTxInfo,
+                                        'reserveDomain',
+                                        `Reserved ${rawTxInfo.domainName}.btc! Complete registration in the next block.`,
+                                        false,
+                                        {
+                                            route: RouteTypes.BtcDomainScreen,
+                                            state: {
+                                                pendingDomain: rawTxInfo.domainName,
+                                                pendingYears: rawTxInfo.years
+                                            }
+                                        }
+                                    );
                                     break;
                                 case Action.CompleteRegistration:
                                     await broadcastDomainTx(rawTxInfo, 'completeRegistration', `Registered ${rawTxInfo.domainName}.btc`, true);

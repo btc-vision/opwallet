@@ -18,7 +18,7 @@ import { useTools } from '@/ui/components/ActionComponent';
 import { FeeRateBar } from '@/ui/components/FeeRateBar';
 import { useAccountAddress } from '@/ui/state/accounts/hooks';
 import { useChain } from '@/ui/state/settings/hooks';
-import { copyToClipboard, useWallet } from '@/ui/utils';
+import { copyToClipboard, useLocationState, useWallet } from '@/ui/utils';
 import {
     CheckCircleOutlined,
     CloseCircleOutlined,
@@ -146,7 +146,9 @@ export default function BtcDomainScreen() {
     const chain = useChain();
     const userAddress = useAccountAddress();
     const btcDomainsEnabled = useBtcDomainsEnabled();
-    const [activeTab, setActiveTab] = useState<Tab>('mydomains');
+    const locationState = useLocationState<{ pendingDomain?: string; pendingYears?: number }>();
+    const [activeTab, setActiveTab] = useState<Tab>(locationState?.pendingDomain ? 'register' : 'mydomains');
+    const [pendingTxDomain, setPendingTxDomain] = useState<string | null>(locationState?.pendingDomain ?? null);
 
     // My Domains state
     const [myDomains, setMyDomains] = useState<TrackedDomainInfo[]>([]);
@@ -256,6 +258,22 @@ export default function BtcDomainScreen() {
             loadMyDomains();
         }
     }, [activeTab, loadMyDomains]);
+
+    // Auto-fill and check domain when returning from a reserve tx
+    useEffect(() => {
+        if (pendingTxDomain) {
+            setDomainInput(pendingTxDomain);
+            if (locationState?.pendingYears) {
+                setRegistrationYears(locationState.pendingYears);
+            }
+            setPendingTxDomain(null);
+            // Small delay to let the block confirm, then auto-check
+            const timer = setTimeout(() => {
+                checkDomain();
+            }, 2000);
+            return () => clearTimeout(timer);
+        }
+    }, [pendingTxDomain]); // eslint-disable-line react-hooks/exhaustive-deps
 
     // Add domain to tracking
     const handleAddDomain = useCallback(async () => {
@@ -1205,6 +1223,56 @@ export default function BtcDomainScreen() {
                 {/* Register Tab */}
                 {activeTab === 'register' && (
                     <div>
+                        {/* Pending Reservations from localStorage */}
+                        {getPendingReservations().length > 0 && (
+                            <div style={{
+                                background: `${colors.warning}15`,
+                                border: `1px solid ${colors.warning}40`,
+                                borderRadius: '10px',
+                                padding: '12px',
+                                marginBottom: '12px'
+                            }}>
+                                <div style={{ fontSize: '12px', fontWeight: 700, color: colors.warning, marginBottom: '8px' }}>
+                                    Pending Reservations
+                                </div>
+                                {getPendingReservations().map((r) => (
+                                    <div key={r.domainName} style={{
+                                        display: 'flex',
+                                        justifyContent: 'space-between',
+                                        alignItems: 'center',
+                                        padding: '6px 0'
+                                    }}>
+                                        <div>
+                                            <span style={{ fontSize: '13px', fontWeight: 600, color: colors.text }}>
+                                                {r.domainName}.btc
+                                            </span>
+                                            <span style={{ fontSize: '10px', color: colors.textFaded, marginLeft: '8px' }}>
+                                                {r.years}yr
+                                            </span>
+                                        </div>
+                                        <button
+                                            onClick={() => {
+                                                setDomainInput(r.domainName);
+                                                setRegistrationYears(r.years);
+                                                checkDomain();
+                                            }}
+                                            style={{
+                                                padding: '4px 10px',
+                                                background: colors.warning,
+                                                border: 'none',
+                                                borderRadius: '6px',
+                                                cursor: 'pointer',
+                                                fontSize: '11px',
+                                                fontWeight: 600,
+                                                color: '#000'
+                                            }}>
+                                            Complete
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+
                         {/* Search Input */}
                         <div style={{ marginBottom: '16px' }}>
                             <div style={{ fontSize: '12px', color: colors.textFaded, marginBottom: '8px' }}>
