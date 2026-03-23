@@ -154,7 +154,12 @@ export default function BtcDomainScreen() {
     const [myDomains, setMyDomains] = useState<TrackedDomainInfo[]>([]);
     const [isLoadingDomains, setIsLoadingDomains] = useState(false);
     const [addDomainInput, setAddDomainInput] = useState('');
-    const [pendingReservations, setPendingReservations] = useState<(PendingReservation & { isActive: boolean })[]>([]);
+    const [pendingReservations, setPendingReservations] = useState<(PendingReservation & { isActive: boolean })[]>(() => {
+        // Initialize from localStorage immediately
+        return getPendingReservations()
+            .filter(r => Date.now() - r.timestamp < 30 * 60 * 1000)
+            .map(r => ({ ...r, isActive: true }));
+    });
     const [isAddingDomain, setIsAddingDomain] = useState(false);
 
     // Registration state
@@ -223,28 +228,18 @@ export default function BtcDomainScreen() {
             }
             setMyDomains(enriched);
 
-            // Check pending reservations from local storage
+            // Load pending reservations from localStorage
+            // Only remove after 30 min timeout — on-chain state may lag behind mempool
             const stored = getPendingReservations();
-            const checked: (PendingReservation & { isActive: boolean })[] = [];
+            const alive: (PendingReservation & { isActive: boolean })[] = [];
             for (const r of stored) {
-                try {
-                    const res = await wallet.getReservation(r.domainName);
-                    const active = res?.isActive ?? false;
-                    if (active) {
-                        checked.push({ ...r, isActive: true });
-                    } else {
-                        removePendingReservation(r.domainName);
-                    }
-                } catch {
-                    // 10 min expiry for stale entries
-                    if (Date.now() - r.timestamp > 10 * 60 * 1000) {
-                        removePendingReservation(r.domainName);
-                    } else {
-                        checked.push({ ...r, isActive: true });
-                    }
+                if (Date.now() - r.timestamp > 30 * 60 * 1000) {
+                    removePendingReservation(r.domainName);
+                } else {
+                    alive.push({ ...r, isActive: true });
                 }
             }
-            setPendingReservations(checked);
+            setPendingReservations(alive);
         } catch (err) {
             console.error('Failed to load domains:', err);
         } finally {
@@ -681,6 +676,7 @@ export default function BtcDomainScreen() {
         };
 
         addPendingReservation(normalizedDomain, registrationYears);
+        setPendingReservations(prev => [...prev.filter(r => r.domainName !== normalizedDomain), { domainName: normalizedDomain, years: registrationYears, timestamp: Date.now(), isActive: true }]);
         navigate(RouteTypes.TxOpnetConfirmScreen, { rawTxInfo });
     }, [domainInfo, domainInput, feeRate, navigate, registrationYears]);
 
@@ -1223,8 +1219,8 @@ export default function BtcDomainScreen() {
                 {/* Register Tab */}
                 {activeTab === 'register' && (
                     <div>
-                        {/* Pending Reservations from localStorage */}
-                        {getPendingReservations().length > 0 && (
+                        {/* Pending Reservations */}
+                        {pendingReservations.length > 0 && (
                             <div style={{
                                 background: `${colors.warning}15`,
                                 border: `1px solid ${colors.warning}40`,
