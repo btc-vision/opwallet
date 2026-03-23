@@ -316,7 +316,26 @@ export default function BtcDomainScreen() {
         setReservationInfo(null);
 
         try {
-            const info = await wallet.getBtcDomainInfo(normalized, registrationYears);
+            // Check for existing reservation first to use correct years for pricing
+            let effectiveYears = registrationYears;
+            try {
+                const reservation = await wallet.getReservation(normalized);
+                if (reservation && reservation.isActive) {
+                    const resYears = Number(reservation.years);
+                    effectiveYears = resYears;
+                    setRegistrationYears(resYears);
+                    setReservationInfo({
+                        reserver: reservation.reserver || '',
+                        reservedAt: toBigInt(reservation.reservedAt),
+                        years: resYears,
+                        isActive: reservation.isActive
+                    });
+                }
+            } catch {
+                // No reservation found
+            }
+
+            const info = await wallet.getBtcDomainInfo(normalized, effectiveYears);
             setDomainInfo({
                 exists: info.exists,
                 owner: info.owner,
@@ -329,21 +348,6 @@ export default function BtcDomainScreen() {
                 auctionPriceSats: toBigInt(info.auctionPriceSats),
                 renewalPerYear: toBigInt(info.renewalPerYear)
             });
-
-            // Also check for existing reservation
-            try {
-                const reservation = await wallet.getReservation(normalized);
-                if (reservation && reservation.isActive) {
-                    setReservationInfo({
-                        reserver: reservation.reserver || '',
-                        reservedAt: toBigInt(reservation.reservedAt),
-                        years: Number(reservation.years),
-                        isActive: reservation.isActive
-                    });
-                }
-            } catch {
-                // No reservation found, that's fine
-            }
         } catch (err) {
             console.error('Failed to check domain:', err);
             tools.toastError('Failed to check domain availability');
@@ -667,6 +671,7 @@ export default function BtcDomainScreen() {
         if (!domainInfo || !reservationInfo) return;
 
         const normalizedDomain = normalizeDomain(domainInput);
+        removePendingReservation(normalizedDomain);
         const rawTxInfo: CompleteRegistrationParameters = {
             header: `Complete Registration ${normalizedDomain}.btc`,
             features: {
