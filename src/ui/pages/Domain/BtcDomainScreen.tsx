@@ -96,6 +96,13 @@ interface PendingTransferInfo {
 }
 
 const RESERVATION_FEE = 2000n;
+
+// Values from the message bus may arrive as strings despite bigint type annotations
+const toBigInt = (v: unknown): bigint => {
+    if (typeof v === 'bigint') return v;
+    if (typeof v === 'string' || typeof v === 'number') return BigInt(v);
+    return 0n;
+};
 const AUCTION_FLOOR_SATS = 100_000n;
 
 // Format sats with BTC equivalent
@@ -183,7 +190,7 @@ export default function BtcDomainScreen() {
                     const info = await wallet.getBtcDomainInfo(domain.name);
                     enriched.push({
                         ...domain,
-                        expiresAt: Number(BigInt(info.expiresAt ?? 0)),
+                        expiresAt: Number(toBigInt(info.expiresAt)),
                         isActive: info.isActive ?? false,
                         inGracePeriod: info.inGracePeriod ?? false
                     });
@@ -271,12 +278,12 @@ export default function BtcDomainScreen() {
                 owner: info.owner,
                 isOwner: info.owner?.toLowerCase() === userAddress.toLowerCase(),
                 treasuryAddress: info.treasuryAddress,
-                expiresAt: BigInt(info.expiresAt ?? 0),
+                expiresAt: toBigInt(info.expiresAt),
                 isActive: info.isActive ?? false,
                 inGracePeriod: info.inGracePeriod ?? false,
-                totalPriceSats: BigInt(info.totalPriceSats ?? 0),
-                auctionPriceSats: BigInt(info.auctionPriceSats ?? 0),
-                renewalPerYear: BigInt(info.renewalPerYear ?? 0)
+                totalPriceSats: toBigInt(info.totalPriceSats),
+                auctionPriceSats: toBigInt(info.auctionPriceSats),
+                renewalPerYear: toBigInt(info.renewalPerYear)
             });
 
             // Also check for existing reservation
@@ -285,7 +292,7 @@ export default function BtcDomainScreen() {
                 if (reservation && reservation.isActive) {
                     setReservationInfo({
                         reserver: reservation.reserver || '',
-                        reservedAt: BigInt(reservation.reservedAt ?? 0),
+                        reservedAt: toBigInt(reservation.reservedAt),
                         years: Number(reservation.years),
                         isActive: reservation.isActive
                     });
@@ -320,12 +327,12 @@ export default function BtcDomainScreen() {
                 owner: info.owner,
                 isOwner: info.owner?.toLowerCase() === userAddress.toLowerCase(),
                 treasuryAddress: info.treasuryAddress,
-                expiresAt: BigInt(info.expiresAt ?? 0),
+                expiresAt: toBigInt(info.expiresAt),
                 isActive: info.isActive ?? false,
                 inGracePeriod: info.inGracePeriod ?? false,
-                totalPriceSats: BigInt(info.totalPriceSats ?? 0),
-                auctionPriceSats: BigInt(info.auctionPriceSats ?? 0),
-                renewalPerYear: BigInt(info.renewalPerYear ?? 0)
+                totalPriceSats: toBigInt(info.totalPriceSats),
+                auctionPriceSats: toBigInt(info.auctionPriceSats),
+                renewalPerYear: toBigInt(info.renewalPerYear)
             });
         } catch (err) {
             console.error('Failed to check domain:', err);
@@ -354,12 +361,12 @@ export default function BtcDomainScreen() {
                 owner: info.owner,
                 isOwner: info.owner?.toLowerCase() === userAddress.toLowerCase(),
                 treasuryAddress: info.treasuryAddress,
-                expiresAt: BigInt(info.expiresAt ?? 0),
+                expiresAt: toBigInt(info.expiresAt),
                 isActive: info.isActive ?? false,
                 inGracePeriod: info.inGracePeriod ?? false,
-                totalPriceSats: BigInt(info.totalPriceSats ?? 0),
-                auctionPriceSats: BigInt(info.auctionPriceSats ?? 0),
-                renewalPerYear: BigInt(info.renewalPerYear ?? 0)
+                totalPriceSats: toBigInt(info.totalPriceSats),
+                auctionPriceSats: toBigInt(info.auctionPriceSats),
+                renewalPerYear: toBigInt(info.renewalPerYear)
             });
         } catch (err) {
             console.error('Failed to check domain:', err);
@@ -389,12 +396,12 @@ export default function BtcDomainScreen() {
                 owner: info.owner,
                 isOwner: info.owner?.toLowerCase() === userAddress.toLowerCase(),
                 treasuryAddress: info.treasuryAddress,
-                expiresAt: BigInt(info.expiresAt ?? 0),
+                expiresAt: toBigInt(info.expiresAt),
                 isActive: info.isActive ?? false,
                 inGracePeriod: info.inGracePeriod ?? false,
-                totalPriceSats: BigInt(info.totalPriceSats ?? 0),
-                auctionPriceSats: BigInt(info.auctionPriceSats ?? 0),
-                renewalPerYear: BigInt(info.renewalPerYear ?? 0)
+                totalPriceSats: toBigInt(info.totalPriceSats),
+                auctionPriceSats: toBigInt(info.auctionPriceSats),
+                renewalPerYear: toBigInt(info.renewalPerYear)
             });
             setRenewPriceChecked(true);
         } catch (err) {
