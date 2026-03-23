@@ -522,8 +522,7 @@ export const HARDWARE_WALLETS = {
 
 export const WALLET_HEALTH_DELAYS = [
     { id: 0, time: 1, label: 'Always' },
-    { id: 1, time: 60000, label: 'Once a minute' }, // Temporary 1 minute
-    //{ id: 1, time: 3600000, label: 'Once an hour' },
+    { id: 1, time: 3600000, label: 'Once an hour' },
     { id: 2, time: 86400000, label: 'Once a day' },
     { id: 3, time: 604800000, label: 'Once a week' },
     { id: 4, time: 2629740000, label: 'Once a month' },
