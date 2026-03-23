@@ -36,6 +36,14 @@ export const APP_CONFIG: AppConfig = {
         [NetworkType.REGTEST]: {
             btcDomains: true,
             privacyMode: false
+        },
+        [NetworkType.OPNET_TESTNET]: {
+            btcDomains: true,
+            privacyMode: false
+        },
+        [NetworkType.TESTNET]: {
+            btcDomains: true,
+            privacyMode: false
         }
     }
 };
