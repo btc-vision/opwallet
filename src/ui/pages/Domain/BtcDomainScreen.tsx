@@ -183,7 +183,7 @@ export default function BtcDomainScreen() {
                     const info = await wallet.getBtcDomainInfo(domain.name);
                     enriched.push({
                         ...domain,
-                        expiresAt: Number(info.expiresAt ?? 0n),
+                        expiresAt: Number(BigInt(info.expiresAt ?? 0)),
                         isActive: info.isActive ?? false,
                         inGracePeriod: info.inGracePeriod ?? false
                     });
@@ -271,12 +271,12 @@ export default function BtcDomainScreen() {
                 owner: info.owner,
                 isOwner: info.owner?.toLowerCase() === userAddress.toLowerCase(),
                 treasuryAddress: info.treasuryAddress,
-                expiresAt: info.expiresAt ?? 0n,
+                expiresAt: BigInt(info.expiresAt ?? 0),
                 isActive: info.isActive ?? false,
                 inGracePeriod: info.inGracePeriod ?? false,
-                totalPriceSats: info.totalPriceSats ?? 0n,
-                auctionPriceSats: info.auctionPriceSats ?? 0n,
-                renewalPerYear: info.renewalPerYear ?? 0n
+                totalPriceSats: BigInt(info.totalPriceSats ?? 0),
+                auctionPriceSats: BigInt(info.auctionPriceSats ?? 0),
+                renewalPerYear: BigInt(info.renewalPerYear ?? 0)
             });
 
             // Also check for existing reservation
@@ -285,7 +285,7 @@ export default function BtcDomainScreen() {
                 if (reservation && reservation.isActive) {
                     setReservationInfo({
                         reserver: reservation.reserver || '',
-                        reservedAt: reservation.reservedAt,
+                        reservedAt: BigInt(reservation.reservedAt ?? 0),
                         years: Number(reservation.years),
                         isActive: reservation.isActive
                     });
@@ -320,12 +320,12 @@ export default function BtcDomainScreen() {
                 owner: info.owner,
                 isOwner: info.owner?.toLowerCase() === userAddress.toLowerCase(),
                 treasuryAddress: info.treasuryAddress,
-                expiresAt: info.expiresAt ?? 0n,
+                expiresAt: BigInt(info.expiresAt ?? 0),
                 isActive: info.isActive ?? false,
                 inGracePeriod: info.inGracePeriod ?? false,
-                totalPriceSats: info.totalPriceSats ?? 0n,
-                auctionPriceSats: info.auctionPriceSats ?? 0n,
-                renewalPerYear: info.renewalPerYear ?? 0n
+                totalPriceSats: BigInt(info.totalPriceSats ?? 0),
+                auctionPriceSats: BigInt(info.auctionPriceSats ?? 0),
+                renewalPerYear: BigInt(info.renewalPerYear ?? 0)
             });
         } catch (err) {
             console.error('Failed to check domain:', err);
@@ -354,12 +354,12 @@ export default function BtcDomainScreen() {
                 owner: info.owner,
                 isOwner: info.owner?.toLowerCase() === userAddress.toLowerCase(),
                 treasuryAddress: info.treasuryAddress,
-                expiresAt: info.expiresAt ?? 0n,
+                expiresAt: BigInt(info.expiresAt ?? 0),
                 isActive: info.isActive ?? false,
                 inGracePeriod: info.inGracePeriod ?? false,
-                totalPriceSats: info.totalPriceSats ?? 0n,
-                auctionPriceSats: info.auctionPriceSats ?? 0n,
-                renewalPerYear: info.renewalPerYear ?? 0n
+                totalPriceSats: BigInt(info.totalPriceSats ?? 0),
+                auctionPriceSats: BigInt(info.auctionPriceSats ?? 0),
+                renewalPerYear: BigInt(info.renewalPerYear ?? 0)
             });
         } catch (err) {
             console.error('Failed to check domain:', err);
@@ -389,12 +389,12 @@ export default function BtcDomainScreen() {
                 owner: info.owner,
                 isOwner: info.owner?.toLowerCase() === userAddress.toLowerCase(),
                 treasuryAddress: info.treasuryAddress,
-                expiresAt: info.expiresAt ?? 0n,
+                expiresAt: BigInt(info.expiresAt ?? 0),
                 isActive: info.isActive ?? false,
                 inGracePeriod: info.inGracePeriod ?? false,
-                totalPriceSats: info.totalPriceSats ?? 0n,
-                auctionPriceSats: info.auctionPriceSats ?? 0n,
-                renewalPerYear: info.renewalPerYear ?? 0n
+                totalPriceSats: BigInt(info.totalPriceSats ?? 0),
+                auctionPriceSats: BigInt(info.auctionPriceSats ?? 0),
+                renewalPerYear: BigInt(info.renewalPerYear ?? 0)
             });
             setRenewPriceChecked(true);
         } catch (err) {
