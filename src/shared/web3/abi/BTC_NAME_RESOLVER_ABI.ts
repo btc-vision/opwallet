@@ -483,5 +483,5 @@ export const BtcNameResolverAbi: BitcoinInterfaceAbi = [
     ...OP_NET_ABI,
 ];
 
-export { BtcNameResolverAbi as BTC_NAME_RESOLVER_ABI };
 export default BtcNameResolverAbi;
+export { BtcNameResolverAbi as BTC_NAME_RESOLVER_ABI };

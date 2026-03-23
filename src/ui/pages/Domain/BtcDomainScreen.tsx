@@ -97,23 +97,46 @@ interface PendingTransferInfo {
 
 const RESERVATION_FEE = 2000n;
 
+const PENDING_RESERVATIONS_KEY = 'opwallet_pending_reservations';
+
+interface PendingReservation {
+    domainName: string;
+    years: number;
+    timestamp: number;
+}
+
+const getPendingReservations = (): PendingReservation[] => {
+    try {
+        return JSON.parse(localStorage.getItem(PENDING_RESERVATIONS_KEY) || '[]') as PendingReservation[];
+    } catch { return []; }
+};
+
+const addPendingReservation = (domainName: string, years: number) => {
+    const list = getPendingReservations().filter(r => r.domainName !== domainName);
+    list.push({ domainName, years, timestamp: Date.now() });
+    localStorage.setItem(PENDING_RESERVATIONS_KEY, JSON.stringify(list));
+};
+
+const removePendingReservation = (domainName: string) => {
+    const list = getPendingReservations().filter(r => r.domainName !== domainName);
+    localStorage.setItem(PENDING_RESERVATIONS_KEY, JSON.stringify(list));
+};
+
 // Values from the message bus may arrive as strings despite bigint type annotations
 const toBigInt = (v: unknown): bigint => {
     if (typeof v === 'bigint') return v;
     if (typeof v === 'string' || typeof v === 'number') return BigInt(v);
     return 0n;
 };
-const AUCTION_FLOOR_SATS = 100_000n;
+const AUCTION_FLOOR_SATS = 12_000n;
 
-// Format sats with BTC equivalent
 const formatSats = (sats: bigint): string => {
     const num = Number(sats);
     const btc = num / 100_000_000;
-    const formattedSats = num.toLocaleString();
-    if (btc >= 0.00000001) {
-        return `${formattedSats} sats (${btc.toFixed(8).replace(/\.?0+$/, '')} BTC)`;
-    }
-    return `${formattedSats} sats`;
+    if (btc >= 1) return `${btc.toFixed(2)} BTC`;
+    if (btc >= 0.01) return `${btc.toFixed(4)} BTC`;
+    if (btc >= 0.0001) return `${btc.toFixed(6)} BTC`;
+    return `${num.toLocaleString()} sats`;
 };
 
 export default function BtcDomainScreen() {
@@ -129,6 +152,7 @@ export default function BtcDomainScreen() {
     const [myDomains, setMyDomains] = useState<TrackedDomainInfo[]>([]);
     const [isLoadingDomains, setIsLoadingDomains] = useState(false);
     const [addDomainInput, setAddDomainInput] = useState('');
+    const [pendingReservations, setPendingReservations] = useState<(PendingReservation & { isActive: boolean })[]>([]);
     const [isAddingDomain, setIsAddingDomain] = useState(false);
 
     // Registration state
@@ -156,9 +180,6 @@ export default function BtcDomainScreen() {
     const [isUploading, setIsUploading] = useState(false);
     const [uploadedCid, setUploadedCid] = useState<string | null>(null);
     const [publishFeeRate, setPublishFeeRate] = useState(5);
-
-    // CLI instructions state
-    const [showCliInstructions, setShowCliInstructions] = useState(false);
 
     // Transfer state
     const [transferDomainInput, setTransferDomainInput] = useState('');
@@ -199,6 +220,29 @@ export default function BtcDomainScreen() {
                 }
             }
             setMyDomains(enriched);
+
+            // Check pending reservations from local storage
+            const stored = getPendingReservations();
+            const checked: (PendingReservation & { isActive: boolean })[] = [];
+            for (const r of stored) {
+                try {
+                    const res = await wallet.getReservation(r.domainName);
+                    const active = res?.isActive ?? false;
+                    if (active) {
+                        checked.push({ ...r, isActive: true });
+                    } else {
+                        removePendingReservation(r.domainName);
+                    }
+                } catch {
+                    // 10 min expiry for stale entries
+                    if (Date.now() - r.timestamp > 10 * 60 * 1000) {
+                        removePendingReservation(r.domainName);
+                    } else {
+                        checked.push({ ...r, isActive: true });
+                    }
+                }
+            }
+            setPendingReservations(checked);
         } catch (err) {
             console.error('Failed to load domains:', err);
         } finally {
@@ -206,7 +250,7 @@ export default function BtcDomainScreen() {
         }
     }, [wallet]);
 
-    // Load domains on mount and when tab changes (also needed for transfer tab)
+    // Load domains on mount and when tab changes
     useEffect(() => {
         if (activeTab === 'mydomains' || activeTab === 'transfer') {
             loadMyDomains();
@@ -614,6 +658,7 @@ export default function BtcDomainScreen() {
             reservationFeeAddress: domainInfo.treasuryAddress
         };
 
+        addPendingReservation(normalizedDomain, registrationYears);
         navigate(RouteTypes.TxOpnetConfirmScreen, { rawTxInfo });
     }, [domainInfo, domainInput, feeRate, navigate, registrationYears]);
 
@@ -898,6 +943,57 @@ export default function BtcDomainScreen() {
                 {/* My Domains Tab */}
                 {activeTab === 'mydomains' && (
                     <div>
+                        {/* Pending Reservations */}
+                        {pendingReservations.length > 0 && (
+                            <div style={{
+                                background: `${colors.warning}15`,
+                                border: `1px solid ${colors.warning}40`,
+                                borderRadius: '10px',
+                                padding: '12px',
+                                marginBottom: '16px'
+                            }}>
+                                <div style={{ fontSize: '12px', fontWeight: 700, color: colors.warning, marginBottom: '8px' }}>
+                                    Pending Reservations
+                                </div>
+                                {pendingReservations.map((r) => (
+                                    <div key={r.domainName} style={{
+                                        display: 'flex',
+                                        justifyContent: 'space-between',
+                                        alignItems: 'center',
+                                        padding: '8px 0',
+                                        borderBottom: `1px solid ${colors.containerBorder}`
+                                    }}>
+                                        <div>
+                                            <div style={{ fontSize: '13px', fontWeight: 600, color: colors.text }}>
+                                                {r.domainName}.btc
+                                            </div>
+                                            <div style={{ fontSize: '10px', color: colors.textFaded }}>
+                                                {r.years} {r.years === 1 ? 'year' : 'years'} — awaiting payment
+                                            </div>
+                                        </div>
+                                        <button
+                                            onClick={() => {
+                                                setDomainInput(r.domainName);
+                                                setRegistrationYears(r.years);
+                                                setActiveTab('register');
+                                            }}
+                                            style={{
+                                                padding: '6px 12px',
+                                                background: colors.warning,
+                                                border: 'none',
+                                                borderRadius: '6px',
+                                                cursor: 'pointer',
+                                                fontSize: '11px',
+                                                fontWeight: 600,
+                                                color: '#000'
+                                            }}>
+                                            Complete
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+
                         {/* Add Domain Input */}
                         <div style={{ marginBottom: '16px' }}>
                             <div style={{ fontSize: '12px', color: colors.textFaded, marginBottom: '8px' }}>
@@ -1251,7 +1347,7 @@ export default function BtcDomainScreen() {
                                                     }} />
                                                 </div>
                                                 <span style={{ color: colors.textFaded, fontSize: '10px' }}>
-                                                    Price decreases every block toward {formatSats(AUCTION_FLOOR_SATS)}. ~26,280 blocks (~6 months) to reach floor.
+                                                    Price decreases every block toward {formatSats(AUCTION_FLOOR_SATS)}. ~52,560 blocks (~1 year) to reach floor.
                                                 </span>
                                             </div>
                                         )}
@@ -1267,7 +1363,7 @@ export default function BtcDomainScreen() {
                                                     color: colors.success,
                                                     marginBottom: '12px'
                                                 }}>
-                                                Auction ended — at floor price
+                                                At floor price
                                             </div>
                                         )}
 
@@ -1415,32 +1511,6 @@ export default function BtcDomainScreen() {
                                             </>
                                         )}
 
-                                        {/* CLI Command to register */}
-                                        <div style={{ fontSize: '11px', color: colors.textFaded, marginBottom: '6px' }}>
-                                            Or register via CLI:
-                                        </div>
-                                        <div
-                                            style={{
-                                                background: colors.inputBg,
-                                                borderRadius: '8px',
-                                                padding: '10px 12px',
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                justifyContent: 'space-between',
-                                                gap: '8px'
-                                            }}>
-                                            <code style={{ fontSize: '10px', color: colors.success, fontFamily: 'monospace' }}>
-                                                npx @btc-vision/cli domain register {normalizeDomain(domainInput)}.btc{networkFlag}
-                                            </code>
-                                            <button
-                                                onClick={async () => {
-                                                    await copyToClipboard(`npx @btc-vision/cli domain register ${normalizeDomain(domainInput)}.btc${networkFlag}`);
-                                                    tools.toastSuccess('Copied!');
-                                                }}
-                                                style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: '4px' }}>
-                                                <CopyOutlined style={{ fontSize: 14, color: colors.textFaded }} />
-                                            </button>
-                                        </div>
                                     </>
                                 )}
                             </div>
@@ -1990,9 +2060,8 @@ export default function BtcDomainScreen() {
                                     </button>
                                 )}
 
-                                {/* Publish via CLI */}
                                 {uploadedCid && (
-                                    <div>
+                                    <div style={{ marginTop: '8px' }}>
                                         <div style={{ fontSize: '11px', color: colors.textFaded, marginBottom: '6px' }}>
                                             Or publish via CLI:
                                         </div>
@@ -2036,8 +2105,7 @@ export default function BtcDomainScreen() {
                                 marginTop: '16px'
                             }}>
                             <CloudUploadOutlined style={{ color: colors.warning, marginRight: '8px' }} />
-                            <strong>Single-file publishing only.</strong> For multi-file websites with assets,
-                            use the CLI: <code style={{ color: colors.main }}>npx @btc-vision/cli deploy</code>
+                            <strong>Single-file publishing only.</strong>
                         </div>
                     </div>
                 )}
@@ -2402,140 +2470,6 @@ export default function BtcDomainScreen() {
                     </div>
                 )}
 
-                {/* CLI Instructions Collapsible */}
-                <div style={{ marginTop: '20px' }}>
-                    <button
-                        onClick={() => setShowCliInstructions(!showCliInstructions)}
-                        style={{
-                            width: '100%',
-                            padding: '12px 14px',
-                            background: colors.containerBgFaded,
-                            border: `1px solid ${colors.containerBorder}`,
-                            borderRadius: '10px',
-                            cursor: 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '10px'
-                        }}>
-                        <CodeOutlined style={{ fontSize: 16, color: colors.textFaded }} />
-                        <span style={{ flex: 1, textAlign: 'left', fontSize: '12px', fontWeight: 600, color: colors.text }}>
-                            CLI Instructions
-                        </span>
-                        <DownOutlined
-                            style={{
-                                fontSize: 10,
-                                color: colors.textFaded,
-                                transform: showCliInstructions ? 'rotate(180deg)' : 'rotate(0deg)',
-                                transition: 'transform 0.2s'
-                            }}
-                        />
-                    </button>
-
-                    {showCliInstructions && (
-                        <div
-                            style={{
-                                marginTop: '8px',
-                                padding: '16px',
-                                background: colors.containerBgFaded,
-                                border: `1px solid ${colors.containerBorder}`,
-                                borderRadius: '10px'
-                            }}>
-                            <div style={{ fontSize: '11px', color: colors.textFaded, marginBottom: '12px' }}>
-                                Requires <strong>Node.js 24+</strong> from{' '}
-                                <a href="https://nodejs.org" target="_blank" rel="noopener noreferrer" style={{ color: colors.main }}>
-                                    nodejs.org
-                                </a>
-                            </div>
-
-                            {/* Step 1: Login */}
-                            <div style={{ marginBottom: '12px' }}>
-                                <div style={{ fontSize: '11px', color: colors.text, fontWeight: 600, marginBottom: '6px' }}>
-                                    1. Login to CLI
-                                </div>
-                                <div
-                                    style={{
-                                        background: colors.inputBg,
-                                        borderRadius: '6px',
-                                        padding: '8px 10px',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'space-between'
-                                    }}>
-                                    <code style={{ fontSize: '10px', color: colors.success, fontFamily: 'monospace' }}>
-                                        npx @btc-vision/cli login
-                                    </code>
-                                    <button
-                                        onClick={async () => {
-                                            await copyToClipboard('npx @btc-vision/cli login');
-                                            tools.toastSuccess('Copied!');
-                                        }}
-                                        style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: '2px' }}>
-                                        <CopyOutlined style={{ fontSize: 12, color: colors.textFaded }} />
-                                    </button>
-                                </div>
-                            </div>
-
-                            {/* Step 2: Register */}
-                            <div style={{ marginBottom: '12px' }}>
-                                <div style={{ fontSize: '11px', color: colors.text, fontWeight: 600, marginBottom: '6px' }}>
-                                    2. Register Domain
-                                </div>
-                                <div
-                                    style={{
-                                        background: colors.inputBg,
-                                        borderRadius: '6px',
-                                        padding: '8px 10px',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'space-between'
-                                    }}>
-                                    <code style={{ fontSize: '9px', color: colors.success, fontFamily: 'monospace' }}>
-                                        npx @btc-vision/cli domain register YOUR_DOMAIN.btc{networkFlag}
-                                    </code>
-                                    <button
-                                        onClick={async () => {
-                                            await copyToClipboard(`npx @btc-vision/cli domain register YOUR_DOMAIN.btc${networkFlag}`);
-                                            tools.toastSuccess('Copied!');
-                                        }}
-                                        style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: '2px' }}>
-                                        <CopyOutlined style={{ fontSize: 12, color: colors.textFaded }} />
-                                    </button>
-                                </div>
-                            </div>
-
-                            {/* Step 3: Deploy */}
-                            <div>
-                                <div style={{ fontSize: '11px', color: colors.text, fontWeight: 600, marginBottom: '6px' }}>
-                                    3. Publish Website <span style={{ fontWeight: 400, color: colors.textFaded }}>(optional)</span>
-                                </div>
-                                <div
-                                    style={{
-                                        background: colors.inputBg,
-                                        borderRadius: '6px',
-                                        padding: '8px 10px',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'space-between'
-                                    }}>
-                                    <code style={{ fontSize: '9px', color: colors.success, fontFamily: 'monospace' }}>
-                                        npx @btc-vision/cli deploy YOUR_DOMAIN.btc .{networkFlag}
-                                    </code>
-                                    <button
-                                        onClick={async () => {
-                                            await copyToClipboard(`npx @btc-vision/cli deploy YOUR_DOMAIN.btc .${networkFlag}`);
-                                            tools.toastSuccess('Copied!');
-                                        }}
-                                        style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: '2px' }}>
-                                        <CopyOutlined style={{ fontSize: 12, color: colors.textFaded }} />
-                                    </button>
-                                </div>
-                                <div style={{ fontSize: '9px', color: colors.textFaded, marginTop: '6px' }}>
-                                    Use <code style={{ color: colors.main }}>.</code> for full directory or <code style={{ color: colors.main }}>index.html</code> for single file
-                                </div>
-                            </div>
-                        </div>
-                    )}
-                </div>
             </Content>
         </Layout>
     );
