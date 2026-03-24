@@ -29,10 +29,8 @@ export const WifExportWarningModal = ({ open, onConfirm, onCancel }: WifExportWa
     if (!open) return null;
 
     const handleConfirm = () => {
-        if (acknowledged) {
-            setAcknowledged(false); // Reset for next time
-            onConfirm();
-        }
+        setAcknowledged(false); // Reset for next time
+        onConfirm();
     };
 
     const handleCancel = () => {

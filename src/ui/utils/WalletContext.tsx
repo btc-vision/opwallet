@@ -37,6 +37,7 @@ import { TransactionHistoryFilter, TransactionHistoryItem } from '@/shared/types
 import { Psbt } from '@btc-vision/bitcoin';
 import { AddressTypes, InteractionParametersWithoutSigner } from '@btc-vision/transaction';
 import { createContext, ReactNode, useContext } from 'react';
+import { WalletHealthShowTime, WalletHealthType } from '../pages/Main/WalletTabScreen/constants';
 
 export interface WalletController {
     changePassword: (password: string, newPassword: string) => Promise<void>;
@@ -84,7 +85,9 @@ export interface WalletController {
 
     getAddressBalance(address: string, pubKey?: string): Promise<BitcoinBalance>;
 
-    getAddressUtxo(address: string): Promise<{ txid: string; vout: number; satoshis: number; scriptPk: string; addressType: number }[]>;
+    getAddressUtxo(
+        address: string
+    ): Promise<{ txid: string; vout: number; satoshis: number; scriptPk: string; addressType: number }[]>;
 
     getMultiAddressAssets(addresses: string): Promise<AddressSummary[]>;
 
@@ -296,9 +299,14 @@ export interface WalletController {
 
     testRpcConnection(url: string): Promise<boolean>;
 
+    getAutoLockTimeId(): Promise<number>;
     setAutoLockTimeId(timeId: number): Promise<void>;
 
-    getAutoLockTimeId(): Promise<number>;
+    getWalletHealthDelayId(): Promise<number>;
+    setWalletHealthDelayId(delayId: number): Promise<void>;
+
+    getWalletHealthShowTime(): Promise<WalletHealthShowTime>;
+    updateWalletHealthShowTime(type: WalletHealthType, clear: boolean): Promise<void>;
 
     setLastActiveTime(): Promise<void>;
 

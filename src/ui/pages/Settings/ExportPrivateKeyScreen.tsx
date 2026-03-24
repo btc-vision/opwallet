@@ -1,7 +1,6 @@
 import {
     CopyOutlined,
     KeyOutlined,
-    LockOutlined,
     SafetyOutlined,
     WarningOutlined
 } from '@ant-design/icons';
@@ -100,11 +99,7 @@ export default function ExportPrivateKeyScreen() {
 
 
     const handleExport = async () => {
-        if (!isSimpleKeyring && !pendingExport) {
-            setShowWifWarning(true);
-            return;
-        }
-
+        setPendingExport(false);
         try {
             const _res = await wallet.getPrivateKey(password, account);
             if (!_res) {
@@ -112,7 +107,8 @@ export default function ExportPrivateKeyScreen() {
                 return;
             }
             setPrivateKey(_res);
-            setPendingExport(false);
+            setPendingExport(true);
+            setShowWifWarning(!isSimpleKeyring);
 
             try {
                 const opnetWallet = await wallet.getOPNetWallet(account);
@@ -139,7 +135,7 @@ export default function ExportPrivateKeyScreen() {
             <Header onBack={() => window.history.go(-1)} title="Export Private Key" />
             <Content>
                 <div style={{ padding: '4px 0' }}>
-                    {privateKey.wif === '' ? (
+                    {!pendingExport || privateKey.wif === '' ? (
                         /* ─── Password Entry Phase ─── */
                         <div>
                             {/* Warning Card */}
@@ -151,15 +147,16 @@ export default function ExportPrivateKeyScreen() {
                                     padding: '14px',
                                     marginBottom: '16px'
                                 }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
+                                <div
+                                    style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
                                     <WarningOutlined style={{ fontSize: 16, color: colors.error }} />
                                     <span style={{ fontSize: '13px', fontWeight: 600, color: colors.error }}>
                                         Security Warning
                                     </span>
                                 </div>
                                 <div style={{ fontSize: '12px', color: colors.textFaded, lineHeight: '1.6' }}>
-                                    Your private key gives full access to your wallet. Never share it with anyone.
-                                    If you lose it, your assets cannot be recovered.
+                                    Your private key gives full access to your wallet. Never share it with anyone. If
+                                    you lose it, your assets cannot be recovered.
                                 </div>
                             </div>
 
@@ -175,13 +172,22 @@ export default function ExportPrivateKeyScreen() {
                                         alignItems: 'flex-start',
                                         gap: '10px'
                                     }}>
-                                    <WarningOutlined style={{ fontSize: 16, color: colors.main, marginTop: '1px', flexShrink: 0 }} />
+                                    <WarningOutlined
+                                        style={{ fontSize: 16, color: colors.main, marginTop: '1px', flexShrink: 0 }}
+                                    />
                                     <div>
-                                        <div style={{ fontSize: '12px', fontWeight: 600, color: colors.main, marginBottom: '4px' }}>
+                                        <div
+                                            style={{
+                                                fontSize: '12px',
+                                                fontWeight: 600,
+                                                color: colors.main,
+                                                marginBottom: '4px'
+                                            }}>
                                             Export BOTH Keys
                                         </div>
                                         <div style={{ fontSize: '11px', color: colors.textFaded, lineHeight: '1.5' }}>
-                                            For OPNet compatibility, you must backup both your classical and quantum private keys.
+                                            For OPNet compatibility, you must backup both your classical and quantum
+                                            private keys.
                                         </div>
                                     </div>
                                 </div>
@@ -189,14 +195,25 @@ export default function ExportPrivateKeyScreen() {
 
                             {/* Password Input */}
                             <div style={{ marginBottom: '16px' }}>
-                                <div style={{ fontSize: '12px', color: colors.textFaded, marginBottom: '8px', fontWeight: 500 }}>
+                                <div
+                                    style={{
+                                        fontSize: '12px',
+                                        color: colors.textFaded,
+                                        marginBottom: '8px',
+                                        fontWeight: 500
+                                    }}>
                                     Enter your password to reveal keys
                                 </div>
                                 <input
                                     type="password"
                                     value={password}
-                                    onChange={(e) => { setPassword(e.target.value); setError(''); }}
-                                    onKeyUp={(e) => { if (e.key === 'Enter') void handleExport(); }}
+                                    onChange={(e) => {
+                                        setPassword(e.target.value);
+                                        setError('');
+                                    }}
+                                    onKeyUp={(e) => {
+                                        if (e.key === 'Enter') void handleExport();
+                                    }}
                                     autoFocus
                                     placeholder="Password"
                                     style={{
@@ -211,8 +228,14 @@ export default function ExportPrivateKeyScreen() {
                                         boxSizing: 'border-box',
                                         transition: 'border-color 0.2s'
                                     }}
-                                    onFocus={(e) => { e.currentTarget.style.borderColor = colors.main; }}
-                                    onBlur={(e) => { e.currentTarget.style.borderColor = error ? colors.error : colors.containerBorder; }}
+                                    onFocus={(e) => {
+                                        e.currentTarget.style.borderColor = colors.main;
+                                    }}
+                                    onBlur={(e) => {
+                                        e.currentTarget.style.borderColor = error
+                                            ? colors.error
+                                            : colors.containerBorder;
+                                    }}
                                 />
                                 {error && (
                                     <div style={{ fontSize: '12px', color: colors.error, marginTop: '6px' }}>
@@ -243,7 +266,14 @@ export default function ExportPrivateKeyScreen() {
                     ) : (
                         /* ─── Key Display Phase ─── */
                         <div>
-                            <div style={{ fontSize: '12px', color: colors.textFaded, textAlign: 'center', marginBottom: '16px', lineHeight: '1.5' }}>
+                            <div
+                                style={{
+                                    fontSize: '12px',
+                                    color: colors.textFaded,
+                                    textAlign: 'center',
+                                    marginBottom: '16px',
+                                    lineHeight: '1.5'
+                                }}>
                                 Save these keys somewhere safe and secret. You will need them to recover this account.
                             </div>
 
@@ -256,7 +286,8 @@ export default function ExportPrivateKeyScreen() {
                                     border: `1px solid ${colors.containerBorder}`,
                                     marginBottom: '12px'
                                 }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
+                                <div
+                                    style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
                                     <KeyOutlined style={{ fontSize: 15, color: colors.main }} />
                                     <span style={{ fontSize: '13px', fontWeight: 600, color: colors.text }}>
                                         Classical Private Key
@@ -304,18 +335,34 @@ export default function ExportPrivateKeyScreen() {
                                             padding: '14px',
                                             border: `1px solid ${colors.purple}30`
                                         }}>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+                                        <div
+                                            style={{
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: '8px',
+                                                marginBottom: '6px'
+                                            }}>
                                             <SafetyOutlined style={{ fontSize: 15, color: colors.purple }} />
                                             <span style={{ fontSize: '13px', fontWeight: 600, color: colors.text }}>
                                                 Post-Quantum Private Key (MLDSA)
                                             </span>
                                         </div>
-                                        <div style={{ fontSize: '11px', color: colors.textFaded, marginBottom: '12px', lineHeight: '1.4' }}>
+                                        <div
+                                            style={{
+                                                fontSize: '11px',
+                                                color: colors.textFaded,
+                                                marginBottom: '12px',
+                                                lineHeight: '1.4'
+                                            }}>
                                             {isSimpleKeyring
                                                 ? 'Required for all OPNet transactions. Store securely alongside your classical key.'
                                                 : 'Can also be derived from your seed phrase.'}
                                         </div>
-                                        <CopyableKey label="MLDSA Private Key" value={quantumPrivateKey} onCopy={copy} />
+                                        <CopyableKey
+                                            label="MLDSA Private Key"
+                                            value={quantumPrivateKey}
+                                            onCopy={copy}
+                                        />
                                     </div>
                                 </>
                             )}
@@ -325,11 +372,9 @@ export default function ExportPrivateKeyScreen() {
             </Content>
 
             <WifExportWarningModal
-                open={showWifWarning}
+                open={showWifWarning && pendingExport}
                 onConfirm={() => {
                     setShowWifWarning(false);
-                    setPendingExport(true);
-                    void handleExport();
                 }}
                 onCancel={() => {
                     setShowWifWarning(false);

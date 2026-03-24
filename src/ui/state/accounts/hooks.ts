@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 
 import { Account } from '@/shared/types';
 import { useWallet } from '@/ui/utils';
@@ -8,6 +8,9 @@ import { keyringsActions } from '../keyrings/reducer';
 import { settingsActions } from '../settings/reducer';
 import { DEFAULT_BITCOIN_BALANCE } from './constants';
 import { accountActions } from './reducer';
+import { WALLET_HEALTH_DELAYS } from '@/shared/constant';
+import { WalletHealthShowTime, WalletHealthType } from '@/ui/pages/Main/WalletTabScreen/constants';
+import { WalletHealthCheck } from '@/ui/pages/Main/WalletTabScreen/health';
 
 export function useAccountsState(): AppState['accounts'] {
     return useAppSelector((state) => state.accounts);
@@ -172,4 +175,66 @@ export function useReloadAccounts() {
         const configs = await wallet.getWalletConfig();
         dispatch(settingsActions.updateSettings({ walletConfig: configs }));
     }, [dispatch, wallet]);
+}
+
+export function useWalletHealthShowTime() {
+    const [now, setNow] = useState(() => Date.now());
+    const [delay, setDelay] = useState(0);
+    const [lastShow, setLastShow] = useState<WalletHealthShowTime>({} as WalletHealthShowTime);
+    const [healthBadgeOnly, setHealthBadgeOnly] = useState(false);
+
+    const wallet = useWallet();
+
+    useEffect(() => {
+        const updateValues = async () => {
+            const lastShow = await wallet.getWalletHealthShowTime();
+            const delayId = await wallet.getWalletHealthDelayId();
+            const config = WALLET_HEALTH_DELAYS[delayId];
+            setLastShow(lastShow);
+            setDelay(config.time);
+            if (config.time == 0) {
+                setHealthBadgeOnly(true);
+            }
+        }
+        void updateValues();
+    }, [now]);
+
+    const updateWalletHealthShowTime = async (type?: WalletHealthType) => {
+        if (type) {
+            await wallet.updateWalletHealthShowTime(type, false);
+            setLastShow({...await wallet.getWalletHealthShowTime()});
+            setNow(Date.now());
+        }
+    };
+
+    // This will clear timer for no more relevant checks.  To ensure that if they
+    // need to be shown again, they may be shown quickly.
+    const manageWalletHealthShowTimes = async (checks: WalletHealthCheck[]) => {
+        let updated = false;
+        for (const check of checks) {
+            if (!check.show && (lastShow[check.type] || 0) > 0) {
+                await wallet.updateWalletHealthShowTime(check.type, true);
+                updated = true;
+            }
+        }
+        if (updated) {
+            setLastShow({ ...(await wallet.getWalletHealthShowTime()) });
+            setNow(Date.now());
+        }
+    };
+
+    const mayShowWalletHealth = (type?:WalletHealthType)=> {
+        if (type) {
+            return now > (lastShow[type] || 0) + delay;
+        }
+        return false;
+    };
+
+    return {
+        mayShowWalletHealth,
+        lastShow,
+        healthBadgeOnly,
+        updateWalletHealthShowTime,
+        manageWalletHealthShowTimes,
+    };
 }

@@ -1,4 +1,4 @@
-import { AddressFlagType, CHAINS, ChainType, CustomNetwork, DEFAULT_LOCKTIME_ID, EVENTS } from '@/shared/constant';
+import { AddressFlagType, CHAINS, ChainType, CustomNetwork, DEFAULT_LOCKTIME_ID, DEFAULT_WALLET_HEALTH_DELAY_ID, EVENTS } from '@/shared/constant';
 import eventBus from '@/shared/eventBus';
 import { SessionEvent } from '@/shared/interfaces/SessionEvent';
 import { Account, AppSummary, NetworkType, storageToAddressTypes, TxHistoryItem } from '@/shared/types';
@@ -9,6 +9,7 @@ import { cloneDeep } from 'lodash-es';
 import browser from '../webapi/browser';
 import i18n from './i18n';
 import sessionService from './session';
+import { WalletHealthShowTime, WalletHealthType } from '@/ui/pages/Main/WalletTabScreen/constants';
 
 const version = process.env.release ?? '0';
 
@@ -51,6 +52,8 @@ export interface PreferenceStore {
     showSafeNotice: boolean;
     addressFlags: Record<string, number>;
     autoLockTimeId: number;
+    walletHealthDelayId: number;
+    walletHealthShowTime: Record<string, WalletHealthShowTime>;
     customNetworks: Record<string, CustomNetwork>;
     notificationWindowMode: 'auto' | 'popup' | 'fullscreen';
     useSidePanel: boolean;
@@ -94,6 +97,8 @@ const DEFAULTS = {
         showSafeNotice: true,
         addressFlags: {},
         autoLockTimeId: DEFAULT_LOCKTIME_ID,
+        walletHealthDelayId: DEFAULT_WALLET_HEALTH_DELAY_ID,
+        walletHealthShowTime: {} as Record<string, WalletHealthShowTime>,
         customNetworks: {},
         notificationWindowMode: 'popup',
         useSidePanel: false,
@@ -194,6 +199,10 @@ class PreferenceService {
 
         if (typeof this.store.autoLockTimeId !== 'number') {
             this.store.autoLockTimeId = DEFAULT_LOCKTIME_ID;
+        }
+
+        if (typeof this.store.walletHealthDelayId !== 'number') {
+            this.store.walletHealthDelayId = DEFAULT_WALLET_HEALTH_DELAY_ID;
         }
 
         if (!this.store.customNetworks) {
@@ -493,10 +502,6 @@ class PreferenceService {
         await this.persist();
     };
 
-    getAutoLockTimeId = () => {
-        return this.store.autoLockTimeId;
-    };
-
     getCustomNetworks = (): Record<string, CustomNetwork> => {
         return this.store.customNetworks || {};
     };
@@ -532,9 +537,35 @@ class PreferenceService {
     //     this.persist();
     // };
 
+    getAutoLockTimeId = () => {
+        return this.store.autoLockTimeId;
+    };
+
     setAutoLockTimeId = async (id: number) => {
         this.store.autoLockTimeId = id;
+        await this.persist();
+    };
 
+    getWalletHealthDelayId = () => {
+        return this.store.walletHealthDelayId || DEFAULT_WALLET_HEALTH_DELAY_ID;
+    };
+
+    setWalletHealthDelayId = async (id: number) => {
+        this.store.walletHealthDelayId = id;
+        await this.persist();
+    };
+
+    getWalletHealthShowTime = (publicKey: string): WalletHealthShowTime => {
+        return this.store?.walletHealthShowTime?.[publicKey] || {};
+    };
+
+    updateWalletHealthShowTime = async (publicKey: string, type: WalletHealthType, clear: boolean) => {
+        const showTime = this.getWalletHealthShowTime(publicKey);
+        this.store.walletHealthShowTime = this.store?.walletHealthShowTime || {};
+        this.store.walletHealthShowTime[publicKey] = {
+            ...showTime,
+            [type]: clear ? 0 : new Date().getTime()
+        };
         await this.persist();
     };
 
