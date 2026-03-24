@@ -54,7 +54,7 @@ export function Step3_XVerseWarning({
                 1,
                 false // rotationModeEnabled = false (standard mode)
             );
-            navigate(RouteTypes.MainScreen);
+            navigate(RouteTypes.BoostScreen);
         } catch (e) {
             tools.toastError((e as Error).message);
         } finally {
