@@ -128,7 +128,7 @@ function AmountInput(props: InputProps) {
             }
         } else {
             const maxDecimals = decimalPlaces ?? 8;
-            const decimalRegex = new RegExp(`^\\d*\\.?\\d{0,${maxDecimals}}$`);
+            const decimalRegex = new RegExp(`^(0|[1-9]\\d*)(\\.\\d{0,${maxDecimals}})?$`);
             if (decimalRegex.test(value) || value === '') {
                 if (!isControlled) {
                     setInternalValue(value);
