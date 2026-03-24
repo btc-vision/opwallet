@@ -369,6 +369,9 @@ const Main = () => {
 
                 const a = await wallet.getAutoLockTimeId();
                 dispatch(settingsActions.updateSettings({ autoLockTimeId: a }));
+
+                const h = await wallet.getWalletHealthDelayId();
+                dispatch(settingsActions.updateSettings({ walletHealthDelayId: h }));
             }
 
             dispatch(globalActions.update({ isReady: true }));
