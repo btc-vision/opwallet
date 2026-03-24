@@ -34,7 +34,8 @@ export default function UTXOOptimizeScreen() {
         navigateToConsolidation,
         navigateToSplit,
         validateSplit,
-        calculateMaxSplits
+        calculateMaxSplits,
+        utxoProtectionDisabled
     } = useConsolidation();
 
     const [splitCount, setSplitCount] = useState(20);
@@ -350,6 +351,21 @@ export default function UTXOOptimizeScreen() {
                             </div>
                             <FeeRateBar onChange={(val) => setSplitFeeRate(val)} />
                         </div>
+
+                        {utxoProtectionDisabled && (
+                            <div style={{
+                                background: '#ff4d4f20',
+                                border: '1px solid #ff4d4f50',
+                                borderRadius: '8px',
+                                padding: '10px 12px',
+                                marginBottom: '12px',
+                                fontSize: '11px',
+                                color: '#ff4d4f',
+                                fontWeight: 600
+                            }}>
+                                UTXO protection is OFF. Ordinals and inscriptions may be spent during this split. Enable UTXO protection in Settings to prevent this.
+                            </div>
+                        )}
 
                         <button
                             onClick={() => void handleSplit()}
