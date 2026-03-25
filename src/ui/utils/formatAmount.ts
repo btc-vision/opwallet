@@ -43,12 +43,20 @@ export function formatAmount(amount: string | number | bigint, settings?: Displa
 
     // Parse into BigNumber
     let bn: BigNumber;
-    if (typeof amount === 'bigint') {
-        bn = new BigNumber(amount.toString());
-    } else if (typeof amount === 'string') {
-        bn = new BigNumber(amount.replace(/,/g, ''));
-    } else {
-        bn = new BigNumber(amount);
+    try {
+        if (typeof amount === 'bigint') {
+            bn = new BigNumber(amount.toString());
+        } else if (typeof amount === 'string') {
+            bn = new BigNumber(amount.replace(/,/g, ''));
+        } else {
+            bn = new BigNumber(amount);
+        }
+    } catch (e) {
+        // bignumber.js v10.0.0 CHANGELOG.md
+        //   Remove BigNumber.DEBUG, so the behaviour is now always as if it was true:
+        //     throw on invalid input instead of returning NaN.
+        // Set bn instead of returning here in case some conversion returns NaN without throwing.
+        bn = BigNumber(NaN);
     }
 
     if (bn.isNaN()) return String(amount);
