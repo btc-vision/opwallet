@@ -307,7 +307,7 @@ export default function WalletTabScreen() {
     const totalBalance = useMemo(() => {
         const main = BitcoinUtils.expandToDecimals(accountBalance.btc_total_amount || '0', 8);
         const total = main + cSVBalances();
-        return BitcoinUtils.formatUnits(total, 8).replace(/\.?0+$/, '') || '0';
+        return BitcoinUtils.formatUnits(total, 8);
     }, [accountBalance]);
 
     // Helper function to check if there are CSV balances
