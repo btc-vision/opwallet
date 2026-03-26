@@ -1967,16 +1967,19 @@ export class WalletController {
             // This will use the updated CHAINS_MAP
             await Web3API.setNetwork(chainType);
 
-            await preferenceService.setChainType(chainType);
-
             const chain = CHAINS_MAP[chainType];
             if (!chain) {
                 throw new WalletControllerError(`Chain ${chainType} not found in CHAINS_MAP`);
             }
 
-            // Update keyrings with the new network to ensure correct key derivation
+            // IMPORTANT: Update keyrings BEFORE updating the preference chain type.
+            // This prevents a race condition where the chain type is new but keyrings
+            // still hold old-network data, which would cause getKeyrings() to rebuild
+            // the cache with stale keyring data tagged as the new network type.
             const bitcoinNetwork = getBitcoinLibJSNetwork(chain.networkType, chainType);
             await keyringService.updateKeyringsNetwork(bitcoinNetwork);
+
+            await preferenceService.setChainType(chainType);
 
             // Invalidate cache since network changed (addresses may be different)
             this.invalidateKeyringCache();
