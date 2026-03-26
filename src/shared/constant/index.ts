@@ -520,6 +520,16 @@ export const HARDWARE_WALLETS = {
     }
 };
 
+export const WALLET_HEALTH_DELAYS = [
+    { id: 0, time: 1, label: 'Always' },
+    { id: 1, time: 3600000, label: 'Once an hour' },
+    { id: 2, time: 86400000, label: 'Once a day' },
+    { id: 3, time: 604800000, label: 'Once a week' },
+    { id: 4, time: 2629740000, label: 'Once a month' },
+    { id: 5, time: 0, label: 'Badges only' }
+];
+export const DEFAULT_WALLET_HEALTH_DELAY_ID = 1;
+
 export const AUTO_LOCKTIMES = [
     { id: 0, time: 30000, label: '30 Seconds' },
     { id: 1, time: 60000, label: '1 Minute' },

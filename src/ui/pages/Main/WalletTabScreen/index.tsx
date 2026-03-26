@@ -8,7 +8,7 @@ import { Column, Content, Footer, Header, Image, Layout } from '@/ui/components'
 import AccountSelect from '@/ui/components/AccountSelect';
 import { DuplicationAlertModal } from '@/ui/components/DuplicationAlertModal';
 import { MldsaBackupReminder } from '@/ui/components/MldsaBackupReminder';
-import { CsvFundsWarningPopup, LowBalancePopup, LowUtxoPopup } from '@/ui/components/WalletHealthPopup';
+import { CsvFundsWarningPopup, LowBalancePopup, LowUtxoPopup, WalletHealthBadge } from '@/ui/components/WalletHealthPopup';
 import { NavTabBar } from '@/ui/components/NavTabBar';
 import { QuantumMigrationBanner } from '@/ui/components/QuantumMigrationBanner';
 import { UpgradePopover } from '@/ui/components/UpgradePopover';
@@ -21,7 +21,8 @@ import {
     useAccountPublicKey,
     useAddressSummary,
     useCurrentAccount,
-    useFetchBalanceCallback
+    useFetchBalanceCallback,
+    useWalletHealthShowTime
 } from '@/ui/state/accounts/hooks';
 import { accountActions } from '@/ui/state/accounts/reducer';
 import { useAppDispatch } from '@/ui/state/hooks';
@@ -39,7 +40,7 @@ import { useResetUiTxCreateScreen } from '@/ui/state/ui/hooks';
 import { amountToSatoshis, copyToClipboard, useWallet } from '@/ui/utils';
 import { BitcoinUtils } from 'opnet';
 
-import { BTCDomainModal, TOS_DOMAIN_ACCEPTED_KEY } from "@/ui/components/AcceptModals/btcDomainTermsModal";
+import { BTCDomainModal, TOS_DOMAIN_ACCEPTED_KEY } from '@/ui/components/AcceptModals/btcDomainTermsModal';
 import { useTools } from '@/ui/components/ActionComponent';
 import ParticleField from '@/ui/components/ParticleField/ParticleField';
 import { useBtcDomainsEnabled, usePrivacyModeEnabled } from '@/ui/hooks/useAppConfig';
@@ -51,6 +52,7 @@ import {
     ExperimentOutlined,
     GlobalOutlined,
     HistoryOutlined,
+    LoadingOutlined,
     LockOutlined,
     QrcodeOutlined,
     RocketOutlined,
@@ -58,7 +60,6 @@ import {
     SettingOutlined,
     SwapOutlined,
     WalletOutlined,
-    LoadingOutlined,
     WarningOutlined
 } from '@ant-design/icons';
 import { Address } from '@btc-vision/transaction';
@@ -68,6 +69,7 @@ import { RouteTypes, useNavigate } from '../../routeTypes';
 import { SwitchChainModal } from '../../Settings/network/SwitchChainModal';
 import { useConsolidation } from './hooks';
 import { OPNetList } from './OPNetList';
+import { getWalletHealthChecks, WalletHealthCheck } from './health';
 
 const colors = {
     main: '#f37413',
@@ -94,12 +96,11 @@ export default function WalletTabScreen() {
 
     const untweakedPublicKey = useAccountPublicKey();
     const baseAddress = useAccountAddress();
+    const tools = useTools();
 
     const rotationEnabled = useRotationEnabled();
     const currentRotationAddress = useCurrentRotationAddress();
-    const bitcoinAddress = rotationEnabled && currentRotationAddress
-        ? currentRotationAddress.address
-        : baseAddress;
+    const bitcoinAddress = rotationEnabled && currentRotationAddress ? currentRotationAddress.address : baseAddress;
 
     // Feature flags
     const btcDomainsEnabled = useBtcDomainsEnabled();
@@ -128,6 +129,7 @@ export default function WalletTabScreen() {
     const addressSummary = useAddressSummary();
     const btcUnit = useBTCUnit();
     const faucetUrl = useFaucetUrl();
+    const { lastShow, mayShowWalletHealth, manageWalletHealthShowTimes, healthBadgeOnly, updateWalletHealthShowTime } = useWalletHealthShowTime();
 
     const [switchChainModalVisible, setSwitchChainModalVisible] = useState(false);
     const [showBalanceDetails, setShowBalanceDetails] = useState(false);
@@ -145,11 +147,7 @@ export default function WalletTabScreen() {
     const versionInfo = useVersionInfo();
 
     const resetUiTxCreateScreen = useResetUiTxCreateScreen();
-    const {
-        checkUTXOLimit,
-        checkUTXOWarning,
-        navigateToConsolidation
-    } = useConsolidation();
+    const { checkUTXOLimit, checkUTXOWarning, navigateToConsolidation } = useConsolidation();
 
     const [needsQuantumMigration, setNeedsQuantumMigration] = useState<boolean | null>(null);
     const [showMldsaBackupReminder, setShowMldsaBackupReminder] = useState(false);
@@ -159,7 +157,7 @@ export default function WalletTabScreen() {
     const [showDuplicationAlert, setShowDuplicationAlert] = useState(false);
 
     // Wallet health popup dismissal state (resets on every mount)
-    const [healthPopupDismissed, setHealthPopupDismissed] = useState(false);
+    const [showHealthPopup, setShowHealthPopup] = useState<WalletHealthCheck | undefined>(undefined);
 
     // Check if quantum migration is needed (SimpleKeyring without quantum key)
     useEffect(() => {
@@ -217,7 +215,6 @@ export default function WalletTabScreen() {
         };
 
         void checkForDuplicates();
-         
     }, []);
 
     // Check if MLDSA backup reminder should be shown (only for Simple Keyrings / WIF imports)
@@ -265,7 +262,6 @@ export default function WalletTabScreen() {
 
             const account = await wallet.addAddressFlag(currentAccount, AddressFlagType.CONFIRMED_UTXO_MODE);
             dispatch(accountActions.setCurrent(account));
-
         })();
     }, [addressSummary, currentAccount, dispatch, wallet]);
 
@@ -275,67 +271,49 @@ export default function WalletTabScreen() {
         });
     }, [fetchBalance]);
 
-    // Wallet health check: derived from balance data, no effect needed
-    const walletHealthCheck = useMemo(() => {
+    const walletHealthChecks = useMemo(() => {
         // Only evaluate once balance data is loaded for the current account
-        if (currentAccount.address !== addressSummary.address) return null;
+        if (currentAccount.address !== addressSummary.address) return [];
 
-        // Don't show popups if balance hasn't actually loaded (all zeros = likely fetch failed)
-        if (accountBalance.btc_total_amount === '0' && accountBalance.all_utxos_count === 0 &&
-            accountBalance.csv1_unlocked_utxos_count === 0 && accountBalance.csv1_locked_utxos_count === 0) {
-            return null;
-        }
+        // If we can show popup (no other popup displayed and not badge only),
+        // find the most important failed wallet health check.
+        const noPopups = !healthBadgeOnly && !showMldsaBackupReminder && !showDuplicationAlert;
+        const checks = getWalletHealthChecks(accountBalance);
+        const check = checks.find((w) => w.show && noPopups && mayShowWalletHealth(w.type));
+        setShowHealthPopup(check);
+        // Clear all timers that are no more relevent
+        void manageWalletHealthShowTimes(checks);
+        // In any case, return the full health check diagnostic
+        return checks;
+    }, [
+        accountBalance,
+        addressSummary.address,
+        currentAccount.address,
+        healthBadgeOnly,
+        lastShow,
+        showMldsaBackupReminder,
+        showDuplicationAlert
+    ]);
 
-        const primarySats = amountToSatoshis(accountBalance.btc_total_amount || '0');
-
-        // 1) Primary balance critically low (skip if CSV1 unlocked covers it)
-        if (primarySats < 10000) {
-            const csv1UnlockedSats = amountToSatoshis(accountBalance.csv1_unlocked_amount || '0');
-            if (csv1UnlockedSats <= 10000) return { type: 'low-balance' } as const;
-        }
-
-        // 2) CSV UTXOs > 5 total — need consolidation with per-type warnings
-        const totalCsvUtxos =
-            accountBalance.csv1_locked_utxos_count + accountBalance.csv1_unlocked_utxos_count +
-            accountBalance.csv2_locked_utxos_count + accountBalance.csv2_unlocked_utxos_count +
-            accountBalance.csv3_locked_utxos_count + accountBalance.csv3_unlocked_utxos_count +
-            accountBalance.csv75_locked_utxos_count + accountBalance.csv75_unlocked_utxos_count;
-
-        if (totalCsvUtxos > 5) {
-            const hasCsv1 = (accountBalance.csv1_locked_utxos_count + accountBalance.csv1_unlocked_utxos_count) > 0;
-            const hasCsv2 = (accountBalance.csv2_locked_utxos_count + accountBalance.csv2_unlocked_utxos_count) > 0;
-            const hasCsv3 = (accountBalance.csv3_locked_utxos_count + accountBalance.csv3_unlocked_utxos_count) > 0;
-            const hasCsv75 = (accountBalance.csv75_locked_utxos_count + accountBalance.csv75_unlocked_utxos_count) > 0;
-            return { type: 'csv-consolidation', hasCsv1, hasCsv2, hasCsv3, hasCsv75 } as const;
-        }
-
-        // 3) Primary UTXOs too few for concurrent transactions
-        //    Skip if multiple UTXOs are pending (all includes pending, unspent is confirmed only)
-        const pendingUtxoCount = accountBalance.all_utxos_count - accountBalance.unspent_utxos_count;
-        if (accountBalance.unspent_utxos_count < 5 && pendingUtxoCount < 2) return { type: 'low-utxos' } as const;
-
-        return null;
-    }, [accountBalance, addressSummary.address, currentAccount.address]);
+    // Helper function to check if there are CSV balances
+    const cSVBalances = () => {
+        const csv75Total = BitcoinUtils.expandToDecimals(accountBalance.csv75_total_amount || '0', 8);
+        const csv3Total = BitcoinUtils.expandToDecimals(accountBalance.csv3_total_amount || '0', 8);
+        const csv2Total = BitcoinUtils.expandToDecimals(accountBalance.csv2_total_amount || '0', 8);
+        const csv1Total = BitcoinUtils.expandToDecimals(accountBalance.csv1_total_amount || '0', 8);
+        return csv75Total + csv3Total + csv2Total + csv1Total;
+    };
 
     const totalBalance = useMemo(() => {
         const main = BitcoinUtils.expandToDecimals(accountBalance.btc_total_amount || '0', 8);
-        const csv75 = BitcoinUtils.expandToDecimals(accountBalance.csv75_total_amount || '0', 8);
-        const csv3 = BitcoinUtils.expandToDecimals(accountBalance.csv3_total_amount || '0', 8);
-        const csv2 = BitcoinUtils.expandToDecimals(accountBalance.csv2_total_amount || '0', 8);
-        const csv1 = BitcoinUtils.expandToDecimals(accountBalance.csv1_total_amount || '0', 8);
-        const total = main + csv75 + csv3 + csv2 + csv1;
+        const total = main + cSVBalances();
         return BitcoinUtils.formatUnits(total, 8);
     }, [accountBalance]);
 
     // Helper function to check if there are CSV balances
     const hasCSVBalances = () => {
-        const csv75Total = BitcoinUtils.expandToDecimals(accountBalance.csv75_total_amount || '0', 8);
-        const csv3Total = BitcoinUtils.expandToDecimals(accountBalance.csv3_total_amount || '0', 8);
-        const csv2Total = BitcoinUtils.expandToDecimals(accountBalance.csv2_total_amount || '0', 8);
-        const csv1Total = BitcoinUtils.expandToDecimals(accountBalance.csv1_total_amount || '0', 8);
-        return csv75Total > 0n || csv3Total > 0n || csv2Total > 0n || csv1Total > 0n;
+        return cSVBalances() > 0n;
     };
-
 
     // Handle duplication resolution navigation
     const handleDuplicationResolve = useCallback(() => {
@@ -343,14 +321,20 @@ export default function WalletTabScreen() {
         navigate(RouteTypes.DuplicationResolutionScreen);
     }, [navigate]);
 
-    const tools = useTools();
-
     const [domainTermsVisible, setDomainTermsVisible] = useState(() => {
         if (typeof window === 'undefined') return false;
         return window.localStorage.getItem(TOS_DOMAIN_ACCEPTED_KEY) !== '1';
     });
     const [showDomainTerms, setShowDomainTerms] = useState(false);
 
+    const forceShowHealthPopup = (type: WalletHealthCheck) => {
+        setShowHealthPopup(type);
+    };
+
+    const dismissHealthPopup = () => {
+        setShowHealthPopup(undefined);
+        void updateWalletHealthShowTime(showHealthPopup?.type);
+    };
 
     return (
         <Layout>
@@ -573,20 +557,40 @@ export default function WalletTabScreen() {
                                                     maxWidth: '320px',
                                                     margin: '0 auto 12px'
                                                 }}>
-                                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px' }}>
+                                                <div
+                                                    style={{
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        gap: '6px',
+                                                        marginBottom: '6px'
+                                                    }}>
                                                     <WarningOutlined style={{ fontSize: 13, color: colors.error }} />
-                                                    <span style={{ fontSize: '11px', fontWeight: 600, color: colors.error }}>
+                                                    <span
+                                                        style={{
+                                                            fontSize: '11px',
+                                                            fontWeight: 600,
+                                                            color: colors.error
+                                                        }}>
                                                         UTXO Limit Reached
                                                     </span>
                                                 </div>
-                                                <div style={{ fontSize: '10px', color: '#ccc', lineHeight: '1.5', marginBottom: '10px' }}>
-                                                    Balance incomplete (2,000+ UTXOs). Consolidate to restore full balance visibility.
+                                                <div
+                                                    style={{
+                                                        fontSize: '10px',
+                                                        color: '#ccc',
+                                                        lineHeight: '1.5',
+                                                        marginBottom: '10px'
+                                                    }}>
+                                                    Balance incomplete (2,000+ UTXOs). Consolidate to restore full
+                                                    balance visibility.
                                                 </div>
                                                 <button
                                                     disabled={consolidateLoading}
                                                     onClick={() => {
                                                         setConsolidateLoading(true);
-                                                        void navigateToConsolidation().finally(() => setConsolidateLoading(false));
+                                                        void navigateToConsolidation().finally(() =>
+                                                            setConsolidateLoading(false)
+                                                        );
                                                     }}
                                                     style={{
                                                         width: '100%',
@@ -604,7 +608,9 @@ export default function WalletTabScreen() {
                                                         gap: '6px'
                                                     }}>
                                                     {consolidateLoading && <LoadingOutlined style={{ fontSize: 12 }} />}
-                                                    {consolidateLoading ? 'Loading UTXOs...' : `Consolidate ${consolidationLimit} UTXOs`}
+                                                    {consolidateLoading
+                                                        ? 'Loading UTXOs...'
+                                                        : `Consolidate ${consolidationLimit} UTXOs`}
                                                 </button>
                                             </div>
                                         );
@@ -639,20 +645,35 @@ export default function WalletTabScreen() {
                                                 maxWidth: '320px',
                                                 margin: '0 auto 12px'
                                             }}>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px' }}>
+                                            <div
+                                                style={{
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    gap: '6px',
+                                                    marginBottom: '6px'
+                                                }}>
                                                 <WarningOutlined style={{ fontSize: 13, color: accent }} />
                                                 <span style={{ fontSize: '11px', fontWeight: 600, color: accent }}>
                                                     High UTXO Count
                                                 </span>
                                             </div>
-                                            <div style={{ fontSize: '10px', color: '#ccc', lineHeight: '1.5', marginBottom: '10px' }}>
-                                                {warningThreshold}+ UTXOs in a category. Consolidate to avoid exceeding the 2,000 limit.
+                                            <div
+                                                style={{
+                                                    fontSize: '10px',
+                                                    color: '#ccc',
+                                                    lineHeight: '1.5',
+                                                    marginBottom: '10px'
+                                                }}>
+                                                {warningThreshold}+ UTXOs in a category. Consolidate to avoid exceeding
+                                                the 2,000 limit.
                                             </div>
                                             <button
                                                 disabled={consolidateLoading}
                                                 onClick={() => {
                                                     setConsolidateLoading(true);
-                                                    void navigateToConsolidation().finally(() => setConsolidateLoading(false));
+                                                    void navigateToConsolidation().finally(() =>
+                                                        setConsolidateLoading(false)
+                                                    );
                                                 }}
                                                 style={{
                                                     width: '100%',
@@ -675,7 +696,6 @@ export default function WalletTabScreen() {
                                         </div>
                                     );
                                 })()}
-
 
                                 {/* Optimize - absolute top right */}
                                 <Tooltip title="Optimize wallet UTXOs for better performance">
@@ -726,7 +746,13 @@ export default function WalletTabScreen() {
                                 </div>
 
                                 {/* Balance */}
-                                <BtcDisplay balance={totalBalance} />
+                                <div style={{ position: 'relative' }}>
+                                    <BtcDisplay balance={totalBalance} />
+                                    {healthBadgeOnly && (
+                                        <WalletHealthBadge checks={walletHealthChecks} onClick={forceShowHealthPopup} />
+                                    )}
+                                </div>
+
                                 <BtcUsd
                                     sats={amountToSatoshis(totalBalance)}
                                     textCenter
@@ -735,7 +761,7 @@ export default function WalletTabScreen() {
                                 />
 
                                 {/* Metadata: CSV Badge, MLDSA Key, and Bitcoin Address */}
-                                {(
+                                {
                                     <div
                                         style={{
                                             display: 'flex',
@@ -773,7 +799,9 @@ export default function WalletTabScreen() {
                                                 }}>
                                                 {/* MLDSA Key - only show if wallet is migrated */}
                                                 {untweakedPublicKey.mldsa && (
-                                                    <Tooltip title="Click to copy MLDSA public key hash" placement="top">
+                                                    <Tooltip
+                                                        title="Click to copy MLDSA public key hash"
+                                                        placement="top">
                                                         <button
                                                             style={{
                                                                 display: 'flex',
@@ -792,12 +820,19 @@ export default function WalletTabScreen() {
                                                                 tools.toastSuccess('MLDSA key copied');
                                                             }}
                                                             onMouseEnter={(e) => {
-                                                                e.currentTarget.style.background = 'rgba(139, 92, 246, 0.2)';
+                                                                e.currentTarget.style.background =
+                                                                    'rgba(139, 92, 246, 0.2)';
                                                             }}
                                                             onMouseLeave={(e) => {
-                                                                e.currentTarget.style.background = 'rgba(139, 92, 246, 0.1)';
+                                                                e.currentTarget.style.background =
+                                                                    'rgba(139, 92, 246, 0.1)';
                                                             }}>
-                                                            <span style={{ fontSize: '9px', color: '#8B5CF6', fontWeight: 700 }}>
+                                                            <span
+                                                                style={{
+                                                                    fontSize: '9px',
+                                                                    color: '#8B5CF6',
+                                                                    fontWeight: 700
+                                                                }}>
                                                                 MLDSA
                                                             </span>
                                                             <span
@@ -807,9 +842,12 @@ export default function WalletTabScreen() {
                                                                     fontFamily: 'monospace',
                                                                     opacity: 0.8
                                                                 }}>
-                                                                {mldsaHashedPublicKey.slice(0, 6)}...{mldsaHashedPublicKey.slice(-4)}
+                                                                {mldsaHashedPublicKey.slice(0, 6)}...
+                                                                {mldsaHashedPublicKey.slice(-4)}
                                                             </span>
-                                                            <CopyOutlined style={{ fontSize: 9, color: '#dbdbdb', opacity: 0.4 }} />
+                                                            <CopyOutlined
+                                                                style={{ fontSize: 9, color: '#dbdbdb', opacity: 0.4 }}
+                                                            />
                                                         </button>
                                                     </Tooltip>
                                                 )}
@@ -838,7 +876,12 @@ export default function WalletTabScreen() {
                                                         onMouseLeave={(e) => {
                                                             e.currentTarget.style.background = `${colors.main}15`;
                                                         }}>
-                                                        <span style={{ fontSize: '9px', color: colors.main, fontWeight: 700 }}>
+                                                        <span
+                                                            style={{
+                                                                fontSize: '9px',
+                                                                color: colors.main,
+                                                                fontWeight: 700
+                                                            }}>
                                                             BTC
                                                         </span>
                                                         <span
@@ -850,13 +893,15 @@ export default function WalletTabScreen() {
                                                             }}>
                                                             {bitcoinAddress.slice(0, 6)}...{bitcoinAddress.slice(-4)}
                                                         </span>
-                                                        <CopyOutlined style={{ fontSize: 9, color: '#dbdbdb', opacity: 0.4 }} />
+                                                        <CopyOutlined
+                                                            style={{ fontSize: 9, color: '#dbdbdb', opacity: 0.4 }}
+                                                        />
                                                     </button>
                                                 </Tooltip>
                                             </div>
                                         )}
                                     </div>
-                                )}
+                                }
                             </div>
                         </div>
 
@@ -866,7 +911,7 @@ export default function WalletTabScreen() {
                                 display: 'flex',
                                 justifyContent: 'center',
                                 gap: '8px',
-                                padding: '12px 12px 0px',
+                                padding: '12px 12px 0px'
                             }}>
                             <ActionButton
                                 label="Receive"
@@ -917,7 +962,9 @@ export default function WalletTabScreen() {
                         {/* Assign .btc Domain Card - Only show when feature is enabled */}
                         {btcDomainsEnabled && (
                             <div
-                                onClick={() => domainTermsVisible ? setShowDomainTerms(true) : navigate(RouteTypes.BtcDomainScreen)}
+                                onClick={() =>
+                                    domainTermsVisible ? setShowDomainTerms(true) : navigate(RouteTypes.BtcDomainScreen)
+                                }
                                 style={{
                                     margin: '0 12px 12px',
                                     padding: '10px 14px',
@@ -1017,7 +1064,6 @@ export default function WalletTabScreen() {
                         }}
                     />
                 )}
-
             </Content>
 
             <BTCDomainModal
@@ -1025,7 +1071,7 @@ export default function WalletTabScreen() {
                 open={domainTermsVisible && showDomainTerms}
                 onAccept={() => {
                     setDomainTermsVisible(false);
-                    navigate(RouteTypes.BtcDomainScreen)
+                    navigate(RouteTypes.BtcDomainScreen);
                 }}
             />
 
@@ -1039,30 +1085,23 @@ export default function WalletTabScreen() {
             )}
 
             {/* Wallet Health Popups - only show when no higher-priority modal is active */}
-            {walletHealthCheck?.type === 'low-balance' && !healthPopupDismissed && !showMldsaBackupReminder && !showDuplicationAlert && (
-                <LowBalancePopup onClose={() => setHealthPopupDismissed(true)} />
-            )}
+            {showHealthPopup?.type === 'low-balance' && <LowBalancePopup onClose={dismissHealthPopup} />}
 
-            {walletHealthCheck?.type === 'csv-consolidation' && !healthPopupDismissed && !showMldsaBackupReminder && !showDuplicationAlert && (
+            {showHealthPopup?.type === 'csv-consolidation' && (
                 <CsvFundsWarningPopup
-                    hasCsv1={walletHealthCheck.hasCsv1}
-                    hasCsv2={walletHealthCheck.hasCsv2}
-                    hasCsv3={walletHealthCheck.hasCsv3}
-                    hasCsv75={walletHealthCheck.hasCsv75}
-                    onClose={() => setHealthPopupDismissed(true)}
+                    hasCsv1={!!showHealthPopup.hasCsv1}
+                    hasCsv2={!!showHealthPopup.hasCsv2}
+                    hasCsv3={!!showHealthPopup.hasCsv3}
+                    hasCsv75={!!showHealthPopup.hasCsv75}
+                    onClose={dismissHealthPopup}
                 />
             )}
 
-            {walletHealthCheck?.type === 'low-utxos' && !healthPopupDismissed && !showMldsaBackupReminder && !showDuplicationAlert && (
-                <LowUtxoPopup onClose={() => setHealthPopupDismissed(true)} />
-            )}
+            {showHealthPopup?.type === 'low-utxos' && <LowUtxoPopup onClose={dismissHealthPopup} />}
 
             {/* Duplication Alert Modal - blocks interaction until resolved */}
             {duplicationDetection && showDuplicationAlert && (
-                <DuplicationAlertModal
-                    detection={duplicationDetection}
-                    onResolve={handleDuplicationResolve}
-                />
+                <DuplicationAlertModal detection={duplicationDetection} onResolve={handleDuplicationResolve} />
             )}
 
             <Footer px="zero" py="zero">

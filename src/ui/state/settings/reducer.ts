@@ -1,4 +1,8 @@
-import { ChainType, DEFAULT_LOCKTIME_ID } from '@/shared/constant';
+import {
+    ChainType,
+    DEFAULT_LOCKTIME_ID,
+    DEFAULT_WALLET_HEALTH_DELAY_ID
+} from '@/shared/constant';
 import { NetworkType, WalletConfig } from '@/shared/types';
 import { AddressTypes } from '@btc-vision/transaction';
 import { createSlice } from '@reduxjs/toolkit';
@@ -22,6 +26,7 @@ export interface SettingsState {
     walletConfig: WalletConfig;
     skippedVersion: string;
     autoLockTimeId: number;
+    walletHealthDelayId: number;
     displaySettings: DisplaySettings;
     hasCompletedDisplaySetup: boolean;
 }
@@ -40,6 +45,7 @@ export const initialState: SettingsState = {
     },
     skippedVersion: '',
     autoLockTimeId: DEFAULT_LOCKTIME_ID,
+    walletHealthDelayId: DEFAULT_WALLET_HEALTH_DELAY_ID,
     displaySettings: {
         decimalPrecision: -1,
         useKMBNotation: false,
@@ -66,6 +72,7 @@ const slice = createSlice({
                     skippedVersion?: string;
                     chainType?: ChainType;
                     autoLockTimeId?: number;
+                    walletHealthDelayId?: number;
                     displaySettings?: DisplaySettings;
                     hasCompletedDisplaySetup?: boolean;
                 };

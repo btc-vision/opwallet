@@ -225,7 +225,7 @@ export function Step2({
                     contextData.mnemonics, hdPath, contextData.passphrase,
                     contextData.addressType, 1, false
                 );
-                navigate(RouteTypes.MainScreen);
+                navigate(RouteTypes.BoostScreen);
             } catch (e) {
                 tools.toastError((e as Error).message);
             } finally {

@@ -162,6 +162,11 @@ export function useAutoLockTimeId() {
     return state.autoLockTimeId;
 }
 
+export function useWalletHealthDelayId() {
+    const state = useSettingsState();
+    return state.walletHealthDelayId;
+}
+
 export function useHasCompletedDisplaySetup(): boolean {
     const state = useSettingsState();
     return state.hasCompletedDisplaySetup ?? false;
