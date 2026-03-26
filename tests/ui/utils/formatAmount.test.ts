@@ -60,7 +60,7 @@ describe('formatAmount', () => {
         });
 
         it('0 decimals with string input', () => {
-            expect(formatAmount('51.53181685', settings(0))).toBe('52');
+            expect(formatAmount('51.53181685', settings(0))).toBe('51');
         });
 
         it('2 decimals with string input', () => {
@@ -197,6 +197,7 @@ describe('formatAmount', () => {
             };
             // toPrecision(2) on 0.0000345 = "0.000034" (2 sig digits)
             const result = formatAmount(0.0000345, settings);
+            expect(result).toBe('0.000034');
             expect(parseFloat(result)).toBeCloseTo(0.000034, 6);
         });
 

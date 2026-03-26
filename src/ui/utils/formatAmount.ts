@@ -72,7 +72,7 @@ export function formatAmount(amount: string | number | bigint, settings?: Displa
     const abs = bn.abs();
     if (abs.isGreaterThan(0) && abs.isLessThan(0.001)) {
         // toPrecision(2) then trim trailing zeros (e.g. "0.000000060" -> "0.00000006")
-        return bn.toPrecision(2).replace(/0+$/, '').replace(/\.$/, '');
+        return bn.toPrecision(2, BigNumber.ROUND_DOWN).replace(/0+$/, '').replace(/\.$/, '');
     }
 
     // K/M/B notation (if enabled)
