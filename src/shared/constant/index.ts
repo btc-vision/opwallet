@@ -274,7 +274,7 @@ export const DEFAULT_CHAINS_MAP: { [key in ChainType]?: TypeChain<key> } = {
         contractAddresses: {
             moto: '0xfd4473840751d58d9f8b73bdd57d6c5260453d5518bd7cd02d0a4cf3df9bf4dd',
             pill: '0xb09fc29c112af8293539477e23d8df1d3126639642767d707277131352040cbb',
-            btcResolver: '0x9fbe00d8bcdf4fe5387c4e11324b8254b8eb7b3879130213ac0ed854f3f5ee23'
+            btcResolver: '0xc9049fb7a443ca24f371f94c6b0d5fbe3b12d5dd46e252c1eb3e2a935d4e0294'
         }
     },
     [ChainType.BITCOIN_TESTNET4]: {
@@ -309,7 +309,7 @@ export const DEFAULT_CHAINS_MAP: { [key in ChainType]?: TypeChain<key> } = {
         contractAddresses: {
             moto: '0x0a6732489a31e6de07917a28ff7df311fc5f98f6e1664943ac1c3fe7893bdab5',
             pill: '0xfb7df2f08d8042d4df0506c0d4cee3cfa5f2d7b02ef01ec76dd699551393a438',
-            btcResolver: '0x271ea47b91797e5900a3c9bdd39b87a79919eac7c9ec2c860f494704fb0dcaea'
+            btcResolver: ''
         }
     },
     [ChainType.BITCOIN_SIGNET]: {
