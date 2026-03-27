@@ -925,22 +925,7 @@ export default function BtcDomainScreen() {
                         }}>
                         Renew
                     </button>
-                    <button
-                        onClick={() => setActiveTab('publish')}
-                        style={{
-                            flex: 1,
-                            padding: '8px 4px',
-                            border: 'none',
-                            borderRadius: '8px',
-                            cursor: 'pointer',
-                            fontSize: '11px',
-                            fontWeight: 600,
-                            background: activeTab === 'publish' ? colors.main : 'transparent',
-                            color: activeTab === 'publish' ? '#000' : colors.textFaded,
-                            transition: 'all 0.2s'
-                        }}>
-                        Publish
-                    </button>
+                    {/* Publish tab — temporarily disabled */}
                     <button
                         onClick={() => setActiveTab('transfer')}
                         style={{
@@ -1886,7 +1871,7 @@ export default function BtcDomainScreen() {
                     </div>
                 )}
 
-                {/* Publish Tab */}
+                {/* Publish Tab — temporarily disabled */}
                 {activeTab === 'publish' && (
                     <div>
                         {/* Domain Input */}

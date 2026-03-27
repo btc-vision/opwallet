@@ -3695,7 +3695,16 @@ export class WalletController {
     };
 
     /**
-     * Get tracked domains for the current account
+     * Build a storage key scoped to the current account AND chain.
+     * Domains are network-specific — a domain owned on mainnet doesn't exist on regtest.
+     */
+    private getTrackedDomainKey(address: string): string {
+        const chainType = this.getChainType();
+        return `${chainType}:${address}`;
+    }
+
+    /**
+     * Get tracked domains for the current account on the current network
      */
     public getTrackedDomains = async (): Promise<
         Array<{
@@ -3711,7 +3720,8 @@ export class WalletController {
         const account = preferenceService.getCurrentAccount();
         if (!account?.address) return [];
 
-        const trackedDomains = preferenceService.getTrackedDomains(account.address);
+        const key = this.getTrackedDomainKey(account.address);
+        const trackedDomains = preferenceService.getTrackedDomains(key);
         const results = [];
 
         for (const domain of trackedDomains) {
@@ -3720,7 +3730,7 @@ export class WalletController {
                 const isOwner = info.owner?.toLowerCase() === account.address.toLowerCase();
 
                 if (isOwner) {
-                    await preferenceService.updateTrackedDomainVerification(account.address, domain.name);
+                    await preferenceService.updateTrackedDomainVerification(key, domain.name);
                 }
 
                 results.push({
@@ -3746,7 +3756,7 @@ export class WalletController {
     };
 
     /**
-     * Add a domain to track
+     * Add a domain to track on the current network
      */
     public addTrackedDomain = async (domainName: string): Promise<void> => {
         const account = preferenceService.getCurrentAccount();
@@ -3763,7 +3773,8 @@ export class WalletController {
             throw new WalletControllerError('You do not own this domain');
         }
 
-        await preferenceService.addTrackedDomain(account.address, {
+        const key = this.getTrackedDomainKey(account.address);
+        await preferenceService.addTrackedDomain(key, {
             name: normalizedDomain,
             registeredAt: Date.now(),
             lastVerified: Date.now()
@@ -3771,14 +3782,15 @@ export class WalletController {
     };
 
     /**
-     * Remove a tracked domain
+     * Remove a tracked domain from the current network
      */
     public removeTrackedDomain = async (domainName: string): Promise<void> => {
         const account = preferenceService.getCurrentAccount();
         if (!account?.address) throw new WalletControllerError('No account selected');
 
         const normalizedDomain = domainName.toLowerCase().replace(/\.btc$/, '');
-        await preferenceService.removeTrackedDomain(account.address, normalizedDomain);
+        const key = this.getTrackedDomainKey(account.address);
+        await preferenceService.removeTrackedDomain(key, normalizedDomain);
     };
 
     /**
