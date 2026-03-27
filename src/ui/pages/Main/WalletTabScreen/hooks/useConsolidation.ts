@@ -316,6 +316,7 @@ export function useConsolidation() {
         navigateToConsolidation,
         navigateToSplit,
         validateSplit,
-        calculateMaxSplits
+        calculateMaxSplits,
+        utxoProtectionDisabled
     };
 }

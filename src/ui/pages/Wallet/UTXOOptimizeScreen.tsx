@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { UTXO_CONFIG } from '@/shared/config';
 import { SourceType } from '@/shared/interfaces/RawTxParameters';
@@ -34,10 +34,11 @@ export default function UTXOOptimizeScreen() {
         navigateToConsolidation,
         navigateToSplit,
         validateSplit,
-        calculateMaxSplits
+        calculateMaxSplits,
+        utxoProtectionDisabled
     } = useConsolidation();
 
-    const [splitCount, setSplitCount] = useState(25);
+    const [splitCount, setSplitCount] = useState(20);
     const [splitFeeRate, setSplitFeeRate] = useState(5);
     const [selectedSource, setSelectedSource] = useState<SourceType.CURRENT | SourceType.CSV1 | null>(null);
 
@@ -57,6 +58,18 @@ export default function UTXOOptimizeScreen() {
         () => BitcoinUtils.expandToDecimals(accountBalance.csv1_unlocked_amount || '0', 8),
         [accountBalance]
     );
+
+    useEffect(() => {
+        if (selectedSource !== null) return;
+
+        if (primaryBalance > 0n && csv1Balance <= 0n) {
+            setSelectedSource(SourceType.CURRENT);
+        } else if (csv1Balance > 0n && primaryBalance <= 0n) {
+            setSelectedSource(SourceType.CSV1);
+        } else if (primaryBalance > 0n && csv1Balance > 0n) {
+            setSelectedSource(primaryBalance >= csv1Balance ? SourceType.CURRENT : SourceType.CSV1);
+        }
+    }, [primaryBalance, csv1Balance, selectedSource]);
 
     const selectedBalance = useMemo(() => {
         if (!selectedSource) return 0n;
@@ -338,6 +351,21 @@ export default function UTXOOptimizeScreen() {
                             </div>
                             <FeeRateBar onChange={(val) => setSplitFeeRate(val)} />
                         </div>
+
+                        {utxoProtectionDisabled && (
+                            <div style={{
+                                background: '#ff4d4f20',
+                                border: '1px solid #ff4d4f50',
+                                borderRadius: '8px',
+                                padding: '10px 12px',
+                                marginBottom: '12px',
+                                fontSize: '11px',
+                                color: '#ff4d4f',
+                                fontWeight: 600
+                            }}>
+                                UTXO protection is OFF. Ordinals and inscriptions may be spent during this split. Enable UTXO protection in Settings to prevent this.
+                            </div>
+                        )}
 
                         <button
                             onClick={() => void handleSplit()}

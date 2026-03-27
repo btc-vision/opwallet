@@ -13,7 +13,11 @@ import {
     MintParameters,
     PublishDomainParameters,
     RawTxInfo,
-    RegisterDomainParameters,
+    ReserveDomainParameters,
+    CompleteRegistrationParameters,
+    RenewDomainParameters,
+    RegisterDomainWithMotoParameters,
+    RenewDomainWithMotoParameters,
     SendBitcoinParameters,
     SendNFTParameters,
     SourceType,
@@ -446,7 +450,11 @@ export default function TxOpnetConfirmScreen() {
             Action.Mint,
             Action.Airdrop,
             Action.SendNFT,
-            Action.RegisterDomain,
+            Action.ReserveDomain,
+            Action.CompleteRegistration,
+            Action.RegisterDomainWithMoto,
+            Action.RenewDomain,
+            Action.RenewDomainWithMoto,
             Action.PublishDomain,
             Action.InitiateDomainTransfer,
             Action.AcceptDomainTransfer,
@@ -573,8 +581,7 @@ export default function TxOpnetConfirmScreen() {
                         symbol = rawTxInfo.collectionName;
                         break;
                     }
-                    case Action.RegisterDomain: {
-                        // Get the resolver contract address from Web3API
+                    case Action.ReserveDomain: {
                         const resolverAddress = Web3API.btcResolverAddressP2OP;
                         if (!resolverAddress) {
                             throw new Error('Domain resolver not available on this network');
@@ -587,16 +594,15 @@ export default function TxOpnetConfirmScreen() {
                             userWallet.address
                         );
 
-                        // Ensure price is bigint (may have been serialized as string via navigation state)
-                        const priceRaw = rawTxInfo.price;
-                        const domainPrice = typeof priceRaw === 'bigint' ? priceRaw : BigInt(priceRaw);
+                        const reservationFee = typeof rawTxInfo.reservationFee === 'bigint'
+                            ? rawTxInfo.reservationFee
+                            : BigInt(rawTxInfo.reservationFee);
 
-                        // Set transaction details for simulation - contract needs to know about treasury payment
                         const outSimulation: StrippedTransactionOutput[] = [
                             {
                                 index: 1,
-                                to: rawTxInfo.treasuryAddress,
-                                value: domainPrice,
+                                to: rawTxInfo.reservationFeeAddress,
+                                value: reservationFee,
                                 flags: TransactionOutputFlags.hasTo,
                                 scriptPubKey: undefined
                             }
@@ -606,19 +612,150 @@ export default function TxOpnetConfirmScreen() {
                             outputs: outSimulation
                         });
 
-                        // Register the domain - payment to treasury is handled via extraOutputs
-                        simulation = await contract.registerDomain(rawTxInfo.domainName);
+                        simulation = await contract.reserveDomain(rawTxInfo.domainName, BigInt(rawTxInfo.years));
                         symbol = `${rawTxInfo.domainName}.btc`;
                         interactionParameters = {
                             ...interactionParameters,
-                            maximumAllowedSatToSpend: basePriorityFee + domainPrice + 5000n,
+                            maximumAllowedSatToSpend: basePriorityFee + reservationFee + 5000n,
                             extraOutputs: [
                                 {
-                                    address: rawTxInfo.treasuryAddress,
-                                    value: createSatoshi(domainPrice)
+                                    address: rawTxInfo.reservationFeeAddress,
+                                    value: createSatoshi(reservationFee)
                                 }
                             ]
                         };
+                        break;
+                    }
+                    case Action.CompleteRegistration: {
+                        const resolverAddress = Web3API.btcResolverAddressP2OP;
+                        if (!resolverAddress) {
+                            throw new Error('Domain resolver not available on this network');
+                        }
+                        const contract: IBtcNameResolverContract = getContract<IBtcNameResolverContract>(
+                            resolverAddress,
+                            BTC_NAME_RESOLVER_ABI,
+                            Web3API.provider,
+                            Web3API.network,
+                            userWallet.address
+                        );
+
+                        const totalPrice = typeof rawTxInfo.totalPrice === 'bigint'
+                            ? rawTxInfo.totalPrice
+                            : BigInt(rawTxInfo.totalPrice);
+                        const reservationFeeDeduction = 2000n;
+                        const remainingPrice = totalPrice > reservationFeeDeduction
+                            ? totalPrice - reservationFeeDeduction
+                            : 0n;
+
+                        if (remainingPrice > 0n) {
+                            const outSimulation: StrippedTransactionOutput[] = [
+                                {
+                                    index: 1,
+                                    to: rawTxInfo.treasuryAddress,
+                                    value: remainingPrice,
+                                    flags: TransactionOutputFlags.hasTo,
+                                    scriptPubKey: undefined
+                                }
+                            ];
+                            contract.setTransactionDetails({
+                                inputs: [],
+                                outputs: outSimulation
+                            });
+                        }
+
+                        simulation = await contract.completeRegistration(rawTxInfo.domainName);
+                        symbol = `${rawTxInfo.domainName}.btc`;
+                        interactionParameters = {
+                            ...interactionParameters,
+                            maximumAllowedSatToSpend: basePriorityFee + remainingPrice + 5000n,
+                            ...(remainingPrice > 0n ? {
+                                extraOutputs: [
+                                    {
+                                        address: rawTxInfo.treasuryAddress,
+                                        value: createSatoshi(remainingPrice)
+                                    }
+                                ]
+                            } : {})
+                        };
+                        break;
+                    }
+                    case Action.RenewDomain: {
+                        const resolverAddress = Web3API.btcResolverAddressP2OP;
+                        if (!resolverAddress) {
+                            throw new Error('Domain resolver not available on this network');
+                        }
+                        const contract: IBtcNameResolverContract = getContract<IBtcNameResolverContract>(
+                            resolverAddress,
+                            BTC_NAME_RESOLVER_ABI,
+                            Web3API.provider,
+                            Web3API.network,
+                            userWallet.address
+                        );
+
+                        const renewPrice = typeof rawTxInfo.totalPrice === 'bigint'
+                            ? rawTxInfo.totalPrice
+                            : BigInt(rawTxInfo.totalPrice);
+
+                        const outSimulation: StrippedTransactionOutput[] = [
+                            {
+                                index: 1,
+                                to: rawTxInfo.treasuryAddress,
+                                value: renewPrice,
+                                flags: TransactionOutputFlags.hasTo,
+                                scriptPubKey: undefined
+                            }
+                        ];
+                        contract.setTransactionDetails({
+                            inputs: [],
+                            outputs: outSimulation
+                        });
+
+                        simulation = await contract.renewDomain(rawTxInfo.domainName, BigInt(rawTxInfo.years));
+                        symbol = `${rawTxInfo.domainName}.btc`;
+                        interactionParameters = {
+                            ...interactionParameters,
+                            maximumAllowedSatToSpend: basePriorityFee + renewPrice + 5000n,
+                            extraOutputs: [
+                                {
+                                    address: rawTxInfo.treasuryAddress,
+                                    value: createSatoshi(renewPrice)
+                                }
+                            ]
+                        };
+                        break;
+                    }
+                    case Action.RegisterDomainWithMoto: {
+                        const resolverAddress = Web3API.btcResolverAddressP2OP;
+                        if (!resolverAddress) {
+                            throw new Error('Domain resolver not available on this network');
+                        }
+                        const contract: IBtcNameResolverContract = getContract<IBtcNameResolverContract>(
+                            resolverAddress,
+                            BTC_NAME_RESOLVER_ABI,
+                            Web3API.provider,
+                            Web3API.network,
+                            userWallet.address
+                        );
+
+                        simulation = await contract.registerDomainWithMoto(rawTxInfo.domainName, BigInt(rawTxInfo.years));
+                        symbol = `${rawTxInfo.domainName}.btc`;
+                        break;
+                    }
+                    case Action.RenewDomainWithMoto: {
+                        const resolverAddress = Web3API.btcResolverAddressP2OP;
+                        if (!resolverAddress) {
+                            throw new Error('Domain resolver not available on this network');
+                        }
+                        const contract: IBtcNameResolverContract = getContract<IBtcNameResolverContract>(
+                            resolverAddress,
+                            BTC_NAME_RESOLVER_ABI,
+                            Web3API.provider,
+                            Web3API.network,
+                            userWallet.address
+                        );
+
+                        simulation = await contract.renewDomainWithMoto(rawTxInfo.domainName, BigInt(rawTxInfo.years));
+                        symbol = `${rawTxInfo.domainName}.btc`;
                         break;
                     }
                     case Action.PublishDomain: {
@@ -1937,54 +2074,60 @@ export default function TxOpnetConfirmScreen() {
         }
     };
 
-    const registerDomain = async (parameters: RegisterDomainParameters) => {
+    const broadcastDomainTx = async (
+        parameters: { domainName: string; priorityFee: bigint },
+        contractMethod: string,
+        successMsg: string,
+        trackDomain = false,
+        navigateAfter?: { route: RouteTypes; state?: Record<string, unknown> }
+    ) => {
         try {
             const currentWalletAddress = await wallet.getCurrentAccount();
 
-            // Check if we have a cached pre-signed transaction
             if (!cachedSignedTx) {
                 throw new Error('No pre-signed transaction available. Please try again.');
             }
 
-            // Check expiration
             if (isPreSignedExpired()) {
                 throw new Error('Pre-signed transaction expired. Please go back and try again.');
             }
 
-            // Broadcast using the cached pre-signed transaction
             const sendTransaction = await cachedSignedTx.simulation.sendPresignedTransaction(cachedSignedTx.signedTx);
             if (!sendTransaction?.transactionId) {
                 setOpenLoading(false);
                 setDisabled(false);
                 setCachedSignedTx(null);
-                tools.toastError('Could not register domain');
+                tools.toastError(`Failed: ${contractMethod}`);
                 return;
             }
 
-            tools.toastSuccess(`Successfully registered ${parameters.domainName}.btc!`);
+            tools.toastSuccess(successMsg);
 
-            // Record transaction in history
             const txRecord: RecordTransactionInput = {
                 txid: sendTransaction.transactionId || '',
                 type: TransactionType.OPNET_INTERACTION,
                 from: currentWalletAddress.address,
-                contractMethod: 'registerDomain',
+                contractMethod,
                 fee: Number(parameters.priorityFee || 0),
                 feeRate: feeRate,
-                note: `Register domain ${parameters.domainName}.btc`
+                note: `${contractMethod}: ${parameters.domainName}.btc`
             };
             void wallet.recordTransaction(txRecord);
 
-            // Add domain to tracked domains
-            void wallet.addTrackedDomain(parameters.domainName);
+            if (trackDomain) {
+                void wallet.addTrackedDomain(parameters.domainName);
+            }
 
-            // Clear cached transaction
             setCachedSignedTx(null);
 
-            navigate(RouteTypes.TxSuccessScreen, {
-                txid: sendTransaction.transactionId,
-                domainRegistered: parameters.domainName
-            });
+            if (navigateAfter) {
+                navigate(navigateAfter.route, navigateAfter.state);
+            } else {
+                navigate(RouteTypes.TxSuccessScreen, {
+                    txid: sendTransaction.transactionId,
+                    domainRegistered: trackDomain ? parameters.domainName : undefined
+                });
+            }
         } catch (e) {
             const error = e as Error;
             console.error(e);
@@ -2228,8 +2371,16 @@ export default function TxOpnetConfirmScreen() {
                 return 'Airdrop Tokens';
             case Action.Transfer:
                 return 'Token Transfer';
-            case Action.RegisterDomain:
-                return 'Register Domain';
+            case Action.ReserveDomain:
+                return 'Reserve Domain';
+            case Action.CompleteRegistration:
+                return 'Complete Registration';
+            case Action.RegisterDomainWithMoto:
+                return 'Register Domain (MOTO)';
+            case Action.RenewDomain:
+                return 'Renew Domain';
+            case Action.RenewDomainWithMoto:
+                return 'Renew Domain (MOTO)';
             case Action.PublishDomain:
                 return 'Publish Website';
             case Action.InitiateDomainTransfer:
@@ -2258,8 +2409,12 @@ export default function TxOpnetConfirmScreen() {
                 return <ArrowRightOutlined style={iconStyle} />;
             case Action.SendNFT:
                 return <PictureOutlined style={iconStyle} />;
-            case Action.RegisterDomain:
+            case Action.ReserveDomain:
+            case Action.CompleteRegistration:
+            case Action.RegisterDomainWithMoto:
                 return <GlobalOutlined style={iconStyle} />;
+            case Action.RenewDomain:
+            case Action.RenewDomainWithMoto:
             case Action.PublishDomain:
                 return <CloudUploadOutlined style={iconStyle} />;
             case Action.InitiateDomainTransfer:
@@ -2979,8 +3134,32 @@ export default function TxOpnetConfirmScreen() {
                                     await transferToken(rawTxInfo);
                                     break;
                                 }
-                                case Action.RegisterDomain:
-                                    await registerDomain(rawTxInfo);
+                                case Action.ReserveDomain:
+                                    await broadcastDomainTx(
+                                        rawTxInfo,
+                                        'reserveDomain',
+                                        `Reserved ${rawTxInfo.domainName}.btc! Complete registration in the next block.`,
+                                        false,
+                                        {
+                                            route: RouteTypes.BtcDomainScreen,
+                                            state: {
+                                                pendingDomain: rawTxInfo.domainName,
+                                                pendingYears: rawTxInfo.years
+                                            }
+                                        }
+                                    );
+                                    break;
+                                case Action.CompleteRegistration:
+                                    await broadcastDomainTx(rawTxInfo, 'completeRegistration', `Registered ${rawTxInfo.domainName}.btc`, true);
+                                    break;
+                                case Action.RenewDomain:
+                                    await broadcastDomainTx(rawTxInfo, 'renewDomain', `Renewed ${rawTxInfo.domainName}.btc`);
+                                    break;
+                                case Action.RegisterDomainWithMoto:
+                                    await broadcastDomainTx(rawTxInfo, 'registerDomainWithMoto', `Registered ${rawTxInfo.domainName}.btc`, true);
+                                    break;
+                                case Action.RenewDomainWithMoto:
+                                    await broadcastDomainTx(rawTxInfo, 'renewDomainWithMoto', `Renewed ${rawTxInfo.domainName}.btc`);
                                     break;
                                 case Action.PublishDomain:
                                     await publishDomainWebsite(rawTxInfo);

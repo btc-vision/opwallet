@@ -69,6 +69,21 @@ export default function AccountUpdater() {
         };
     }, [dispatch]);
 
+    // Reload all account data when the chain/network changes.
+    // The accountsChanged event only updates the current account, but keyrings,
+    // account lists, and derived data (MLDSA addresses) also need refreshing.
+    useEffect(() => {
+        const chainChangeHandler = () => {
+            if (isUnlocked) {
+                void reloadAccounts();
+            }
+        };
+        eventBus.addEventListener('chainChanged', chainChangeHandler);
+        return () => {
+            eventBus.removeEventListener('chainChanged', chainChangeHandler);
+        };
+    }, [isUnlocked, reloadAccounts]);
+
     useEffect(() => {
         const lockHandler = () => {
             dispatch(globalActions.update({ isUnlocked: false }));

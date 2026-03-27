@@ -70,7 +70,8 @@ export default tseslint.config(
             '@typescript-eslint/no-empty-function': 'off',
             'react-hooks/exhaustive-deps': 'off',
             'preserve-caught-error': 'warn',
-            'no-useless-assignment': 'off'
+            'no-useless-assignment': 'off',
+			'@typescript-eslint/no-unnecessary-type-arguments': 'off'
         }
     },
     {

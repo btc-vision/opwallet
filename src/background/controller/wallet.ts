@@ -1967,16 +1967,19 @@ export class WalletController {
             // This will use the updated CHAINS_MAP
             await Web3API.setNetwork(chainType);
 
-            await preferenceService.setChainType(chainType);
-
             const chain = CHAINS_MAP[chainType];
             if (!chain) {
                 throw new WalletControllerError(`Chain ${chainType} not found in CHAINS_MAP`);
             }
 
-            // Update keyrings with the new network to ensure correct key derivation
+            // IMPORTANT: Update keyrings BEFORE updating the preference chain type.
+            // This prevents a race condition where the chain type is new but keyrings
+            // still hold old-network data, which would cause getKeyrings() to rebuild
+            // the cache with stale keyring data tagged as the new network type.
             const bitcoinNetwork = getBitcoinLibJSNetwork(chain.networkType, chainType);
             await keyringService.updateKeyringsNetwork(bitcoinNetwork);
+
+            await preferenceService.setChainType(chainType);
 
             // Invalidate cache since network changed (addresses may be different)
             this.invalidateKeyringCache();
@@ -3543,11 +3546,18 @@ export class WalletController {
      * Get .btc domain information including availability, owner, and price
      */
     public getBtcDomainInfo = async (
-        domainName: string
+        domainName: string,
+        years: number = 1
     ): Promise<{
         exists: boolean;
         owner: string | null;
-        price: bigint;
+        createdAt: bigint;
+        expiresAt: bigint;
+        isActive: boolean;
+        inGracePeriod: boolean;
+        totalPriceSats: bigint;
+        auctionPriceSats: bigint;
+        renewalPerYear: bigint;
         treasuryAddress: string;
     }> => {
         const normalizedDomain = domainName.toLowerCase().replace(/\.btc$/, '');
@@ -3564,9 +3574,12 @@ export class WalletController {
             Web3API.network
         );
 
-        // Get domain info
         const domainResult = await resolverContract.getDomain(normalizedDomain);
         const exists = domainResult.properties.exists;
+        const createdAt = domainResult.properties.createdAt;
+        const expiresAt = domainResult.properties.expiresAt;
+        const isActive = domainResult.properties.isActive;
+        const inGracePeriod = domainResult.properties.inGracePeriod;
 
         let owner: string | null = null;
         if (exists && domainResult.properties.owner && !domainResult.properties.owner.isDead()) {
@@ -3586,15 +3599,70 @@ export class WalletController {
             }
         }
 
-        // Get price for this domain
-        const priceResult = await resolverContract.getDomainPrice(normalizedDomain);
-        const price = priceResult.properties.priceSats;
+        const priceResult = await resolverContract.getDomainPrice(normalizedDomain, BigInt(years));
+        const totalPriceSats = priceResult.properties.totalPriceSats;
+        const auctionPriceSats = priceResult.properties.auctionPriceSats;
+        const renewalPerYear = priceResult.properties.renewalPerYear;
 
-        // Get treasury address
         const treasuryResult = await resolverContract.getTreasuryAddress();
         const treasuryAddress = treasuryResult.properties.treasuryAddress;
 
-        return { exists, owner, price, treasuryAddress };
+        return {
+            exists,
+            owner,
+            createdAt,
+            expiresAt,
+            isActive,
+            inGracePeriod,
+            totalPriceSats,
+            auctionPriceSats,
+            renewalPerYear,
+            treasuryAddress,
+        };
+    };
+
+    public getReservation = async (
+        domainName: string
+    ): Promise<{
+        reserver: string | null;
+        reservedAt: bigint;
+        years: bigint;
+        isActive: boolean;
+    }> => {
+        const normalizedDomain = domainName.toLowerCase().replace(/\.btc$/, '');
+
+        const resolverAddress = Web3API.btcResolverAddressP2OP;
+        if (!resolverAddress) {
+            throw new WalletControllerError('BtcNameResolver contract not configured for this network');
+        }
+
+        const resolverContract = getContract<IBtcNameResolverContract>(
+            resolverAddress,
+            BTC_NAME_RESOLVER_ABI,
+            Web3API.provider,
+            Web3API.network
+        );
+
+        const result = await resolverContract.getReservation(normalizedDomain);
+        let reserver: string | null = null;
+        if (result.properties.reserver && !result.properties.reserver.isDead()) {
+            try {
+                const publicKey = await Web3API.provider.getPublicKeyInfo(
+                    result.properties.reserver.toHex(),
+                    false
+                );
+                reserver = publicKey ? publicKey.p2tr(Web3API.network) : result.properties.reserver.toHex();
+            } catch {
+                reserver = result.properties.reserver.toHex();
+            }
+        }
+
+        return {
+            reserver,
+            reservedAt: result.properties.reservedAt,
+            years: result.properties.years,
+            isActive: result.properties.isActive,
+        };
     };
 
     /**
@@ -3627,7 +3695,16 @@ export class WalletController {
     };
 
     /**
-     * Get tracked domains for the current account
+     * Build a storage key scoped to the current account AND chain.
+     * Domains are network-specific — a domain owned on mainnet doesn't exist on regtest.
+     */
+    private getTrackedDomainKey(address: string): string {
+        const chainType = this.getChainType();
+        return `${chainType}:${address}`;
+    }
+
+    /**
+     * Get tracked domains for the current account on the current network
      */
     public getTrackedDomains = async (): Promise<
         Array<{
@@ -3635,33 +3712,37 @@ export class WalletController {
             registeredAt?: number;
             lastVerified?: number;
             isOwner: boolean;
+            expiresAt?: number;
+            isActive?: boolean;
+            inGracePeriod?: boolean;
         }>
     > => {
         const account = preferenceService.getCurrentAccount();
         if (!account?.address) return [];
 
-        const trackedDomains = preferenceService.getTrackedDomains(account.address);
+        const key = this.getTrackedDomainKey(account.address);
+        const trackedDomains = preferenceService.getTrackedDomains(key);
         const results = [];
 
-        // Verify ownership for each domain
         for (const domain of trackedDomains) {
             try {
                 const info = await this.getBtcDomainInfo(domain.name);
                 const isOwner = info.owner?.toLowerCase() === account.address.toLowerCase();
 
-                // Update verification timestamp if still owner
                 if (isOwner) {
-                    await preferenceService.updateTrackedDomainVerification(account.address, domain.name);
+                    await preferenceService.updateTrackedDomainVerification(key, domain.name);
                 }
 
                 results.push({
                     name: domain.name,
                     registeredAt: domain.registeredAt,
                     lastVerified: Date.now(),
-                    isOwner
+                    isOwner,
+                    expiresAt: Number(info.expiresAt),
+                    isActive: info.isActive,
+                    inGracePeriod: info.inGracePeriod,
                 });
             } catch {
-                // If verification fails, still show domain but mark as unverified
                 results.push({
                     name: domain.name,
                     registeredAt: domain.registeredAt,
@@ -3675,7 +3756,7 @@ export class WalletController {
     };
 
     /**
-     * Add a domain to track
+     * Add a domain to track on the current network
      */
     public addTrackedDomain = async (domainName: string): Promise<void> => {
         const account = preferenceService.getCurrentAccount();
@@ -3692,7 +3773,8 @@ export class WalletController {
             throw new WalletControllerError('You do not own this domain');
         }
 
-        await preferenceService.addTrackedDomain(account.address, {
+        const key = this.getTrackedDomainKey(account.address);
+        await preferenceService.addTrackedDomain(key, {
             name: normalizedDomain,
             registeredAt: Date.now(),
             lastVerified: Date.now()
@@ -3700,14 +3782,15 @@ export class WalletController {
     };
 
     /**
-     * Remove a tracked domain
+     * Remove a tracked domain from the current network
      */
     public removeTrackedDomain = async (domainName: string): Promise<void> => {
         const account = preferenceService.getCurrentAccount();
         if (!account?.address) throw new WalletControllerError('No account selected');
 
         const normalizedDomain = domainName.toLowerCase().replace(/\.btc$/, '');
-        await preferenceService.removeTrackedDomain(account.address, normalizedDomain);
+        const key = this.getTrackedDomainKey(account.address);
+        await preferenceService.removeTrackedDomain(key, normalizedDomain);
     };
 
     /**

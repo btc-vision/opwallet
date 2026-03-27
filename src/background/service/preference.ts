@@ -84,8 +84,8 @@ const DEFAULTS = {
         firstOpen: false,
         currency: 'USD',
         addressType: AddressTypes.P2TR,
-        networkType: NetworkType.TESTNET, // DEFAULT NETWORK
-        chainType: ChainType.OPNET_TESTNET,
+        networkType: NetworkType.MAINNET, // DEFAULT NETWORK
+        chainType: ChainType.BITCOIN_MAINNET,
         keyringAlianNames: {},
         accountAlianNames: {},
         skippedVersion: '',

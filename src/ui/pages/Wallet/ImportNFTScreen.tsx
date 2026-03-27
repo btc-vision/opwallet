@@ -35,12 +35,12 @@ interface NFTCollectionInfo {
 
 interface RawNFTCollectionInfo extends NFTCollectionInfo {
     totalSupply: string;
-    maximumSupply: string;
+    maximumSupply?: string;
 }
 
 interface ParsedNFTCollectionInfo extends NFTCollectionInfo {
     totalSupply: bigint;
-    //maximumSupply: bigint;
+    maximumSupply?: bigint;
 }
 
 export default function ImportNFTScreen() {
@@ -94,8 +94,9 @@ export default function ImportNFTScreen() {
                 });
             }
         } catch (err) {
-            setError('Failed to fetch collection information');
-            console.error(err);
+            const msg = err instanceof Error ? err.message : String(err);
+            setError(`Failed to fetch collection: ${msg}`);
+            console.error('NFT import fetch error:', err);
         } finally {
             setLoading(false);
         }
@@ -108,8 +109,8 @@ export default function ImportNFTScreen() {
             const _existingCollections = JSON.parse(localStorage.getItem(storageKey) || '[]') as RawNFTCollectionInfo[];
             const existingCollections: ParsedNFTCollectionInfo[] = _existingCollections.map((c) => ({
                 ...c,
-                totalSupply: BigInt(c.totalSupply),
-                maximumSupply: BigInt(c.maximumSupply)
+                totalSupply: BigInt(c.totalSupply || 0),
+                maximumSupply: c.maximumSupply ? BigInt(c.maximumSupply) : undefined
             }));
 
             if (existingCollections.some((c: ParsedNFTCollectionInfo) => c.address === collectionInfo.address)) {
@@ -128,8 +129,9 @@ export default function ImportNFTScreen() {
 
             navigate(RouteTypes.NFTTabScreen);
         } catch (err) {
-            setError('Failed to import collection');
-            console.error(err);
+            const msg = err instanceof Error ? err.message : String(err);
+            setError(`Failed to import collection: ${msg}`);
+            console.error('NFT import save error:', err);
         }
     };
 
