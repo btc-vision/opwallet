@@ -621,6 +621,11 @@ export class ProviderController {
                 throw new Error('Missing data to sign');
             }
 
+            const hexRegex = /^(0x)?[0-9a-fA-F]+$/;
+            if (!hexRegex.test(params.data)) {
+                throw new Error('Invalid hex data to sign');
+            }
+
             if (params.type && params.type !== 'ecdsa' && params.type !== 'schnorr') {
                 throw new Error('Invalid signature type: must be "ecdsa" or "schnorr"');
             }
@@ -628,6 +633,23 @@ export class ProviderController {
             // Default type to schnorr if not specified
             if (!params.type) {
                 params.type = 'schnorr';
+            }
+
+            // If originalMessage is provided, verify the SHA-256 hash matches the data being signed.
+            // This ensures the human-readable message shown in the approval UI actually corresponds
+            // to the hex data being signed — prevents showing a fake message while signing something else.
+            const { data, originalMessage } = params;
+            if (originalMessage) {
+                const messageBuffer = new TextEncoder().encode(originalMessage);
+                const expectedHash = toHex(MessageSigner.sha256(messageBuffer));
+                const normalizedData = data.replace(/^0x/, '');
+
+                if (expectedHash !== data && expectedHash !== normalizedData) {
+                    throw new Error(
+                        'Hash mismatch: the SHA-256 hash of originalMessage does not match the data to sign. ' +
+                            'This could indicate a tampered request.'
+                    );
+                }
             }
         }
     ])
@@ -644,21 +666,6 @@ export class ProviderController {
             };
         };
     }) => {
-        // If originalMessage is provided, verify the SHA-256 hash matches the data being signed.
-        // This ensures the human-readable message shown in the approval UI actually corresponds
-        // to the hex data being signed — prevents showing a fake message while signing something else.
-        if (originalMessage) {
-            const messageBuffer = new TextEncoder().encode(originalMessage);
-            const expectedHash = toHex(MessageSigner.sha256(messageBuffer));
-
-            if (expectedHash !== data && expectedHash !== data.replace(/^0x/, '')) {
-                throw new Error(
-                    'Hash mismatch: the SHA-256 hash of originalMessage does not match the data to sign. ' +
-                        'This could indicate a tampered request.'
-                );
-            }
-        }
-
         return wallet.signData(data, type);
     };
 
