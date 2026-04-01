@@ -76,6 +76,12 @@ class ImageService {
         try {
             let url = imageUrl;
 
+            // Data URIs (e.g. data:image/png;base64,...) are already self-contained
+            // and must not be proxied through the image server.
+            if (url.startsWith('data:')) {
+                return url;
+            }
+
             // Handle IPFS URLs
             if (url.includes('ipfs://')) {
                 url = url.replace('ipfs://', 'https://ipfs.opnet.org/ipfs/');
@@ -271,6 +277,12 @@ class ImageService {
             // Optimize URL
             const optimizedUrl = this.getOptimizedUrl(src);
 
+            // Data URIs are self-contained — skip the HEAD request and load directly.
+            if (optimizedUrl.startsWith('data:')) {
+                await this.loadStandardImage(element, optimizedUrl, src);
+                return;
+            }
+
             // Check content type
             const response = await fetch(optimizedUrl, { method: 'HEAD' });
             const contentType = response.headers.get('content-type') || '';
@@ -424,6 +436,7 @@ class ImageService {
         if (!src) return false;
         if (src === 'undefined' || src === 'null') return false;
         if (src === '/' || src === '/index' || src === 'index') return false;
+        if (src.startsWith('data:')) return true;
         if (isHostMatch(src, 'google.com')) return false;
         if (isHostMatch(src, 'raritysniffer.com')) return false;
         return true;
