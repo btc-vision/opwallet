@@ -17,9 +17,7 @@ export default defineConfig({
         },
         rollupOptions: {
             output: {
-                // Ensure no code splitting for content script
-                inlineDynamicImports: true,
-                // No external dependencies - bundle everything
+                codeSplitting: false,
                 extend: true
             }
         },
