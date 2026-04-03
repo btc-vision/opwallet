@@ -13,11 +13,6 @@ import {
     MintParameters,
     PublishDomainParameters,
     RawTxInfo,
-    ReserveDomainParameters,
-    CompleteRegistrationParameters,
-    RenewDomainParameters,
-    RegisterDomainWithMotoParameters,
-    RenewDomainWithMotoParameters,
     SendBitcoinParameters,
     SendNFTParameters,
     SourceType,
@@ -410,7 +405,7 @@ export default function TxOpnetConfirmScreen() {
         }
 
         const effectiveRate = Number(decodedData.totalMiningFee) / totalVsize;
-        // Allow 20% tolerance — transaction building may round or adjust slightly
+        // Allow 20% tolerance, transaction building may round or adjust slightly
         const mismatch = Math.abs(effectiveRate - feeRate) / Math.max(feeRate, 1) > 0.2;
 
         return { effectiveRate: Math.round(effectiveRate * 100) / 100, mismatch };
@@ -594,9 +589,10 @@ export default function TxOpnetConfirmScreen() {
                             userWallet.address
                         );
 
-                        const reservationFee = typeof rawTxInfo.reservationFee === 'bigint'
-                            ? rawTxInfo.reservationFee
-                            : BigInt(rawTxInfo.reservationFee);
+                        const reservationFee =
+                            typeof rawTxInfo.reservationFee === 'bigint'
+                                ? rawTxInfo.reservationFee
+                                : BigInt(rawTxInfo.reservationFee);
 
                         const outSimulation: StrippedTransactionOutput[] = [
                             {
@@ -639,13 +635,13 @@ export default function TxOpnetConfirmScreen() {
                             userWallet.address
                         );
 
-                        const totalPrice = typeof rawTxInfo.totalPrice === 'bigint'
-                            ? rawTxInfo.totalPrice
-                            : BigInt(rawTxInfo.totalPrice);
+                        const totalPrice =
+                            typeof rawTxInfo.totalPrice === 'bigint'
+                                ? rawTxInfo.totalPrice
+                                : BigInt(rawTxInfo.totalPrice);
                         const reservationFeeDeduction = 2000n;
-                        const remainingPrice = totalPrice > reservationFeeDeduction
-                            ? totalPrice - reservationFeeDeduction
-                            : 0n;
+                        const remainingPrice =
+                            totalPrice > reservationFeeDeduction ? totalPrice - reservationFeeDeduction : 0n;
 
                         if (remainingPrice > 0n) {
                             const outSimulation: StrippedTransactionOutput[] = [
@@ -668,14 +664,16 @@ export default function TxOpnetConfirmScreen() {
                         interactionParameters = {
                             ...interactionParameters,
                             maximumAllowedSatToSpend: basePriorityFee + remainingPrice + 5000n,
-                            ...(remainingPrice > 0n ? {
-                                extraOutputs: [
-                                    {
-                                        address: rawTxInfo.treasuryAddress,
-                                        value: createSatoshi(remainingPrice)
-                                    }
-                                ]
-                            } : {})
+                            ...(remainingPrice > 0n
+                                ? {
+                                      extraOutputs: [
+                                          {
+                                              address: rawTxInfo.treasuryAddress,
+                                              value: createSatoshi(remainingPrice)
+                                          }
+                                      ]
+                                  }
+                                : {})
                         };
                         break;
                     }
@@ -692,9 +690,10 @@ export default function TxOpnetConfirmScreen() {
                             userWallet.address
                         );
 
-                        const renewPrice = typeof rawTxInfo.totalPrice === 'bigint'
-                            ? rawTxInfo.totalPrice
-                            : BigInt(rawTxInfo.totalPrice);
+                        const renewPrice =
+                            typeof rawTxInfo.totalPrice === 'bigint'
+                                ? rawTxInfo.totalPrice
+                                : BigInt(rawTxInfo.totalPrice);
 
                         const outSimulation: StrippedTransactionOutput[] = [
                             {
@@ -737,7 +736,10 @@ export default function TxOpnetConfirmScreen() {
                             userWallet.address
                         );
 
-                        simulation = await contract.registerDomainWithMoto(rawTxInfo.domainName, BigInt(rawTxInfo.years));
+                        simulation = await contract.registerDomainWithMoto(
+                            rawTxInfo.domainName,
+                            BigInt(rawTxInfo.years)
+                        );
                         symbol = `${rawTxInfo.domainName}.btc`;
                         break;
                     }
@@ -3150,16 +3152,34 @@ export default function TxOpnetConfirmScreen() {
                                     );
                                     break;
                                 case Action.CompleteRegistration:
-                                    await broadcastDomainTx(rawTxInfo, 'completeRegistration', `Registered ${rawTxInfo.domainName}.btc`, true);
+                                    await broadcastDomainTx(
+                                        rawTxInfo,
+                                        'completeRegistration',
+                                        `Registered ${rawTxInfo.domainName}.btc`,
+                                        true
+                                    );
                                     break;
                                 case Action.RenewDomain:
-                                    await broadcastDomainTx(rawTxInfo, 'renewDomain', `Renewed ${rawTxInfo.domainName}.btc`);
+                                    await broadcastDomainTx(
+                                        rawTxInfo,
+                                        'renewDomain',
+                                        `Renewed ${rawTxInfo.domainName}.btc`
+                                    );
                                     break;
                                 case Action.RegisterDomainWithMoto:
-                                    await broadcastDomainTx(rawTxInfo, 'registerDomainWithMoto', `Registered ${rawTxInfo.domainName}.btc`, true);
+                                    await broadcastDomainTx(
+                                        rawTxInfo,
+                                        'registerDomainWithMoto',
+                                        `Registered ${rawTxInfo.domainName}.btc`,
+                                        true
+                                    );
                                     break;
                                 case Action.RenewDomainWithMoto:
-                                    await broadcastDomainTx(rawTxInfo, 'renewDomainWithMoto', `Renewed ${rawTxInfo.domainName}.btc`);
+                                    await broadcastDomainTx(
+                                        rawTxInfo,
+                                        'renewDomainWithMoto',
+                                        `Renewed ${rawTxInfo.domainName}.btc`
+                                    );
                                     break;
                                 case Action.PublishDomain:
                                     await publishDomainWebsite(rawTxInfo);

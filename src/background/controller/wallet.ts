@@ -383,7 +383,7 @@ export class WalletController {
             // Start cache cleanup timer
             this._startCacheCleanup();
 
-            // Transaction status polling disabled — history feature not implemented yet
+            // Transaction status polling disabled, history feature not implemented yet
             // transactionStatusPoller.start();
         } catch (err) {
             throw new WalletControllerError(`Unlock failed: ${String(err)}`, {
@@ -417,7 +417,7 @@ export class WalletController {
             this._clearBalanceCache();
             this.invalidateKeyringCache();
 
-            // Transaction status polling disabled — history feature not implemented yet
+            // Transaction status polling disabled, history feature not implemented yet
             // transactionStatusPoller.stop();
         } catch (err) {
             throw new WalletControllerError(`Lock wallet failed: ${String(err)}`);
@@ -2082,7 +2082,7 @@ export class WalletController {
 
     /**
      * Build, sign, and broadcast a BTC funding transaction using TransactionFactory.
-     * Accepts IFundingTransactionParametersWithoutSigner — the wallet provides
+     * Accepts IFundingTransactionParametersWithoutSigner, the wallet provides
      * signer, mldsaSigner, and network internally.
      *
      * If UTXOs are not provided, the wallet fetches them automatically.
@@ -2128,7 +2128,7 @@ export class WalletController {
             }
         }
 
-        // Build the full funding parameters — explicitly enumerate allowed fields.
+        // Build the full funding parameters, explicitly enumerate allowed fields.
         // SECURITY: Never spread DApp params directly to prevent prototype/field injection.
         // SECURITY: For external (DApp) requests, dangerous fields are forced to undefined.
         // optionalOutputs/optionalInputs could add hidden outputs draining funds to an attacker.
@@ -3617,7 +3617,7 @@ export class WalletController {
             totalPriceSats,
             auctionPriceSats,
             renewalPerYear,
-            treasuryAddress,
+            treasuryAddress
         };
     };
 
@@ -3647,10 +3647,7 @@ export class WalletController {
         let reserver: string | null = null;
         if (result.properties.reserver && !result.properties.reserver.isDead()) {
             try {
-                const publicKey = await Web3API.provider.getPublicKeyInfo(
-                    result.properties.reserver.toHex(),
-                    false
-                );
+                const publicKey = await Web3API.provider.getPublicKeyInfo(result.properties.reserver.toHex(), false);
                 reserver = publicKey ? publicKey.p2tr(Web3API.network) : result.properties.reserver.toHex();
             } catch {
                 reserver = result.properties.reserver.toHex();
@@ -3661,7 +3658,7 @@ export class WalletController {
             reserver,
             reservedAt: result.properties.reservedAt,
             years: result.properties.years,
-            isActive: result.properties.isActive,
+            isActive: result.properties.isActive
         };
     };
 
@@ -3693,15 +3690,6 @@ export class WalletController {
         const result = (await response.json()) as { Hash?: string; cid?: string };
         return result.Hash ?? result.cid ?? '';
     };
-
-    /**
-     * Build a storage key scoped to the current account AND chain.
-     * Domains are network-specific — a domain owned on mainnet doesn't exist on regtest.
-     */
-    private getTrackedDomainKey(address: string): string {
-        const chainType = this.getChainType();
-        return `${chainType}:${address}`;
-    }
 
     /**
      * Get tracked domains for the current account on the current network
@@ -3740,7 +3728,7 @@ export class WalletController {
                     isOwner,
                     expiresAt: Number(info.expiresAt),
                     isActive: info.isActive,
-                    inGracePeriod: info.inGracePeriod,
+                    inGracePeriod: info.inGracePeriod
                 });
             } catch {
                 results.push({
@@ -3858,10 +3846,6 @@ export class WalletController {
         return addressRotationService.isRotationEnabled(account.pubkey);
     };
 
-    // =========================================================================
-    // OPNet Browser / Protocol Methods
-    // =========================================================================
-
     /**
      * Enable rotation mode for current account
      */
@@ -3880,6 +3864,10 @@ export class WalletController {
         const network = getBitcoinLibJSNetwork(this.getNetworkType(), this.getChainType());
         return addressRotationService.enableRotationMode(keyring.index, account.pubkey, network);
     };
+
+    // =========================================================================
+    // OPNet Browser / Protocol Methods
+    // =========================================================================
 
     /**
      * Disable rotation mode for current account
@@ -4333,8 +4321,6 @@ export class WalletController {
         return results;
     };
 
-    // ==================== ADDRESS ROTATION MODE ====================
-
     /**
      * Mark addresses as consolidated after successful broadcast
      */
@@ -4347,6 +4333,8 @@ export class WalletController {
         await addressRotationService.markConsolidated(account.pubkey, addresses, consolidatedAmount);
     };
 
+    // ==================== ADDRESS ROTATION MODE ====================
+
     /**
      * Invalidate balance and UTXO caches after broadcasting a transaction.
      * This forces a fresh fetch on the next balance/UTXO request.
@@ -4356,6 +4344,15 @@ export class WalletController {
         this.balanceCache.clear();
         Web3API.provider.utxoManager.clean(address);
     };
+
+    /**
+     * Build a storage key scoped to the current account AND chain.
+     * Domains are network-specific, a domain owned on mainnet doesn't exist on regtest.
+     */
+    private getTrackedDomainKey(address: string): string {
+        const chainType = this.getChainType();
+        return `${chainType}:${address}`;
+    }
 
     /**
      * Export a private key for internal use. Similar to getPrivateKey, but no password verification.

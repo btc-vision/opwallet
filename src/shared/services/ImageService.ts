@@ -18,6 +18,103 @@ interface QueuedImage {
 const BASE58 = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz-.,';
 const bs58 = base(BASE58);
 
+const ALLOWED_DATA_IMAGE_MIMES: ReadonlySet<string> = new Set([
+    'image/png',
+    'image/jpeg',
+    'image/gif',
+    'image/webp',
+    'image/bmp',
+    'image/avif',
+    'image/svg+xml'
+]);
+
+const MAX_DATA_URI_LENGTH = 1024 * 1024;
+const DECODE_TIMEOUT_MS = 5_000;
+const MAX_DIMENSION = 2048;
+
+const DATA_URI_PATTERN = /^data:(image\/[a-zA-Z0-9.+-]+);base64,([A-Za-z0-9+/=]+)$/;
+
+function validateDataUri(uri: string): string | null {
+    if (uri.length > MAX_DATA_URI_LENGTH) {
+        return null;
+    }
+
+    const match = uri.match(DATA_URI_PATTERN);
+    if (!match) {
+        return null;
+    }
+
+    const mime = match[1].toLowerCase();
+    if (!ALLOWED_DATA_IMAGE_MIMES.has(mime)) {
+        return null;
+    }
+
+    return `data:${mime};base64,${match[2]}`;
+}
+
+function reencodeImageViaCanvas(dataUri: string): Promise<string | null> {
+    const validated = validateDataUri(dataUri);
+    if (!validated) {
+        return Promise.resolve(null);
+    }
+
+    return new Promise((resolve) => {
+        const img = new Image();
+
+        const timeout = setTimeout(() => {
+            img.onload = null;
+            img.onerror = null;
+            img.src = '';
+            resolve(null);
+        }, DECODE_TIMEOUT_MS);
+
+        img.onload = () => {
+            clearTimeout(timeout);
+
+            if (img.naturalWidth === 0 || img.naturalHeight === 0) {
+                resolve(null);
+                return;
+            }
+
+            let width = img.naturalWidth;
+            let height = img.naturalHeight;
+
+            if (width > MAX_DIMENSION || height > MAX_DIMENSION) {
+                const scale = MAX_DIMENSION / Math.max(width, height);
+                width = Math.round(width * scale);
+                height = Math.round(height * scale);
+            }
+
+            const canvas = document.createElement('canvas');
+            canvas.width = width;
+            canvas.height = height;
+
+            const ctx = canvas.getContext('2d');
+            if (!ctx) {
+                resolve(null);
+                return;
+            }
+
+            try {
+                ctx.drawImage(img, 0, 0, width, height);
+                resolve(canvas.toDataURL('image/png'));
+            } catch {
+                resolve(null);
+            } finally {
+                canvas.width = 0;
+                canvas.height = 0;
+            }
+        };
+
+        img.onerror = () => {
+            clearTimeout(timeout);
+            resolve(null);
+        };
+
+        img.src = validated;
+    });
+}
+
 /**
  * Safely check if a URL's hostname matches or ends with the given domain.
  * This prevents attacks like evil.com/images.opnet.org or images.opnet.org.evil.com
@@ -75,6 +172,12 @@ class ImageService {
     encrypt(imageUrl: string): string {
         try {
             let url = imageUrl;
+
+            // Data URIs are self-contained and must not be proxied.
+            // They will be re-encoded through canvas at load time for security.
+            if (url.startsWith('data:')) {
+                return url;
+            }
 
             // Handle IPFS URLs
             if (url.includes('ipfs://')) {
@@ -271,6 +374,18 @@ class ImageService {
             // Optimize URL
             const optimizedUrl = this.getOptimizedUrl(src);
 
+            // Data URIs are self-contained, re-encode through canvas for security,
+            // then load the sanitized result. This strips any embedded scripts.
+            if (optimizedUrl.startsWith('data:')) {
+                const safeUrl = await reencodeImageViaCanvas(optimizedUrl);
+                if (safeUrl) {
+                    await this.loadStandardImage(element, safeUrl, src);
+                } else {
+                    this.setImageError(element);
+                }
+                return;
+            }
+
             // Check content type
             const response = await fetch(optimizedUrl, { method: 'HEAD' });
             const contentType = response.headers.get('content-type') || '';
@@ -424,6 +539,7 @@ class ImageService {
         if (!src) return false;
         if (src === 'undefined' || src === 'null') return false;
         if (src === '/' || src === '/index' || src === 'index') return false;
+        if (src.startsWith('data:')) return true;
         if (isHostMatch(src, 'google.com')) return false;
         if (isHostMatch(src, 'raritysniffer.com')) return false;
         return true;

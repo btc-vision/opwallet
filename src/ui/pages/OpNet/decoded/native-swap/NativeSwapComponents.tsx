@@ -4,7 +4,7 @@ import { Card, Column, Image, Row, Text } from '@/ui/components';
 import { fontSizes } from '@/ui/theme/font';
 import { ContractInformation } from '@/shared/web3/interfaces/ContractInformation';
 
-// Decoded types. Example only—adjust according to your real decode logic
+// Decoded types. Example only, adjust according to your real decode logic
 import {
     DecodedAddLiquidityNative,
     DecodedCancelListing,

@@ -429,7 +429,10 @@ export class ProviderController {
 
             const interactionParams = _req.data.params as DetailedInteractionParameters;
             if (!Web3API.isValidAddress(interactionParams.interactionParameters.to)) {
-                console.warn('[signInteraction] Blocked: invalid contract address', interactionParams.interactionParameters.to);
+                console.warn(
+                    '[signInteraction] Blocked: invalid contract address',
+                    interactionParams.interactionParameters.to
+                );
                 throw new Error('Invalid contract address. Are you on the right network / are you using segwit?');
             }
 
@@ -637,7 +640,7 @@ export class ProviderController {
 
             // If originalMessage is provided, verify the SHA-256 hash matches the data being signed.
             // This ensures the human-readable message shown in the approval UI actually corresponds
-            // to the hex data being signed — prevents showing a fake message while signing something else.
+            // to the hex data being signed, prevents showing a fake message while signing something else.
             const { data, originalMessage } = params;
             if (originalMessage) {
                 const messageBuffer = new TextEncoder().encode(originalMessage);

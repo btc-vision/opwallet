@@ -129,7 +129,7 @@ export default function SignData({ params: { data, session } }: Props) {
     return (
         <Layout>
             <Content style={{ padding: 12, overflowY: 'auto' }}>
-                {/* Site Header — matches InteractionHeader pattern */}
+                {/* Site Header, matches InteractionHeader pattern */}
                 <div
                     style={{
                         background: `linear-gradient(135deg, ${themeColors.main}10 0%, ${themeColors.main}05 100%)`,

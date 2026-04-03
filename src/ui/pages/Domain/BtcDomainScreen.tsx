@@ -2,8 +2,8 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { NETWORK_TYPES } from '@/shared/constant';
 import {
-    Action,
     AcceptDomainTransferParameters,
+    Action,
     CancelDomainTransferParameters,
     CompleteRegistrationParameters,
     Features,
@@ -23,10 +23,8 @@ import {
     CheckCircleOutlined,
     CloseCircleOutlined,
     CloudUploadOutlined,
-    CodeOutlined,
     CopyOutlined,
     DeleteOutlined,
-    DownOutlined,
     GlobalOutlined,
     LoadingOutlined,
     PlusOutlined,
@@ -108,17 +106,19 @@ interface PendingReservation {
 const getPendingReservations = (): PendingReservation[] => {
     try {
         return JSON.parse(localStorage.getItem(PENDING_RESERVATIONS_KEY) || '[]') as PendingReservation[];
-    } catch { return []; }
+    } catch {
+        return [];
+    }
 };
 
 const addPendingReservation = (domainName: string, years: number) => {
-    const list = getPendingReservations().filter(r => r.domainName !== domainName);
+    const list = getPendingReservations().filter((r) => r.domainName !== domainName);
     list.push({ domainName, years, timestamp: Date.now() });
     localStorage.setItem(PENDING_RESERVATIONS_KEY, JSON.stringify(list));
 };
 
 const removePendingReservation = (domainName: string) => {
-    const list = getPendingReservations().filter(r => r.domainName !== domainName);
+    const list = getPendingReservations().filter((r) => r.domainName !== domainName);
     localStorage.setItem(PENDING_RESERVATIONS_KEY, JSON.stringify(list));
 };
 
@@ -154,12 +154,14 @@ export default function BtcDomainScreen() {
     const [myDomains, setMyDomains] = useState<TrackedDomainInfo[]>([]);
     const [isLoadingDomains, setIsLoadingDomains] = useState(false);
     const [addDomainInput, setAddDomainInput] = useState('');
-    const [pendingReservations, setPendingReservations] = useState<(PendingReservation & { isActive: boolean })[]>(() => {
-        // Initialize from localStorage immediately
-        return getPendingReservations()
-            .filter(r => Date.now() - r.timestamp < 30 * 60 * 1000)
-            .map(r => ({ ...r, isActive: true }));
-    });
+    const [pendingReservations, setPendingReservations] = useState<(PendingReservation & { isActive: boolean })[]>(
+        () => {
+            // Initialize from localStorage immediately
+            return getPendingReservations()
+                .filter((r) => Date.now() - r.timestamp < 30 * 60 * 1000)
+                .map((r) => ({ ...r, isActive: true }));
+        }
+    );
     const [isAddingDomain, setIsAddingDomain] = useState(false);
 
     // Registration state
@@ -229,7 +231,7 @@ export default function BtcDomainScreen() {
             setMyDomains(enriched);
 
             // Load pending reservations from localStorage
-            // Only remove after 30 min timeout — on-chain state may lag behind mempool
+            // Only remove after 30 min timeout, on-chain state may lag behind mempool
             const stored = getPendingReservations();
             const alive: (PendingReservation & { isActive: boolean })[] = [];
             for (const r of stored) {
@@ -289,19 +291,25 @@ export default function BtcDomainScreen() {
     }, [addDomainInput, wallet, loadMyDomains, tools]);
 
     // Remove domain from tracking
-    const handleRemoveDomain = useCallback(async (domainName: string) => {
-        try {
-            await wallet.removeTrackedDomain(domainName);
-            await loadMyDomains();
-            tools.toastSuccess('Domain removed');
-        } catch {
-            tools.toastError('Failed to remove domain');
-        }
-    }, [wallet, loadMyDomains, tools]);
+    const handleRemoveDomain = useCallback(
+        async (domainName: string) => {
+            try {
+                await wallet.removeTrackedDomain(domainName);
+                await loadMyDomains();
+                tools.toastSuccess('Domain removed');
+            } catch {
+                tools.toastError('Failed to remove domain');
+            }
+        },
+        [wallet, loadMyDomains, tools]
+    );
 
     // Normalize domain name
     const normalizeDomain = (input: string): string => {
-        return input.toLowerCase().replace(/\.btc$/, '').trim();
+        return input
+            .toLowerCase()
+            .replace(/\.btc$/, '')
+            .trim();
     };
 
     // Validate domain name
@@ -540,7 +548,6 @@ export default function BtcDomainScreen() {
         if (activeTab === 'transfer' && myDomains.length > 0) {
             loadPendingTransfers();
         }
-
     }, [activeTab, myDomains.length]);
 
     // Handle initiate transfer - navigate to TxOpnetConfirmScreen
@@ -566,42 +573,48 @@ export default function BtcDomainScreen() {
     }, [transferDomainInfo, transferDomainInput, recipientAddress, transferFeeRate, navigate]);
 
     // Handle accept transfer - navigate to TxOpnetConfirmScreen
-    const handleAcceptTransfer = useCallback((domainName: string) => {
-        const normalizedDomain = normalizeDomain(domainName);
-        const rawTxInfo: AcceptDomainTransferParameters = {
-            header: `Accept ${normalizedDomain}.btc`,
-            features: {
-                [Features.rbf]: true,
-                [Features.taproot]: true
-            },
-            tokens: [],
-            feeRate: transferFeeRate,
-            priorityFee: 0n,
-            action: Action.AcceptDomainTransfer,
-            domainName: normalizedDomain
-        };
+    const handleAcceptTransfer = useCallback(
+        (domainName: string) => {
+            const normalizedDomain = normalizeDomain(domainName);
+            const rawTxInfo: AcceptDomainTransferParameters = {
+                header: `Accept ${normalizedDomain}.btc`,
+                features: {
+                    [Features.rbf]: true,
+                    [Features.taproot]: true
+                },
+                tokens: [],
+                feeRate: transferFeeRate,
+                priorityFee: 0n,
+                action: Action.AcceptDomainTransfer,
+                domainName: normalizedDomain
+            };
 
-        navigate(RouteTypes.TxOpnetConfirmScreen, { rawTxInfo });
-    }, [transferFeeRate, navigate]);
+            navigate(RouteTypes.TxOpnetConfirmScreen, { rawTxInfo });
+        },
+        [transferFeeRate, navigate]
+    );
 
     // Handle cancel transfer - navigate to TxOpnetConfirmScreen
-    const handleCancelTransfer = useCallback((domainName: string) => {
-        const normalizedDomain = normalizeDomain(domainName);
-        const rawTxInfo: CancelDomainTransferParameters = {
-            header: `Cancel Transfer ${normalizedDomain}.btc`,
-            features: {
-                [Features.rbf]: true,
-                [Features.taproot]: true
-            },
-            tokens: [],
-            feeRate: transferFeeRate,
-            priorityFee: 0n,
-            action: Action.CancelDomainTransfer,
-            domainName: normalizedDomain
-        };
+    const handleCancelTransfer = useCallback(
+        (domainName: string) => {
+            const normalizedDomain = normalizeDomain(domainName);
+            const rawTxInfo: CancelDomainTransferParameters = {
+                header: `Cancel Transfer ${normalizedDomain}.btc`,
+                features: {
+                    [Features.rbf]: true,
+                    [Features.taproot]: true
+                },
+                tokens: [],
+                feeRate: transferFeeRate,
+                priorityFee: 0n,
+                action: Action.CancelDomainTransfer,
+                domainName: normalizedDomain
+            };
 
-        navigate(RouteTypes.TxOpnetConfirmScreen, { rawTxInfo });
-    }, [transferFeeRate, navigate]);
+            navigate(RouteTypes.TxOpnetConfirmScreen, { rawTxInfo });
+        },
+        [transferFeeRate, navigate]
+    );
 
     // Handle file selection
     const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -614,7 +627,8 @@ export default function BtcDomainScreen() {
             return;
         }
 
-        if (file.size > 5 * 1024 * 1024) { // 5MB limit
+        if (file.size > 5 * 1024 * 1024) {
+            // 5MB limit
             tools.toastError('File too large (max 5MB)');
             return;
         }
@@ -676,7 +690,10 @@ export default function BtcDomainScreen() {
         };
 
         addPendingReservation(normalizedDomain, registrationYears);
-        setPendingReservations(prev => [...prev.filter(r => r.domainName !== normalizedDomain), { domainName: normalizedDomain, years: registrationYears, timestamp: Date.now(), isActive: true }]);
+        setPendingReservations((prev) => [
+            ...prev.filter((r) => r.domainName !== normalizedDomain),
+            { domainName: normalizedDomain, years: registrationYears, timestamp: Date.now(), isActive: true }
+        ]);
         navigate(RouteTypes.TxOpnetConfirmScreen, { rawTxInfo });
     }, [domainInfo, domainInput, feeRate, navigate, registrationYears]);
 
@@ -786,11 +803,7 @@ export default function BtcDomainScreen() {
                 </div>
             );
         }
-        return (
-            <div style={{ fontSize: '10px', color: colors.error }}>
-                Expired
-            </div>
-        );
+        return <div style={{ fontSize: '10px', color: colors.error }}>Expired</div>;
     };
 
     // Helper: render years selector
@@ -800,9 +813,7 @@ export default function BtcDomainScreen() {
         label: string = 'Registration Period'
     ) => (
         <div style={{ marginBottom: '12px' }}>
-            <div style={{ fontSize: '12px', color: colors.textFaded, marginBottom: '8px' }}>
-                {label}
-            </div>
+            <div style={{ fontSize: '12px', color: colors.textFaded, marginBottom: '8px' }}>{label}</div>
             <div
                 style={{
                     display: 'flex',
@@ -854,7 +865,8 @@ export default function BtcDomainScreen() {
                             Coming Soon
                         </div>
                         <div style={{ fontSize: 13, color: colors.textFaded, textAlign: 'center' }}>
-                            .btc domains are currently only available on Bitcoin Regtest. Switch networks to use this feature.
+                            .btc domains are currently only available on Bitcoin Regtest. Switch networks to use this
+                            feature.
                         </div>
                     </div>
                 </Content>
@@ -925,7 +937,7 @@ export default function BtcDomainScreen() {
                         }}>
                         Renew
                     </button>
-                    {/* Publish tab — temporarily disabled */}
+                    {/* Publish tab, temporarily disabled */}
                     <button
                         onClick={() => setActiveTab('transfer')}
                         style={{
@@ -949,30 +961,39 @@ export default function BtcDomainScreen() {
                     <div>
                         {/* Pending Reservations */}
                         {pendingReservations.length > 0 && (
-                            <div style={{
-                                background: `${colors.warning}15`,
-                                border: `1px solid ${colors.warning}40`,
-                                borderRadius: '10px',
-                                padding: '12px',
-                                marginBottom: '16px'
-                            }}>
-                                <div style={{ fontSize: '12px', fontWeight: 700, color: colors.warning, marginBottom: '8px' }}>
+                            <div
+                                style={{
+                                    background: `${colors.warning}15`,
+                                    border: `1px solid ${colors.warning}40`,
+                                    borderRadius: '10px',
+                                    padding: '12px',
+                                    marginBottom: '16px'
+                                }}>
+                                <div
+                                    style={{
+                                        fontSize: '12px',
+                                        fontWeight: 700,
+                                        color: colors.warning,
+                                        marginBottom: '8px'
+                                    }}>
                                     Pending Reservations
                                 </div>
                                 {pendingReservations.map((r) => (
-                                    <div key={r.domainName} style={{
-                                        display: 'flex',
-                                        justifyContent: 'space-between',
-                                        alignItems: 'center',
-                                        padding: '8px 0',
-                                        borderBottom: `1px solid ${colors.containerBorder}`
-                                    }}>
+                                    <div
+                                        key={r.domainName}
+                                        style={{
+                                            display: 'flex',
+                                            justifyContent: 'space-between',
+                                            alignItems: 'center',
+                                            padding: '8px 0',
+                                            borderBottom: `1px solid ${colors.containerBorder}`
+                                        }}>
                                         <div>
                                             <div style={{ fontSize: '13px', fontWeight: 600, color: colors.text }}>
                                                 {r.domainName}.btc
                                             </div>
                                             <div style={{ fontSize: '10px', color: colors.textFaded }}>
-                                                {r.years} {r.years === 1 ? 'year' : 'years'} — awaiting payment
+                                                {r.years} {r.years === 1 ? 'year' : 'years'}, awaiting payment
                                             </div>
                                         </div>
                                         <button
@@ -1111,7 +1132,11 @@ export default function BtcDomainScreen() {
                                                 width: '36px',
                                                 height: '36px',
                                                 borderRadius: '8px',
-                                                background: domain.isOwner ? (domain.inGracePeriod ? `${colors.warning}15` : `${colors.success}15`) : `${colors.error}15`,
+                                                background: domain.isOwner
+                                                    ? domain.inGracePeriod
+                                                        ? `${colors.warning}15`
+                                                        : `${colors.success}15`
+                                                    : `${colors.error}15`,
                                                 display: 'flex',
                                                 alignItems: 'center',
                                                 justifyContent: 'center'
@@ -1206,28 +1231,42 @@ export default function BtcDomainScreen() {
                     <div>
                         {/* Pending Reservations */}
                         {pendingReservations.length > 0 && (
-                            <div style={{
-                                background: `${colors.warning}15`,
-                                border: `1px solid ${colors.warning}40`,
-                                borderRadius: '10px',
-                                padding: '12px',
-                                marginBottom: '12px'
-                            }}>
-                                <div style={{ fontSize: '12px', fontWeight: 700, color: colors.warning, marginBottom: '8px' }}>
+                            <div
+                                style={{
+                                    background: `${colors.warning}15`,
+                                    border: `1px solid ${colors.warning}40`,
+                                    borderRadius: '10px',
+                                    padding: '12px',
+                                    marginBottom: '12px'
+                                }}>
+                                <div
+                                    style={{
+                                        fontSize: '12px',
+                                        fontWeight: 700,
+                                        color: colors.warning,
+                                        marginBottom: '8px'
+                                    }}>
                                     Pending Reservations
                                 </div>
                                 {getPendingReservations().map((r) => (
-                                    <div key={r.domainName} style={{
-                                        display: 'flex',
-                                        justifyContent: 'space-between',
-                                        alignItems: 'center',
-                                        padding: '6px 0'
-                                    }}>
+                                    <div
+                                        key={r.domainName}
+                                        style={{
+                                            display: 'flex',
+                                            justifyContent: 'space-between',
+                                            alignItems: 'center',
+                                            padding: '6px 0'
+                                        }}>
                                         <div>
                                             <span style={{ fontSize: '13px', fontWeight: 600, color: colors.text }}>
                                                 {r.domainName}.btc
                                             </span>
-                                            <span style={{ fontSize: '10px', color: colors.textFaded, marginLeft: '8px' }}>
+                                            <span
+                                                style={{
+                                                    fontSize: '10px',
+                                                    color: colors.textFaded,
+                                                    marginLeft: '8px'
+                                                }}>
                                                 {r.years}yr
                                             </span>
                                         </div>
@@ -1325,7 +1364,13 @@ export default function BtcDomainScreen() {
                                     marginBottom: '16px',
                                     border: `1px solid ${domainInfo.exists ? colors.error : colors.success}30`
                                 }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
+                                <div
+                                    style={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '10px',
+                                        marginBottom: '12px'
+                                    }}>
                                     {domainInfo.exists ? (
                                         <>
                                             <CloseCircleOutlined style={{ fontSize: 20, color: colors.error }} />
@@ -1379,47 +1424,59 @@ export default function BtcDomainScreen() {
                                                     padding: '12px',
                                                     marginBottom: '12px'
                                                 }}>
-                                                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
-                                                    <span style={{ color: colors.textFaded, fontSize: '11px' }}>Dutch Auction Active</span>
+                                                <div
+                                                    style={{
+                                                        display: 'flex',
+                                                        justifyContent: 'space-between',
+                                                        marginBottom: '6px'
+                                                    }}>
+                                                    <span style={{ color: colors.textFaded, fontSize: '11px' }}>
+                                                        Dutch Auction Active
+                                                    </span>
                                                     <span style={{ color: colors.textFaded, fontSize: '11px' }}>
                                                         Floor: {formatSats(AUCTION_FLOOR_SATS)}
                                                     </span>
                                                 </div>
-                                                <div style={{
-                                                    height: '6px',
-                                                    background: colors.containerBorder,
-                                                    borderRadius: '3px',
-                                                    overflow: 'hidden',
-                                                    marginBottom: '6px'
-                                                }}>
-                                                    <div style={{
-                                                        height: '100%',
-                                                        width: `${Math.max(5, Math.round(Number(domainInfo.auctionPriceSats - AUCTION_FLOOR_SATS) / Number(domainInfo.auctionPriceSats) * 100))}%`,
-                                                        background: `linear-gradient(90deg, ${colors.warning}, ${colors.main})`,
+                                                <div
+                                                    style={{
+                                                        height: '6px',
+                                                        background: colors.containerBorder,
                                                         borderRadius: '3px',
-                                                        transition: 'width 0.3s ease'
-                                                    }} />
+                                                        overflow: 'hidden',
+                                                        marginBottom: '6px'
+                                                    }}>
+                                                    <div
+                                                        style={{
+                                                            height: '100%',
+                                                            width: `${Math.max(5, Math.round((Number(domainInfo.auctionPriceSats - AUCTION_FLOOR_SATS) / Number(domainInfo.auctionPriceSats)) * 100))}%`,
+                                                            background: `linear-gradient(90deg, ${colors.warning}, ${colors.main})`,
+                                                            borderRadius: '3px',
+                                                            transition: 'width 0.3s ease'
+                                                        }}
+                                                    />
                                                 </div>
                                                 <span style={{ color: colors.textFaded, fontSize: '10px' }}>
-                                                    Price decreases every block toward {formatSats(AUCTION_FLOOR_SATS)}. ~52,560 blocks (~1 year) to reach floor.
+                                                    Price decreases every block toward {formatSats(AUCTION_FLOOR_SATS)}.
+                                                    ~52,560 blocks (~1 year) to reach floor.
                                                 </span>
                                             </div>
                                         )}
-                                        {domainInfo.auctionPriceSats <= AUCTION_FLOOR_SATS && domainInfo.auctionPriceSats > 0n && (
-                                            <div
-                                                style={{
-                                                    display: 'inline-block',
-                                                    padding: '4px 12px',
-                                                    background: `${colors.success}20`,
-                                                    border: `1px solid ${colors.success}40`,
-                                                    borderRadius: '6px',
-                                                    fontSize: '11px',
-                                                    color: colors.success,
-                                                    marginBottom: '12px'
-                                                }}>
-                                                At floor price
-                                            </div>
-                                        )}
+                                        {domainInfo.auctionPriceSats <= AUCTION_FLOOR_SATS &&
+                                            domainInfo.auctionPriceSats > 0n && (
+                                                <div
+                                                    style={{
+                                                        display: 'inline-block',
+                                                        padding: '4px 12px',
+                                                        background: `${colors.success}20`,
+                                                        border: `1px solid ${colors.success}40`,
+                                                        borderRadius: '6px',
+                                                        fontSize: '11px',
+                                                        color: colors.success,
+                                                        marginBottom: '12px'
+                                                    }}>
+                                                    At floor price
+                                                </div>
+                                            )}
 
                                         {/* Pricing Breakdown */}
                                         <div
@@ -1451,7 +1508,8 @@ export default function BtcDomainScreen() {
                                                     marginBottom: '8px'
                                                 }}>
                                                 <span style={{ color: colors.textFaded, fontSize: '12px' }}>
-                                                    Renewal: {formatSats(domainInfo.renewalPerYear)}/year x {registrationYears} {registrationYears === 1 ? 'year' : 'years'}
+                                                    Renewal: {formatSats(domainInfo.renewalPerYear)}/year x{' '}
+                                                    {registrationYears} {registrationYears === 1 ? 'year' : 'years'}
                                                 </span>
                                                 <span style={{ color: colors.text, fontWeight: 600, fontSize: '12px' }}>
                                                     {formatSats(domainInfo.renewalPerYear * BigInt(registrationYears))}
@@ -1470,7 +1528,12 @@ export default function BtcDomainScreen() {
                                                     justifyContent: 'space-between',
                                                     alignItems: 'center'
                                                 }}>
-                                                <span style={{ color: colors.textFaded, fontSize: '13px', fontWeight: 600 }}>
+                                                <span
+                                                    style={{
+                                                        color: colors.textFaded,
+                                                        fontSize: '13px',
+                                                        fontWeight: 600
+                                                    }}>
                                                     Total
                                                 </span>
                                                 <span style={{ color: colors.main, fontWeight: 700, fontSize: '16px' }}>
@@ -1489,20 +1552,44 @@ export default function BtcDomainScreen() {
                                                     padding: '12px',
                                                     marginBottom: '12px'
                                                 }}>
-                                                <div style={{ fontSize: '12px', fontWeight: 600, color: colors.info, marginBottom: '6px' }}>
+                                                <div
+                                                    style={{
+                                                        fontSize: '12px',
+                                                        fontWeight: 600,
+                                                        color: colors.info,
+                                                        marginBottom: '6px'
+                                                    }}>
                                                     Pending Reservation
                                                 </div>
-                                                <div style={{ fontSize: '11px', color: colors.textFaded, marginBottom: '4px' }}>
+                                                <div
+                                                    style={{
+                                                        fontSize: '11px',
+                                                        color: colors.textFaded,
+                                                        marginBottom: '4px'
+                                                    }}>
                                                     Reserved at block #{reservationInfo.reservedAt.toString()}
                                                 </div>
-                                                <div style={{ fontSize: '11px', color: colors.textFaded, marginBottom: '4px' }}>
-                                                    Period: {reservationInfo.years} {reservationInfo.years === 1 ? 'year' : 'years'}
+                                                <div
+                                                    style={{
+                                                        fontSize: '11px',
+                                                        color: colors.textFaded,
+                                                        marginBottom: '4px'
+                                                    }}>
+                                                    Period: {reservationInfo.years}{' '}
+                                                    {reservationInfo.years === 1 ? 'year' : 'years'}
                                                 </div>
-                                                <div style={{ fontSize: '11px', color: colors.textFaded, marginBottom: '12px' }}>
-                                                    Reserver: {reservationInfo.reserver.slice(0, 10)}...{reservationInfo.reserver.slice(-8)}
+                                                <div
+                                                    style={{
+                                                        fontSize: '11px',
+                                                        color: colors.textFaded,
+                                                        marginBottom: '12px'
+                                                    }}>
+                                                    Reserver: {reservationInfo.reserver.slice(0, 10)}...
+                                                    {reservationInfo.reserver.slice(-8)}
                                                 </div>
 
-                                                {reservationInfo.reserver.toLowerCase() === userAddress.toLowerCase() && (
+                                                {reservationInfo.reserver.toLowerCase() ===
+                                                    userAddress.toLowerCase() && (
                                                     <>
                                                         {/* Fee Rate Selector */}
                                                         <div style={{ marginBottom: '12px' }}>
@@ -1527,7 +1614,8 @@ export default function BtcDomainScreen() {
                                                                 justifyContent: 'center',
                                                                 gap: '8px'
                                                             }}>
-                                                            <CheckCircleOutlined /> Complete Registration ({formatSats(domainInfo.totalPriceSats)})
+                                                            <CheckCircleOutlined /> Complete Registration (
+                                                            {formatSats(domainInfo.totalPriceSats)})
                                                         </button>
                                                     </>
                                                 )}
@@ -1564,7 +1652,6 @@ export default function BtcDomainScreen() {
                                                 </button>
                                             </>
                                         )}
-
                                     </>
                                 )}
                             </div>
@@ -1582,8 +1669,8 @@ export default function BtcDomainScreen() {
                                 lineHeight: 1.5
                             }}>
                             <GlobalOutlined style={{ color: colors.info, marginRight: '8px' }} />
-                            Domain registration is a two-step process: first reserve your domain (2,000 sats fee),
-                            then complete the registration with the full payment. Domains are registered as yearly
+                            Domain registration is a two-step process: first reserve your domain (2,000 sats fee), then
+                            complete the registration with the full payment. Domains are registered as yearly
                             subscriptions on Bitcoin directly.
                         </div>
                     </div>
@@ -1638,7 +1725,10 @@ export default function BtcDomainScreen() {
                                         background: colors.main,
                                         border: 'none',
                                         borderRadius: '8px',
-                                        cursor: isCheckingRenewDomain || !renewDomainInput.trim() ? 'not-allowed' : 'pointer',
+                                        cursor:
+                                            isCheckingRenewDomain || !renewDomainInput.trim()
+                                                ? 'not-allowed'
+                                                : 'pointer',
                                         opacity: isCheckingRenewDomain || !renewDomainInput.trim() ? 0.5 : 1
                                     }}>
                                     {isCheckingRenewDomain ? (
@@ -1689,14 +1779,26 @@ export default function BtcDomainScreen() {
                                 }}>
                                 {/* Domain Status */}
                                 {!renewDomainInfo.exists ? (
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
+                                    <div
+                                        style={{
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '10px',
+                                            marginBottom: '12px'
+                                        }}>
                                         <CloseCircleOutlined style={{ fontSize: 20, color: colors.error }} />
                                         <span style={{ color: colors.error, fontWeight: 600 }}>
                                             Domain not registered
                                         </span>
                                     </div>
                                 ) : !renewDomainInfo.isOwner ? (
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
+                                    <div
+                                        style={{
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '10px',
+                                            marginBottom: '12px'
+                                        }}>
                                         <CloseCircleOutlined style={{ fontSize: 20, color: colors.error }} />
                                         <span style={{ color: colors.error, fontWeight: 600 }}>
                                             You don&apos;t own this domain
@@ -1704,7 +1806,13 @@ export default function BtcDomainScreen() {
                                     </div>
                                 ) : (
                                     <>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
+                                        <div
+                                            style={{
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: '10px',
+                                                marginBottom: '12px'
+                                            }}>
                                             <CheckCircleOutlined style={{ fontSize: 20, color: colors.success }} />
                                             <span style={{ color: colors.success, fontWeight: 600 }}>
                                                 Domain verified - you are the owner
@@ -1719,32 +1827,52 @@ export default function BtcDomainScreen() {
                                                 padding: '12px',
                                                 marginBottom: '12px'
                                             }}>
-                                            <div style={{ fontSize: '12px', fontWeight: 600, color: colors.text, marginBottom: '8px' }}>
+                                            <div
+                                                style={{
+                                                    fontSize: '12px',
+                                                    fontWeight: 600,
+                                                    color: colors.text,
+                                                    marginBottom: '8px'
+                                                }}>
                                                 Current Status
                                             </div>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
-                                                <span style={{ fontSize: '11px', color: colors.textFaded }}>Expires at</span>
+                                            <div
+                                                style={{
+                                                    display: 'flex',
+                                                    justifyContent: 'space-between',
+                                                    marginBottom: '4px'
+                                                }}>
+                                                <span style={{ fontSize: '11px', color: colors.textFaded }}>
+                                                    Expires at
+                                                </span>
                                                 <span style={{ fontSize: '11px', color: colors.text }}>
                                                     Block #{renewDomainInfo.expiresAt.toString()}
                                                 </span>
                                             </div>
-                                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
-                                                <span style={{ fontSize: '11px', color: colors.textFaded }}>Status</span>
+                                            <div
+                                                style={{
+                                                    display: 'flex',
+                                                    justifyContent: 'space-between',
+                                                    marginBottom: '4px'
+                                                }}>
+                                                <span style={{ fontSize: '11px', color: colors.textFaded }}>
+                                                    Status
+                                                </span>
                                                 <span
                                                     style={{
                                                         fontSize: '11px',
                                                         color: renewDomainInfo.isActive
                                                             ? colors.success
                                                             : renewDomainInfo.inGracePeriod
-                                                                ? colors.warning
-                                                                : colors.error,
+                                                              ? colors.warning
+                                                              : colors.error,
                                                         fontWeight: 600
                                                     }}>
                                                     {renewDomainInfo.isActive
                                                         ? 'Active'
                                                         : renewDomainInfo.inGracePeriod
-                                                            ? 'Grace Period'
-                                                            : 'Expired'}
+                                                          ? 'Grace Period'
+                                                          : 'Expired'}
                                                 </span>
                                             </div>
                                         </div>
@@ -1763,8 +1891,14 @@ export default function BtcDomainScreen() {
                                                     gap: '8px'
                                                 }}>
                                                 <WarningOutlined style={{ color: colors.warning, fontSize: 16 }} />
-                                                <span style={{ fontSize: '11px', color: colors.warning, fontWeight: 600 }}>
-                                                    Domain is in grace period! Renew immediately to avoid losing ownership.
+                                                <span
+                                                    style={{
+                                                        fontSize: '11px',
+                                                        color: colors.warning,
+                                                        fontWeight: 600
+                                                    }}>
+                                                    Domain is in grace period! Renew immediately to avoid losing
+                                                    ownership.
                                                 </span>
                                             </div>
                                         )}
@@ -1778,7 +1912,13 @@ export default function BtcDomainScreen() {
                                                     padding: '12px',
                                                     marginBottom: '12px'
                                                 }}>
-                                                <div style={{ fontSize: '12px', fontWeight: 600, color: colors.text, marginBottom: '8px' }}>
+                                                <div
+                                                    style={{
+                                                        fontSize: '12px',
+                                                        fontWeight: 600,
+                                                        color: colors.text,
+                                                        marginBottom: '8px'
+                                                    }}>
                                                     Renewal Price
                                                 </div>
                                                 <div
@@ -1789,10 +1929,18 @@ export default function BtcDomainScreen() {
                                                         marginBottom: '8px'
                                                     }}>
                                                     <span style={{ color: colors.textFaded, fontSize: '12px' }}>
-                                                        {formatSats(renewDomainInfo.renewalPerYear)}/year x {renewYears} {renewYears === 1 ? 'year' : 'years'}
+                                                        {formatSats(renewDomainInfo.renewalPerYear)}/year x {renewYears}{' '}
+                                                        {renewYears === 1 ? 'year' : 'years'}
                                                     </span>
-                                                    <span style={{ color: colors.text, fontWeight: 600, fontSize: '12px' }}>
-                                                        {formatSats(renewDomainInfo.renewalPerYear * BigInt(renewYears))}
+                                                    <span
+                                                        style={{
+                                                            color: colors.text,
+                                                            fontWeight: 600,
+                                                            fontSize: '12px'
+                                                        }}>
+                                                        {formatSats(
+                                                            renewDomainInfo.renewalPerYear * BigInt(renewYears)
+                                                        )}
                                                     </span>
                                                 </div>
                                                 <div
@@ -1808,11 +1956,23 @@ export default function BtcDomainScreen() {
                                                         justifyContent: 'space-between',
                                                         alignItems: 'center'
                                                     }}>
-                                                    <span style={{ color: colors.textFaded, fontSize: '13px', fontWeight: 600 }}>
+                                                    <span
+                                                        style={{
+                                                            color: colors.textFaded,
+                                                            fontSize: '13px',
+                                                            fontWeight: 600
+                                                        }}>
                                                         Total
                                                     </span>
-                                                    <span style={{ color: colors.main, fontWeight: 700, fontSize: '16px' }}>
-                                                        {formatSats(renewDomainInfo.renewalPerYear * BigInt(renewYears))}
+                                                    <span
+                                                        style={{
+                                                            color: colors.main,
+                                                            fontWeight: 700,
+                                                            fontSize: '16px'
+                                                        }}>
+                                                        {formatSats(
+                                                            renewDomainInfo.renewalPerYear * BigInt(renewYears)
+                                                        )}
                                                     </span>
                                                 </div>
                                             </div>
@@ -1844,7 +2004,8 @@ export default function BtcDomainScreen() {
                                                     justifyContent: 'center',
                                                     gap: '8px'
                                                 }}>
-                                                <ReloadOutlined /> Renew Domain ({formatSats(renewDomainInfo.renewalPerYear * BigInt(renewYears))})
+                                                <ReloadOutlined /> Renew Domain (
+                                                {formatSats(renewDomainInfo.renewalPerYear * BigInt(renewYears))})
                                             </button>
                                         )}
                                     </>
@@ -1864,14 +2025,14 @@ export default function BtcDomainScreen() {
                                 lineHeight: 1.5
                             }}>
                             <ReloadOutlined style={{ color: colors.info, marginRight: '8px' }} />
-                            Domains require yearly renewal to stay active. After expiry, there is a grace period
-                            during which only the owner can renew. After the grace period, the domain becomes
-                            available for anyone to register.
+                            Domains require yearly renewal to stay active. After expiry, there is a grace period during
+                            which only the owner can renew. After the grace period, the domain becomes available for
+                            anyone to register.
                         </div>
                     </div>
                 )}
 
-                {/* Publish Tab — temporarily disabled */}
+                {/* Publish Tab, temporarily disabled */}
                 {activeTab === 'publish' && (
                     <div>
                         {/* Domain Input */}
@@ -1916,7 +2077,10 @@ export default function BtcDomainScreen() {
                                         background: colors.main,
                                         border: 'none',
                                         borderRadius: '8px',
-                                        cursor: isCheckingPublishDomain || !publishDomain.trim() ? 'not-allowed' : 'pointer',
+                                        cursor:
+                                            isCheckingPublishDomain || !publishDomain.trim()
+                                                ? 'not-allowed'
+                                                : 'pointer',
                                         opacity: isCheckingPublishDomain || !publishDomain.trim() ? 0.5 : 1
                                     }}>
                                     {isCheckingPublishDomain ? (
@@ -1991,15 +2155,25 @@ export default function BtcDomainScreen() {
                                         />
                                         {selectedFile ? (
                                             <>
-                                                <CheckCircleOutlined style={{ fontSize: 32, color: colors.success, marginBottom: '8px' }} />
-                                                <span style={{ color: colors.text, fontWeight: 600 }}>{selectedFile.name}</span>
+                                                <CheckCircleOutlined
+                                                    style={{ fontSize: 32, color: colors.success, marginBottom: '8px' }}
+                                                />
+                                                <span style={{ color: colors.text, fontWeight: 600 }}>
+                                                    {selectedFile.name}
+                                                </span>
                                                 <span style={{ color: colors.textFaded, fontSize: '11px' }}>
                                                     {(selectedFile.size / 1024).toFixed(1)} KB
                                                 </span>
                                             </>
                                         ) : (
                                             <>
-                                                <UploadOutlined style={{ fontSize: 32, color: colors.textFaded, marginBottom: '8px' }} />
+                                                <UploadOutlined
+                                                    style={{
+                                                        fontSize: 32,
+                                                        color: colors.textFaded,
+                                                        marginBottom: '8px'
+                                                    }}
+                                                />
                                                 <span style={{ color: colors.textFaded }}>
                                                     Click to select index.html
                                                 </span>
@@ -2051,7 +2225,13 @@ export default function BtcDomainScreen() {
                                             padding: '12px',
                                             marginBottom: '16px'
                                         }}>
-                                        <div style={{ fontSize: '11px', color: colors.success, marginBottom: '6px', fontWeight: 600 }}>
+                                        <div
+                                            style={{
+                                                fontSize: '11px',
+                                                color: colors.success,
+                                                marginBottom: '6px',
+                                                fontWeight: 600
+                                            }}>
                                             IPFS CID
                                         </div>
                                         <div
@@ -2063,7 +2243,12 @@ export default function BtcDomainScreen() {
                                                 borderRadius: '6px',
                                                 padding: '8px 10px'
                                             }}>
-                                            <code style={{ fontSize: '10px', color: colors.text, fontFamily: 'monospace' }}>
+                                            <code
+                                                style={{
+                                                    fontSize: '10px',
+                                                    color: colors.text,
+                                                    fontFamily: 'monospace'
+                                                }}>
                                                 {uploadedCid.slice(0, 20)}...{uploadedCid.slice(-10)}
                                             </code>
                                             <button
@@ -2129,15 +2314,29 @@ export default function BtcDomainScreen() {
                                                 justifyContent: 'space-between',
                                                 gap: '8px'
                                             }}>
-                                            <code style={{ fontSize: '9px', color: colors.success, fontFamily: 'monospace' }}>
-                                                npx @btc-vision/cli publish {normalizeDomain(publishDomain)}.btc {uploadedCid}{networkFlag}
+                                            <code
+                                                style={{
+                                                    fontSize: '9px',
+                                                    color: colors.success,
+                                                    fontFamily: 'monospace'
+                                                }}>
+                                                npx @btc-vision/cli publish {normalizeDomain(publishDomain)}.btc{' '}
+                                                {uploadedCid}
+                                                {networkFlag}
                                             </code>
                                             <button
                                                 onClick={async () => {
-                                                    await copyToClipboard(`npx @btc-vision/cli publish ${normalizeDomain(publishDomain)}.btc ${uploadedCid}${networkFlag}`);
+                                                    await copyToClipboard(
+                                                        `npx @btc-vision/cli publish ${normalizeDomain(publishDomain)}.btc ${uploadedCid}${networkFlag}`
+                                                    );
                                                     tools.toastSuccess('Copied!');
                                                 }}
-                                                style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: '4px' }}>
+                                                style={{
+                                                    background: 'transparent',
+                                                    border: 'none',
+                                                    cursor: 'pointer',
+                                                    padding: '4px'
+                                                }}>
                                                 <CopyOutlined style={{ fontSize: 14, color: colors.textFaded }} />
                                             </button>
                                         </div>
@@ -2169,16 +2368,34 @@ export default function BtcDomainScreen() {
                     <div>
                         {/* Loading Pending Transfers */}
                         {isLoadingPendingTransfers && (
-                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px', gap: '8px' }}>
+                            <div
+                                style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    padding: '20px',
+                                    gap: '8px'
+                                }}>
                                 <LoadingOutlined style={{ color: colors.main }} />
-                                <span style={{ color: colors.textFaded, fontSize: '12px' }}>Loading pending transfers...</span>
+                                <span style={{ color: colors.textFaded, fontSize: '12px' }}>
+                                    Loading pending transfers...
+                                </span>
                             </div>
                         )}
 
                         {/* Pending Outgoing Transfers */}
                         {!isLoadingPendingTransfers && pendingTransfers.length > 0 && (
                             <div style={{ marginBottom: '20px' }}>
-                                <div style={{ fontSize: '12px', color: colors.warning, marginBottom: '8px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                <div
+                                    style={{
+                                        fontSize: '12px',
+                                        color: colors.warning,
+                                        marginBottom: '8px',
+                                        fontWeight: 600,
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '6px'
+                                    }}>
                                     <WarningOutlined /> Pending Outgoing Transfers
                                 </div>
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -2191,15 +2408,34 @@ export default function BtcDomainScreen() {
                                                 borderRadius: '10px',
                                                 padding: '12px'
                                             }}>
-                                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                                            <div
+                                                style={{
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'space-between',
+                                                    marginBottom: '8px'
+                                                }}>
                                                 <div style={{ fontWeight: 600, color: colors.text }}>
                                                     {transfer.domainName}.btc
                                                 </div>
-                                                <span style={{ fontSize: '10px', padding: '2px 8px', background: colors.warning, color: '#000', borderRadius: '4px', fontWeight: 600 }}>
+                                                <span
+                                                    style={{
+                                                        fontSize: '10px',
+                                                        padding: '2px 8px',
+                                                        background: colors.warning,
+                                                        color: '#000',
+                                                        borderRadius: '4px',
+                                                        fontWeight: 600
+                                                    }}>
                                                     PENDING
                                                 </span>
                                             </div>
-                                            <div style={{ fontSize: '10px', color: colors.textFaded, marginBottom: '8px' }}>
+                                            <div
+                                                style={{
+                                                    fontSize: '10px',
+                                                    color: colors.textFaded,
+                                                    marginBottom: '8px'
+                                                }}>
                                                 To: {transfer.newOwner.slice(0, 12)}...{transfer.newOwner.slice(-8)}
                                             </div>
                                             <button
@@ -2229,7 +2465,13 @@ export default function BtcDomainScreen() {
 
                         {/* Initiate Transfer Section */}
                         <div style={{ marginBottom: '20px' }}>
-                            <div style={{ fontSize: '12px', color: colors.textFaded, marginBottom: '8px', fontWeight: 600 }}>
+                            <div
+                                style={{
+                                    fontSize: '12px',
+                                    color: colors.textFaded,
+                                    marginBottom: '8px',
+                                    fontWeight: 600
+                                }}>
                                 Send Domain to Someone
                             </div>
 
@@ -2278,7 +2520,10 @@ export default function BtcDomainScreen() {
                                             background: colors.main,
                                             border: 'none',
                                             borderRadius: '8px',
-                                            cursor: isCheckingTransferDomain || !transferDomainInput.trim() ? 'not-allowed' : 'pointer',
+                                            cursor:
+                                                isCheckingTransferDomain || !transferDomainInput.trim()
+                                                    ? 'not-allowed'
+                                                    : 'pointer',
                                             opacity: isCheckingTransferDomain || !transferDomainInput.trim() ? 0.5 : 1
                                         }}>
                                         {isCheckingTransferDomain ? (
@@ -2386,7 +2631,13 @@ export default function BtcDomainScreen() {
 
                         {/* Accept Transfer Section */}
                         <div>
-                            <div style={{ fontSize: '12px', color: colors.textFaded, marginBottom: '8px', fontWeight: 600 }}>
+                            <div
+                                style={{
+                                    fontSize: '12px',
+                                    color: colors.textFaded,
+                                    marginBottom: '8px',
+                                    fontWeight: 600
+                                }}>
                                 Accept Incoming Transfer
                             </div>
 
@@ -2435,7 +2686,10 @@ export default function BtcDomainScreen() {
                                             background: colors.main,
                                             border: 'none',
                                             borderRadius: '8px',
-                                            cursor: isCheckingAcceptDomain || !acceptDomainInput.trim() ? 'not-allowed' : 'pointer',
+                                            cursor:
+                                                isCheckingAcceptDomain || !acceptDomainInput.trim()
+                                                    ? 'not-allowed'
+                                                    : 'pointer',
                                             opacity: isCheckingAcceptDomain || !acceptDomainInput.trim() ? 0.5 : 1
                                         }}>
                                         {isCheckingAcceptDomain ? (
@@ -2459,25 +2713,53 @@ export default function BtcDomainScreen() {
                                     }}>
                                     {acceptDomainPendingInfo.isOutgoing ? (
                                         <div>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                                            <div
+                                                style={{
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    gap: '8px',
+                                                    marginBottom: '8px'
+                                                }}>
                                                 <WarningOutlined style={{ fontSize: 16, color: colors.warning }} />
-                                                <span style={{ color: colors.warning, fontWeight: 600, fontSize: '13px' }}>
+                                                <span
+                                                    style={{
+                                                        color: colors.warning,
+                                                        fontWeight: 600,
+                                                        fontSize: '13px'
+                                                    }}>
                                                     This transfer is not for you
                                                 </span>
                                             </div>
                                             <div style={{ fontSize: '11px', color: colors.textFaded }}>
-                                                Recipient: {acceptDomainPendingInfo.newOwner.slice(0, 12)}...{acceptDomainPendingInfo.newOwner.slice(-8)}
+                                                Recipient: {acceptDomainPendingInfo.newOwner.slice(0, 12)}...
+                                                {acceptDomainPendingInfo.newOwner.slice(-8)}
                                             </div>
                                         </div>
                                     ) : (
                                         <div>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                                            <div
+                                                style={{
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    gap: '8px',
+                                                    marginBottom: '8px'
+                                                }}>
                                                 <CheckCircleOutlined style={{ fontSize: 16, color: colors.success }} />
-                                                <span style={{ color: colors.success, fontWeight: 600, fontSize: '13px' }}>
+                                                <span
+                                                    style={{
+                                                        color: colors.success,
+                                                        fontWeight: 600,
+                                                        fontSize: '13px'
+                                                    }}>
                                                     Transfer found for you!
                                                 </span>
                                             </div>
-                                            <div style={{ fontSize: '11px', color: colors.textFaded, marginBottom: '12px' }}>
+                                            <div
+                                                style={{
+                                                    fontSize: '11px',
+                                                    color: colors.textFaded,
+                                                    marginBottom: '12px'
+                                                }}>
                                                 {acceptDomainPendingInfo.domainName}.btc is being transferred to you
                                             </div>
                                             <button
@@ -2518,12 +2800,11 @@ export default function BtcDomainScreen() {
                                 marginTop: '20px'
                             }}>
                             <SwapOutlined style={{ color: colors.info, marginRight: '8px' }} />
-                            Domain transfers require two steps: the current owner initiates the transfer,
-                            then the recipient must accept it. The owner can cancel before acceptance.
+                            Domain transfers require two steps: the current owner initiates the transfer, then the
+                            recipient must accept it. The owner can cancel before acceptance.
                         </div>
                     </div>
                 )}
-
             </Content>
         </Layout>
     );
