@@ -1,5 +1,6 @@
 import { SendBitcoinApprovalParams } from '@/shared/types/Approval';
 import { Button, Content, Footer, Layout, Row } from '@/ui/components';
+import { BtcUsd } from '@/ui/components/BtcUsd';
 import { useCurrentAccount } from '@/ui/state/accounts/hooks';
 import { useBTCUnit } from '@/ui/state/settings/hooks';
 import { satoshisToAmount } from '@/ui/utils';
@@ -232,6 +233,12 @@ export default function SendBitcoin(props: Props) {
                             }}>
                             {amountStr} satoshis
                         </div>
+                        <BtcUsd
+                            sats={amountNum}
+                            size="sm"
+                            color="textDim"
+                            style={{ marginTop: 4 }}
+                        />
                     </div>
                 </div>
 

@@ -41,8 +41,13 @@ import { WalletHealthShowTime, WalletHealthType } from '../pages/Main/WalletTabS
 
 export interface WalletController {
     changePassword: (password: string, newPassword: string) => Promise<void>;
-    getAllAlianName: () => (ContactBookItem | undefined)[];
-    getContactsByMap: () => ContactBookStore;
+    getAllAlianName: () => Promise<(ContactBookItem | undefined)[]>;
+    getContactsByMap: () => Promise<ContactBookStore>;
+    listContact: (includeAlias?: boolean) => Promise<ContactBookItem[]>;
+    addContact: (data: ContactBookItem) => Promise<void>;
+    updateContact: (data: ContactBookItem) => Promise<void>;
+    removeContact: (address: string) => Promise<void>;
+    getContactByAddress: (address: string) => Promise<ContactBookItem | undefined>;
     updateAlianName: (pubkey: string, name: string) => Promise<void>;
     getNextAlianName: (keyring: WalletKeyring) => Promise<string>;
     getAddressHistory: (params: {

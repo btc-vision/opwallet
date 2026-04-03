@@ -61,6 +61,7 @@ import RotationHistoryScreen from './Settings/RotationHistoryScreen';
 import UpgradeNoticeScreen from './Settings/UpgradeNoticeScreen';
 import UserExperienceModeScreen from './Settings/UserExperienceModeScreen';
 import DisplaySettingsScreen from './Settings/DisplaySettingsScreen';
+import AddressBookScreen from './Settings/AddressBookScreen';
 import LegalDocumentsScreen from './Settings/LegalDocumentsScreen';
 import UTXOOptimizeScreen from './Wallet/UTXOOptimizeScreen';
 import OnboardingScreen from './Onboarding';
@@ -308,6 +309,10 @@ export const routes: Routes = {
     [RouteTypes.LegalDocumentsScreen]: {
         path: routePaths[RouteTypes.LegalDocumentsScreen],
         element: <LegalDocumentsScreen />
+    },
+    [RouteTypes.AddressBookScreen]: {
+        path: routePaths[RouteTypes.AddressBookScreen],
+        element: <AddressBookScreen />
     }
 };
 

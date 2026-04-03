@@ -13,6 +13,7 @@ import { useChain, useVersionInfo } from '@/ui/state/settings/hooks';
 import { useExperienceMode } from '@/ui/hooks/useExperienceMode';
 import { useWallet } from '@/ui/utils';
 import {
+    BookOutlined,
     CheckCircleFilled,
     ChromeOutlined,
     ExpandOutlined,
@@ -82,6 +83,15 @@ const SettingList: Setting[] = [
         icon: <WifiOutlined />,
         action: 'addressType',
         route: '/settings/address-type',
+        right: true
+    },
+    {
+        label: 'Address Book',
+        value: '',
+        desc: 'Manage saved addresses',
+        icon: <BookOutlined />,
+        action: 'address-book',
+        route: '/settings/address-book',
         right: true
     },
     {

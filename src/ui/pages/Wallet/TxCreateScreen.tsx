@@ -3,6 +3,7 @@ import { BitcoinUtils } from 'opnet';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 
+import { ContactBookItem } from '@/background/service/contactBook';
 import { COIN_DUST } from '@/shared/constant';
 import { Action, Features, SendBitcoinParameters, SourceType } from '@/shared/interfaces/RawTxParameters';
 import Web3API from '@/shared/web3/Web3API';
@@ -12,16 +13,19 @@ import { BalanceDisplay } from '@/ui/pages/Main/WalletTabScreen/components/Balan
 import { RouteTypes, useNavigate } from '@/ui/pages/routeTypes';
 import { useAccountBalance, useCurrentAccount } from '@/ui/state/accounts/hooks';
 import { useRotationEnabled, useRotationSummary } from '@/ui/state/rotation/hooks';
-import { useBTCUnit } from '@/ui/state/settings/hooks';
+import { useBTCUnit, useChain } from '@/ui/state/settings/hooks';
+import { usePrice } from '@/ui/provider/PriceProvider';
 import { useUiTxCreateScreen, useUpdateUiTxCreateScreen } from '@/ui/state/ui/hooks';
 import { amountToSatoshis, isValidAddress, satoshisToAmount, useWallet } from '@/ui/utils';
 import {
+    BookOutlined,
     DollarOutlined,
     DownOutlined,
     FileTextOutlined,
     InfoCircleOutlined,
     LockOutlined,
     SendOutlined,
+    SwapOutlined,
     ThunderboltOutlined,
     UnlockOutlined,
     WarningOutlined
@@ -90,6 +94,8 @@ export default function TxCreateScreen() {
     const account = useCurrentAccount();
     const wallet = useWallet();
     const accountBalance = useAccountBalance();
+    const chain = useChain();
+    const { btcPrice, refreshBtcPrice } = usePrice();
 
     // Rotation mode state
     const isRotationEnabled = useRotationEnabled();
@@ -125,10 +131,18 @@ export default function TxCreateScreen() {
     const [showCSV2Warning, setShowCSV2Warning] = useState(false);
     const [pendingBalance, setPendingBalance] = useState<AddressBalance | null>(null);
 
+    // USD mode state
+    const [isUsdMode, setIsUsdMode] = useState(false);
+    const [usdInputAmount, setUsdInputAmount] = useState('');
+
+    // Address book state
+    const [showContacts, setShowContacts] = useState(false);
+    const [contactsList, setContactsList] = useState<ContactBookItem[]>([]);
+
     useEffect(() => {
         void (async () => {
-            const chain = await wallet.getChainType();
-            await Web3API.setNetwork(chain);
+            const chainType = await wallet.getChainType();
+            await Web3API.setNetwork(chainType);
 
             // Load UTXO protection preference
             const utxoProtectionDisabled = await wallet.getUTXOProtectionDisabled();
@@ -468,6 +482,47 @@ export default function TxCreateScreen() {
     const toSatoshis = useMemo(() => (inputAmount ? amountToSatoshis(inputAmount) : 0), [inputAmount]);
     const dustAmount = useMemo(() => satoshisToAmount(COIN_DUST), []);
 
+    const canShowUsd = chain.showPrice && btcPrice > 0;
+
+    // Compute the display equivalent: when in USD mode show BTC, when in BTC mode show USD
+    const conversionDisplay = useMemo(() => {
+        if (!canShowUsd) return '';
+        if (isUsdMode) {
+            if (!usdInputAmount || isNaN(Number(usdInputAmount))) return '';
+            return `≈ ${inputAmount || '0'} ${btcUnit}`;
+        } else {
+            if (!inputAmount || isNaN(Number(inputAmount))) return '';
+            const usd = new BigNumber(inputAmount).multipliedBy(btcPrice);
+            if (usd.isZero()) return '≈ $0.00';
+            if (usd.isLessThan('0.01')) return `≈ $${usd.toPrecision(4)}`;
+            return `≈ $${usd.toFixed(2)}`;
+        }
+    }, [canShowUsd, isUsdMode, inputAmount, usdInputAmount, btcPrice, btcUnit]);
+
+    useEffect(() => {
+        refreshBtcPrice();
+    }, [refreshBtcPrice]);
+
+    // Reset USD mode when switching to a chain that doesn't support prices
+    useEffect(() => {
+        if (!chain.showPrice) setIsUsdMode(false);
+    }, [chain.showPrice]);
+
+    // Re-convert USD to BTC when price updates while in USD mode
+    useEffect(() => {
+        if (isUsdMode && usdInputAmount && btcPrice > 0) {
+            const btc = new BigNumber(usdInputAmount)
+                .dividedBy(btcPrice)
+                .toFixed(8, BigNumber.ROUND_DOWN);
+            setUiState({ inputAmount: btc });
+        }
+    }, [btcPrice]);
+
+    // Load address book contacts
+    useEffect(() => {
+        void wallet.listContact(false).then(setContactsList).catch(() => {});
+    }, [wallet]);
+
     useEffect(() => {
         setError('');
         setDisabled(true);
@@ -585,6 +640,7 @@ export default function TxCreateScreen() {
             setHasSelectedAddress(true);
             // Clear any existing input amount when switching addresses
             setUiState({ inputAmount: '' });
+            setUsdInputAmount('');
         }
     };
 
@@ -593,6 +649,7 @@ export default function TxCreateScreen() {
             setSelectedBalance(pendingBalance);
             setHasSelectedAddress(true);
             setUiState({ inputAmount: '' });
+            setUsdInputAmount('');
         }
         setShowCSV2Warning(false);
         setPendingBalance(null);
@@ -1213,26 +1270,112 @@ export default function TxCreateScreen() {
                             style={{
                                 display: 'flex',
                                 alignItems: 'center',
-                                gap: '6px',
+                                justifyContent: 'space-between',
                                 marginBottom: '10px'
                             }}>
-                            <SendOutlined style={{ fontSize: 14, color: colors.main }} />
-                            <span
-                                style={{
-                                    fontSize: '12px',
-                                    fontWeight: 600,
-                                    color: colors.textFaded,
-                                    textTransform: 'uppercase',
-                                    letterSpacing: '0.5px'
-                                }}>
-                                Recipient
-                            </span>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                <SendOutlined style={{ fontSize: 14, color: colors.main }} />
+                                <span
+                                    style={{
+                                        fontSize: '12px',
+                                        fontWeight: 600,
+                                        color: colors.textFaded,
+                                        textTransform: 'uppercase',
+                                        letterSpacing: '0.5px'
+                                    }}>
+                                    Recipient
+                                </span>
+                            </div>
+                            {contactsList.length > 0 && (
+                                <button
+                                    onClick={() => setShowContacts(!showContacts)}
+                                    style={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '4px',
+                                        padding: '3px 8px',
+                                        background: showContacts ? colors.main : colors.buttonBg,
+                                        border: 'none',
+                                        borderRadius: '6px',
+                                        color: showContacts ? colors.background : colors.text,
+                                        fontSize: '11px',
+                                        fontWeight: 600,
+                                        cursor: 'pointer',
+                                        transition: 'all 0.15s'
+                                    }}>
+                                    <BookOutlined style={{ fontSize: 10 }} />
+                                    Contacts
+                                </button>
+                            )}
                         </div>
+
+                        {showContacts && contactsList.length > 0 && (
+                            <div
+                                style={{
+                                    marginBottom: '8px',
+                                    background: colors.inputBg,
+                                    border: `1px solid ${colors.containerBorder}`,
+                                    borderRadius: '8px',
+                                    maxHeight: '120px',
+                                    overflowY: 'auto'
+                                }}>
+                                {contactsList.map((contact, idx) => (
+                                    <div
+                                        key={contact.address}
+                                        onClick={() => {
+                                            setUiState({
+                                                toInfo: { address: contact.address, domain: '' }
+                                            });
+                                            onSetAddress({ address: contact.address, domain: '' });
+                                            setShowContacts(false);
+                                        }}
+                                        style={{
+                                            padding: '8px 10px',
+                                            cursor: 'pointer',
+                                            borderBottom:
+                                                idx < contactsList.length - 1
+                                                    ? `1px solid ${colors.containerBorder}`
+                                                    : 'none',
+                                            transition: 'background 0.1s'
+                                        }}
+                                        onMouseEnter={(e) => {
+                                            e.currentTarget.style.background = colors.buttonHoverBg;
+                                        }}
+                                        onMouseLeave={(e) => {
+                                            e.currentTarget.style.background = 'transparent';
+                                        }}>
+                                        <div
+                                            style={{
+                                                fontSize: '12px',
+                                                fontWeight: 600,
+                                                color: colors.text,
+                                                marginBottom: '2px'
+                                            }}>
+                                            {contact.name}
+                                        </div>
+                                        <div
+                                            style={{
+                                                fontSize: '10px',
+                                                color: colors.textFaded,
+                                                fontFamily: 'monospace',
+                                                overflow: 'hidden',
+                                                textOverflow: 'ellipsis',
+                                                whiteSpace: 'nowrap'
+                                            }}>
+                                            {contact.address}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
 
                         <Input
                             preset="address"
                             addressInputData={toInfo}
-                            onAddressInputChange={(val) => onSetAddress(val)}
+                            onAddressInputChange={(val) => {
+                                if (showContacts) setShowContacts(false);
+                                onSetAddress(val);
+                            }}
                             placeholder="Enter recipient address"
                             autoFocus
                             style={{
@@ -1385,38 +1528,110 @@ export default function TxCreateScreen() {
                             style={{
                                 display: 'flex',
                                 alignItems: 'center',
-                                gap: '6px',
+                                justifyContent: 'space-between',
                                 marginBottom: '10px'
                             }}>
-                            <DollarOutlined style={{ fontSize: 14, color: colors.main }} />
-                            <span
-                                style={{
-                                    fontSize: '12px',
-                                    fontWeight: 600,
-                                    color: colors.textFaded,
-                                    textTransform: 'uppercase',
-                                    letterSpacing: '0.5px'
-                                }}>
-                                Amount
-                            </span>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                <DollarOutlined style={{ fontSize: 14, color: colors.main }} />
+                                <span
+                                    style={{
+                                        fontSize: '12px',
+                                        fontWeight: 600,
+                                        color: colors.textFaded,
+                                        textTransform: 'uppercase',
+                                        letterSpacing: '0.5px'
+                                    }}>
+                                    Amount {isUsdMode ? '(USD)' : `(${btcUnit})`}
+                                </span>
+                            </div>
+                            {canShowUsd && (
+                                <button
+                                    onClick={() => {
+                                        if (isUsdMode) {
+                                            // Switching back to BTC mode - clear USD input
+                                            setIsUsdMode(false);
+                                            setUsdInputAmount('');
+                                        } else {
+                                            // Switching to USD mode - pre-fill USD from current BTC amount
+                                            setIsUsdMode(true);
+                                            if (inputAmount && !isNaN(Number(inputAmount))) {
+                                                const usd = new BigNumber(inputAmount).multipliedBy(btcPrice).toFixed(2);
+                                                setUsdInputAmount(usd);
+                                            } else {
+                                                setUsdInputAmount('');
+                                            }
+                                        }
+                                    }}
+                                    style={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '4px',
+                                        padding: '3px 8px',
+                                        background: isUsdMode ? colors.main : colors.buttonBg,
+                                        border: 'none',
+                                        borderRadius: '6px',
+                                        color: isUsdMode ? colors.background : colors.text,
+                                        fontSize: '11px',
+                                        fontWeight: 600,
+                                        cursor: 'pointer',
+                                        transition: 'all 0.15s'
+                                    }}
+                                    onMouseEnter={(e) => {
+                                        if (!isUsdMode)
+                                            e.currentTarget.style.background = colors.buttonHoverBg;
+                                    }}
+                                    onMouseLeave={(e) => {
+                                        if (!isUsdMode) e.currentTarget.style.background = colors.buttonBg;
+                                    }}>
+                                    <SwapOutlined style={{ fontSize: 10 }} />
+                                    {isUsdMode ? btcUnit : 'USD'}
+                                </button>
+                            )}
                         </div>
 
                         <div style={{ position: 'relative' }}>
-                            <Input
-                                preset="amount"
-                                placeholder="0.00"
-                                value={inputAmount}
-                                onAmountInputChange={(amount) => {
-                                    if (autoAdjust) setAutoAdjust(false);
-                                    setUiState({ inputAmount: amount });
-                                }}
-                                style={{
-                                    background: colors.inputBg,
-                                    border: `1px solid ${colors.containerBorder}`,
-                                    borderRadius: '8px',
-                                    paddingRight: '60px'
-                                }}
-                            />
+                            {isUsdMode ? (
+                                <Input
+                                    preset="amount"
+                                    placeholder="0.00"
+                                    decimalPlaces={2}
+                                    value={usdInputAmount}
+                                    onAmountInputChange={(usd) => {
+                                        if (autoAdjust) setAutoAdjust(false);
+                                        setUsdInputAmount(usd);
+                                        if (usd && !isNaN(Number(usd)) && btcPrice > 0) {
+                                            const btc = new BigNumber(usd)
+                                                .dividedBy(btcPrice)
+                                                .toFixed(8, BigNumber.ROUND_DOWN);
+                                            setUiState({ inputAmount: btc });
+                                        } else {
+                                            setUiState({ inputAmount: '' });
+                                        }
+                                    }}
+                                    style={{
+                                        background: colors.inputBg,
+                                        border: `1px solid ${colors.containerBorder}`,
+                                        borderRadius: '8px',
+                                        paddingRight: '60px'
+                                    }}
+                                />
+                            ) : (
+                                <Input
+                                    preset="amount"
+                                    placeholder="0.00"
+                                    value={inputAmount}
+                                    onAmountInputChange={(amount) => {
+                                        if (autoAdjust) setAutoAdjust(false);
+                                        setUiState({ inputAmount: amount });
+                                    }}
+                                    style={{
+                                        background: colors.inputBg,
+                                        border: `1px solid ${colors.containerBorder}`,
+                                        borderRadius: '8px',
+                                        paddingRight: '60px'
+                                    }}
+                                />
+                            )}
                             <button
                                 style={{
                                     position: 'absolute',
@@ -1436,37 +1651,47 @@ export default function TxCreateScreen() {
                                 onClick={async () => {
                                     if (selectedBalance) {
                                         setAutoAdjust(true);
+                                        let maxBtcAmount = selectedBalance.balance;
                                         // In consolidation mode, use the consolidation amount (first 1400 UTXOs)
                                         if (consolidationParams?.enabled) {
                                             const balance = await wallet.getAddressBalance(
                                                 account.address,
                                                 account.pubkey
                                             );
-                                            let maxAmount = '0';
                                             switch (consolidationParams.selectedType) {
                                                 case 'csv1':
-                                                    maxAmount = balance.consolidation_csv1_unlocked_amount || '0';
+                                                    maxBtcAmount =
+                                                        balance.consolidation_csv1_unlocked_amount || '0';
                                                     break;
                                                 case 'csv3':
-                                                    maxAmount = balance.consolidation_csv3_unlocked_amount || '0';
+                                                    maxBtcAmount =
+                                                        balance.consolidation_csv3_unlocked_amount || '0';
                                                     break;
                                                 case 'csv2':
-                                                    maxAmount = balance.consolidation_csv2_unlocked_amount || '0';
+                                                    maxBtcAmount =
+                                                        balance.consolidation_csv2_unlocked_amount || '0';
                                                     break;
                                                 case 'csv75':
-                                                    maxAmount = balance.consolidation_csv75_unlocked_amount || '0';
+                                                    maxBtcAmount =
+                                                        balance.consolidation_csv75_unlocked_amount || '0';
                                                     break;
                                                 case 'p2wda':
-                                                    maxAmount = balance.consolidation_p2wda_unspent_amount || '0';
+                                                    maxBtcAmount =
+                                                        balance.consolidation_p2wda_unspent_amount || '0';
                                                     break;
                                                 case 'unspent':
                                                 default:
-                                                    maxAmount = balance.consolidation_unspent_amount || '0';
+                                                    maxBtcAmount =
+                                                        balance.consolidation_unspent_amount || '0';
                                                     break;
                                             }
-                                            setUiState({ inputAmount: maxAmount });
-                                        } else {
-                                            setUiState({ inputAmount: selectedBalance.balance });
+                                        }
+                                        setUiState({ inputAmount: maxBtcAmount });
+                                        if (isUsdMode && btcPrice > 0) {
+                                            const usd = new BigNumber(maxBtcAmount)
+                                                .multipliedBy(btcPrice)
+                                                .toFixed(2);
+                                            setUsdInputAmount(usd);
                                         }
                                     }
                                 }}
@@ -1479,6 +1704,18 @@ export default function TxCreateScreen() {
                                 MAX
                             </button>
                         </div>
+
+                        {conversionDisplay && (
+                            <div
+                                style={{
+                                    marginTop: '6px',
+                                    paddingLeft: '2px',
+                                    fontSize: '12px',
+                                    color: colors.textFaded
+                                }}>
+                                {conversionDisplay}
+                            </div>
+                        )}
 
                         {error && (
                             <div
