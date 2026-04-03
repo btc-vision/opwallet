@@ -1,6 +1,6 @@
 {
     "name": "opwallet",
-    "version": "1.8.7",
+    "version": "1.8.7-rc.0",
     "private": true,
     "type": "module",
     "homepage": "https://github.com/btc-vision/opwallet#readme",
@@ -219,16 +219,16 @@
         "@tailwindcss/vite": {
             "vite": "$vite"
         },
-		"eslint-plugin-react-hooks": {
+        "eslint-plugin-react-hooks": {
             "eslint": "$eslint"
         },
-		"madge": {
+        "madge": {
             "typescript": "$typescript"
         },
-		"typescript": {
+        "typescript": {
             "typescript": "$typescript"
         },
-		"vite": {
+        "vite": {
             "esbuild": "$esbuild"
         }
     }
