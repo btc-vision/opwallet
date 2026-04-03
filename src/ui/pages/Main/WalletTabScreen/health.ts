@@ -39,15 +39,16 @@ export const getWalletHealthChecks = (accountBalance: BitcoinBalance): WalletHea
     }
     checks.push({ type: 'low-balance', show });
 
-    // 2) CSV UTXOs > 5 total — need consolidation with per-type warnings
+    // 2) CSV UTXOs > 5 total, need consolidation with per-type warnings
     show = false;
     const mainBalance = BitcoinUtils.expandToDecimals(accountBalance.btc_total_amount || '0', 8);
 
-    const totalCsvBalances = 0n
-        + BitcoinUtils.expandToDecimals(accountBalance.csv75_total_amount || '0', 8)
-        + BitcoinUtils.expandToDecimals(accountBalance.csv3_total_amount || '0', 8)
-        + BitcoinUtils.expandToDecimals(accountBalance.csv2_total_amount || '0', 8)
-        + BitcoinUtils.expandToDecimals(accountBalance.csv1_total_amount || '0', 8)
+    const totalCsvBalances =
+        0n +
+        BitcoinUtils.expandToDecimals(accountBalance.csv75_total_amount || '0', 8) +
+        BitcoinUtils.expandToDecimals(accountBalance.csv3_total_amount || '0', 8) +
+        BitcoinUtils.expandToDecimals(accountBalance.csv2_total_amount || '0', 8) +
+        BitcoinUtils.expandToDecimals(accountBalance.csv1_total_amount || '0', 8);
 
     const totalCsvUtxos =
         accountBalance.csv1_locked_utxos_count +

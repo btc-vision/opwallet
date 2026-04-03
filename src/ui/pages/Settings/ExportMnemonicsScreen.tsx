@@ -146,7 +146,7 @@ export default function ExportMnemonicsScreen() {
                                     {[
                                         'If you lose your Secret Recovery Phrase, your assets will be gone forever.',
                                         'If you share the phrase with others, your assets can be stolen.',
-                                        'The phrase is only stored in your browser — you are responsible for keeping it safe.'
+                                        'The phrase is only stored in your browser, you are responsible for keeping it safe.'
                                     ].map((msg, i) => (
                                         <div
                                             key={i}
@@ -189,9 +189,7 @@ export default function ExportMnemonicsScreen() {
                                     alignItems: 'center',
                                     gap: '8px'
                                 }}>
-                                <LockOutlined
-                                    style={{ fontSize: 14, color: colors.warning, flexShrink: 0 }}
-                                />
+                                <LockOutlined style={{ fontSize: 14, color: colors.warning, flexShrink: 0 }} />
                                 <span style={{ fontSize: '12px', color: colors.textFaded, lineHeight: '1.4' }}>
                                     Please read the warnings above before entering your password.
                                 </span>
@@ -295,8 +293,8 @@ export default function ExportMnemonicsScreen() {
                                     }}
                                 />
                                 <span style={{ fontSize: '12px', color: colors.textFaded, lineHeight: '1.5' }}>
-                                    This phrase is the <strong style={{ color: colors.warning }}>ONLY</strong> way
-                                    to recover your wallet. Do NOT share it with anyone!
+                                    This phrase is the <strong style={{ color: colors.warning }}>ONLY</strong> way to
+                                    recover your wallet. Do NOT share it with anyone!
                                 </span>
                             </div>
 
@@ -426,9 +424,7 @@ export default function ExportMnemonicsScreen() {
                                     onMouseLeave={(e) => {
                                         e.currentTarget.style.borderColor = colors.containerBorder;
                                     }}>
-                                    <CopyOutlined
-                                        style={{ fontSize: 12, color: colors.textFaded, flexShrink: 0 }}
-                                    />
+                                    <CopyOutlined style={{ fontSize: 12, color: colors.textFaded, flexShrink: 0 }} />
                                     <div style={{ flex: 1 }}>
                                         <div
                                             style={{

@@ -1,4 +1,11 @@
-import { CloseOutlined, ExclamationCircleOutlined, LockOutlined, SettingOutlined, WalletOutlined, WarningOutlined } from '@ant-design/icons';
+import {
+    CloseOutlined,
+    ExclamationCircleOutlined,
+    LockOutlined,
+    SettingOutlined,
+    WalletOutlined,
+    WarningOutlined
+} from '@ant-design/icons';
 import { RouteTypes, useNavigate } from '@/ui/pages/routeTypes';
 import { WalletHealthCheck } from '@/ui/pages/Main/WalletTabScreen/health';
 import { CSSProperties, useState } from 'react';
@@ -75,8 +82,8 @@ const mainDivStyle: CSSProperties = {
 };
 
 const iconStyle: CSSProperties = {
-    borderRadius: '4px',
-}
+    borderRadius: '4px'
+};
 
 const circleStyle: CSSProperties = {
     aspectRatio: '1',
@@ -167,8 +174,8 @@ export const LowBalancePopup = ({ onClose }: LowBalancePopupProps) => {
                             margin: '0 0 20px 0',
                             lineHeight: '1.5'
                         }}>
-                        Your primary wallet balance is critically low. You may not have enough funds to cover network fees
-                        for transactions.
+                        Your primary wallet balance is critically low. You may not have enough funds to cover network
+                        fees for transactions.
                     </p>
                 </div>
 
@@ -301,7 +308,7 @@ export const CsvFundsWarningPopup = ({ hasCsv1, hasCsv2, hasCsv3, hasCsv75, onCl
                 </div>
 
                 <div style={{ padding: '0 20px 20px', overflowY: 'auto', maxHeight: '300px' }}>
-                    {/* CSV3 / CSV75 warning — not usable by dApps */}
+                    {/* CSV3 / CSV75 warning, not usable by dApps */}
                     {(hasCsv3 || hasCsv75) && (
                         <div
                             style={{
@@ -327,14 +334,14 @@ export const CsvFundsWarningPopup = ({ hasCsv1, hasCsv2, hasCsv3, hasCsv75, onCl
                                     {hasCsv3 && hasCsv75 ? 'CSV3 & CSV75' : hasCsv3 ? 'CSV3' : 'CSV75'} Funds
                                 </div>
                                 <p style={{ fontSize: '11px', color: colors.textFaded, margin: 0, lineHeight: '1.4' }}>
-                                    These funds are not usable by dApps. You should move them to your primary wallet once
-                                    they are unlocked to be able to use them in smart contract interactions.
+                                    These funds are not usable by dApps. You should move them to your primary wallet
+                                    once they are unlocked to be able to use them in smart contract interactions.
                                 </p>
                             </div>
                         </div>
                     )}
 
-                    {/* CSV2 warning — staked BTC */}
+                    {/* CSV2 warning, staked BTC */}
                     {hasCsv2 && (
                         <div
                             style={{
@@ -357,7 +364,7 @@ export const CsvFundsWarningPopup = ({ hasCsv1, hasCsv2, hasCsv3, hasCsv75, onCl
                                         color: colors.error,
                                         marginBottom: '4px'
                                     }}>
-                                    CSV2 Funds — Careful!
+                                    CSV2 Funds, Careful!
                                 </div>
                                 <p style={{ fontSize: '11px', color: colors.textFaded, margin: 0, lineHeight: '1.4' }}>
                                     These funds may contain staked BTC UTXOs. If you transfer them, you will lose your
@@ -367,7 +374,7 @@ export const CsvFundsWarningPopup = ({ hasCsv1, hasCsv2, hasCsv3, hasCsv75, onCl
                         </div>
                     )}
 
-                    {/* CSV1 — safe to move */}
+                    {/* CSV1, safe to move */}
                     {hasCsv1 && (
                         <div
                             style={{
@@ -579,8 +586,8 @@ export const LowUtxoPopup = ({ onClose }: LowUtxoPopupProps) => {
                                         color: colors.textFaded,
                                         lineHeight: '1.4'
                                     }}>
-                                    Each Bitcoin transaction requires at least one UTXO as input. With fewer than 5 UTXOs,
-                                    you must wait for previous transactions to confirm before sending new ones.
+                                    Each Bitcoin transaction requires at least one UTXO as input. With fewer than 5
+                                    UTXOs, you must wait for previous transactions to confirm before sending new ones.
                                 </div>
                             </div>
                         </div>
@@ -630,10 +637,10 @@ interface WalletHealthBadgeProps {
 interface BadgeProps {
     check: WalletHealthCheck;
     onClick: (type: WalletHealthCheck) => void;
-    count?: number|false;
+    count?: number | false;
 }
 
-const HealthBadge = ({ check, onClick,count }: BadgeProps) => {
+const HealthBadge = ({ check, onClick, count }: BadgeProps) => {
     let name;
     let icon;
     switch (check.type) {
@@ -672,12 +679,12 @@ const HealthBadge = ({ check, onClick,count }: BadgeProps) => {
     );
 };
 
-export const WalletHealthBadge = ({ checks:allChecks, onClick }: WalletHealthBadgeProps) => {
+export const WalletHealthBadge = ({ checks: allChecks, onClick }: WalletHealthBadgeProps) => {
     const [expanded, setExpanded] = useState(false);
     if (!allChecks || allChecks.length === 0) return null;
 
     // Filter only checks to show
-    const checks = allChecks.filter(check => check.show);
+    const checks = allChecks.filter((check) => check.show);
     const count = checks.length;
     if (!checks || checks.length === 0) return null;
 
@@ -693,10 +700,8 @@ export const WalletHealthBadge = ({ checks:allChecks, onClick }: WalletHealthBad
             }}
             style={mainDivStyle}>
             <HealthBadge check={checks[0]} onClick={onClick} count={!expanded && count} />
-            {expanded && checks.slice(1).map((check) =>
-                <HealthBadge key={check.type} onClick={onClick} check={check} />
-            )}
+            {expanded &&
+                checks.slice(1).map((check) => <HealthBadge key={check.type} onClick={onClick} check={check} />)}
         </div>
     );
-}
-
+};

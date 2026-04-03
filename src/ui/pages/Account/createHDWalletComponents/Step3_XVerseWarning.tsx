@@ -92,9 +92,7 @@ export function Step3_XVerseWarning({
                     <div style={{ fontSize: '14px', fontWeight: 600, color: '#fbbf24', marginBottom: '2px' }}>
                         XVerse Wallet Notice
                     </div>
-                    <div style={{ fontSize: '11px', color: colors.textDim }}>
-                        Please read before continuing
-                    </div>
+                    <div style={{ fontSize: '11px', color: colors.textDim }}>Please read before continuing</div>
                 </div>
             </div>
 
@@ -133,8 +131,8 @@ export function Step3_XVerseWarning({
                             1
                         </div>
                         <span style={{ fontSize: '12.5px', color: colors.textDim, lineHeight: '1.4' }}>
-                            <strong style={{ color: colors.text }}>SegWit address</strong> (Nested SegWit) — for
-                            regular BTC
+                            <strong style={{ color: colors.text }}>SegWit address</strong> (Nested SegWit), for regular
+                            BTC
                         </span>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -156,8 +154,7 @@ export function Step3_XVerseWarning({
                             2
                         </div>
                         <span style={{ fontSize: '12.5px', color: colors.textDim, lineHeight: '1.4' }}>
-                            <strong style={{ color: colors.text }}>Taproot address</strong> — for
-                            Ordinals/Inscriptions
+                            <strong style={{ color: colors.text }}>Taproot address</strong>, for Ordinals/Inscriptions
                         </span>
                     </div>
                 </div>
@@ -200,9 +197,7 @@ export function Step3_XVerseWarning({
                 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <span style={{ fontSize: '16px' }}>💡</span>
-                    <span style={{ fontSize: '13px', fontWeight: 600, color: colors.info }}>
-                        What you need to do
-                    </span>
+                    <span style={{ fontSize: '13px', fontWeight: 600, color: colors.info }}>What you need to do</span>
                 </div>
 
                 <div

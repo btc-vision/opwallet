@@ -29,9 +29,7 @@ export class Web3Provider {
      * Build, sign, and broadcast a BTC funding transaction.
      * The wallet provides signer, network, and MLDSA internally.
      */
-    public async sendBitcoin(
-        params: IFundingTransactionParametersWithoutSigner
-    ): Promise<BitcoinTransferBase> {
+    public async sendBitcoin(params: IFundingTransactionParametersWithoutSigner): Promise<BitcoinTransferBase> {
         if ('signer' in params) {
             console.warn('signer is not allowed in funding parameters');
             (params as Record<string, unknown>).signer = undefined;
@@ -50,9 +48,7 @@ export class Web3Provider {
      */
     // eslint-disable-next-line @typescript-eslint/require-await
     public async signPsbt(_psbtHex: string, _options?: object): Promise<string> {
-        throw new Error(
-            'signPsbt is not implemented yet in the Web3Provider. Use signInteraction for contract calls.'
-        );
+        throw new Error('signPsbt is not implemented yet in the Web3Provider. Use signInteraction for contract calls.');
     }
 
     public async signAndBroadcastInteraction(
@@ -81,9 +77,7 @@ export class Web3Provider {
         return this.provider.deployContract(params);
     }
 
-    public async cancelTransaction(
-        params: ICancelTransactionParametersWithoutSigner
-    ): Promise<CancelledTransaction> {
+    public async cancelTransaction(params: ICancelTransactionParametersWithoutSigner): Promise<CancelledTransaction> {
         return this.provider.cancelTransaction(params);
     }
 
@@ -93,7 +87,7 @@ export class Web3Provider {
 
     /**
      * Sign a message using Schnorr signature.
-     * Convenience wrapper — delegates to signData on the root provider.
+     * Convenience wrapper, delegates to signData on the root provider.
      * @param message - Hexadecimal string message to sign
      * @returns The Schnorr signature in hex format
      */
@@ -105,7 +99,10 @@ export class Web3Provider {
         return this.provider.getMLDSAPublicKey();
     }
 
-    public async signMLDSAMessage(message: string, originalMessage?: string): Promise<{
+    public async signMLDSAMessage(
+        message: string,
+        originalMessage?: string
+    ): Promise<{
         signature: string;
         message: string;
         publicKey: string;

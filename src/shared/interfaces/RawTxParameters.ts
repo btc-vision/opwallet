@@ -3,7 +3,7 @@ import type { PsbtOutputExtended } from '@btc-vision/bitcoin';
 import type { UTXO } from '@btc-vision/transaction';
 
 export enum Features {
-    /** Replace-By-Fee — let the user bump the fee after broadcast */
+    /** Replace-By-Fee, let the user bump the fee after broadcast */
     rbf = 'rbf',
 
     /** Segregated Witness inputs (P2WPKH / P2WSH) */
@@ -134,7 +134,7 @@ export interface SendBitcoinParameters extends BaseRawTxInfo<Action.SendBitcoin>
     // Consolidation-specific fields
     readonly sourceAddresses?: string[];
     readonly sourcePubkeys?: string[];
-    // When true, this is a DApp request — resolve approval with BitcoinTransferResponse after broadcast
+    // When true, this is a DApp request, resolve approval with BitcoinTransferResponse after broadcast
     readonly isDAppRequest?: boolean;
 }
 

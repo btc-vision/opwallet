@@ -9,7 +9,7 @@ import browser, { WindowProps } from '../webapi/browser';
 
 // Parsed transaction output for UI display
 export interface ParsedTxOutput {
-    address: string | null;  // null if script-only output
+    address: string | null; // null if script-only output
     value: bigint;
     script: string;
     isOpReturn: boolean;
@@ -18,7 +18,7 @@ export interface ParsedTxOutput {
 // Serializable version (BigInt as string) for Chrome message passing
 export interface SerializedParsedTxOutput {
     address: string | null;
-    value: string;  // BigInt serialized as string
+    value: string; // BigInt serialized as string
     script: string;
     isOpReturn: boolean;
 }
@@ -27,17 +27,17 @@ export interface SerializedParsedTxOutput {
 export interface ParsedTransaction {
     txid: string;
     hex: string;
-    size: number;           // in bytes
-    vsize: number;          // virtual size for fee calculation
+    size: number; // in bytes
+    vsize: number; // virtual size for fee calculation
     inputs: {
         txid: string;
         vout: number;
-        value: bigint;      // from UTXO
+        value: bigint; // from UTXO
     }[];
     outputs: ParsedTxOutput[];
     totalInputValue: bigint;
     totalOutputValue: bigint;
-    minerFee: bigint;       // inputs - outputs = real mining fee
+    minerFee: bigint; // inputs - outputs = real mining fee
 }
 
 // Serializable version for Chrome message passing
@@ -49,7 +49,7 @@ export interface SerializedParsedTransaction {
     inputs: {
         txid: string;
         vout: number;
-        value: string;  // BigInt as string
+        value: string; // BigInt as string
     }[];
     outputs: SerializedParsedTxOutput[];
     totalInputValue: string;
@@ -58,7 +58,14 @@ export interface SerializedParsedTransaction {
 }
 
 // Transaction type for pre-signed data
-export type PreSignedTxType = 'interaction' | 'deployment' | 'bitcoin_transfer' | 'token_transfer' | 'mint' | 'airdrop' | 'nft_transfer';
+export type PreSignedTxType =
+    | 'interaction'
+    | 'deployment'
+    | 'bitcoin_transfer'
+    | 'token_transfer'
+    | 'mint'
+    | 'airdrop'
+    | 'nft_transfer';
 
 // Pre-signed transaction data for preview (never exposed to dApps until approved)
 export interface PreSignedInteractionData {
@@ -95,8 +102,8 @@ export interface PreSignedTransactionData {
     // Parsed transactions for bowtie display
     transactions: ParsedTransaction[];
     // Total fees breakdown
-    totalMiningFee: bigint;      // inputs - outputs across all TXs
-    opnetGasFee: bigint;         // First output of interaction TX (epoch miner)
+    totalMiningFee: bigint; // inputs - outputs across all TXs
+    opnetGasFee: bigint; // First output of interaction TX (epoch miner)
     // For OPNet interactions - first output is epoch miner
     opnetEpochMinerOutput: ParsedTxOutput | null;
     // Raw response data (for broadcasting)
@@ -140,7 +147,7 @@ function serializeParsedTransaction(tx: ParsedTransaction): SerializedParsedTran
         hex: tx.hex,
         size: tx.size,
         vsize: tx.vsize,
-        inputs: tx.inputs.map(inp => ({
+        inputs: tx.inputs.map((inp) => ({
             txid: inp.txid,
             vout: inp.vout,
             value: inp.value.toString()
@@ -158,7 +165,7 @@ function deserializeParsedTransaction(tx: SerializedParsedTransaction): ParsedTr
         hex: tx.hex,
         size: tx.size,
         vsize: tx.vsize,
-        inputs: tx.inputs.map(inp => ({
+        inputs: tx.inputs.map((inp) => ({
             txid: inp.txid,
             vout: inp.vout,
             value: BigInt(inp.value)
@@ -177,9 +184,7 @@ export function serializePreSignedInteractionData(data: PreSignedInteractionData
         estimatedFees: data.estimatedFees.toString(),
         fundingTx: data.fundingTx ? serializeParsedTransaction(data.fundingTx) : null,
         interactionTx: serializeParsedTransaction(data.interactionTx),
-        opnetEpochMinerOutput: data.opnetEpochMinerOutput
-            ? serializeParsedTxOutput(data.opnetEpochMinerOutput)
-            : null
+        opnetEpochMinerOutput: data.opnetEpochMinerOutput ? serializeParsedTxOutput(data.opnetEpochMinerOutput) : null
     };
 }
 
@@ -197,9 +202,7 @@ export function deserializePreSignedInteractionData(data: SerializedPreSignedInt
         estimatedFees: BigInt(data.estimatedFees),
         fundingTx: data.fundingTx ? deserializeParsedTransaction(data.fundingTx) : null,
         interactionTx: deserializeParsedTransaction(data.interactionTx),
-        opnetEpochMinerOutput: data.opnetEpochMinerOutput
-            ? deserializeParsedTxOutput(data.opnetEpochMinerOutput)
-            : null
+        opnetEpochMinerOutput: data.opnetEpochMinerOutput ? deserializeParsedTxOutput(data.opnetEpochMinerOutput) : null
     };
 }
 
@@ -339,7 +342,7 @@ class NotificationService extends Events {
 
     requestApproval = async (data: ApprovalData, winProps?: WindowProps): Promise<ApprovalResponse | undefined> => {
         if (this.approval) {
-            console.warn('[NotificationService] requestApproval blocked — an approval is already pending', {
+            console.warn('[NotificationService] requestApproval blocked, an approval is already pending', {
                 existingApproval: this.approval.data,
                 incomingApproval: data
             });

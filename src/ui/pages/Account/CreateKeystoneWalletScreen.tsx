@@ -1,9 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { ADDRESS_TYPES } from '@/shared/constant';
-
-/** BIP32 path validation regex from @btc-vision/bip32 */
-const BIP32_PATH_REGEX = /^(m\/)?(\d+'?\/)*\d+'?$/;
 import { Button, Card, Column, Content, Footer, Header, Input, Layout, Row, Text } from '@/ui/components';
 import { useTools } from '@/ui/components/ActionComponent';
 import { AddressTypeCard2 } from '@/ui/components/AddressTypeCard';
@@ -20,6 +17,9 @@ import { AddressTypes } from '@btc-vision/transaction';
 
 import { isWalletError } from '@/shared/utils/errors';
 import { RouteTypes, useNavigate } from '../routeTypes';
+
+/** BIP32 path validation regex from @btc-vision/bip32 */
+const BIP32_PATH_REGEX = /^(m\/)?(\d+'?\/)*\d+'?$/;
 
 interface ContextData {
     ur: {
@@ -247,7 +247,7 @@ function Step3({
                 });
             });
 
-            // only the  customsan path is not empty and click thie scan button , then only show the custom path address type
+            // only the  customsan path is not empty and click thie scan button, then only show the custom path address type
             if (
                 contextData.customHdPath !== null &&
                 contextData.customHdPath !== '' &&
@@ -295,7 +295,7 @@ function Step3({
         if (contextData.customHdPath.length >= 13) {
             // eslint-disable-next-line react-hooks/set-state-in-effect -- Async data loading on path change
             scanVaultAddress(1);
-             
+
             setScanned(false);
         }
     }, [contextData.customHdPath]);

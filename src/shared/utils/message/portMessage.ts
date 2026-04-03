@@ -65,7 +65,7 @@ class PortMessage extends Message {
 
     send = (type: string, data: SendPayload) => {
         if (!this.port) {
-            console.warn('[PortMessage] send() called but port is null — message dropped', type);
+            console.warn('[PortMessage] send() called but port is null, message dropped', type);
             return;
         }
 
@@ -77,7 +77,7 @@ class PortMessage extends Message {
         try {
             this.port.postMessage(messageDetails);
         } catch (e) {
-            console.warn('[PortMessage] postMessage failed — message dropped', type, e);
+            console.warn('[PortMessage] postMessage failed, message dropped', type, e);
         }
     };
 
