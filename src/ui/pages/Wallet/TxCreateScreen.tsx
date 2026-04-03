@@ -1951,7 +1951,7 @@ export default function TxCreateScreen() {
                                         letterSpacing: '0.5px',
                                         marginBottom: '6px'
                                     }}>
-                                    Include UTXOs Smaller Than 20,000 SAT
+                                    Include UTXOs Smaller Than 1,000 SAT
                                 </div>
 
                                 {/* Additional Info */}

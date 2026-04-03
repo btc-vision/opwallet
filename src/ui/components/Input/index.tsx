@@ -184,16 +184,23 @@ export const AddressInput = (props: InputProps) => {
         setParseName('');
     }, []);
 
-    // Check if parent is signaling a reset (address cleared externally)
+    // Sync internal state when parent changes the address externally
     const prevAddressRef = React.useRef(addressInputData?.address);
     React.useEffect(() => {
         const prevAddress = prevAddressRef.current;
         const currentAddress = addressInputData?.address;
         prevAddressRef.current = currentAddress;
 
-        // Only reset if parent explicitly cleared the address (not on initial mount)
-        if (prevAddress && prevAddress !== '' && currentAddress === '') {
+        if (prevAddress === currentAddress) return;
+
+        if (!currentAddress || currentAddress === '') {
+            // Parent cleared the address
             handleReset();
+        } else {
+            // Parent set a new address (e.g. from contact picker)
+            setInputVal(currentAddress);
+            setParseError('');
+            setFormatError('');
         }
     }, [addressInputData?.address, handleReset]);
 
