@@ -12,6 +12,13 @@ import tsconfigPaths from 'vite-tsconfig-paths';
 const packageJson = JSON.parse(fs.readFileSync('./package.json', 'utf-8'));
 const version = packageJson.version.replace(/-(alpha|beta|rc).*$/, '');
 
+// Build-time feature flag: when true, includes the OPNet Browser feature
+// (`.btc` domain resolution, IPFS gateways, omnibox keyword, webNavigation
+// interception). When false, the feature is fully stripped from the manifest
+// and the related UI entry is omitted. Default: false.
+// Toggle with: ENABLE_OPNET_BROWSER=true npm run build:chrome
+const enableOpnetBrowser = process.env.ENABLE_OPNET_BROWSER === 'true';
+
 // Custom plugin to handle manifest generation for MV3
 function manifestPlugin(): PluginOption {
     return {
@@ -46,6 +53,29 @@ function manifestPlugin(): PluginOption {
                 // Always set the version from package.json
                 version: version
             };
+
+            // Conditionally inject OPNet Browser manifest entries. Keeping these
+            // out of _base_v3.json by default lets the extension ship without
+            // triggering Chrome Web Store's in-depth host-permission review.
+            if (enableOpnetBrowser) {
+                const existingPermissions: string[] = Array.isArray(manifest.permissions)
+                    ? manifest.permissions
+                    : [];
+                if (!existingPermissions.includes('webNavigation')) {
+                    manifest.permissions = [...existingPermissions, 'webNavigation'];
+                }
+                manifest.host_permissions = [
+                    '*://*.btc/*',
+                    'https://ipfs.opnet.org/*',
+                    'https://*.ipfs.io/*',
+                    'https://dweb.link/*',
+                    'https://gateway.pinata.cloud/*'
+                ];
+                manifest.omnibox = { keyword: 'op' };
+                console.log('OPNet Browser manifest entries injected (ENABLE_OPNET_BROWSER=true)');
+            } else {
+                console.log('OPNet Browser manifest entries skipped (set ENABLE_OPNET_BROWSER=true to enable)');
+            }
 
             // Ensure background service worker has type: module for MV3
             if (manifest.background && manifest.background.service_worker) {
@@ -455,6 +485,7 @@ export default defineConfig(({ mode }) => {
             'process.env.BUILD_ENV': JSON.stringify(isProd ? 'PRO' : 'DEV'),
             'process.env.DEBUG': JSON.stringify(!isProd),
             'process.env.NODE_ENV': JSON.stringify(mode),
+            'process.env.ENABLE_OPNET_BROWSER': JSON.stringify(enableOpnetBrowser ? 'true' : 'false'),
             'global.crypto': 'globalThis.crypto',
             global: 'globalThis'
         },

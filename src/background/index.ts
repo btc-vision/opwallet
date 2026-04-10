@@ -1,4 +1,4 @@
-import { EVENTS, MANIFEST_VERSION } from '@/shared/constant';
+import { ENABLE_OPNET_BROWSER, EVENTS, MANIFEST_VERSION } from '@/shared/constant';
 import eventBus from '@/shared/eventBus';
 import { ProviderControllerRequest, RequestParams } from '@/shared/types/Request.js';
 import { openExtensionInTab } from '@/shared/utils/browser-tabs';
@@ -239,90 +239,90 @@ if (MANIFEST_VERSION === 'mv3') {
     }, 5000);
 }
 
-// Intercept .btc domain navigation and redirect to resolver
-const setupBtcDomainInterception = () => {
-    // Listen for navigation to .btc domains
-    chrome.webNavigation.onBeforeNavigate.addListener(
-        async (details) => {
-            // Only intercept main frame navigations
-            if (details.frameId !== 0) return;
+// .btc domain interception and OPNet protocol handler — only active when
+// the ENABLE_OPNET_BROWSER build flag is set (ENABLE_OPNET_BROWSER=true).
+if (ENABLE_OPNET_BROWSER) {
+    // Intercept .btc domain navigation and redirect to resolver
+    if (chrome.webNavigation) {
+        chrome.webNavigation.onBeforeNavigate.addListener(
+            async (details) => {
+                // Only intercept main frame navigations
+                if (details.frameId !== 0) return;
 
-            try {
-                const url = new URL(details.url);
+                try {
+                    const url = new URL(details.url);
 
-                // Check if it's a .btc domain
-                if (url.hostname.endsWith('.btc')) {
-                    // Build opnet URL
-                    const opnetUrl = `opnet://${url.hostname}${url.pathname}${url.search}${url.hash}`;
-                    const resolverUrl = chrome.runtime.getURL(
-                        `opnet-resolver.html?url=${encodeURIComponent(opnetUrl)}`
-                    );
-
-                    // Redirect to resolver
-                    await chrome.tabs.update(details.tabId, { url: resolverUrl });
-                }
-            } catch {
-                // Invalid URL, ignore
-            }
-        },
-        {
-            url: [{ hostSuffix: '.btc' }]
-        }
-    );
-};
-
-// Initialize .btc domain interception
-setupBtcDomainInterception();
-
-// OPNet Protocol message handler for resolver page
-const opnetMessageHandler = (
-    message: unknown,
-    _sender: Runtime.MessageSender,
-    sendResponse: (response: unknown) => void
-): boolean | undefined => {
-    const msg = message as { type?: string; params?: unknown[] } | undefined;
-
-    // Handle isOpnetBrowserEnabled check (used by search redirect banner)
-    if (msg?.type === 'isOpnetBrowserEnabled') {
-        const settings = opnetProtocolService.getBrowserSettings();
-        sendResponse({ enabled: settings.enabled });
-        return true;
-    }
-
-    if (msg && msg.type?.startsWith('opnetProtocol:')) {
-        const method = msg.type.replace('opnetProtocol:', '');
-        const params = msg.params || [];
-
-        const handleMessage = async () => {
-            try {
-                switch (method) {
-                    case 'parseUrl':
-                        return opnetProtocolService.parseUrl(params[0] as string);
-                    case 'resolveDomain':
-                        return await opnetProtocolService.resolveDomain(params[0] as string);
-                    case 'fetchContent':
-                        return await opnetProtocolService.fetchContent(
-                            params[0] as string,
-                            params[1] as number,
-                            params[2] as string
+                    // Check if it's a .btc domain
+                    if (url.hostname.endsWith('.btc')) {
+                        // Build opnet URL
+                        const opnetUrl = `opnet://${url.hostname}${url.pathname}${url.search}${url.hash}`;
+                        const resolverUrl = chrome.runtime.getURL(
+                            `opnet-resolver.html?url=${encodeURIComponent(opnetUrl)}`
                         );
-                    default:
-                        throw new Error(`Unknown OPNet protocol method: ${method}`);
+
+                        // Redirect to resolver
+                        await chrome.tabs.update(details.tabId, { url: resolverUrl });
+                    }
+                } catch {
+                    // Invalid URL, ignore
                 }
-            } catch (error) {
-                console.error('OPNet protocol error:', error);
-                throw error;
+            },
+            {
+                url: [{ hostSuffix: '.btc' }]
             }
-        };
-
-        handleMessage()
-            .then((result) => sendResponse(result))
-            .catch((error: unknown) => sendResponse({ error: (error as Error).message }));
-
-        return true; // Keep the message channel open for async response
+        );
     }
-    return undefined;
-};
-browser.runtime.onMessage.addListener(
-    opnetMessageHandler as Parameters<typeof browser.runtime.onMessage.addListener>[0]
-);
+
+    // OPNet Protocol message handler for resolver page
+    const opnetMessageHandler = (
+        message: unknown,
+        _sender: Runtime.MessageSender,
+        sendResponse: (response: unknown) => void
+    ): boolean | undefined => {
+        const msg = message as { type?: string; params?: unknown[] } | undefined;
+
+        // Handle isOpnetBrowserEnabled check (used by search redirect banner)
+        if (msg?.type === 'isOpnetBrowserEnabled') {
+            const settings = opnetProtocolService.getBrowserSettings();
+            sendResponse({ enabled: settings.enabled });
+            return true;
+        }
+
+        if (msg && msg.type?.startsWith('opnetProtocol:')) {
+            const method = msg.type.replace('opnetProtocol:', '');
+            const params = msg.params || [];
+
+            const handleMessage = async () => {
+                try {
+                    switch (method) {
+                        case 'parseUrl':
+                            return opnetProtocolService.parseUrl(params[0] as string);
+                        case 'resolveDomain':
+                            return await opnetProtocolService.resolveDomain(params[0] as string);
+                        case 'fetchContent':
+                            return await opnetProtocolService.fetchContent(
+                                params[0] as string,
+                                params[1] as number,
+                                params[2] as string
+                            );
+                        default:
+                            throw new Error(`Unknown OPNet protocol method: ${method}`);
+                    }
+                } catch (error) {
+                    console.error('OPNet protocol error:', error);
+                    throw error;
+                }
+            };
+
+            handleMessage()
+                .then((result) => sendResponse(result))
+                .catch((error: unknown) => sendResponse({ error: (error as Error).message }));
+
+            return true; // Keep the message channel open for async response
+        }
+        return undefined;
+    };
+    browser.runtime.onMessage.addListener(
+        opnetMessageHandler as Parameters<typeof browser.runtime.onMessage.addListener>[0]
+    );
+}

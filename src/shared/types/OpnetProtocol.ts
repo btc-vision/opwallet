@@ -1,3 +1,4 @@
+import { ENABLE_OPNET_BROWSER } from '../constant';
 import { NetworkType } from '../types';
 
 // =============================================================================
@@ -203,7 +204,10 @@ export const DEFAULT_CACHE_SETTINGS: OpnetCacheSettings = {
 
 /** Default browser settings */
 export const DEFAULT_BROWSER_SETTINGS: OpnetBrowserSettings = {
-    enabled: true, // Enabled by default
+    // Mirrors the build-time feature flag. When the OPNet Browser feature is
+    // stripped from the manifest, default to disabled so the search-redirect
+    // content script and stored preference agree with reality.
+    enabled: ENABLE_OPNET_BROWSER,
     interceptHttp: true, // Intercept http://*.btc when enabled
     showRedirectNotification: false,
     showResolverDetails: false

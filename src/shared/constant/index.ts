@@ -496,6 +496,13 @@ export const TOS_LAST_UPDATE = process.env.tosLastUpdate ?? '2026-03-12';
 export const DOMAIN_TOS_VERSION = process.env.domainTosVersion ?? '1.0.1';
 export const MANIFEST_VERSION = process.env.manifest ?? 'mv3';
 
+// Build-time feature flag for the OPNet Browser (.btc domain resolution,
+// IPFS gateways, omnibox keyword, webNavigation interception). Toggle with
+// the ENABLE_OPNET_BROWSER environment variable at build time. When false,
+// the manifest entries are stripped in vite.config.ts and the in-wallet UI
+// for this feature is hidden.
+export const ENABLE_OPNET_BROWSER: boolean = process.env.ENABLE_OPNET_BROWSER === 'true';
+
 export enum AddressFlagType {
     CONFIRMED_UTXO_MODE = 0b10,
     DISABLE_AUTO_SWITCH_CONFIRMED = 0b100
