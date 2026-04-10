@@ -10,7 +10,107 @@ const packageJson = JSON.parse(fs.readFileSync('./package.json', 'utf-8'));
 // Strip prerelease suffixes (-alpha, -beta, -rc) for valid extension version
 const version = packageJson.version.replace(/-(alpha|beta|rc).*$/, '');
 
-// Service worker polyfill - injected at the start of the bundle
+// ----------------------------------------------------------------------------
+// Force tree-shakeable `build/` entries for @btc-vision packages and opnet.
+//
+// These packages ship two entry points via package.json `exports`:
+//   * `browser/`: rolldown-pre-bundled with their own copies of bitcoin,
+//     noble-curves, noble-hashes, all bip39 wordlists, and protobufjs inlined
+//     as opaque chunks. ~2.1 MB for opnet and ~1.3 MB for transaction, with
+//     the same dependencies duplicated across both — and totally opaque to
+//     downstream tree-shaking.
+//   * `build/`: per-file ESM (~363 KB and ~590 KB total) that tree-shakes
+//     against the standalone @btc-vision/bitcoin / @noble/* packages, of
+//     which we end up using a small fraction.
+//
+// Vite picks `browser/` by default when building for the web. We need it to
+// pick `build/` instead. `resolve.alias` and `resolveId` plugin hooks both
+// run AFTER Vite's internal resolver has consumed the `exports` field, so
+// they can't intercept the bare specifier. The only thing that works is
+// modifying the `exports` field on disk BEFORE Vite ever loads the config.
+//
+// We do that synchronously here, at the top of this file, so it runs before
+// `defineConfig` returns. The build/ entries reference a few Node-only
+// modules (undici, crypto, zlib, os, worker_threads) that are gated at
+// runtime by isNode checks or only touched by code paths we never invoke;
+// they're aliased to browser shims in `resolve.alias` below so they resolve
+// cleanly without actually executing.
+//
+// We DO need to restore the originals once the background build finishes,
+// because the subsequent UI build (vite.config.ts) still expects the browser/
+// entries — it hasn't been taught about the shims yet, so forcing it onto
+// build/ would drag in undici and blow up. Restoration happens via a plugin's
+// `closeBundle` hook, with a `process.on('exit')` safety net for hard crashes.
+const FORCE_BUILD_PACKAGES = ['opnet', '@btc-vision/transaction', '@btc-vision/bitcoin', '@btc-vision/ecpair'];
+const forceBuildOriginals: Record<string, string> = {};
+
+function forceBuildPatch() {
+    for (const name of FORCE_BUILD_PACKAGES) {
+        const p = resolve(__dirname, 'node_modules', name, 'package.json');
+        if (!fs.existsSync(p)) continue;
+        const raw = fs.readFileSync(p, 'utf-8');
+        const pkg = JSON.parse(raw);
+        let changed = false;
+
+        // Strip the `browser` condition from every export entry.
+        if (pkg.exports && typeof pkg.exports === 'object') {
+            for (const key of Object.keys(pkg.exports)) {
+                const v = pkg.exports[key];
+                if (v && typeof v === 'object' && 'browser' in v) {
+                    delete v.browser;
+                    changed = true;
+                }
+            }
+        }
+
+        // Also strip the legacy top-level `browser` field. When it's an object
+        // (a path-mapping) Vite/rolldown uses it to rewrite individual files
+        // — e.g. @btc-vision/bitcoin maps `./build/index.js` → `./browser/index.js`,
+        // which would silently undo what we just did to `exports`.
+        if (pkg.browser !== undefined) {
+            delete pkg.browser;
+            changed = true;
+        }
+
+        if (changed) {
+            forceBuildOriginals[p] = raw;
+            fs.writeFileSync(p, JSON.stringify(pkg, null, 4));
+            console.log(`[force-build] patched ${name}/package.json`);
+        }
+    }
+}
+
+function forceBuildRestore() {
+    for (const [p, raw] of Object.entries(forceBuildOriginals)) {
+        try {
+            fs.writeFileSync(p, raw);
+        } catch {
+            // best-effort
+        }
+        delete forceBuildOriginals[p];
+    }
+}
+
+forceBuildPatch();
+process.on('exit', forceBuildRestore);
+process.on('SIGINT', () => {
+    forceBuildRestore();
+    process.exit(130);
+});
+process.on('SIGTERM', () => {
+    forceBuildRestore();
+    process.exit(143);
+});
+
+function forceBuildRestorePlugin() {
+    return {
+        name: 'force-build-restore',
+        closeBundle() {
+            forceBuildRestore();
+        }
+    };
+}
+
 function serviceWorkerPolyfillPlugin() {
     // Polyfill for service worker environment:
     // - window/document stubs for libraries that check for browser environment
@@ -110,19 +210,78 @@ export default defineConfig(({ mode }) => {
             tsconfigPaths(),
             wasm(),
             topLevelAwait(),
-            serviceWorkerPolyfillPlugin()
+            serviceWorkerPolyfillPlugin(),
+            forceBuildRestorePlugin()
         ],
 
         resolve: {
             alias: [
                 { find: '@', replacement: resolve(__dirname, './src') },
                 { find: 'events', replacement: resolve(__dirname, 'src/shims/events-browser.js') },
-                { find: 'vm', replacement: resolve(__dirname, 'vm-browserify') },
+                { find: /^vm$/, replacement: 'vm-browserify' },
                 { find: '@protobufjs/inquire', replacement: resolve(__dirname, 'src/shims/inquire-browser.js') },
-                { find: 'moment', replacement: 'dayjs' }
+                { find: 'moment', replacement: 'dayjs' },
+                // The build/ versions of opnet / @btc-vision/* (forced via the
+                // exports-field patch in `forceBuildEntries()` above) reference
+                // a few Node built-ins that are gated at runtime by isNode
+                // checks (e.g. opnet/build/threading/WorkerCreator.js, opnet's
+                // undici-based fetcher). The bundler still needs them to
+                // *resolve*, but the modules are never executed in the SW.
+                // crypto-browserify covers the small surface
+                // (createHash/createHmac/pbkdf2Sync/randomBytes) that the libs
+                // use; everything else is a no-op stub.
+                { find: 'undici', replacement: resolve(__dirname, 'src/shims/undici-browser.js') },
+                // bip39 unconditionally tries to require every wordlist via
+                // try/catch (chinese, czech, french, italian, japanese, korean,
+                // portuguese, spanish + the english one we actually use). Each
+                // is ~24 KB, totalling ~220 KB of dead weight in the SW. Stub
+                // every non-English wordlist to an empty array; bip39's
+                // `_wordlists.js` cascade leaves english as the default.
+                // The bip39 npm package eagerly loads every wordlist at module
+                // init time (~220 KB total) via try/catch requires. Only one
+                // place — @btc-vision/transaction's Mnemonic.js — actually
+                // imports it, and only uses validateMnemonic / mnemonicToSeedSync /
+                // generateMnemonic. We redirect the whole package to a tiny
+                // shim backed by @scure/bip39 (already in the bundle) and a
+                // single english wordlist.
+                {
+                    find: /^bip39$/,
+                    replacement: resolve(__dirname, 'src/shims/bip39-browser.js')
+                },
+                // @metamask/obs-store's barrel re-exports `asStream` and
+                // `transform` which both `require('readable-stream')` — that
+                // alone drags in ~70 KB of stream polyfill we never use. The
+                // keyring service only touches `ObservableStore`, so point the
+                // bare specifier directly at that submodule.
+                {
+                    find: /^@metamask\/obs-store$/,
+                    replacement: resolve(__dirname, 'node_modules/@metamask/obs-store/dist/ObservableStore.js')
+                },
+                // safe-buffer is CJS, so it forces vite-plugin-node-polyfills'
+                // buffer shim to load its `.cjs` build alongside the `.js`
+                // build that ESM importers already pulled in — duplicating
+                // ~54 KB. The shim below collapses safe-buffer to a single
+                // ESM file that just re-exports the global Buffer.
+                {
+                    find: /^safe-buffer$/,
+                    replacement: resolve(__dirname, 'src/shims/safe-buffer.js')
+                },
+                { find: /^crypto$/, replacement: resolve(__dirname, 'src/shims/crypto-browser.js') },
+                { find: /^node:crypto$/, replacement: resolve(__dirname, 'src/shims/crypto-browser.js') },
+                { find: /^worker_threads$/, replacement: resolve(__dirname, 'src/shims/empty.js') },
+                { find: /^node:worker_threads$/, replacement: resolve(__dirname, 'src/shims/empty.js') },
+                { find: /^os$/, replacement: resolve(__dirname, 'src/shims/empty.js') },
+                { find: /^node:os$/, replacement: resolve(__dirname, 'src/shims/empty.js') },
+                { find: /^zlib$/, replacement: resolve(__dirname, 'src/shims/empty.js') },
+                { find: /^node:zlib$/, replacement: resolve(__dirname, 'src/shims/empty.js') }
             ],
             extensions: ['.ts', '.tsx', '.js', '.jsx', '.json'],
-            mainFields: ['browser', 'module', 'main'],
+            // `browser` is intentionally NOT in mainFields. With the
+            // package.json patches above stripping the `browser` exports key,
+            // including it here would just send the resolver back to the
+            // pre-bundled `browser/` blobs via the legacy field on packages
+            // that haven't been patched.
+            mainFields: ['module', 'main'],
             dedupe: [
                 'buffer',
                 'valibot',

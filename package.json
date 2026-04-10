@@ -132,7 +132,6 @@
         "vite-plugin-node-polyfills": "^0.26.0",
         "vite-plugin-top-level-await": "^1.6.0",
         "vite-plugin-wasm": "^3.6.0",
-        "vite-tsconfig-paths": "^6.1.1",
         "vm-browserify": "^1.1.2",
         "webextension-polyfill": "^0.12.0",
         "zxcvbn": "^4.4.2"
@@ -218,9 +217,6 @@
         },
         "@tailwindcss/vite": {
             "vite": "$vite"
-        },
-        "eslint-plugin-react-hooks": {
-            "eslint": "$eslint"
         },
         "madge": {
             "typescript": "$typescript"

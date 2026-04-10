@@ -1,5 +1,4 @@
 import { CHAINS_ENUM, INTERNAL_REQUEST_ORIGIN } from '@/shared/constant';
-import { max } from 'lodash-es';
 import { LRUCache } from 'lru-cache';
 import browser from '../webapi/browser';
 
@@ -184,7 +183,12 @@ class PermissionService {
     topConnectedSite = (origin: string, order?: number) => {
         const site = this.getConnectedSite(origin);
         if (!site || !this.lruCache) return;
-        order = order ?? (max(this.getRecentConnectedSites().map((item) => item.order)) ?? 0) + 1;
+        if (order === undefined) {
+            const orders = this.getRecentConnectedSites()
+                .map((item) => item.order)
+                .filter((o): o is number => typeof o === 'number');
+            order = (orders.length > 0 ? Math.max(...orders) : 0) + 1;
+        }
 
         this.updateConnectSite(origin, { ...site, order, isTop: true });
     };

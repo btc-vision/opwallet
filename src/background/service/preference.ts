@@ -5,9 +5,11 @@ import { Account, AppSummary, NetworkType, storageToAddressTypes, TxHistoryItem 
 import { AddressTypes } from '@btc-vision/transaction';
 import { DuplicationState } from '@/shared/types/Duplication';
 import { compareVersions } from 'compare-versions';
-import { cloneDeep } from 'lodash-es';
 import browser from '../webapi/browser';
-import i18n from './i18n';
+// Note: i18next was previously imported here purely to call changeLanguage(),
+// which has no effect in the background service worker (no React tree to
+// re-render). Removing the import drops ~71 KB of dead code from background.js.
+// The locale is still persisted via this.store.locale and read by the UI bundle.
 import sessionService from './session';
 import { WalletHealthShowTime, WalletHealthType } from '@/ui/pages/Main/WalletTabScreen/constants';
 
@@ -128,7 +130,6 @@ class PreferenceService {
         if (!this.store.locale || this.store.locale !== defaultLang) {
             this.store.locale = defaultLang;
         }
-        void i18n.changeLanguage(this.store.locale);
 
         if (!this.store.currency) {
             this.store.currency = 'USD';
@@ -227,7 +228,7 @@ class PreferenceService {
     };
 
     getCurrentAccount = () => {
-        return cloneDeep(this.store.currentAccount);
+        return this.store.currentAccount ? structuredClone(this.store.currentAccount) : this.store.currentAccount;
     };
 
     setCurrentAccount = async (account?: Account | null) => {
@@ -310,7 +311,6 @@ class PreferenceService {
 
     setLocale = async (locale: string) => {
         this.store.locale = locale;
-        await i18n.changeLanguage(locale);
         await this.persist();
     };
 
@@ -457,7 +457,7 @@ class PreferenceService {
 
     // editingAccount
     getEditingAccount = () => {
-        return cloneDeep(this.store.editingAccount);
+        return this.store.editingAccount ? structuredClone(this.store.editingAccount) : this.store.editingAccount;
     };
 
     setEditingAccount = async (account?: Account | null) => {
