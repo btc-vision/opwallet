@@ -4,7 +4,6 @@ import { defineConfig } from 'vite';
 import { nodePolyfills } from 'vite-plugin-node-polyfills';
 import topLevelAwait from 'vite-plugin-top-level-await';
 import wasm from 'vite-plugin-wasm';
-import tsconfigPaths from 'vite-tsconfig-paths';
 
 const packageJson = JSON.parse(fs.readFileSync('./package.json', 'utf-8'));
 // Strip prerelease suffixes (-alpha, -beta, -rc) for valid extension version
@@ -207,7 +206,6 @@ export default defineConfig(({ mode }) => {
                     events: resolve(__dirname, 'src/shims/events-browser.js')
                 }
             }),
-            tsconfigPaths(),
             wasm(),
             topLevelAwait(),
             serviceWorkerPolyfillPlugin(),
@@ -219,6 +217,12 @@ export default defineConfig(({ mode }) => {
                 { find: '@', replacement: resolve(__dirname, './src') },
                 { find: 'events', replacement: resolve(__dirname, 'src/shims/events-browser.js') },
                 { find: /^vm$/, replacement: 'vm-browserify' },
+                // protobufjs: use the pre-built minified dist (~80 KB) instead
+                // of the source files (~132 KB) which individually
+                // require("@protobufjs/inquire") and break in bundlers.
+                // Same approach as opnet's vite.config.browser.ts.
+                { find: 'protobufjs/full', replacement: resolve(__dirname, 'node_modules/protobufjs/dist/protobuf.min.js') },
+                { find: /^protobufjs$/, replacement: resolve(__dirname, 'src/shims/protobuf-browser.js') },
                 { find: '@protobufjs/inquire', replacement: resolve(__dirname, 'src/shims/inquire-browser.js') },
                 { find: 'moment', replacement: 'dayjs' },
                 // The build/ versions of opnet / @btc-vision/* (forced via the
@@ -275,6 +279,7 @@ export default defineConfig(({ mode }) => {
                 { find: /^zlib$/, replacement: resolve(__dirname, 'src/shims/empty.js') },
                 { find: /^node:zlib$/, replacement: resolve(__dirname, 'src/shims/empty.js') }
             ],
+            tsconfigPaths: true,
             extensions: ['.ts', '.tsx', '.js', '.jsx', '.json'],
             // `browser` is intentionally NOT in mainFields. With the
             // package.json patches above stripping the `browser` exports key,
