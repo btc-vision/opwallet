@@ -7,7 +7,7 @@ import { defineConfig, type PluginOption } from 'vite';
 import checker from 'vite-plugin-checker';
 import { nodePolyfills } from 'vite-plugin-node-polyfills';
 import wasm from 'vite-plugin-wasm';
-import tsconfigPaths from 'vite-tsconfig-paths';
+
 
 const packageJson = JSON.parse(fs.readFileSync('./package.json', 'utf-8'));
 const version = packageJson.version.replace(/-(alpha|beta|rc).*$/, '');
@@ -410,9 +410,6 @@ export default defineConfig(({ mode }) => {
                 jsxImportSource: 'react'
             }),
 
-            // TypeScript paths
-            tsconfigPaths(),
-
             // WASM support
             wasm(),
 
@@ -469,6 +466,7 @@ export default defineConfig(({ mode }) => {
                     replacement: 'dayjs'
                 }
             ],
+            tsconfigPaths: true,
             extensions: ['.ts', '.tsx', '.js', '.jsx', '.json'],
             mainFields: ['module', 'main', 'browser'],
             dedupe: ['@btc-vision/ecpair', 'buffer', 'react', 'react-dom', 'scheduler']

@@ -1,6 +1,5 @@
 import { defineConfig } from 'vite';
 import { resolve } from 'path';
-import tsconfigPaths from 'vite-tsconfig-paths';
 import { nodePolyfills } from 'vite-plugin-node-polyfills';
 
 const browser = process.env.BROWSER || 'chrome';
@@ -37,10 +36,10 @@ export default defineConfig({
                 events: resolve(__dirname, 'src/shims/events-browser.js')
             }
         }),
-        tsconfigPaths()
     ],
 
     resolve: {
+        tsconfigPaths: true,
         alias: [
             {
                 find: '@',
