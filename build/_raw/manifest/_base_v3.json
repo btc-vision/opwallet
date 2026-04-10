@@ -26,17 +26,7 @@
         "type": "module"
     },
     "homepage_url": "https://opnet.org",
-    "permissions": ["storage", "unlimitedStorage", "activeTab", "sidePanel", "webNavigation", "tabs"],
-    "host_permissions": [
-        "*://*.btc/*",
-        "https://ipfs.opnet.org/*",
-        "https://*.ipfs.io/*",
-        "https://dweb.link/*",
-        "https://gateway.pinata.cloud/*"
-    ],
-    "omnibox": {
-        "keyword": "op"
-    },
+    "permissions": ["storage", "unlimitedStorage", "activeTab", "sidePanel", "tabs"],
     "side_panel": {
         "default_path": "index.html"
     },

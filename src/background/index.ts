@@ -241,6 +241,11 @@ if (MANIFEST_VERSION === 'mv3') {
 
 // Intercept .btc domain navigation and redirect to resolver
 const setupBtcDomainInterception = () => {
+    // Requires the "webNavigation" permission and *://*.btc/* host permission.
+    // Both are temporarily removed from the manifest, so this is a no-op until
+    // the OPNet Browser feature is re-enabled.
+    if (!chrome.webNavigation) return;
+
     // Listen for navigation to .btc domains
     chrome.webNavigation.onBeforeNavigate.addListener(
         async (details) => {

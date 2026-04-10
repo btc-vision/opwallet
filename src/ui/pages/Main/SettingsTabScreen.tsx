@@ -1,7 +1,14 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-import { ADDRESS_TYPES, GITHUB_URL, KEYRING_TYPE, TELEGRAM_URL, TWITTER_URL } from '@/shared/constant';
+import {
+    ADDRESS_TYPES,
+    ENABLE_OPNET_BROWSER,
+    GITHUB_URL,
+    KEYRING_TYPE,
+    TELEGRAM_URL,
+    TWITTER_URL
+} from '@/shared/constant';
 import { getCurrentTab } from '@/shared/utils/browser-tabs';
 import { Column, Content, Footer, Header, Layout } from '@/ui/components';
 import { useTools } from '@/ui/components/ActionComponent';
@@ -139,15 +146,23 @@ const SettingList: Setting[] = [
         route: '/settings/experience-mode',
         right: true
     },
-    {
-        label: 'OPNet Browser',
-        value: '',
-        desc: 'Browse .btc domains',
-        icon: <ChromeOutlined />,
-        action: 'opnet-browser',
-        route: '/settings/opnet-browser',
-        right: true
-    },
+    // Only surfaced when the OPNet Browser feature is compiled in
+    // (ENABLE_OPNET_BROWSER=true at build time). The constant is replaced
+    // with a literal by Vite's `define`, so the entry is dead-code-eliminated
+    // in builds where the feature is disabled.
+    ...(ENABLE_OPNET_BROWSER
+        ? [
+              {
+                  label: 'OPNet Browser',
+                  value: '',
+                  desc: 'Browse .btc domains',
+                  icon: <ChromeOutlined />,
+                  action: 'opnet-browser',
+                  route: '/settings/opnet-browser',
+                  right: true
+              }
+          ]
+        : []),
     {
         desc: 'Expand View',
         icon: <ExpandOutlined />,
