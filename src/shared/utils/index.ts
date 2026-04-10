@@ -1,5 +1,4 @@
-import { keyBy } from 'lodash-es';
-import { AddressFlagType, CHAINS, CHAINS_MAP, ChainType, NETWORK_TYPES } from '@/shared/constant';
+import { AddressFlagType, CHAINS_MAP, ChainType, NETWORK_TYPES } from '@/shared/constant';
 
 import BroadcastChannelMessage from './message/broadcastChannelMessage';
 import PortMessage from './message/portMessage';
@@ -7,14 +6,6 @@ import PortMessage from './message/portMessage';
 export const Message = {
     BroadcastChannelMessage,
     PortMessage
-};
-
-const chainsDict = keyBy(CHAINS, 'serverId');
-export const getChain = (chainId?: string) => {
-    if (!chainId) {
-        return null;
-    }
-    return chainsDict[chainId];
 };
 
 // Check if address flag is enabled
