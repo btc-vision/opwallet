@@ -180,7 +180,6 @@ export default defineConfig(({ mode }) => {
                     'crypto',
                     'vm',
                     'zlib',
-                    'worker_threads',
                     'fs',
                     'path',
                     'os',
@@ -194,13 +193,7 @@ export default defineConfig(({ mode }) => {
                     'dgram',
                     'readline',
                     'repl',
-                    'tty',
-                    'perf_hooks',
-                    'inspector',
-                    'async_hooks',
-                    'trace_events',
-                    'v8',
-                    'wasi'
+                    'tty'
                 ],
                 overrides: {
                     events: resolve(__dirname, 'src/shims/events-browser.js')
@@ -221,7 +214,10 @@ export default defineConfig(({ mode }) => {
                 // of the source files (~132 KB) which individually
                 // require("@protobufjs/inquire") and break in bundlers.
                 // Same approach as opnet's vite.config.browser.ts.
-                { find: 'protobufjs/full', replacement: resolve(__dirname, 'node_modules/protobufjs/dist/protobuf.min.js') },
+                {
+                    find: 'protobufjs/full',
+                    replacement: resolve(__dirname, 'node_modules/protobufjs/dist/protobuf.min.js')
+                },
                 { find: /^protobufjs$/, replacement: resolve(__dirname, 'src/shims/protobuf-browser.js') },
                 { find: '@protobufjs/inquire', replacement: resolve(__dirname, 'src/shims/inquire-browser.js') },
                 { find: 'moment', replacement: 'dayjs' },
@@ -276,8 +272,8 @@ export default defineConfig(({ mode }) => {
                 { find: /^node:worker_threads$/, replacement: resolve(__dirname, 'src/shims/empty.js') },
                 { find: /^os$/, replacement: resolve(__dirname, 'src/shims/empty.js') },
                 { find: /^node:os$/, replacement: resolve(__dirname, 'src/shims/empty.js') },
-                { find: /^zlib$/, replacement: resolve(__dirname, 'src/shims/empty.js') },
-                { find: /^node:zlib$/, replacement: resolve(__dirname, 'src/shims/empty.js') }
+                { find: /^zlib$/, replacement: resolve(__dirname, 'src/shims/zlib-browser.js') },
+                { find: /^node:zlib$/, replacement: resolve(__dirname, 'src/shims/zlib-browser.js') }
             ],
             tsconfigPaths: true,
             extensions: ['.ts', '.tsx', '.js', '.jsx', '.json'],
