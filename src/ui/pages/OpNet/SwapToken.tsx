@@ -361,7 +361,9 @@ export default function SwapToken() {
 
         const params: SwapParameters = {
             action: Action.Swap,
-            header: `Swap ${selectedInput.symbol} for ${selectedOutput.symbol}`,
+            header: isMultiHop
+                ? `Multi-Hop: ${fullPath.map((t) => t.symbol).join(' -> ')}`
+                : `Swap ${selectedInput.symbol} for ${selectedOutput.symbol}`,
             features: {
                 [Features.rbf]: true,
                 [Features.taproot]: true
@@ -479,9 +481,11 @@ export default function SwapToken() {
         );
     }
 
+    const isMultiHop = intermediateTokens.length > 0;
+
     return (
         <Layout>
-            <Header onBack={() => window.history.go(-1)} title="Swap" />
+            <Header onBack={() => window.history.go(-1)} title={isMultiHop ? 'Multi-Hop Swap' : 'Swap'} />
             <div
                 style={{
                     flex: 1,
@@ -493,6 +497,43 @@ export default function SwapToken() {
                     gap: 8,
                     backgroundColor: '#212121'
                 }}>
+
+                {/* Multi-Hop Banner */}
+                {isMultiHop && (
+                    <div
+                        style={{
+                            background: `linear-gradient(135deg, ${colors.gold}18 0%, ${colors.gold}08 100%)`,
+                            border: `1px solid ${colors.gold}35`,
+                            borderRadius: 10,
+                            padding: '8px 12px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 8
+                        }}>
+                        <div
+                            style={{
+                                width: 28,
+                                height: 28,
+                                borderRadius: 8,
+                                background: `${colors.gold}25`,
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                flexShrink: 0
+                            }}>
+                            <SwapOutlined style={{ fontSize: 14, color: colors.gold }} />
+                        </div>
+                        <div>
+                            <div style={{ fontSize: 12, fontWeight: 600, color: colors.gold }}>
+                                Multi-Hop Routing
+                            </div>
+                            <div style={{ fontSize: 10, color: colors.textFaded }}>
+                                {intermediateTokens.length} intermediate {intermediateTokens.length === 1 ? 'hop' : 'hops'} &middot; {(intermediateTokens.length + 1)} swaps
+                            </div>
+                        </div>
+                    </div>
+                )}
+
                 {/* Input Token */}
                 <div style={$card}>
                     <div style={$infoRow}>
@@ -595,24 +636,43 @@ export default function SwapToken() {
 
                 {/* Route Path Visualization */}
                 {fullPath && fullPath.length > 2 && (
-                    <div style={{ ...$card, padding: '8px 16px' }}>
-                        <Text text="Route" size="xxs" color="textDim" style={{ marginBottom: 4 }} />
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                            {fullPath.map((t, i) => (
-                                <div key={t.address} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                                    <span
-                                        style={{
-                                            fontSize: 12,
-                                            fontWeight: 600,
-                                            color: i === 0 || i === fullPath.length - 1 ? colors.gold : colors.text
-                                        }}>
-                                        {t.symbol}
-                                    </span>
-                                    {i < fullPath.length - 1 && (
-                                        <span style={{ color: colors.textFaded, fontSize: 10 }}>-&gt;</span>
-                                    )}
-                                </div>
-                            ))}
+                    <div style={{ ...$card, padding: '10px 14px' }}>
+                        <div style={{ fontSize: 10, fontWeight: 600, color: colors.textFaded, textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: 8 }}>
+                            Swap Route
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 0, flexWrap: 'wrap' }}>
+                            {fullPath.map((t, i) => {
+                                const isEndpoint = i === 0 || i === fullPath.length - 1;
+                                return (
+                                    <div key={t.address} style={{ display: 'flex', alignItems: 'center' }}>
+                                        <div
+                                            style={{
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: 4,
+                                                padding: '4px 8px',
+                                                borderRadius: 6,
+                                                background: isEndpoint ? `${colors.gold}20` : `${colors.containerBg}`,
+                                                border: `1px solid ${isEndpoint ? colors.gold + '40' : colors.containerBorder}`
+                                            }}>
+                                            <span
+                                                style={{
+                                                    fontSize: 11,
+                                                    fontWeight: 600,
+                                                    color: isEndpoint ? colors.gold : colors.text
+                                                }}>
+                                                {t.symbol}
+                                            </span>
+                                        </div>
+                                        {i < fullPath.length - 1 && (
+                                            <svg width="20" height="10" viewBox="0 0 20 10" style={{ flexShrink: 0, margin: '0 2px' }}>
+                                                <line x1="0" y1="5" x2="14" y2="5" stroke={colors.textFaded} strokeWidth="1.5" />
+                                                <polyline points="12,2 16,5 12,8" fill="none" stroke={colors.textFaded} strokeWidth="1.5" />
+                                            </svg>
+                                        )}
+                                    </div>
+                                );
+                            })}
                         </div>
                     </div>
                 )}

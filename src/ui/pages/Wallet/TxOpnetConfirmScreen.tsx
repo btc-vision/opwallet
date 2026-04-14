@@ -2529,7 +2529,7 @@ export default function TxOpnetConfirmScreen() {
             case Action.CancelDomainTransfer:
                 return 'Cancel Domain Transfer';
             case Action.Swap:
-                return 'Token Swap';
+                return rawTxInfo.path && rawTxInfo.path.length > 2 ? 'Multi-Hop Swap' : 'Token Swap';
             default:
                 return 'Transaction';
         }
