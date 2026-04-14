@@ -202,6 +202,18 @@ export interface CancelDomainTransferParameters extends BaseRawTxInfo<Action.Can
     readonly domainName: string;
 }
 
+export interface SwapParameters extends BaseRawTxInfo<Action.Swap> {
+    readonly amountIn: bigint;
+    readonly amountOut: bigint;
+    readonly amountOutMin: bigint;
+    readonly tokenIn: string;
+    readonly tokenOut: string;
+    /** Full swap path including intermediaries: [tokenIn, ...intermediates, tokenOut] */
+    readonly path: string[];
+    readonly slippageTolerance: number;
+    readonly routerAddress: string;
+}
+
 export type RawTxInfo =
     | TransferParameters
     | AirdropParameters
@@ -218,4 +230,5 @@ export type RawTxInfo =
     | PublishDomainParameters
     | InitiateDomainTransferParameters
     | AcceptDomainTransferParameters
-    | CancelDomainTransferParameters;
+    | CancelDomainTransferParameters
+    | SwapParameters;

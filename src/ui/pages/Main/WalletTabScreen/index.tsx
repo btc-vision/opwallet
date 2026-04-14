@@ -932,7 +932,7 @@ export default function WalletTabScreen() {
                                 label="Swap"
                                 icon={<SwapOutlined style={{ fontSize: 20, color: colors.text }} />}
                                 onClick={() => {
-                                    window.open('https://motoswap.org', '_blank', 'noopener noreferrer');
+                                    navigate(RouteTypes.SwapScreen);
                                 }}
                             />
 

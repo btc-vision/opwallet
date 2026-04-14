@@ -43,6 +43,7 @@ import DeployContract from './OpNet/DeployContract';
 import Mint from './OpNet/Mint';
 import OpNetTokenScreen from './OpNet/OpNetTokenScreen';
 import SendOpNetScreen from './OpNet/SendOpNetScreen';
+import SwapToken from './OpNet/SwapToken';
 import AddressRotationScreen from './Settings/AddressRotationScreen';
 import AddressTypeScreen from './Settings/AddressTypeScreen';
 import AdvancedScreen from './Settings/AdvancedScreen';
@@ -313,6 +314,10 @@ export const routes: Routes = {
     [RouteTypes.AddressBookScreen]: {
         path: routePaths[RouteTypes.AddressBookScreen],
         element: <AddressBookScreen />
+    },
+    [RouteTypes.SwapScreen]: {
+        path: routePaths[RouteTypes.SwapScreen],
+        element: <SwapToken />
     }
 };
 

@@ -177,6 +177,7 @@ export enum ChainId {
 }
 
 export interface ContractsDetails {
+    router?: string;
     moto?: string;
     pill?: string;
     btcResolver?: string;
@@ -237,6 +238,7 @@ export const DEFAULT_CHAINS_MAP: { [key in ChainType]?: TypeChain<key> } = {
         showPrice: true,
         defaultExplorer: 'mempool-space',
         contractAddresses: {
+            router: '0xa291c5f3093af34bd81499a0c78f857646a65dd16f3348b2926a2344351277d2',
             moto: '0xc3d18f9d7db3f26ed107a9f4a4c65eef14c1ca73db5684ef9789fdd4fbb3ea9a',
             pill: '0xc6c3674b1c6c4ca3d4b3652d1d6fc2b197f45c4ad1eda90d37952472719d1c05'
         }
@@ -272,6 +274,7 @@ export const DEFAULT_CHAINS_MAP: { [key in ChainType]?: TypeChain<key> } = {
         showPrice: false,
         defaultExplorer: 'mempool-space',
         contractAddresses: {
+            router: '0x0e6ff1f2d7db7556cb37729e3738f4dae82659b984b2621fab08e1111b1b937a',
             moto: '0xfd4473840751d58d9f8b73bdd57d6c5260453d5518bd7cd02d0a4cf3df9bf4dd',
             pill: '0xb09fc29c112af8293539477e23d8df1d3126639642767d707277131352040cbb',
             btcResolver: '0xc9049fb7a443ca24f371f94c6b0d5fbe3b12d5dd46e252c1eb3e2a935d4e0294'
@@ -307,6 +310,7 @@ export const DEFAULT_CHAINS_MAP: { [key in ChainType]?: TypeChain<key> } = {
         showPrice: false,
         defaultExplorer: 'mempool-space',
         contractAddresses: {
+            router: '0x80f8375d061d638a0b45a4eb4decbfd39e9abba913f464787194ce3c02d2ea5a',
             moto: '0x0a6732489a31e6de07917a28ff7df311fc5f98f6e1664943ac1c3fe7893bdab5',
             pill: '0xfb7df2f08d8042d4df0506c0d4cee3cfa5f2d7b02ef01ec76dd699551393a438',
             btcResolver: ''

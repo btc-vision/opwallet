@@ -57,11 +57,15 @@ const $modalStyle = {
 } as CSSProperties;
 
 const $modalContentStyle = {
-    backgroundColor: '#212121',
-    padding: 20,
-    borderRadius: 4,
-    maxWidth: 300,
-    width: '100%'
+    backgroundColor: '#1a1a1a',
+    padding: '16px',
+    borderRadius: 12,
+    maxWidth: 340,
+    width: '90%',
+    maxHeight: '70vh',
+    display: 'flex',
+    flexDirection: 'column',
+    border: '1px solid #303030'
 } as CSSProperties;
 
 const $optionStyle = {
@@ -76,16 +80,23 @@ const $optionStyle = {
 } as CSSProperties;
 
 const $searchInputStyle = {
-    backgroundColor: '#212121',
-    borderColor: '#292828',
-    borderWidth: 1,
+    backgroundColor: '#292828',
     width: '100%',
-    padding: 8,
-    marginBottom: 10,
-    borderRadius: 4,
+    padding: '10px 12px',
+    marginBottom: 8,
+    borderRadius: 8,
     fontSize: fontSizes.xs,
-    border: 'none',
-    color: colors.text
+    border: '1px solid #303030',
+    color: colors.text,
+    outline: 'none',
+    flexShrink: 0
+} as CSSProperties;
+
+const $tokenListStyle = {
+    overflowY: 'auto',
+    flex: 1,
+    margin: '0 -4px',
+    padding: '0 4px'
 } as CSSProperties;
 
 export function Select(props: SelectProps) {
@@ -249,39 +260,104 @@ export function Select(props: SelectProps) {
             {isOpen && (
                 <div style={$modalStyle} onClick={() => setIsOpen(false)}>
                     <div style={$modalContentStyle} onClick={(e) => e.stopPropagation()}>
+                        <div style={{ fontSize: 14, fontWeight: 600, color: colors.text, marginBottom: 8 }}>
+                            Select Token
+                        </div>
                         <input
                             type="text"
-                            placeholder="Search..."
+                            placeholder="Search by name or paste address..."
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
                             style={$searchInputStyle}
+                            autoFocus
                         />
-                        {loading ? (
-                            <Row itemsCenter justifyCenter>
-                                <Icon size={fontSizes.xxxl} color="gold">
-                                    <LoadingOutlined />
-                                </Icon>
-                            </Row>
-                        ) : (
-                            <>
-                                {filteredOptions.map((option, index) => (
-                                    <div
-                                        key={index}
-                                        className="op_token_container"
-                                        onClick={() => handleSelect(option)}>
-                                        <div className="op_token_col_1">
-                                            <div className="op_token_image">
-                                                <Image src={option.logo} />
+                        <div style={$tokenListStyle}>
+                            {loading ? (
+                                <Row itemsCenter justifyCenter style={{ padding: 20 }}>
+                                    <Icon size={fontSizes.xxl} color="gold">
+                                        <LoadingOutlined />
+                                    </Icon>
+                                </Row>
+                            ) : (
+                                <>
+                                    {filteredOptions.map((option, index) => (
+                                        <div
+                                            key={index}
+                                            onClick={() => handleSelect(option)}
+                                            style={{
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: 10,
+                                                padding: '10px 8px',
+                                                borderRadius: 8,
+                                                cursor: 'pointer',
+                                                transition: 'background-color 0.1s',
+                                                backgroundColor:
+                                                    selectedOption?.address === option.address
+                                                        ? 'rgba(238, 119, 27, 0.12)'
+                                                        : 'transparent'
+                                            }}
+                                            onMouseEnter={(e) =>
+                                                (e.currentTarget.style.backgroundColor =
+                                                    selectedOption?.address === option.address
+                                                        ? 'rgba(238, 119, 27, 0.12)'
+                                                        : '#2a2a2a')
+                                            }
+                                            onMouseLeave={(e) =>
+                                                (e.currentTarget.style.backgroundColor =
+                                                    selectedOption?.address === option.address
+                                                        ? 'rgba(238, 119, 27, 0.12)'
+                                                        : 'transparent')
+                                            }>
+                                            <Image src={option.logo} width={32} height={32} />
+                                            <div style={{ flex: 1, minWidth: 0 }}>
+                                                <div
+                                                    style={{
+                                                        fontSize: 13,
+                                                        fontWeight: 600,
+                                                        color: colors.text,
+                                                        whiteSpace: 'nowrap',
+                                                        overflow: 'hidden',
+                                                        textOverflow: 'ellipsis'
+                                                    }}>
+                                                    {option.symbol}
+                                                </div>
+                                                <div
+                                                    style={{
+                                                        fontSize: 11,
+                                                        color: 'rgba(255,255,255,0.45)',
+                                                        whiteSpace: 'nowrap',
+                                                        overflow: 'hidden',
+                                                        textOverflow: 'ellipsis'
+                                                    }}>
+                                                    {option.name}
+                                                </div>
                                             </div>
-                                            <div className="op_token_title">{option.name}</div>
+                                            <div
+                                                style={{
+                                                    fontSize: 12,
+                                                    color: 'rgba(255,255,255,0.6)',
+                                                    textAlign: 'right',
+                                                    flexShrink: 0
+                                                }}>
+                                                {calculateBalance(option.amount, option.divisibility)}
+                                            </div>
                                         </div>
-                                    </div>
-                                ))}
-                                {filteredOptions.length === 0 && (
-                                    <div style={{ padding: 10, color: colors.text }}>No options found</div>
-                                )}
-                            </>
-                        )}
+                                    ))}
+                                    {filteredOptions.length === 0 && (
+                                        <div
+                                            style={{
+                                                padding: 20,
+                                                color: 'rgba(255,255,255,0.4)',
+                                                textAlign: 'center',
+                                                fontSize: 13
+                                            }}>
+                                            No tokens found
+                                        </div>
+                                    )}
+                                </>
+                            )}
+                        </div>
                     </div>
                 </div>
             )}

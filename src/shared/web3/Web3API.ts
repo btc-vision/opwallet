@@ -144,6 +144,15 @@ class Web3API {
         return this._provider;
     }
 
+    public get routerAddress(): Address | null {
+        if (!this.currentChain) return null;
+
+        const chainConfig = customNetworksManager.getChain(this.currentChain);
+        if (!chainConfig?.contractAddresses?.router) return null;
+
+        return Address.fromString(chainConfig.contractAddresses.router);
+    }
+
     public get motoAddress(): Address | null {
         if (!this.currentChain) return null;
 
