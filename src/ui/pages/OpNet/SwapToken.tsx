@@ -652,7 +652,7 @@ export default function SwapToken() {
                                                 gap: 4,
                                                 padding: '4px 8px',
                                                 borderRadius: 6,
-                                                background: isEndpoint ? `${colors.gold}20` : `${colors.containerBg}`,
+                                                background: isEndpoint ? `${colors.gold}20` : colors.containerBg,
                                                 border: `1px solid ${isEndpoint ? colors.gold + '40' : colors.containerBorder}`
                                             }}>
                                             <span
