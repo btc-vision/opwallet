@@ -71,7 +71,13 @@ export default tseslint.config(
             'react-hooks/exhaustive-deps': 'off',
             'preserve-caught-error': 'warn',
             'no-useless-assignment': 'off',
-			'@typescript-eslint/no-unnecessary-type-arguments': 'off'
+			'@typescript-eslint/no-unnecessary-type-arguments': 'off',
+			
+			// This is stupid. null and undefined is not the same thing. who ever made this eslint rule is stupid.
+            'no-useless-assignment': 'off',
+            '@typescript-eslint/no-unnecessary-type-arguments': 'off',
+            '@typescript-eslint/no-unnecessary-type-assertion': 'off',
+            'react-hooks/immutability': 'warn'
         }
     },
     {
