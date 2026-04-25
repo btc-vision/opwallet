@@ -32,7 +32,7 @@ function formatPsbtHex(psbtHex: string) {
             formatData = psbtHex;
         }
     } catch (e) {
-        throw new Error('invalid psbt');
+        throw new Error('invalid psbt', { cause: e });
     }
     return formatData;
 }

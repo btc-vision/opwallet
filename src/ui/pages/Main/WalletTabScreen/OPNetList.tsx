@@ -11,7 +11,7 @@ import { OPTokenInfo } from '@/shared/types';
 import { Address, AddressTypes, AddressVerificator } from '@btc-vision/transaction';
 
 import { Column, OPNetLoader, Text } from '@/ui/components';
-import { useTools } from '@/ui/components/ActionComponent';
+import { useTools } from '@/ui/components/ActionComponent/useTools';
 import OpNetBalanceCard from '@/ui/components/OpNetBalanceCard';
 import { useCurrentAccount } from '@/ui/state/accounts/hooks';
 import { useChain, useChainType } from '@/ui/state/settings/hooks';
@@ -422,9 +422,11 @@ export function OPNetList() {
 
     // When account or chain changes, reset everything
     useEffect(() => {
-        setCurrentPage(1);
-        setTokenBalancesMap(new Map());
-        initialize();
+        queueMicrotask(() => {
+            setCurrentPage(1);
+            setTokenBalancesMap(new Map());
+            void initialize();
+        });
     }, [currentAccount.pubkey, chainType]);
 
     // Calculate current page tokens

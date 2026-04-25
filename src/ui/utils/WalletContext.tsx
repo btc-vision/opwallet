@@ -36,7 +36,8 @@ import {
 import { TransactionHistoryFilter, TransactionHistoryItem } from '@/shared/types/TransactionHistory';
 import { Psbt } from '@btc-vision/bitcoin';
 import { AddressTypes, InteractionParametersWithoutSigner } from '@btc-vision/transaction';
-import { createContext, ReactNode, useContext } from 'react';
+import { createContext } from 'react';
+
 import { WalletHealthShowTime, WalletHealthType } from '../pages/Main/WalletTabScreen/constants';
 
 export interface WalletController {
@@ -463,20 +464,6 @@ export interface WalletController {
     markAddressesConsolidated(addresses: string[], consolidatedAmount: string): Promise<void>;
 }
 
-const WalletContext = createContext<{
+export const WalletContext = createContext<{
     wallet: WalletController;
 } | null>(null);
-
-const WalletProvider = ({ children, wallet }: { children?: ReactNode; wallet: WalletController }) => (
-    <WalletContext.Provider value={{ wallet }}>{children}</WalletContext.Provider>
-);
-
-const useWallet = () => {
-    const { wallet } = useContext(WalletContext) as {
-        wallet: WalletController;
-    };
-
-    return wallet;
-};
-
-export { useWallet, WalletProvider };

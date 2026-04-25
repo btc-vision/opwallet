@@ -4,7 +4,7 @@ import { FooterButtonContainer } from '@/ui/components/FooterButtonContainer';
 import { ContextData, TabType, UpdateContextDataParams } from './types';
 import { useCreateAccountCallback } from '@/ui/state/global/hooks';
 import { RouteTypes, useNavigate } from '@/ui/pages/routeTypes';
-import { useTools } from '@/ui/components/ActionComponent';
+import { useTools } from '@/ui/components/ActionComponent/useTools';
 import { useState } from 'react';
 import { usePrivacyModeEnabled } from '@/ui/hooks/useAppConfig';
 

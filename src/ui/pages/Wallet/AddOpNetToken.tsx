@@ -3,7 +3,7 @@ import { Dispatch, SetStateAction, useState } from 'react';
 
 import Web3API from '@/shared/web3/Web3API';
 import { Button, Column, Input, Row, Text } from '@/ui/components';
-import { useTools } from '@/ui/components/ActionComponent';
+import { useTools } from '@/ui/components/ActionComponent/useTools';
 import { BottomModal } from '@/ui/components/BottomModal';
 import { useCurrentAccount } from '@/ui/state/accounts/hooks';
 import { useWallet } from '@/ui/utils';

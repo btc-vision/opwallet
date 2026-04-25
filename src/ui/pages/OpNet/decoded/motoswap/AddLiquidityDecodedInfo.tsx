@@ -1,47 +1,6 @@
 import { Card, Column, Text } from '@/ui/components';
-import { Decoded } from '@/ui/pages/OpNet/decoded/DecodedTypes';
-import { Address, BinaryReader } from '@btc-vision/transaction';
 import { sliceAddress } from '../helpper';
-
-export function decodeAddLiquidityMotoswap(selector: string, reader: BinaryReader): AddLiquidityDecoded {
-    const tokenA: Address = reader.readAddress();
-    const tokenB: Address = reader.readAddress();
-
-    const amountADesired: bigint = reader.readU256();
-    const amountBDesired: bigint = reader.readU256();
-
-    const amountAMin: bigint = reader.readU256();
-    const amountBMin: bigint = reader.readU256();
-
-    const to: Address = reader.readAddress();
-    const deadline: bigint = reader.readU64();
-
-    return {
-        selector,
-        tokenA,
-        tokenB,
-        amountADesired,
-        amountBDesired,
-        amountAMin,
-        amountBMin,
-        to,
-        deadline
-    };
-}
-
-export interface AddLiquidityDecoded extends Decoded {
-    readonly tokenA: Address;
-    readonly tokenB: Address;
-
-    readonly amountADesired: bigint;
-    readonly amountBDesired: bigint;
-
-    readonly amountAMin: bigint;
-    readonly amountBMin: bigint;
-
-    readonly to: Address;
-    readonly deadline: bigint;
-}
+import { AddLiquidityDecoded } from './decoders';
 
 interface AddLiquidityProps {
     readonly decoded: AddLiquidityDecoded;

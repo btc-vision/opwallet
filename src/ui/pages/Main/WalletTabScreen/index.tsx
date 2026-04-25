@@ -41,7 +41,7 @@ import { amountToSatoshis, copyToClipboard, useWallet } from '@/ui/utils';
 import { BitcoinUtils } from 'opnet';
 
 import { BTCDomainModal, TOS_DOMAIN_ACCEPTED_KEY } from '@/ui/components/AcceptModals/btcDomainTermsModal';
-import { useTools } from '@/ui/components/ActionComponent';
+import { useTools } from '@/ui/components/ActionComponent/useTools';
 import ParticleField from '@/ui/components/ParticleField/ParticleField';
 import { useBtcDomainsEnabled, usePrivacyModeEnabled } from '@/ui/hooks/useAppConfig';
 import { useSimpleModeEnabled } from '@/ui/hooks/useExperienceMode';
@@ -275,12 +275,7 @@ export default function WalletTabScreen() {
         // Only evaluate once balance data is loaded for the current account
         if (currentAccount.address !== addressSummary.address) return [];
 
-        // If we can show popup (no other popup displayed and not badge only),
-        // find the most important failed wallet health check.
-        const noPopups = !healthBadgeOnly && !showMldsaBackupReminder && !showDuplicationAlert;
         const checks = getWalletHealthChecks(accountBalance);
-        const check = checks.find((w) => w.show && noPopups && mayShowWalletHealth(w.type));
-        setShowHealthPopup(check);
         // Clear all timers that are no more relevent
         void manageWalletHealthShowTimes(checks);
         // In any case, return the full health check diagnostic
@@ -289,11 +284,21 @@ export default function WalletTabScreen() {
         accountBalance,
         addressSummary.address,
         currentAccount.address,
-        healthBadgeOnly,
-        lastShow,
-        showMldsaBackupReminder,
-        showDuplicationAlert
+        lastShow
     ]);
+
+    const pendingHealthPopup = useMemo(() => {
+        // If we can show popup (no other popup displayed and not badge only),
+        // find the most important failed wallet health check.
+        const noPopups = !healthBadgeOnly && !showMldsaBackupReminder && !showDuplicationAlert;
+        return walletHealthChecks.find((w) => w.show && noPopups && mayShowWalletHealth(w.type));
+    }, [walletHealthChecks, healthBadgeOnly, showMldsaBackupReminder, showDuplicationAlert]);
+
+    useEffect(() => {
+        queueMicrotask(() => {
+            setShowHealthPopup(pendingHealthPopup);
+        });
+    }, [pendingHealthPopup]);
 
     // Helper function to check if there are CSV balances
     const cSVBalances = () => {

@@ -1,19 +1,5 @@
 import { Card, Column, Text } from '@/ui/components';
-import { Decoded } from '@/ui/pages/OpNet/decoded/DecodedTypes';
-import { BinaryReader } from '@btc-vision/transaction';
-
-export function decodeStakeMotoswap(selector: string, reader: BinaryReader): StakeDecoded {
-    const amount = reader.readU256();
-
-    return {
-        selector,
-        amount
-    };
-}
-
-export interface StakeDecoded extends Decoded {
-    readonly amount: bigint;
-}
+import { StakeDecoded } from './decoders';
 
 interface StakeProps {
     readonly decoded: StakeDecoded;

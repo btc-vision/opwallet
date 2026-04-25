@@ -1,26 +1,6 @@
 import { Card, Column, Text } from '@/ui/components';
-import { Decoded } from '@/ui/pages/OpNet/decoded/DecodedTypes';
-import { Address, BinaryReader } from '@btc-vision/transaction';
 import { sliceAddress } from '../helpper';
-
-export function decodeWithdrawMotoChef(selector: string, reader: BinaryReader): WithdrawDecoded {
-    const poolId: bigint = reader.readU64();
-    const amount: bigint = reader.readU256();
-    const to: Address = reader.readAddress();
-
-    return {
-        selector,
-        poolId,
-        amount,
-        to
-    };
-}
-
-export interface WithdrawDecoded extends Decoded {
-    readonly poolId: bigint;
-    readonly amount: bigint;
-    readonly to: Address;
-}
+import { WithdrawDecoded } from './decoders';
 
 interface WithdrawProps {
     readonly decoded: WithdrawDecoded;

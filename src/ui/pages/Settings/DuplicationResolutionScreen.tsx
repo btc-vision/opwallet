@@ -15,7 +15,7 @@ import {
     DuplicationResolution
 } from '@/shared/types/Duplication';
 import { Button, Card, Column, Content, Header, Input, Layout, Row, Text } from '@/ui/components';
-import { useTools } from '@/ui/components/ActionComponent';
+import { useTools } from '@/ui/components/ActionComponent/useTools';
 import { RouteTypes, useNavigate } from '@/ui/pages/routeTypes';
 import { useReloadAccounts } from '@/ui/state/accounts/hooks';
 import { useWallet } from '@/ui/utils';

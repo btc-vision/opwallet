@@ -3,8 +3,9 @@ import { useLocation } from 'react-router-dom';
 
 export { getUiType } from './uiType';
 export { useApproval, useWalletRequest } from './hooks';
-export { useWallet, WalletProvider } from './WalletContext';
+export { WalletProvider } from './WalletProvider';
 export type { WalletController } from './WalletContext';
+export { useWallet } from './useWallet';
 
 export const satoshisToBTC = (amount: number) => {
     return amount / 100000000;
@@ -80,7 +81,7 @@ export const copyToClipboard = async (textToCopy: string | number): Promise<void
             throw new Error('Copy command was unsuccessful');
         }
     } catch (err) {
-        throw new Error('Failed to copy text to clipboard');
+        throw new Error('Failed to copy text to clipboard', { cause: err });
     } finally {
         document.body.removeChild(textArea);
     }

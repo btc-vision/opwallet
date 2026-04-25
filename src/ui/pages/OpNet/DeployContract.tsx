@@ -1,6 +1,6 @@
 import { Action, Features } from '@/shared/interfaces/RawTxParameters';
 import { Content, Header, Layout } from '@/ui/components';
-import { useTools } from '@/ui/components/ActionComponent';
+import { useTools } from '@/ui/components/ActionComponent/useTools';
 import { PriorityFeeBar } from '@/ui/components/PriorityFeeBar';
 import { useCurrentAccount } from '@/ui/state/accounts/hooks';
 import {
@@ -16,7 +16,7 @@ import {
     ThunderboltOutlined,
     ToolOutlined
 } from '@ant-design/icons';
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { RouteTypes, useNavigate } from '../routeTypes';
 import { useChain } from '@/ui/state/settings/hooks';
 
@@ -47,14 +47,11 @@ export default function DeployContractOpnet() {
     const [feeRate, setFeeRate] = useState<number>(2);
     const [priorityFee, setPriorityFee] = useState<string>('0');
     const [calldataHex, setCalldataHex] = useState<string>('');
-    const [disabled, setDisabled] = useState(true);
     const [note, setNote] = useState<string>('');
     const [isDragging, setIsDragging] = useState(false);
     const [showGuide, setShowGuide] = useState(false);
 
-    useEffect(() => {
-        setDisabled(!wasmFile);
-    }, [wasmFile]);
+    const disabled = !wasmFile;
 
     const handleFile = (file: File) => {
         if (!file.name.endsWith('.wasm')) {

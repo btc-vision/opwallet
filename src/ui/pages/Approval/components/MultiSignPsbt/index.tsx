@@ -3,7 +3,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { KEYRING_TYPE } from '@/shared/constant';
 import { SignPsbtOptions, TxType } from '@/shared/types';
 import { Button, Card, Column, Content, Footer, Header, Icon, Layout, Row, Text } from '@/ui/components';
-import { useTools } from '@/ui/components/ActionComponent';
+import { useTools } from '@/ui/components/ActionComponent/useTools';
 import WebsiteBar from '@/ui/components/WebsiteBar';
 import KeystoneSignScreen from '@/ui/pages/Wallet/KeystoneSignScreen';
 import { useCurrentAccount } from '@/ui/state/accounts/hooks';
@@ -105,7 +105,9 @@ export default function MultiSignPsbt({
     };
 
     useEffect(() => {
-        void init();
+        queueMicrotask(() => {
+            void init();
+        });
     }, []);
 
     const updateTxInfo = useCallback(
@@ -114,9 +116,10 @@ export default function MultiSignPsbt({
         },
         [txInfo, setTxInfo]
     );
-    // keystone
-    if (!handleCancel) {
-        handleCancel = () => {
+
+    const effectiveHandleCancel =
+        handleCancel ??
+        (() => {
             if (txInfo.currentIndex > 0) {
                 updateTxInfo({
                     currentIndex: txInfo.currentIndex - 1
@@ -124,24 +127,23 @@ export default function MultiSignPsbt({
                 return;
             }
             rejectApproval();
-        };
-    }
+        });
 
-    if (!handleConfirm) {
-        handleConfirm = () => {
+    const baseHandleConfirm =
+        handleConfirm ??
+        (() => {
             resolveApproval({
                 // @ts-expect-error ?????????? thx unisat
                 psbtHexs: txInfo.psbtHexs
             });
-        };
-    }
+        });
 
-    const originalHandleConfirm = handleConfirm;
-    if (currentAccount.type === KEYRING_TYPE.KeystoneKeyring) {
-        handleConfirm = () => {
-            setIsKeystoneSigning(true);
-        };
-    }
+    const effectiveHandleConfirm =
+        currentAccount.type === KEYRING_TYPE.KeystoneKeyring
+            ? () => {
+                  setIsKeystoneSigning(true);
+              }
+            : baseHandleConfirm;
 
     if (loading) {
         return (
@@ -183,13 +185,15 @@ export default function MultiSignPsbt({
                     }}
                     handleCancel={() => {
                         setViewingPsbtIndex(-1);
-                        signStates[viewingPsbtIndex] = SignState.FAILED;
-                        setSignStates(signStates);
+                        const next = [...signStates];
+                        next[viewingPsbtIndex] = SignState.FAILED;
+                        setSignStates(next);
                     }}
                     handleConfirm={() => {
                         setViewingPsbtIndex(-1);
-                        signStates[viewingPsbtIndex] = SignState.SUCCESS;
-                        setSignStates(signStates);
+                        const next = [...signStates];
+                        next[viewingPsbtIndex] = SignState.SUCCESS;
+                        setSignStates(next);
                     }}
                 />
             </>
@@ -218,10 +222,20 @@ export default function MultiSignPsbt({
                 signatureText={`Get Signature (${signIndex + 1}/${count})`}
                 id={signIndex}
                 onSuccess={(data) => {
-                    txInfo.psbtHexs[signIndex] = data.psbtHex || '';
-                    if (signIndex === txInfo.psbtHexs.length - 1) {
+                    const nextPsbtHexs = [...txInfo.psbtHexs];
+                    nextPsbtHexs[signIndex] = data.psbtHex || '';
+                    const nextTxInfo = { ...txInfo, psbtHexs: nextPsbtHexs };
+                    setTxInfo(nextTxInfo);
+                    if (signIndex === nextPsbtHexs.length - 1) {
                         setIsKeystoneSigning(false);
-                        originalHandleConfirm();
+                        if (handleConfirm) {
+                            handleConfirm();
+                        } else {
+                            resolveApproval({
+                                // @ts-expect-error ?????????? thx unisat
+                                psbtHexs: nextPsbtHexs
+                            });
+                        }
                     } else {
                         tools.toastSuccess(`Get Signature Success (${signIndex + 1}/${count})`);
                         setTimeout(() => {
@@ -286,7 +300,7 @@ export default function MultiSignPsbt({
 
             <Footer>
                 <Row full>
-                    <Button preset="default" text={'Reject All'} onClick={handleCancel} full />
+                    <Button preset="default" text={'Reject All'} onClick={effectiveHandleCancel} full />
 
                     {websiteResult.allowQuickMultiSign ? (
                         <Button
@@ -295,7 +309,7 @@ export default function MultiSignPsbt({
                             icon={isAllSigned ? undefined : 'alert'}
                             onClick={() => {
                                 if (isAllSigned) {
-                                    handleConfirm();
+                                    effectiveHandleConfirm();
                                 } else {
                                     setDisclaimerVisible(true);
                                 }
@@ -306,7 +320,7 @@ export default function MultiSignPsbt({
                         <Button
                             preset="primary"
                             text={isAllSigned ? 'Submit' : `(${signedCount}/${txInfo.psbtHexs.length}) Signed`}
-                            onClick={handleConfirm}
+                            onClick={effectiveHandleConfirm}
                             full
                             disabled={!isAllSigned}
                         />
@@ -317,7 +331,7 @@ export default function MultiSignPsbt({
                 <MultiSignDisclaimerModal
                     txCount={txInfo.psbtHexs.length}
                     onContinue={() => {
-                        handleConfirm();
+                        effectiveHandleConfirm();
                     }}
                     onClose={() => {
                         setDisclaimerVisible(false);

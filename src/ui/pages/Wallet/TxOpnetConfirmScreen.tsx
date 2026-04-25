@@ -24,7 +24,8 @@ import { decodeBitcoinTransfer, DecodedPreSignedData, decodeSignedInteractionRec
 import Web3API from '@/shared/web3/Web3API';
 import { Column, Content, Footer, Header, Layout, OPNetTxFlowPreview, Text } from '@/ui/components';
 import { FeeRateBar } from '@/ui/components/FeeRateBar';
-import { ContextType, useTools } from '@/ui/components/ActionComponent';
+import { ContextType } from '@/ui/components/ActionComponent/ActionComponentContext';
+import { useTools } from '@/ui/components/ActionComponent/useTools';
 import { BottomModal } from '@/ui/components/BottomModal';
 import { useBTCUnit } from '@/ui/state/settings/hooks';
 import { useLocationState, useWallet } from '@/ui/utils';
@@ -142,7 +143,7 @@ interface CachedBitcoinTransfer {
     isRotationAll?: boolean;
 }
 
-export const AIRDROP_ABI: BitcoinInterfaceAbi = [
+const AIRDROP_ABI: BitcoinInterfaceAbi = [
     ...OP_20_ABI,
     {
         name: 'airdrop',
@@ -423,7 +424,9 @@ export default function TxOpnetConfirmScreen() {
 
     // Track current feeRate in a ref so the callback stays stable
     const feeRateRef = useRef(feeRate);
-    feeRateRef.current = feeRate;
+    useEffect(() => {
+        feeRateRef.current = feeRate;
+    }, [feeRate]);
 
     // Handle fee rate change from FeeRateBar (stable callback - no deps)
     const handleFeeRateChange = useCallback((newFeeRate: number) => {
@@ -440,6 +443,32 @@ export default function TxOpnetConfirmScreen() {
         if (!cachedSignedTx) return true;
         return Date.now() - cachedSignedTx.createdAt > PRESIGNED_DATA_EXPIRATION_MS;
     }, [cachedSignedTx]);
+
+    const getPubKey = async (to: string) => {
+        let pubKey: Address | undefined;
+
+        const pubKeyStr: string = to.replace('0x', '');
+
+        // Allow 32-byte hex (MLDSA public key hash), 33-byte (compressed pubkey), or 65-byte (uncompressed pubkey)
+        if (
+            (pubKeyStr.length === 64 || pubKeyStr.length === 66 || pubKeyStr.length === 130) &&
+            pubKeyStr.match(/^[0-9a-fA-F]+$/) !== null
+        ) {
+            pubKey = Address.fromString(pubKeyStr);
+        } else {
+            pubKey = await Web3API.provider.getPublicKeyInfo(to, false);
+        }
+
+        if (!pubKey) throw new Error('public key not found');
+
+        // Check for zero address (user not found on-chain)
+        const pubKeyHex = pubKey.toHex ? pubKey.toHex() : pubKey.toString();
+        if (pubKeyHex === '0x' + '00'.repeat(32) || pubKeyHex === '00'.repeat(32)) {
+            throw new Error('User not found on-chain. This wallet has not performed any OPNet transactions yet.');
+        }
+
+        return pubKey;
+    };
 
     // Pre-sign OPNet interaction transactions on mount
     useEffect(() => {
@@ -1664,31 +1693,6 @@ export default function TxOpnetConfirmScreen() {
         };
     }, []);
 
-    const getPubKey = async (to: string) => {
-        let pubKey: Address | undefined;
-
-        const pubKeyStr: string = to.replace('0x', '');
-
-        // Allow 32-byte hex (MLDSA public key hash), 33-byte (compressed pubkey), or 65-byte (uncompressed pubkey)
-        if (
-            (pubKeyStr.length === 64 || pubKeyStr.length === 66 || pubKeyStr.length === 130) &&
-            pubKeyStr.match(/^[0-9a-fA-F]+$/) !== null
-        ) {
-            pubKey = Address.fromString(pubKeyStr);
-        } else {
-            pubKey = await Web3API.provider.getPublicKeyInfo(to, false);
-        }
-
-        if (!pubKey) throw new Error('public key not found');
-
-        // Check for zero address (user not found on-chain)
-        const pubKeyHex = pubKey.toHex ? pubKey.toHex() : pubKey.toString();
-        if (pubKeyHex === '0x' + '00'.repeat(32) || pubKeyHex === '00'.repeat(32)) {
-            throw new Error('User not found on-chain. This wallet has not performed any OPNet transactions yet.');
-        }
-
-        return pubKey;
-    };
 
     const transferToken = async (parameters: TransferParameters) => {
         const currentWalletAddress = await wallet.getCurrentAccount();

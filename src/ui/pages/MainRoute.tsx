@@ -4,8 +4,6 @@ import { HashRouter, Route, Routes } from 'react-router-dom';
 import TxCreateScreen from '@/ui/pages/Wallet/TxCreateScreen';
 import { RouteTypes, routePaths } from './routeTypes';
 
-// Re-export for backward compatibility
-export { RouteTypes, useNavigate } from './routeTypes';
 export type { UseNavigate } from './routeTypes';
 
 import HistoryScreen from '@/ui/pages/History/HistoryScreen';
@@ -82,7 +80,7 @@ type Routes = {
     };
 };
 
-export const routes: Routes = {
+const routes: Routes = {
     [RouteTypes.BoostScreen]: {
         path: routePaths[RouteTypes.BoostScreen],
         element: <BoostScreen />
