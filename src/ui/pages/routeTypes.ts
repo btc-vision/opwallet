@@ -59,7 +59,8 @@ export enum RouteTypes {
     UTXOOptimizeScreen = 'UTXOOptimizeScreen',
     OnboardingScreen = 'OnboardingScreen',
     LegalDocumentsScreen = 'LegalDocumentsScreen',
-    AddressBookScreen = 'AddressBookScreen'
+    AddressBookScreen = 'AddressBookScreen',
+    SwapScreen = 'SwapScreen'
 }
 
 export const routePaths: Record<RouteTypes, string> = {
@@ -120,7 +121,8 @@ export const routePaths: Record<RouteTypes, string> = {
     [RouteTypes.UTXOOptimizeScreen]: '/wallet/utxo-optimize',
     [RouteTypes.OnboardingScreen]: '/onboarding',
     [RouteTypes.LegalDocumentsScreen]: '/settings/legal-documents',
-    [RouteTypes.AddressBookScreen]: '/settings/address-book'
+    [RouteTypes.AddressBookScreen]: '/settings/address-book',
+    [RouteTypes.SwapScreen]: '/opnet/swap'
 };
 
 export type UseNavigate<T extends RouteTypes> = (routKey: T, state?: unknown) => void;

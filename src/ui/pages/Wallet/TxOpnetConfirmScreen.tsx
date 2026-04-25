@@ -16,6 +16,7 @@ import {
     SendBitcoinParameters,
     SendNFTParameters,
     SourceType,
+    SwapParameters,
     TransferParameters
 } from '@/shared/interfaces/RawTxParameters';
 import { RecordTransactionInput, TransactionType } from '@/shared/types/TransactionHistory';
@@ -70,12 +71,15 @@ import {
     Airdrop,
     BitcoinAbiTypes,
     BitcoinInterfaceAbi,
+    AddressesInfo,
     BitcoinUtils,
     CallResult,
     EXTENDED_OP721_ABI,
     getContract,
     IExtendedOP721,
+    IMotoswapRouterContract,
     IOP20Contract,
+    MOTOSWAP_ROUTER_ABI,
     OP_20_ABI,
     SignedInteractionTransactionReceipt,
     StrippedTransactionOutput,
@@ -445,6 +449,7 @@ export default function TxOpnetConfirmScreen() {
             Action.Mint,
             Action.Airdrop,
             Action.SendNFT,
+            Action.Swap,
             Action.ReserveDomain,
             Action.CompleteRegistration,
             Action.RegisterDomainWithMoto,
@@ -842,6 +847,84 @@ export default function TxOpnetConfirmScreen() {
                         );
                         simulation = await contract.cancelTransfer(rawTxInfo.domainName);
                         symbol = `${rawTxInfo.domainName}.btc`;
+                        break;
+                    }
+                    case Action.Swap: {
+                        const routerAddr = Address.fromString(rawTxInfo.routerAddress);
+
+                        // Check allowance for the router
+                        const tokenInContract: IOP20Contract = getContract<IOP20Contract>(
+                            rawTxInfo.tokenIn,
+                            OP_20_ABI,
+                            Web3API.provider,
+                            Web3API.network,
+                            userWallet.address
+                        );
+
+                        const swapAmountIn =
+                            typeof rawTxInfo.amountIn === 'bigint'
+                                ? rawTxInfo.amountIn
+                                : BigInt(rawTxInfo.amountIn);
+
+                        const currentAllowance = await tokenInContract.allowance(
+                            userWallet.address,
+                            routerAddr
+                        );
+
+                        if (currentAllowance.properties.remaining < swapAmountIn) {
+                            setOpenLoading(true);
+
+                            const deficit = swapAmountIn - currentAllowance.properties.remaining;
+                            const approveSimulation = await tokenInContract.increaseAllowance(
+                                routerAddr,
+                                deficit
+                            );
+
+                            const approveSignedTx = await approveSimulation.signTransaction(interactionParameters);
+                            const approveReceipt = await approveSimulation.sendPresignedTransaction(approveSignedTx);
+
+                            if (!approveReceipt?.transactionId) {
+                                throw new Error('Failed to approve token allowance for router');
+                            }
+
+                            // Brief wait for UTXO set to update
+                            await new Promise((r) => setTimeout(r, 3000));
+                            setOpenLoading(true);
+                        }
+
+                        // Resolve all addresses in the swap path
+                        const swapPath = rawTxInfo.path ?? [rawTxInfo.tokenIn, rawTxInfo.tokenOut];
+                        const pubKeyInfo: AddressesInfo =
+                            await Web3API.provider.getPublicKeysInfo(swapPath, true);
+                        const resolvedPath: Address[] = swapPath.map((addr) => pubKeyInfo[addr]);
+
+                        const routerContract: IMotoswapRouterContract =
+                            getContract<IMotoswapRouterContract>(
+                                routerAddr,
+                                MOTOSWAP_ROUTER_ABI,
+                                Web3API.provider,
+                                Web3API.network,
+                                userWallet.address
+                            );
+
+                        const amountOutMin =
+                            typeof rawTxInfo.amountOutMin === 'bigint'
+                                ? rawTxInfo.amountOutMin
+                                : BigInt(rawTxInfo.amountOutMin);
+
+                        const currentBlock = await Web3API.provider.getBlockNumber();
+                        const deadline = currentBlock + 1000n;
+
+                        simulation =
+                            await routerContract.swapExactTokensForTokensSupportingFeeOnTransferTokens(
+                                swapAmountIn,
+                                amountOutMin,
+                                resolvedPath,
+                                userWallet.address,
+                                deadline
+                            );
+
+                        symbol = rawTxInfo.tokens.map((t) => t?.symbol ?? '?').join(' -> ');
                         break;
                     }
                     default:
@@ -2358,6 +2441,60 @@ export default function TxOpnetConfirmScreen() {
         }
     };
 
+    const swapTokens = async (parameters: SwapParameters) => {
+        try {
+            const currentWalletAddress = await wallet.getCurrentAccount();
+
+            if (!cachedSignedTx) {
+                throw new Error('No pre-signed transaction available. Please try again.');
+            }
+            if (isPreSignedExpired()) {
+                throw new Error('Pre-signed transaction expired. Please go back and try again.');
+            }
+
+            const sendTransaction = await cachedSignedTx.simulation.sendPresignedTransaction(cachedSignedTx.signedTx);
+            if (!sendTransaction?.transactionId) {
+                setOpenLoading(false);
+                setDisabled(false);
+                setCachedSignedTx(null);
+                tools.toastError('Swap broadcast failed');
+                return;
+            }
+
+            const amountIn =
+                typeof parameters.amountIn === 'bigint' ? parameters.amountIn : BigInt(parameters.amountIn);
+            const amountOut =
+                typeof parameters.amountOut === 'bigint' ? parameters.amountOut : BigInt(parameters.amountOut);
+
+            const amountInFormatted = BitcoinUtils.formatUnits(amountIn, parameters.tokens[0].divisibility);
+            const amountOutFormatted = BitcoinUtils.formatUnits(amountOut, parameters.tokens[1].divisibility);
+
+            tools.toastSuccess(
+                `Swapped ${amountInFormatted} ${parameters.tokens[0].symbol} for ~${amountOutFormatted} ${parameters.tokens[1].symbol}`
+            );
+
+            const txRecord: RecordTransactionInput = {
+                txid: sendTransaction.transactionId || '',
+                type: TransactionType.OPNET_INTERACTION,
+                from: currentWalletAddress.address,
+                contractMethod: 'swap',
+                fee: Number(parameters.priorityFee || 0),
+                feeRate: feeRate,
+                note: `Swap ${amountInFormatted} ${parameters.tokens[0].symbol} -> ${amountOutFormatted} ${parameters.tokens[1].symbol}`
+            };
+            void wallet.recordTransaction(txRecord);
+
+            setCachedSignedTx(null);
+            navigate(RouteTypes.TxSuccessScreen, { txid: sendTransaction.transactionId });
+        } catch (e) {
+            const error = e as Error;
+            console.error(e);
+            setCachedSignedTx(null);
+            setDisabled(false);
+            navigate(RouteTypes.TxFailScreen, { error: error.message });
+        }
+    };
+
     // Get action label
     const getActionLabel = () => {
         switch (rawTxInfo.action) {
@@ -2391,6 +2528,8 @@ export default function TxOpnetConfirmScreen() {
                 return 'Accept Domain Transfer';
             case Action.CancelDomainTransfer:
                 return 'Cancel Domain Transfer';
+            case Action.Swap:
+                return rawTxInfo.path && rawTxInfo.path.length > 2 ? 'Multi-Hop Swap' : 'Token Swap';
             default:
                 return 'Transaction';
         }
@@ -2425,6 +2564,8 @@ export default function TxOpnetConfirmScreen() {
                 return <CheckCircleOutlined style={iconStyle} />;
             case Action.CancelDomainTransfer:
                 return <CloseCircleOutlined style={iconStyle} />;
+            case Action.Swap:
+                return <SwapOutlined style={iconStyle} />;
             default:
                 return <FileTextOutlined style={iconStyle} />;
         }
@@ -2576,6 +2717,132 @@ export default function TxOpnetConfirmScreen() {
                             </div>
                         </div>
                     </div>
+
+                    {/* Swap Details Card */}
+                    {rawTxInfo.action === Action.Swap && (
+                        <div
+                            style={{
+                                background: colors.containerBgFaded,
+                                borderRadius: '12px',
+                                padding: '14px',
+                                marginBottom: '12px'
+                            }}>
+                            <div
+                                style={{
+                                    fontSize: '12px',
+                                    fontWeight: 600,
+                                    color: colors.textFaded,
+                                    textTransform: 'uppercase',
+                                    letterSpacing: '0.5px',
+                                    marginBottom: '12px',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '6px'
+                                }}>
+                                <SwapOutlined style={{ fontSize: 14, color: colors.main }} />
+                                Swap Details
+                            </div>
+                            {/* From */}
+                            <div
+                                style={{
+                                    display: 'flex',
+                                    justifyContent: 'space-between',
+                                    alignItems: 'center',
+                                    padding: '10px',
+                                    background: colors.inputBg,
+                                    borderRadius: '8px',
+                                    marginBottom: '8px'
+                                }}>
+                                <span style={{ fontSize: '12px', color: colors.textFaded }}>You Pay</span>
+                                <span style={{ fontSize: '14px', fontWeight: 600, color: colors.text }}>
+                                    {BitcoinUtils.formatUnits(
+                                        typeof rawTxInfo.amountIn === 'bigint'
+                                            ? rawTxInfo.amountIn
+                                            : BigInt(rawTxInfo.amountIn),
+                                        rawTxInfo.tokens[0]?.divisibility ?? 8
+                                    )}{' '}
+                                    {rawTxInfo.tokens[0]?.symbol ?? '?'}
+                                </span>
+                            </div>
+                            {/* To */}
+                            <div
+                                style={{
+                                    display: 'flex',
+                                    justifyContent: 'space-between',
+                                    alignItems: 'center',
+                                    padding: '10px',
+                                    background: colors.inputBg,
+                                    borderRadius: '8px',
+                                    marginBottom: '8px'
+                                }}>
+                                <span style={{ fontSize: '12px', color: colors.textFaded }}>You Receive (est.)</span>
+                                <span style={{ fontSize: '14px', fontWeight: 600, color: '#4ade80' }}>
+                                    {BitcoinUtils.formatUnits(
+                                        typeof rawTxInfo.amountOut === 'bigint'
+                                            ? rawTxInfo.amountOut
+                                            : BigInt(rawTxInfo.amountOut),
+                                        rawTxInfo.tokens[rawTxInfo.tokens.length - 1]?.divisibility ?? 8
+                                    )}{' '}
+                                    {rawTxInfo.tokens[rawTxInfo.tokens.length - 1]?.symbol ?? '?'}
+                                </span>
+                            </div>
+                            {/* Min Received */}
+                            <div
+                                style={{
+                                    display: 'flex',
+                                    justifyContent: 'space-between',
+                                    alignItems: 'center',
+                                    padding: '10px',
+                                    background: colors.inputBg,
+                                    borderRadius: '8px',
+                                    marginBottom: '8px'
+                                }}>
+                                <span style={{ fontSize: '12px', color: colors.textFaded }}>Min. Received</span>
+                                <span style={{ fontSize: '13px', color: colors.textFaded }}>
+                                    {BitcoinUtils.formatUnits(
+                                        typeof rawTxInfo.amountOutMin === 'bigint'
+                                            ? rawTxInfo.amountOutMin
+                                            : BigInt(rawTxInfo.amountOutMin),
+                                        rawTxInfo.tokens[rawTxInfo.tokens.length - 1]?.divisibility ?? 8
+                                    )}{' '}
+                                    {rawTxInfo.tokens[rawTxInfo.tokens.length - 1]?.symbol ?? '?'}
+                                </span>
+                            </div>
+                            {/* Slippage */}
+                            <div
+                                style={{
+                                    display: 'flex',
+                                    justifyContent: 'space-between',
+                                    alignItems: 'center',
+                                    padding: '10px',
+                                    background: colors.inputBg,
+                                    borderRadius: '8px',
+                                    marginBottom: rawTxInfo.path && rawTxInfo.path.length > 2 ? '8px' : '0'
+                                }}>
+                                <span style={{ fontSize: '12px', color: colors.textFaded }}>Slippage Tolerance</span>
+                                <span style={{ fontSize: '13px', color: colors.text }}>
+                                    {rawTxInfo.slippageTolerance}%
+                                </span>
+                            </div>
+                            {/* Route (if multi-hop) */}
+                            {rawTxInfo.path && rawTxInfo.path.length > 2 && (
+                                <div
+                                    style={{
+                                        display: 'flex',
+                                        justifyContent: 'space-between',
+                                        alignItems: 'center',
+                                        padding: '10px',
+                                        background: colors.inputBg,
+                                        borderRadius: '8px'
+                                    }}>
+                                    <span style={{ fontSize: '12px', color: colors.textFaded }}>Route</span>
+                                    <span style={{ fontSize: '12px', color: colors.text }}>
+                                        {rawTxInfo.tokens.map((t) => t?.symbol ?? '?').join(' -> ')}
+                                    </span>
+                                </div>
+                            )}
+                        </div>
+                    )}
 
                     {/* Transaction Flow Visualization - Collapsible */}
                     {(cachedSignedTx?.preSignedTxData || cachedBtcTx?.preSignedTxData) && !isSigning && (
@@ -3192,6 +3459,9 @@ export default function TxOpnetConfirmScreen() {
                                     break;
                                 case Action.CancelDomainTransfer:
                                     await cancelDomainTransfer(rawTxInfo);
+                                    break;
+                                case Action.Swap:
+                                    await swapTokens(rawTxInfo);
                                     break;
                             }
                         }}

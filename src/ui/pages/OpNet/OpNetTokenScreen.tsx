@@ -429,7 +429,7 @@ export default function OpNetTokenScreen() {
                                 justifyContent: 'center',
                                 gap: 8
                             }}
-                            onClick={() => window.open('https://motoswap.org', '_blank', 'noopener noreferrer')}>
+                            onClick={() => navigate(RouteTypes.SwapScreen)}>
                             <SwapOutlined style={{ fontSize: 15, color: colors.textSecondary }} />
                             <span style={{ fontSize: 14, fontWeight: 600, color: colors.textSecondary }}>Swap</span>
                         </button>
