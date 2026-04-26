@@ -1,6 +1,6 @@
 import { WarningOutlined } from '@ant-design/icons';
 import { useEffect, useMemo, useState } from 'react';
-import { useWallet } from '@/ui/utils/WalletContext';
+import { useWallet } from '@/ui/utils/useWallet';
 
 const ORDINAL_UTXO_THRESHOLD = 1000n;
 

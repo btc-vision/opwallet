@@ -253,7 +253,7 @@ class DuplicationBackupService {
             if (e instanceof Error && e.message.includes('Invalid backup file')) {
                 throw e;
             }
-            throw new Error('Failed to import backup. Check file format and password.');
+            throw new Error('Failed to import backup. Check file format and password.', { cause: e });
         }
     }
 

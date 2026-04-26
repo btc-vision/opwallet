@@ -6,7 +6,7 @@ import { AddressAssets } from '@/shared/types';
 import { AddressTypes } from '@btc-vision/transaction';
 import Web3API, { getBitcoinLibJSNetwork } from '@/shared/web3/Web3API';
 import { Column, Content, Header, Layout, OPNetLoader, Text } from '@/ui/components';
-import { useTools } from '@/ui/components/ActionComponent';
+import { useTools } from '@/ui/components/ActionComponent/useTools';
 import { AddressTypeCard } from '@/ui/components/AddressTypeCard';
 import { satoshisToAmount, useWallet } from '@/ui/utils';
 import {

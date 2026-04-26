@@ -87,23 +87,24 @@ export default function NFTSendScreen() {
 
     // Validate form
     useEffect(() => {
-        setError('');
-        setDisabled(true);
+        queueMicrotask(() => {
+            setError('');
+            setDisabled(true);
 
-        if (!toAddress) return;
-        if (!isValidAddress(toAddress)) {
-            setError('Invalid recipient address');
-            return;
-        }
-        if (feeRate <= 0) return;
+            if (!toAddress) return;
+            if (!isValidAddress(toAddress)) {
+                setError('Invalid recipient address');
+                return;
+            }
+            if (feeRate <= 0) return;
 
-        // Check if sending to self
-        if (toAddress.toLowerCase() === currentAccount.address.toLowerCase()) {
-            setError('Cannot send NFT to yourself');
-            return;
-        }
+            if (toAddress.toLowerCase() === currentAccount.address.toLowerCase()) {
+                setError('Cannot send NFT to yourself');
+                return;
+            }
 
-        setDisabled(false);
+            setDisabled(false);
+        });
     }, [toAddress, feeRate, currentAccount.address]);
 
     const handleAddressChange = (val: string) => {

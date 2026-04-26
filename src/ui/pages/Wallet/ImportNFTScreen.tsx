@@ -1,7 +1,7 @@
 import Web3API from '@/shared/web3/Web3API';
 import { Column, Content, Header, Input, Layout, OPNetLoader } from '@/ui/components';
 import { AsyncImage } from '@/ui/components/AsyncImage';
-import { useTools } from '@/ui/components/ActionComponent';
+import { useTools } from '@/ui/components/ActionComponent/useTools';
 import { RouteTypes, useNavigate } from '@/ui/pages/routeTypes';
 import { useCurrentAccount } from '@/ui/state/accounts/hooks';
 import { useChain, useChainType } from '@/ui/state/settings/hooks';

@@ -8,7 +8,7 @@ import {
 } from '@/shared/types/InteractionType';
 import { fromHex, toHex } from '@btc-vision/bitcoin';
 import { Decoded } from './DecodedTypes';
-import { decodeAddLiquidityMotoswap } from '@/ui/pages/OpNet/decoded/motoswap/AddLiquidityDecodedInfo';
+import { decodeAddLiquidityMotoswap } from '@/ui/pages/OpNet/decoded/motoswap/decoders';
 import {
     decodeAddLiquidity,
     decodeAirdrop,
@@ -30,13 +30,17 @@ import {
     decodeSetFees,
     decodeSwap
 } from './decodeMethods';
-import { decodeDepositMotoChef } from './motochef/DepositDecodedInfo';
-import { decodeHarvestMotoChef } from './motochef/HarvestDecodedInfo';
-import { decodeStakeBTCMotoChef } from './motochef/StakeBTCDecodedInfo';
-import { decodeWithdrawMotoChef } from './motochef/WithdrawDecodedInfo';
-import { decodeRemoveLiquidityMotoswap } from './motoswap/RemoveLiquidityMotoSwapDecodedInfo';
-import { decodeStakeMotoswap } from './motoswap/StakeDecodedInfo';
-import { decodeSwapTokensMotoswap } from './motoswap/SwapTokensDecodedInfo';
+import {
+    decodeDepositMotoChef,
+    decodeHarvestMotoChef,
+    decodeStakeBTCMotoChef,
+    decodeWithdrawMotoChef
+} from './motochef/decoders';
+import {
+    decodeRemoveLiquidityMotoswap,
+    decodeStakeMotoswap,
+    decodeSwapTokensMotoswap
+} from './motoswap/decoders';
 
 /**
  * Reads the first 4 bytes to get the selector, then dispatches to the correct decode method.

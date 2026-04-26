@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 
 import { Column } from '@/ui/components';
-import { useTools } from '@/ui/components/ActionComponent';
+import { useTools } from '@/ui/components/ActionComponent/useTools';
 import { ContextData, TabType, UpdateContextDataParams } from '@/ui/pages/Account/createHDWalletComponents/types';
 import { copyToClipboard, useWallet } from '@/ui/utils';
 import {

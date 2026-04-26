@@ -1,36 +1,6 @@
 import { Card, Column, Text } from '@/ui/components';
-import { Decoded } from '@/ui/pages/OpNet/decoded/DecodedTypes';
-import { Address, BinaryReader } from '@btc-vision/transaction';
 import { sliceAddress } from '../helpper';
-
-export function decodeSwapTokensMotoswap(selector: string, reader: BinaryReader): SwapTokensDecoded {
-    const amountIn: bigint = reader.readU256();
-    const amountOutMin: bigint = reader.readU256();
-
-    const path: Address[] = reader.readAddressArray();
-
-    const to: Address = reader.readAddress();
-    const deadline: bigint = reader.readU64();
-
-    return {
-        selector,
-        amountIn,
-        amountOutMin,
-        path,
-        to,
-        deadline
-    };
-}
-
-export interface SwapTokensDecoded extends Decoded {
-    readonly amountIn: bigint;
-    readonly amountOutMin: bigint;
-
-    readonly path: Address[];
-
-    readonly to: Address;
-    readonly deadline: bigint;
-}
+import { SwapTokensDecoded } from './decoders';
 
 interface SwapTokensProps {
     readonly decoded: SwapTokensDecoded;

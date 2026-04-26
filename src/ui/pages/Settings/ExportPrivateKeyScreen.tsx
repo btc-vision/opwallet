@@ -10,7 +10,7 @@ import { KEYRING_TYPE } from '@/shared/constant';
 import { Account } from '@/shared/types';
 import { isWalletError } from '@/shared/utils/errors';
 import { Content, Header, Layout } from '@/ui/components';
-import { useTools } from '@/ui/components/ActionComponent';
+import { useTools } from '@/ui/components/ActionComponent/useTools';
 import { WifExportWarningModal } from '@/ui/components/WifExportWarningModal';
 import { copyToClipboard, useLocationState, useWallet } from '@/ui/utils';
 

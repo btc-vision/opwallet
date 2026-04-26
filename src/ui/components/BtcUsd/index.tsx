@@ -5,7 +5,7 @@ import { useEffect, useMemo } from 'react';
 import { ChainType } from '@/shared/constant';
 import { Text } from '@/ui/components';
 import { Sizes, TextProps } from '@/ui/components/Text';
-import { usePrice } from '@/ui/provider/PriceProvider';
+import { usePrice } from '@/ui/provider/usePrice';
 import { useChain, useChainType } from '@/ui/state/settings/hooks';
 import type { ColorTypes } from '@/ui/theme/colors';
 

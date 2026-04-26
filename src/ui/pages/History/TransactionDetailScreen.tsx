@@ -3,7 +3,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { TransactionHistoryItem, TransactionStatus, TransactionType } from '@/shared/types/TransactionHistory';
 import { selectorToString } from '@/shared/web3/decoder/CalldataDecoder';
 import { Column, Content, Header, Layout, OPNetLoader } from '@/ui/components';
-import { useTools } from '@/ui/components/ActionComponent';
+import { useTools } from '@/ui/components/ActionComponent/useTools';
 import { RouteTypes, useNavigate } from '@/ui/pages/routeTypes';
 import { decodeCallData } from '@/ui/pages/OpNet/decoded/decodeCallData';
 import { DecodedCalldata } from '@/ui/pages/OpNet/decoded/DecodedCalldata';
@@ -236,7 +236,9 @@ export default function TransactionDetailScreen() {
     // Initial load
     useEffect(() => {
         if (txid) {
-            void loadTransaction(true);
+            queueMicrotask(() => {
+                void loadTransaction(true);
+            });
         }
     }, [loadTransaction, txid]);
 

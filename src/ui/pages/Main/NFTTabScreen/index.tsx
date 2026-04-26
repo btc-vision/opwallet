@@ -146,7 +146,9 @@ export default function NFTTabScreen() {
     useEffect(() => {
         const storedCollections = localStorage.getItem(storageKey);
         if (storedCollections) {
-            setCollections(JSON.parse(storedCollections) as NFTCollection[]);
+            queueMicrotask(() => {
+                setCollections(JSON.parse(storedCollections) as NFTCollection[]);
+            });
         }
     }, [storageKey]);
 

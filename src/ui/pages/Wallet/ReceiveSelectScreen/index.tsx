@@ -2,7 +2,7 @@ import { CopyOutlined, QrcodeOutlined } from '@ant-design/icons';
 import { useEffect, useState } from 'react';
 
 import { Content, Header, Layout } from '@/ui/components';
-import { useTools } from '@/ui/components/ActionComponent';
+import { useTools } from '@/ui/components/ActionComponent/useTools';
 import { RouteTypes, useNavigate } from '@/ui/pages/routeTypes';
 import { useAccountAddress } from '@/ui/state/accounts/hooks';
 import { colors } from '@/ui/theme/colors';

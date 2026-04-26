@@ -7,10 +7,11 @@ import { spacing } from '@/ui/theme/spacing';
 import { useWallet } from '@/ui/utils';
 import { AddressVerificator } from '@btc-vision/transaction';
 
-import { useTools } from '../ActionComponent';
+import { useTools } from '../ActionComponent/useTools';
 import { Icon } from '../Icon';
 import { Row } from '../Row';
-import { $textPresets, Text } from '../Text';
+import { Text } from '../Text';
+import { $textPresets } from '../Text/presets';
 import { useBtcDomainsEnabled } from '@/ui/hooks/useAppConfig';
 
 export interface InputProps {
@@ -193,15 +194,15 @@ export const AddressInput = (props: InputProps) => {
 
         if (prevAddress === currentAddress) return;
 
-        if (!currentAddress || currentAddress === '') {
-            // Parent cleared the address
-            handleReset();
-        } else {
-            // Parent set a new address (e.g. from contact picker)
-            setInputVal(currentAddress);
-            setParseError('');
-            setFormatError('');
-        }
+        queueMicrotask(() => {
+            if (!currentAddress || currentAddress === '') {
+                handleReset();
+            } else {
+                setInputVal(currentAddress);
+                setParseError('');
+                setFormatError('');
+            }
+        });
     }, [addressInputData?.address, handleReset]);
 
     if (!addressInputData || !onAddressInputChange) {

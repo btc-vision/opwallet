@@ -8,10 +8,8 @@ import {
     InteractionTypeNativeSwap,
     isInteractionType
 } from '@/shared/types/InteractionType';
-import {
-    AddLiquidityDecoded,
-    AddLiquidityDecodedInfo
-} from '@/ui/pages/OpNet/decoded/motoswap/AddLiquidityDecodedInfo';
+import { AddLiquidityDecodedInfo } from '@/ui/pages/OpNet/decoded/motoswap/AddLiquidityDecodedInfo';
+import { AddLiquidityDecoded } from '@/ui/pages/OpNet/decoded/motoswap/decoders';
 import {
     AddLiquidityDecodedInfoNative,
     CancelListingDecodedInfo,
@@ -47,18 +45,26 @@ import {
     DecodedSetFees,
     DecodedSwap
 } from './DecodedTypes';
-import { DepositDecoded, DepositDecodedInfo } from './motochef/DepositDecodedInfo';
-import { HarvestDecoded, HarvestDecodedInfo } from './motochef/HarvestDecodedInfo';
-import { StakeBTCDecoded, StakeBTCDecodedInfo } from './motochef/StakeBTCDecodedInfo';
+import { DepositDecodedInfo } from './motochef/DepositDecodedInfo';
+import { HarvestDecodedInfo } from './motochef/HarvestDecodedInfo';
+import { StakeBTCDecodedInfo } from './motochef/StakeBTCDecodedInfo';
 import { UnstakeBTCDecodedInfo } from './motochef/UnstakeBTCDecodedInfo';
-import { WithdrawDecoded, WithdrawDecodedInfo } from './motochef/WithdrawDecodedInfo';
+import { WithdrawDecodedInfo } from './motochef/WithdrawDecodedInfo';
+import {
+    DepositDecoded,
+    HarvestDecoded,
+    StakeBTCDecoded,
+    WithdrawDecoded
+} from './motochef/decoders';
 import { ClaimRewardsDecodedInfo } from './motoswap/ClaimRewardsDecodedInfo';
+import { RemoveLiquidityMotoswapDecodedInfo } from './motoswap/RemoveLiquidityMotoSwapDecodedInfo';
+import { StakeDecodedInfo } from './motoswap/StakeDecodedInfo';
+import { SwapTokensDecodedInfo } from './motoswap/SwapTokensDecodedInfo';
 import {
     RemoveLiquidityMotoswapDecoded,
-    RemoveLiquidityMotoswapDecodedInfo
-} from './motoswap/RemoveLiquidityMotoSwapDecodedInfo';
-import { StakeDecoded, StakeDecodedInfo } from './motoswap/StakeDecodedInfo';
-import { SwapTokensDecoded, SwapTokensDecodedInfo } from './motoswap/SwapTokensDecodedInfo';
+    StakeDecoded,
+    SwapTokensDecoded
+} from './motoswap/decoders';
 import { UnstakeDecodedInfo } from './motoswap/UnstakeDecodedInfo';
 import {
     AirdropDecodedInfo,

@@ -14,7 +14,7 @@ import { RouteTypes, useNavigate } from '@/ui/pages/routeTypes';
 import { useAccountBalance, useCurrentAccount } from '@/ui/state/accounts/hooks';
 import { useRotationEnabled, useRotationSummary } from '@/ui/state/rotation/hooks';
 import { useBTCUnit, useChain } from '@/ui/state/settings/hooks';
-import { usePrice } from '@/ui/provider/PriceProvider';
+import { usePrice } from '@/ui/provider/usePrice';
 import { useUiTxCreateScreen, useUpdateUiTxCreateScreen } from '@/ui/state/ui/hooks';
 import { amountToSatoshis, isValidAddress, satoshisToAmount, useWallet } from '@/ui/utils';
 import {
@@ -419,8 +419,10 @@ export default function TxCreateScreen() {
     // Open UTXO Status section and set Quotas tab active when coming from consolidation
     useEffect(() => {
         if (consolidationParams?.enabled) {
-            setShowUTXOStatus(true);
-            setUtxoStatusActiveTab('quotas');
+            queueMicrotask(() => {
+                setShowUTXOStatus(true);
+                setUtxoStatusActiveTab('quotas');
+            });
         }
     }, [consolidationParams]);
 
@@ -474,8 +476,10 @@ export default function TxCreateScreen() {
     // Open UTXO Status section when coming from split
     useEffect(() => {
         if (splitParams?.enabled) {
-            setShowUTXOStatus(true);
-            setUtxoStatusActiveTab('quotas');
+            queueMicrotask(() => {
+                setShowUTXOStatus(true);
+                setUtxoStatusActiveTab('quotas');
+            });
         }
     }, [splitParams]);
 
@@ -505,7 +509,11 @@ export default function TxCreateScreen() {
 
     // Reset USD mode when switching to a chain that doesn't support prices
     useEffect(() => {
-        if (!chain.showPrice) setIsUsdMode(false);
+        if (!chain.showPrice) {
+            queueMicrotask(() => {
+                setIsUsdMode(false);
+            });
+        }
     }, [chain.showPrice]);
 
     // Re-convert USD to BTC when price updates while in USD mode
@@ -524,26 +532,28 @@ export default function TxCreateScreen() {
     }, [wallet]);
 
     useEffect(() => {
-        setError('');
-        setDisabled(true);
+        queueMicrotask(() => {
+            setError('');
+            setDisabled(true);
 
-        if (!selectedBalance) {
-            setError('Please select a source address');
-            return;
-        }
-        if (!isValidAddress(toInfo.address)) return;
-        if (!toSatoshis) return;
-        if (toSatoshis < COIN_DUST) {
-            setError(`Minimum amount: ${dustAmount} ${btcUnit}`);
-            return;
-        }
-        if (toSatoshis > selectedBalance.satoshis) {
-            setError('Insufficient balance');
-            return;
-        }
-        if (feeRate <= 0) return;
+            if (!selectedBalance) {
+                setError('Please select a source address');
+                return;
+            }
+            if (!isValidAddress(toInfo.address)) return;
+            if (!toSatoshis) return;
+            if (toSatoshis < COIN_DUST) {
+                setError(`Minimum amount: ${dustAmount} ${btcUnit}`);
+                return;
+            }
+            if (toSatoshis > selectedBalance.satoshis) {
+                setError('Insufficient balance');
+                return;
+            }
+            if (feeRate <= 0) return;
 
-        setDisabled(false);
+            setDisabled(false);
+        });
     }, [toInfo, inputAmount, feeRate, enableRBF, toSatoshis, selectedBalance, dustAmount, btcUnit]);
 
     const handleNext = () => {

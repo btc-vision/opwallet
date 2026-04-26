@@ -1,7 +1,7 @@
 import { useAddressExplorerUrl } from '@/ui/state/settings/hooks';
 import { copyToClipboard, shortAddress } from '@/ui/utils';
 
-import { useTools } from '../ActionComponent';
+import { useTools } from '../ActionComponent/useTools';
 import { Card } from '../Card';
 import { Column } from '../Column';
 import { Icon } from '../Icon';

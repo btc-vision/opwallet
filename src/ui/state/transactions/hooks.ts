@@ -1,6 +1,6 @@
 import { useCallback } from 'react';
 
-import { useTools } from '@/ui/components/ActionComponent';
+import { useTools } from '@/ui/components/ActionComponent/useTools';
 import { sleep, useWallet } from '@/ui/utils';
 import { UnspentOutput } from '@/shared/types';
 

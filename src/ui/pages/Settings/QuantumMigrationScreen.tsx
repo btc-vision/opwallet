@@ -11,7 +11,7 @@ import { useEffect, useState } from 'react';
 import { KEYRING_TYPE } from '@/shared/constant';
 import Web3API from '@/shared/web3/Web3API';
 import { Button, Card, Column, Content, Footer, Header, Input, Layout, OPNetLoader, Row, Text } from '@/ui/components';
-import { useTools } from '@/ui/components/ActionComponent';
+import { useTools } from '@/ui/components/ActionComponent/useTools';
 import { useAccountPublicKey, useReloadAccounts } from '@/ui/state/accounts/hooks';
 import { copyToClipboard, useWallet } from '@/ui/utils';
 import { getMLDSAConfig, MLDSASecurityLevel } from '@btc-vision/bip32';

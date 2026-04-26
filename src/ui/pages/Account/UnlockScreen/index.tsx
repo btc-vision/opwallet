@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 
 import { Layout, Content, Logo } from '@/ui/components';
-import { useTools } from '@/ui/components/ActionComponent';
+import { useTools } from '@/ui/components/ActionComponent/useTools';
 import { useUnlockCallback } from '@/ui/state/global/hooks';
 import { getUiType, useWallet } from '@/ui/utils';
 import { EyeInvisibleOutlined, EyeOutlined, LoadingOutlined } from '@ant-design/icons';

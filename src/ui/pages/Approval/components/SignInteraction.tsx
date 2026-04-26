@@ -8,7 +8,7 @@ import { decodeCallData } from '@/ui/pages/OpNet/decoded/decodeCallData';
 import { DecodedCalldata } from '@/ui/pages/OpNet/decoded/DecodedCalldata';
 import { useBTCUnit } from '@/ui/state/settings/hooks';
 import { useApproval } from '@/ui/utils/hooks';
-import { useWallet } from '@/ui/utils/WalletContext';
+import { useWallet } from '@/ui/utils/useWallet';
 import { ClockCircleOutlined, CodeOutlined, DownOutlined, EditOutlined, RightOutlined, ThunderboltOutlined, WarningOutlined } from '@ant-design/icons';
 import { Address } from '@btc-vision/transaction';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';

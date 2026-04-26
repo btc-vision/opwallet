@@ -1,23 +1,8 @@
-import { createContext, ReactNode, useCallback, useContext, useEffect, useState } from 'react';
+import { ReactNode, useCallback, useEffect, useState } from 'react';
 
 import { useWallet } from '@/ui/utils';
 
-interface PriceContextType {
-    isLoadingBtcPrice: boolean;
-    btcPrice: number;
-    refreshBtcPrice: () => void;
-}
-
-const PriceContext = createContext<PriceContextType>({} as PriceContextType);
-
-export function usePrice() {
-    const context = useContext(PriceContext);
-    if (!context) {
-        throw Error('Feature flag hooks can only be used by children of BridgeProvider.');
-    } else {
-        return context;
-    }
-}
+import { PriceContext } from './PriceContext';
 
 let isRequestingBtcPrice = false;
 let refreshBtcPriceTime = 0;
@@ -53,8 +38,9 @@ export function PriceProvider({ children }: { children: ReactNode }) {
     }, [wallet]);
 
     useEffect(() => {
-        // eslint-disable-next-line react-hooks/set-state-in-effect -- Fetch price on mount
-        refreshBtcPrice();
+        queueMicrotask(() => {
+            refreshBtcPrice();
+        });
     }, [refreshBtcPrice]);
 
     const value = {

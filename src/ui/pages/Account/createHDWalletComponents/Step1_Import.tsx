@@ -7,7 +7,7 @@ import { RestoreWalletType } from '@/shared/types';
 import { isWalletError } from '@/shared/utils/errors';
 import { AddressTypes } from '@btc-vision/transaction';
 import { Column, Text } from '@/ui/components';
-import { useTools } from '@/ui/components/ActionComponent';
+import { useTools } from '@/ui/components/ActionComponent/useTools';
 import {
     ContextData,
     TabType,
