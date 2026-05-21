@@ -105,6 +105,7 @@ export default function TxCreateScreen() {
 
     const consolidationParams = (location.state as LocationState | undefined)?.consolidation;
     const splitParams = (location.state as LocationState | undefined)?.split;
+    const isSplitOrConsolation = !!consolidationParams || !!splitParams;
 
     const [disabled, setDisabled] = useState(true);
     const [splitInputsInto, setSplitInputsInto] = useState<number | undefined>(
@@ -114,7 +115,7 @@ export default function TxCreateScreen() {
     const [showP2PKWarning, setDisplayP2PKWarning] = useState(false);
     const [showP2OPWarning, setDisplayP2OPWarning] = useState(false);
     const [show32ByteError, setShow32ByteError] = useState(false);
-    const [autoAdjust, setAutoAdjust] = useState(false);
+    const [autoAdjust, setAutoAdjust] = useState(isSplitOrConsolation);
     const [note, setNote] = useState<string>('');
     const [checked, setChecked] = useState(false);
 
@@ -563,7 +564,7 @@ export default function TxCreateScreen() {
             sourceType: selectedBalance.type,
             optimize: !checked,
             splitInputsInto: splitInputsInto,
-            autoAdjustAmount: true
+            autoAdjustAmount: autoAdjust
         };
 
         navigate(RouteTypes.TxOpnetConfirmScreen, { rawTxInfo: event });
