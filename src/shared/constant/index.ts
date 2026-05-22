@@ -487,6 +487,8 @@ export const COIN_SYMBOL = 'BTC';
 
 export const COIN_DUST = 1000;
 
+export const DEFAULT_TOKEN_DECIMALS = 18;
+
 export const GITHUB_URL = 'https://github.com/btc-vision/opwallet';
 export const TWITTER_URL = 'https://x.com/opnetbtc';
 export const TELEGRAM_URL = 'https://t.me/opnetbtc ';
