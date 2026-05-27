@@ -39,6 +39,7 @@ import {
     FileTextOutlined,
     GiftOutlined,
     GlobalOutlined,
+    InfoCircleOutlined,
     LoadingOutlined,
     PictureOutlined,
     RightOutlined,
@@ -57,6 +58,7 @@ import {
     AddressVerificator,
     createAddressRotation,
     DeploymentResult,
+    FundingTransaction,
     IDeploymentParameters,
     IFundingTransactionParameters,
     MLDSASecurityLevel,
@@ -90,6 +92,9 @@ import { BTC_NAME_RESOLVER_ABI } from '@/shared/web3/abi/BTC_NAME_RESOLVER_ABI';
 import { IBtcNameResolverContract } from '@/shared/web3/interfaces/IBtcNameResolverContract';
 import { Dispatch, SetStateAction, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { RouteTypes, useNavigate } from '../routeTypes';
+import web3API from '@/shared/web3/Web3API';
+import { Account } from '@/shared/types';
+import { UTXO_CONFIG } from '@/shared/config';
 
 BigNumber.config({ EXPONENTIAL_AT: 256 });
 
@@ -107,6 +112,15 @@ const colors = {
     success: '#4ade80',
     error: '#ef4444',
     warning: '#fbbf24'
+};
+
+export type CsvDuration = 1n | 2n | 3n | 75n | undefined;
+
+export type FeeEstimation = {
+    transactionFees: bigint;
+    calculatedFees: bigint;
+    originalAmount: bigint;
+    calculatedAmount: bigint;
 };
 
 interface LocationState {
@@ -142,7 +156,7 @@ interface CachedBitcoinTransfer {
     isRotationAll?: boolean;
 }
 
-export const AIRDROP_ABI: BitcoinInterfaceAbi = [
+const AIRDROP_ABI: BitcoinInterfaceAbi = [
     ...OP_20_ABI,
     {
         name: 'airdrop',
@@ -157,7 +171,7 @@ export const AIRDROP_ABI: BitcoinInterfaceAbi = [
     }
 ];
 
-export interface AirdropInterface extends IOP20Contract {
+interface AirdropInterface extends IOP20Contract {
     airdrop(tuple: AddressMap<bigint>): Promise<Airdrop>;
 }
 
@@ -1013,6 +1027,119 @@ export default function TxOpnetConfirmScreen() {
         };
     }, [rawTxInfo, wallet, getOPNetWallet, feeRate]);
 
+    const getCsvUtxoFetcher = (currentAddress:Address, duration: CsvDuration, optimize?: boolean): [Promise<UTXO[]>, string] => {
+        const ip2wshAddress = duration
+            ? currentAddress.toCSV(duration, web3API.network)
+            : currentAddress.p2wda(web3API.network);
+        const fromAddress = ip2wshAddress.address;
+        const witnessScript = ip2wshAddress.witnessScript;
+
+        const utxoFetcher = web3API
+            .getAllUTXOsForAddresses([fromAddress], undefined, duration, optimize)
+            .then((utxos) => (witnessScript ? utxos.map((utxo) => ({ ...utxo, witnessScript })) : utxos));
+
+        return [utxoFetcher, fromAddress];
+    }
+
+    const getUtxoFetcher = (fromAddresses:string[], optimize: boolean|undefined):  [Promise<UTXO[]>, string, string[]] => {
+        const utxoFetcher = web3API
+            .getAllUTXOsForAddresses(fromAddresses, undefined, undefined, optimize);
+        return [utxoFetcher, fromAddresses[0], fromAddresses]
+    }
+
+    const getFeeUtxoFetchers = (account:Account, optimize:boolean|undefined)=> {
+        const zeroHash = '0x0000000000000000000000000000000000000000000000000000000000000000';
+        const address = Address.fromString(zeroHash, account.pubkey);
+        const network = Web3API.network;
+
+        const results: [Promise<UTXO[]>, string, unknown?][] = [
+            getCsvUtxoFetcher(address, 1n, optimize),
+            getUtxoFetcher([address.p2tr(network)], optimize),
+            getUtxoFetcher([address.p2wpkh(network)], optimize),
+            getUtxoFetcher([address.p2shp2wpkh(network)], optimize),
+            getUtxoFetcher([address.p2pkh(network)], optimize)
+        ];
+
+        return results;
+    }
+
+    /*
+     * Loop through all UTXOs and add them one by one to transaction.
+     * Check the updated fees and stop when UTXOs covers amount and fees.
+     * If there is missing UTXOs to cover fees, try to cover them with csv-1 / main wallet
+     */
+    const fillTransactionUTXOs = async (
+        account: Account,
+        utxoFetcher: Promise<UTXO[]>,
+        params: IFundingTransactionParameters,
+        fromAddresses: string[],
+        optimize?: boolean
+    ) => {
+        const amountSats = params.amount;
+        let currentAmount = 0n;
+        let fees: FeeEstimation | undefined;
+
+        // Try to retrieve enough UTXO for amount and fees
+        for (const utxo of (await utxoFetcher)) {
+            params.utxos.push(utxo); // Add the next UTXOs
+            currentAmount = currentAmount + utxo.value;
+            fees = await estimateBitcoinFee(params)
+            if (currentAmount >= (amountSats + fees.transactionFees)) return fees;
+            if (params.utxos.length > UTXO_CONFIG.CONSOLIDATION_LIMIT) return fees;
+        }
+
+        // We looped through all available UTXOs, we can now check autoAdjustAmount
+        if (params.autoAdjustAmount && currentAmount >= amountSats) return fees;
+
+        // We don't have enough UTXO to cover main amount...
+        if (currentAmount < amountSats) return fees;
+
+        // Here, we are still missing some UTXOs for fees
+        const feeFetchers = getFeeUtxoFetchers(account, optimize);
+        while (feeFetchers.length > 0) {
+            const [fetcher, address] = feeFetchers.pop() || [];
+            if (fetcher && address && !fromAddresses.includes(address)) {
+                for (const utxo of await fetcher) {
+                    params.utxos.push(utxo); // Add the next UTXOs
+                    currentAmount = currentAmount + utxo.value;
+                    fees = await estimateBitcoinFee(params);
+                    if (currentAmount >= amountSats + fees.transactionFees) return fees;
+                    if (params.utxos.length > UTXO_CONFIG.CONSOLIDATION_LIMIT) return fees;
+                }
+            }
+        }
+        return fees;
+    };
+
+    const estimateBitcoinFee = async (txParams: IFundingTransactionParameters): Promise<FeeEstimation> => {
+        class FundingTransactionEstimation extends FundingTransaction {
+            public getAmount() {
+                return this.amount;
+            }
+            public getTotalInputAmount() {
+                return this.totalInputAmount;
+            }
+            public override async buildTransaction(): Promise<void> {
+                return await super.buildTransaction();
+            }
+        }
+        const params: IFundingTransactionParameters = { ...txParams };
+        const txEstimation = new FundingTransactionEstimation(params);
+        try {
+            await txEstimation.buildTransaction();
+        } catch (e) {
+            // Do nothing with errors as the 'transactionFee' properties is always
+            // filled up correctly before throwing errors in FundingTransaction.
+        }
+
+        return {
+            transactionFees: txEstimation.transactionFee,
+            calculatedFees: txEstimation.getTotalInputAmount() - txEstimation.getTotalOutputValue(),
+            originalAmount: txParams.amount,
+            calculatedAmount: txEstimation.getAmount()
+        };
+    };
+
     // Pre-sign Bitcoin transfer transactions on mount
     useEffect(() => {
         if (rawTxInfo.action !== Action.SendBitcoin) return;
@@ -1048,9 +1175,9 @@ export default function TxOpnetConfirmScreen() {
                     // Fallback to standard address if rotation check fails
                 }
 
-                let utxos: UTXO[] = [];
-                let witnessScript: Uint8Array | undefined;
-                const feeMin = 2_000n;
+                const optimize = parameters.optimize;
+                let utxoFetcher: Promise<UTXO[]> | undefined;
+                let fromAddresses: string[] | undefined;
 
                 // Handle special source types (CONSOLIDATION and ROTATION_ALL don't require 'from')
                 // SourceType is a string enum, so we can compare directly
@@ -1080,57 +1207,23 @@ export default function TxOpnetConfirmScreen() {
                         : Address.fromString(zeroHash, currentWalletAddress.pubkey);
 
                     if (parameters.sourceType === SourceType.CSV75) {
-                        const csv75Address = currentAddress.toCSV(75, Web3API.network);
-                        fromAddress = csv75Address.address;
-                        witnessScript = csv75Address.witnessScript;
-                        utxos = await Web3API.getAllUTXOsForAddresses(
-                            [fromAddress],
-                            BitcoinUtils.expandToDecimals(btcInputAmount, 8) + feeMin,
-                            75n,
-                            parameters.optimize
-                        );
-                    } else if (parameters.sourceType === SourceType.CSV1) {
-                        const csv1Address = currentAddress.toCSV(1, Web3API.network);
-                        fromAddress = csv1Address.address;
-                        witnessScript = csv1Address.witnessScript;
-                        utxos = await Web3API.getAllUTXOsForAddresses(
-                            [fromAddress],
-                            BitcoinUtils.expandToDecimals(btcInputAmount, 8) + feeMin,
-                            1n,
-                            parameters.optimize
-                        );
+                        [utxoFetcher, fromAddress] = getCsvUtxoFetcher(currentAddress, 75n, optimize);
+                        fromAddresses = [fromAddress];
                     } else if (parameters.sourceType === SourceType.CSV3) {
-                        const csv3Address = currentAddress.toCSV(3, Web3API.network);
-                        fromAddress = csv3Address.address;
-                        witnessScript = csv3Address.witnessScript;
-                        utxos = await Web3API.getAllUTXOsForAddresses(
-                            [fromAddress],
-                            BitcoinUtils.expandToDecimals(btcInputAmount, 8) + feeMin,
-                            3n,
-                            parameters.optimize
-                        );
+                        [utxoFetcher, fromAddress] = getCsvUtxoFetcher(currentAddress, 3n, optimize);
+                        fromAddresses = [fromAddress];
                     } else if (parameters.sourceType === SourceType.CSV2) {
-                        const csv2Address = currentAddress.toCSV(2, Web3API.network);
-                        fromAddress = csv2Address.address;
-                        witnessScript = csv2Address.witnessScript;
-                        utxos = await Web3API.getAllUTXOsForAddresses(
-                            [fromAddress],
-                            BitcoinUtils.expandToDecimals(btcInputAmount, 8) + feeMin,
-                            2n,
-                            parameters.optimize
-                        );
+                        [utxoFetcher, fromAddress] = getCsvUtxoFetcher(currentAddress, 2n, optimize);
+                        fromAddresses = [fromAddress];
+                    } else if (parameters.sourceType === SourceType.CSV1) {
+                        [utxoFetcher, fromAddress] = getCsvUtxoFetcher(currentAddress, 1n, optimize);
+                        fromAddresses = [fromAddress];
                     } else if (parameters.sourceType === SourceType.P2WDA) {
-                        const p2wdaAddress = currentAddress.p2wda(Web3API.network);
-                        fromAddress = p2wdaAddress.address;
-                        witnessScript = p2wdaAddress.witnessScript;
-                        utxos = await Web3API.getAllUTXOsForAddresses(
-                            [fromAddress],
-                            BitcoinUtils.expandToDecimals(btcInputAmount, 8) + feeMin,
-                            undefined,
-                            parameters.optimize
-                        );
+                        [utxoFetcher, fromAddress] = getCsvUtxoFetcher(currentAddress, 1n, optimize);
+                        fromAddresses = [fromAddress];
                     } else if (parameters.sourceType === SourceType.COLD_STORAGE) {
                         // Cold storage withdrawal - use cold wallet keypair
+                        const utxos: UTXO[] = [];
                         const coldWalletData = await wallet.getColdStorageWallet();
                         const [coldWif, coldMldsaPrivateKey, coldChainCodeHex] = coldWalletData;
                         const coldChainCode = coldChainCodeHex ? fromHex(coldChainCodeHex) : undefined;
@@ -1143,17 +1236,7 @@ export default function TxOpnetConfirmScreen() {
                         );
 
                         fromAddress = parameters.from || '';
-                        utxos = await Web3API.getAllUTXOsForAddresses(
-                            [fromAddress],
-                            BitcoinUtils.expandToDecimals(btcInputAmount, 8) + feeMin,
-                            undefined,
-                            parameters.optimize
-                        );
-
-                        // Build and sign with cold wallet
-                        if (!utxos || utxos.length === 0) {
-                            throw new Error('No UTXOs available in cold storage');
-                        }
+                        [utxoFetcher, , fromAddresses] = getUtxoFetcher([fromAddress], optimize);
 
                         const coldFundingParams: IFundingTransactionParameters = {
                             amount: BitcoinUtils.expandToDecimals(btcInputAmount, 8),
@@ -1170,6 +1253,12 @@ export default function TxOpnetConfirmScreen() {
                             // Note: Change goes back to cold wallet (from address).
                             // User can make additional withdrawals for remaining funds.
                         };
+                        const fees = await fillTransactionUTXOs(currentWalletAddress, utxoFetcher, coldFundingParams, fromAddresses, optimize);
+
+                        // Build and sign with cold wallet
+                        if (!utxos || utxos.length === 0) {
+                            throw new Error('No UTXOs available in cold storage');
+                        }
 
                         const coldSignedTx = await Web3API.transactionFactory.createBTCTransfer(coldFundingParams);
 
@@ -1185,6 +1274,8 @@ export default function TxOpnetConfirmScreen() {
                             preSignedTxData = {
                                 type: 'bitcoin_transfer',
                                 createdAt: Date.now(),
+                                amountReducedBy: fees ? coldFundingParams.amount - fees.calculatedAmount : 0n,
+                                amountReducedTo: fees ? fees.calculatedAmount : undefined,
                                 transactions: decodedData.transactions,
                                 totalMiningFee: decodedData.totalMiningFee,
                                 opnetGasFee: 0n,
@@ -1226,12 +1317,8 @@ export default function TxOpnetConfirmScreen() {
                         }
 
                         // Fetch all UTXOs from source addresses
-                        utxos = await Web3API.getAllUTXOsForAddresses(
-                            parameters.sourceAddresses,
-                            undefined,
-                            undefined,
-                            true
-                        );
+                        [utxoFetcher] = getUtxoFetcher(parameters.sourceAddresses, true);
+                        const utxos = await utxoFetcher;
 
                         if (!utxos || utxos.length === 0) {
                             throw new Error('No UTXOs available for consolidation');
@@ -1375,7 +1462,8 @@ export default function TxOpnetConfirmScreen() {
                         }
 
                         // Fetch UTXOs from all rotation addresses
-                        utxos = await Web3API.getAllUTXOsForAddresses(allSourceAddresses, undefined, undefined, false);
+                        [utxoFetcher] = getUtxoFetcher(allSourceAddresses, false);
+                        const utxos = await utxoFetcher;
 
                         if (!utxos || utxos.length === 0) {
                             throw new Error('No UTXOs available in rotation addresses');
@@ -1550,26 +1638,13 @@ export default function TxOpnetConfirmScreen() {
                         }
                         return;
                     }
-
-                    if (witnessScript && utxos.length > 0) {
-                        utxos = utxos.map((utxo) => ({
-                            ...utxo,
-                            witnessScript: witnessScript
-                        }));
-                    }
-                } else {
-                    utxos = await Web3API.getAllUTXOsForAddresses(
-                        [fromAddress],
-                        BitcoinUtils.expandToDecimals(btcInputAmount, 8) + feeMin,
-                        undefined,
-                        parameters.optimize
-                    );
                 }
 
-                if (!utxos || utxos.length === 0) {
-                    throw new Error('No UTXOs available for funding transaction');
+                if (!utxoFetcher || !fromAddresses) {
+                    [utxoFetcher, , fromAddresses] = getUtxoFetcher([fromAddress], optimize);
                 }
 
+                const utxos: UTXO[] = [];
                 const fundingParams: IFundingTransactionParameters = {
                     amount: BitcoinUtils.expandToDecimals(btcInputAmount, 8),
                     utxos: utxos,
@@ -1585,6 +1660,11 @@ export default function TxOpnetConfirmScreen() {
                     splitInputsInto: parameters.splitInputsInto,
                     autoAdjustAmount: parameters.autoAdjustAmount ?? false
                 };
+                const fees = await fillTransactionUTXOs(currentWalletAddress, utxoFetcher, fundingParams, fromAddresses, optimize);
+
+                if (!utxos || utxos.length === 0) {
+                    throw new Error('No UTXOs available for funding transaction');
+                }
 
                 // Create and sign the transaction (without broadcasting)
                 const signedTx = await Web3API.transactionFactory.createBTCTransfer(fundingParams);
@@ -1601,6 +1681,8 @@ export default function TxOpnetConfirmScreen() {
                     preSignedTxData = {
                         type: 'bitcoin_transfer',
                         createdAt: Date.now(),
+                        amountReducedBy: fees ? fundingParams.amount - fees.calculatedAmount : 0n,
+                        amountReducedTo: fees ? fees.calculatedAmount : undefined,
                         transactions: decodedData.transactions,
                         totalMiningFee: decodedData.totalMiningFee,
                         opnetGasFee: 0n,
@@ -2571,6 +2653,15 @@ export default function TxOpnetConfirmScreen() {
         }
     };
 
+    const amountReducedBy = cachedBtcTx?.preSignedTxData?.amountReducedBy || false;
+    const amountReducedTo = cachedBtcTx?.preSignedTxData?.amountReducedTo || false;
+    const amountReducedToFormatted = BitcoinUtils.formatUnits(amountReducedTo || 0n, 8);
+    const showInformation = !!amountReducedBy
+
+    const submitDisabled = disabled || isSigning || !!signingError
+        || !feeRate || feeRate < 1
+        || (rawTxInfo.action === Action.SendBitcoin && !cachedBtcTx)
+
     return (
         <Layout>
             <Header onBack={handleCancel} title={`Confirm ${getActionLabel()}`} />
@@ -2892,6 +2983,53 @@ export default function TxOpnetConfirmScreen() {
                                     />
                                 </div>
                             )}
+                        </div>
+                    )}
+
+                    {/* Amount change info */}
+                    {showInformation && (
+                        <div
+                            style={{
+                                background: colors.containerBgFaded,
+                                borderRadius: '12px',
+                                padding: '14px',
+                                marginBottom: '12px'
+                            }}>
+                            <div
+                                style={{
+                                    fontSize: '12px',
+                                    fontWeight: 600,
+                                    color: colors.textFaded,
+                                    textTransform: 'uppercase',
+                                    letterSpacing: '0.5px',
+                                    marginBottom: '12px',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'space-between'
+                                }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                    <InfoCircleOutlined style={{ fontSize: 14, color: colors.main }} />
+                                    Information
+                                </div>
+                            </div>
+                            <div
+                                style={{
+                                    display: 'flex',
+                                    justifyContent: 'space-between',
+                                    alignItems: 'center',
+                                    padding: '10px',
+                                    background: colors.inputBg,
+                                    borderRadius: '8px'
+                                }}>
+                                {amountReducedBy && (
+                                    <span style={{ fontSize: '13px', color: colors.text }}>
+                                        Amount reduced by <span style={{ color: colors.main }}>{amountReducedBy}</span>{' '}
+                                        sat to cover fees. New sent amount is{' '}
+                                        <span style={{ color: colors.main }}>{amountReducedToFormatted}</span> {btcUnit}
+                                        .
+                                    </span>
+                                )}
+                            </div>
                         </div>
                     )}
 
@@ -3351,22 +3489,17 @@ export default function TxOpnetConfirmScreen() {
                         style={{
                             flex: 1,
                             padding: '12px',
-                            background: disabled || isSigning || signingError ? colors.buttonBg : colors.main,
+                            background: submitDisabled ? colors.buttonBg : colors.main,
                             border: 'none',
                             borderRadius: '10px',
-                            color: disabled || isSigning || signingError ? colors.textFaded : colors.background,
+                            color: submitDisabled ? colors.textFaded : colors.background,
                             fontSize: '14px',
                             fontWeight: 600,
-                            cursor: disabled || isSigning || signingError ? 'not-allowed' : 'pointer',
-                            opacity: disabled || isSigning || signingError ? 0.5 : 1,
+                            cursor: submitDisabled ? 'not-allowed' : 'pointer',
+                            opacity: submitDisabled ? 0.5 : 1,
                             transition: 'all 0.15s'
                         }}
-                        disabled={
-                            disabled ||
-                            isSigning ||
-                            !!signingError ||
-                            (rawTxInfo.action === Action.SendBitcoin && !cachedBtcTx)
-                        }
+                        disabled={submitDisabled}
                         onClick={async () => {
                             setDisabled(true);
                             switch (rawTxInfo.action) {
