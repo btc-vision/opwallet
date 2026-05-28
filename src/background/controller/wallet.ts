@@ -52,7 +52,7 @@ import {
     AddressRecentHistory,
     AddressSummary,
     AddressUserToSignInput,
-    AppSummary,
+    AppSummary, BaseUTXO,
     BitcoinBalance,
     DecodedPsbt,
     NetworkType,
@@ -3991,6 +3991,15 @@ export class WalletController {
 
                 usd_value: usdValue,
 
+                utxosByType: {
+                    main: allUTXOs.map(this.toBaseUTXO),
+                    csv1: [],
+                    csv2: [],
+                    csv3: [],
+                    csv75: [],
+                    p2wda: []
+                },
+
                 all_utxos_count: allUTXOs.length,
                 unspent_utxos_count: unspentUTXOs.length,
                 csv75_locked_utxos_count: 0,
@@ -4177,6 +4186,14 @@ export class WalletController {
 
         await addressRotationService.updateRotationState(account.pubkey, updates);
     };
+
+    private toBaseUTXO = (utxo: TransactionUTXO):BaseUTXO => {
+        return {
+            transactionId: utxo.transactionId,
+            value: utxo.value,
+            outputIndex: utxo.outputIndex,
+        };
+    }
 
     /**
      * Get the cold wallet address (INTERNAL - for consolidation only)
@@ -4458,6 +4475,15 @@ export class WalletController {
             consolidation_p2wda_unspent_amount: '0',
             usd_value: '0.00',
 
+            utxosByType: {
+                main: [],
+                csv1: [],
+                csv2: [],
+                csv3: [],
+                csv75: [],
+                p2wda: []
+            },
+
             all_utxos_count: 0,
             unspent_utxos_count: 0,
             csv75_locked_utxos_count: 0,
@@ -4582,6 +4608,15 @@ export class WalletController {
                     consolidation_p2wda_unspent_amount: '0',
 
                     usd_value: usdValue,
+
+                    utxosByType: {
+                        main: allUTXOs.map(this.toBaseUTXO),
+                        csv1: [],
+                        csv2: [],
+                        csv3: [],
+                        csv75: [],
+                        p2wda: []
+                    },
 
                     all_utxos_count: allUTXOs.length,
                     unspent_utxos_count: unspentUTXOs.length,
@@ -4769,6 +4804,15 @@ export class WalletController {
                 consolidation_p2wda_unspent_amount: BitcoinUtils.formatUnits(consolidationP2wdaUnspentAmount, 8),
 
                 usd_value: usdValue,
+
+                utxosByType: {
+                    main: allUTXOs.map(this.toBaseUTXO),
+                    csv1: csv1Data.utxos.map(this.toBaseUTXO),
+                    csv2: csv2Data.utxos.map(this.toBaseUTXO),
+                    csv3: csv3Data.utxos.map(this.toBaseUTXO),
+                    csv75: csv75Data.utxos.map(this.toBaseUTXO),
+                    p2wda: p2wdaUTXOs.map(this.toBaseUTXO)
+                },
 
                 all_utxos_count: allUTXOsCount,
                 unspent_utxos_count: unspentUTXOsCount,

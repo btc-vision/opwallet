@@ -38,6 +38,15 @@ export const DEFAULT_BITCOIN_BALANCE: BitcoinBalance = {
 
     usd_value: '0.00',
 
+    utxosByType: {
+        main: [],
+        csv1: [],
+        csv2: [],
+        csv3: [],
+        csv75: [],
+        p2wda: []
+    },
+
     all_utxos_count: 0,
     unspent_utxos_count: 0,
     csv75_locked_utxos_count: 0,
