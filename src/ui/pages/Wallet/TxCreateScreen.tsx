@@ -244,6 +244,26 @@ export default function TxCreateScreen() {
                     });
                 }
 
+                // Check CSV3 balance from the response
+                if (currentBalance.csv3_total_amount && currentBalance.csv3_total_amount !== '0') {
+                    const csv3UnlockedAmount = currentBalance.csv3_unlocked_amount || '0';
+                    const csv3LockedAmount = currentBalance.csv3_locked_amount || '0';
+                    const hasUnlocked = csv3UnlockedAmount !== '0';
+
+                    balances.push({
+                        type: SourceType.CSV3,
+                        label: 'CSV-3 Fast Access',
+                        address: csv3Address.address,
+                        balance: csv3UnlockedAmount,
+                        totalBalance: currentBalance.csv3_total_amount,
+                        lockedBalance: csv3LockedAmount,
+                        satoshis: BigInt(amountToSatoshis(csv3UnlockedAmount)),
+                        available: hasUnlocked,
+                        lockTime: 3,
+                        description: 'Anti-pinning protection (3 block lock)'
+                    });
+                }
+
                 // Check CSV2 balance from the response
                 if (currentBalance.csv2_total_amount && currentBalance.csv2_total_amount !== '0') {
                     const csv2UnlockedAmount = currentBalance.csv2_unlocked_amount || '0';
@@ -264,26 +284,6 @@ export default function TxCreateScreen() {
                     });
                 }
 
-                // Check CSV3 balance from the response
-                if (currentBalance.csv3_total_amount && currentBalance.csv3_total_amount !== '0') {
-                    const csv3UnlockedAmount = currentBalance.csv3_unlocked_amount || '0';
-                    const csv3LockedAmount = currentBalance.csv3_locked_amount || '0';
-                    const hasUnlocked = csv3UnlockedAmount !== '0';
-
-                    balances.push({
-                        type: SourceType.CSV3,
-                        label: 'CSV-3 Fast Access',
-                        address: csv3Address.address,
-                        balance: csv3UnlockedAmount,
-                        totalBalance: currentBalance.csv3_total_amount,
-                        lockedBalance: csv3LockedAmount,
-                        satoshis: BigInt(amountToSatoshis(csv3UnlockedAmount)),
-                        available: hasUnlocked,
-                        lockTime: 3,
-                        description: 'Anti-pinning protection (3 block lock)'
-                    });
-                }
-                
                 // Check CSV75 balance from the response
                 if (currentBalance.csv75_total_amount && currentBalance.csv75_total_amount !== '0') {
                     const csv75UnlockedAmount = currentBalance.csv75_unlocked_amount || '0';
