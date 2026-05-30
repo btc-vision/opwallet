@@ -63,16 +63,13 @@ export default tseslint.config(
             '@typescript-eslint/no-unused-expressions': 'error',
             '@typescript-eslint/prefer-promise-reject-errors': 'error',
             '@typescript-eslint/no-dynamic-delete': 'error',
-            '@typescript-eslint/no-unnecessary-type-assertion': 'error',
             '@typescript-eslint/no-redundant-type-constituents': 'error',
             '@typescript-eslint/no-useless-constructor': 'error',
             '@eslint-react/no-missing-key': 'warn',
             '@typescript-eslint/no-empty-function': 'off',
-            'react-hooks/exhaustive-deps': 'off',
+            //'react-hooks/exhaustive-deps': 'off',
             'preserve-caught-error': 'warn',
-            'no-useless-assignment': 'off',
-			'@typescript-eslint/no-unnecessary-type-arguments': 'off',
-			
+
 			// This is stupid. null and undefined is not the same thing. who ever made this eslint rule is stupid.
             'no-useless-assignment': 'off',
             '@typescript-eslint/no-unnecessary-type-arguments': 'off',

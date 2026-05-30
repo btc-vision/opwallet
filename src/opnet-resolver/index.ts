@@ -118,7 +118,7 @@ async function parseUrl(url: string): Promise<ParsedOpnetUrl> {
 async function resolveDomain(
     domain: string
 ): Promise<OpnetDomainRecord | OpnetProtocolErrorInfo> {
-    return sendMessage('opnetProtocol:resolveDomain', [domain]) as Promise<
+    return await sendMessage('opnetProtocol:resolveDomain', [domain]) as Promise<
         OpnetDomainRecord | OpnetProtocolErrorInfo
     >;
 }
@@ -129,7 +129,7 @@ async function fetchContent(
     contenthashType: ContenthashType,
     path: string
 ): Promise<ResolvedContent | OpnetProtocolErrorInfo> {
-    return sendMessage('opnetProtocol:fetchContent', [
+    return await sendMessage('opnetProtocol:fetchContent', [
         contenthash,
         contenthashType,
         path

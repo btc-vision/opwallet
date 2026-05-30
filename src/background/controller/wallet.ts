@@ -2341,7 +2341,7 @@ export class WalletController {
                     const found = keyring.accounts.find((v) => v.pubkey === currentAccountRaw.pubkey);
                     if (found) {
                         currentKeyring = keyring;
-                        preferenceService.setCurrentKeyringIndex(keyring.index);
+                        await preferenceService.setCurrentKeyringIndex(keyring.index);
                         break;
                     }
                 }
@@ -2353,7 +2353,7 @@ export class WalletController {
             for (const keyring of keyrings) {
                 if (keyring.type !== KEYRING_TYPE.Empty && keyring.accounts[0]) {
                     currentKeyring = keyring;
-                    preferenceService.setCurrentKeyringIndex(keyring.index);
+                    await preferenceService.setCurrentKeyringIndex(keyring.index);
                     break;
                 }
             }

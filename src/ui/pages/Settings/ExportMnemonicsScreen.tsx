@@ -7,7 +7,7 @@ import {
     SafetyOutlined,
     WarningOutlined
 } from '@ant-design/icons';
-import { useState } from 'react';
+import { useState, KeyboardEvent } from 'react';
 
 import { ADDRESS_TYPES } from '@/shared/constant';
 import { WalletKeyring } from '@/shared/types';
@@ -70,16 +70,16 @@ export default function ExportMnemonicsScreen() {
         }
     };
 
-    const handleOnKeyUp = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    const handleOnKeyUp = async (e: KeyboardEvent<HTMLInputElement>) => {
         if ('Enter' == e.key) {
-            void btnClick();
+            await btnClick();
         }
     };
 
     // Error is cleared inline in the onChange handler below
 
-    function copy(str: string) {
-        copyToClipboard(str);
+    async function copy(str: string) {
+        await copyToClipboard(str);
         tools.toastSuccess('Copied');
     }
 

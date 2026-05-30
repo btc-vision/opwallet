@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 
 import { ConnectedSite } from '@/background/service/permission';
 import { getCurrentTab } from '@/shared/utils/browser-tabs';
@@ -13,6 +13,7 @@ import {
     LinkOutlined
 } from '@ant-design/icons';
 import { Tabs } from 'webextension-polyfill';
+import { useInit } from '@/ui/hooks/useInit';
 
 const colors = {
     main: '#f37413',
@@ -50,8 +51,7 @@ function SiteItem({ site, isCurrentSite, onRemove }: SiteItemProps) {
 
     const getDomain = (url: string) => {
         try {
-            const domain = url.replace(/^https?:\/\//, '').replace(/\/.*$/, '');
-            return domain;
+            return url.replace(/^https?:\/\//, '').replace(/\/.*$/, '');
         } catch {
             return url;
         }
@@ -275,38 +275,24 @@ function SiteItem({ site, isCurrentSite, onRemove }: SiteItemProps) {
 
 export default function ConnectedSitesScreen() {
     const wallet = useWallet();
-    const [sites, setSites] = useState<ConnectedSite[]>([]);
-    const [currentOrigin, setCurrentOrigin] = useState<string>('');
-    const [loading, setLoading] = useState(true);
 
-    const getSites = async () => {
-        setLoading(true);
-        try {
-            // Get current tab origin
-            const currentTab = (await getCurrentTab()) as Tabs.Tab | undefined;
-            if (currentTab?.url) {
-                const origin = new URL(currentTab.url).origin;
-                setCurrentOrigin(origin);
-            }
+    const getSites = useCallback(async () => {
+        // Get current tab origin
+        const currentTab = (await getCurrentTab()) as Tabs.Tab | undefined;
+        const currentOrigin = currentTab?.url ? new URL(currentTab.url).origin : '';
 
-            // Get connected sites
-            const sites = await wallet.getConnectedSites();
-            setSites(sites);
-        } catch (error) {
-            console.error('Failed to load connected sites:', error);
-        } finally {
-            setLoading(false);
-        }
-    };
+        // Get connected sites
+        const sites = await wallet.getConnectedSites();
 
-    useEffect(() => {
-        getSites();
-    }, []);
+        return { sites, currentOrigin };
+    }, [wallet]);
+    const {loading, data, refresh} = useInit(getSites, {sites:[], currentOrigin:''});
+    const {sites, currentOrigin} = data;
 
     const handleRemove = async (origin: string) => {
         try {
             await wallet.removeConnectedSite(origin);
-            await getSites();
+            await refresh();
         } catch (error) {
             console.error('Failed to remove site:', error);
         }

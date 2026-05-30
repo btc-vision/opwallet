@@ -70,7 +70,7 @@ class OpnetResolverProvider extends EventEmitter {
     }
 
     async getAccounts(): Promise<string[]> {
-        return this._request({ method: 'getAccounts' }) as Promise<string[]>;
+        return await this._request({ method: 'getAccounts' }) as Promise<string[]>;
     }
 
     async disconnect(): Promise<void> {
@@ -84,19 +84,19 @@ class OpnetResolverProvider extends EventEmitter {
     // =========================================================================
 
     async getNetwork(): Promise<string> {
-        return this._request({ method: 'getNetwork' }) as Promise<string>;
+        return (await this._request({ method: 'getNetwork' })) as Promise<string>;
     }
 
     async switchNetwork(network: string): Promise<void> {
-        return this._request({ method: 'switchNetwork', params: { network } }) as Promise<void>;
+        return (await this._request({ method: 'switchNetwork', params: { network } })) as Promise<void>;
     }
 
     async getChain(): Promise<string> {
-        return this._request({ method: 'getChain' }) as Promise<string>;
+        return (await this._request({ method: 'getChain' })) as Promise<string>;
     }
 
     async switchChain(chain: string): Promise<void> {
-        return this._request({ method: 'switchChain', params: { chain } }) as Promise<void>;
+        return (await this._request({ method: 'switchChain', params: { chain } })) as Promise<void>;
     }
 
     // =========================================================================
@@ -104,11 +104,11 @@ class OpnetResolverProvider extends EventEmitter {
     // =========================================================================
 
     async getPublicKey(): Promise<string> {
-        return this._request({ method: 'getPublicKey' }) as Promise<string>;
+        return (await this._request({ method: 'getPublicKey' })) as Promise<string>;
     }
 
     async getMLDSAPublicKey(): Promise<string> {
-        return this._request({ method: 'getMLDSAPublicKey' }) as Promise<string>;
+        return (await this._request({ method: 'getMLDSAPublicKey' })) as Promise<string>;
     }
 
     // =========================================================================
@@ -116,7 +116,7 @@ class OpnetResolverProvider extends EventEmitter {
     // =========================================================================
 
     async getBalance(): Promise<{ confirmed: number; unconfirmed: number; total: number }> {
-        return this._request({ method: 'getBalance' }) as Promise<{
+        return (await this._request({ method: 'getBalance' })) as Promise<{
             confirmed: number;
             unconfirmed: number;
             total: number;
@@ -132,10 +132,10 @@ class OpnetResolverProvider extends EventEmitter {
     // =========================================================================
 
     async signMessage(message: string, type?: string): Promise<string> {
-        return this._request({
+        return (await this._request({
             method: 'signMessage',
             params: { message, type: type || 'ecdsa' }
-        }) as Promise<string>;
+        })) as Promise<string>;
     }
 
     async signData(data: string, type: string, originalMessage?: string): Promise<string> {
@@ -151,10 +151,10 @@ class OpnetResolverProvider extends EventEmitter {
         publicKey: string;
         securityLevel: number;
     }> {
-        return this._request({
+        return (await this._request({
             method: 'signMLDSAMessage',
             params: { message }
-        }) as Promise<{
+        })) as Promise<{
             signature: string;
             message: string;
             publicKey: string;
@@ -168,10 +168,10 @@ class OpnetResolverProvider extends EventEmitter {
         publicKey: string,
         securityLevel: number
     ): Promise<boolean> {
-        return this._request({
+        return (await this._request({
             method: 'verifyMLDSASignature',
             params: { message, signature, publicKey, securityLevel }
-        }) as Promise<boolean>;
+        })) as Promise<boolean>;
     }
 
     async verifyMessageOfBIP322Simple(
@@ -180,10 +180,10 @@ class OpnetResolverProvider extends EventEmitter {
         signature: string,
         network?: number
     ): Promise<boolean> {
-        return this._request({
+        return (await this._request({
             method: 'verifyMessageOfBIP322Simple',
             params: { address, message, signature, network }
-        }) as Promise<boolean>;
+        })) as Promise<boolean>;
     }
 
     // =========================================================================
@@ -191,10 +191,10 @@ class OpnetResolverProvider extends EventEmitter {
     // =========================================================================
 
     async pushTx(rawtx: string): Promise<string> {
-        return this._request({
+        return (await this._request({
             method: 'pushTx',
             params: { rawtx }
-        }) as Promise<string>;
+        })) as Promise<string>;
     }
 
     // =========================================================================
@@ -230,10 +230,10 @@ class OpnetResolverProvider extends EventEmitter {
     }
 
     async broadcast(transactions: unknown[]): Promise<unknown[]> {
-        return this._request({
+        return (await this._request({
             method: 'broadcast',
             params: transactions
-        }) as Promise<unknown[]>;
+        })) as Promise<unknown[]>;
     }
 
     // =========================================================================
@@ -241,7 +241,7 @@ class OpnetResolverProvider extends EventEmitter {
     // =========================================================================
 
     async getVersion(): Promise<string> {
-        return this._request({ method: 'getVersion' }) as Promise<string>;
+        return (await this._request({ method: 'getVersion' })) as Promise<string>;
     }
 }
 

@@ -1,5 +1,4 @@
-import { useMemo, useState } from 'react';
-import { useTranslation } from 'react-i18next';
+import { useState, KeyboardEvent } from 'react';
 
 import { Account } from '@/shared/types';
 import { Button, Content, Header, Input, Layout } from '@/ui/components';
@@ -13,8 +12,6 @@ interface LocationState {
 }
 
 export default function EditAccountNameScreen() {
-    const { t } = useTranslation();
-
     const { account } = useLocationState<LocationState>();
 
     const wallet = useWallet();
@@ -27,18 +24,14 @@ export default function EditAccountNameScreen() {
         window.history.go(-1);
     };
 
-    const handleOnKeyUp = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    const handleOnKeyUp = async (e: KeyboardEvent<HTMLInputElement>) => {
         if ('Enter' == e.key) {
-            handleOnClick();
+            await handleOnClick();
         }
     };
 
-    const validName = useMemo(() => {
-        if (alianName.length == 0) {
-            return false;
-        }
-        return true;
-    }, [alianName]);
+    const validName = alianName.length != 0;
+
     return (
         <Layout>
             <Header
@@ -61,9 +54,7 @@ export default function EditAccountNameScreen() {
                     disabled={!validName}
                     text="Change Account Name"
                     preset="primary"
-                    onClick={(e) => {
-                        handleOnClick();
-                    }}
+                    onClick={handleOnClick}
                 />
             </Content>
         </Layout>

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 
 import { ChainType, TypeChain, TypeChainGroup } from '@/shared/constant';
 import { customNetworksManager } from '@/shared/utils/CustomNetworksManager';
@@ -18,6 +18,7 @@ import {
     UpOutlined
 } from '@ant-design/icons';
 import { AddCustomNetworkModal } from './CustomNetworkModalComponent';
+import { useInit } from '@/ui/hooks/useInit';
 
 const colors = {
     main: '#f37413',
@@ -195,15 +196,9 @@ function ChainGroup(props: {
 }) {
     const group = props.group;
     const currentChain = useChain();
-    const [folded, setFolded] = useState(true);
 
-    useEffect(() => {
-        if (group.type === 'list') {
-            const hasSelected = group.items?.find((v) => v.enum == currentChain?.enum);
-            // eslint-disable-next-line react-hooks/set-state-in-effect -- Sync fold state with selection
-            setFolded(!hasSelected);
-        }
-    }, [currentChain, group.type, group.items]);
+    const hasSelectedItem = group.items?.some((item) => item.enum === currentChain?.enum);
+    const [folded, setFolded] = useState(!hasSelectedItem);
 
     if (group.type === 'single' && group.chain) {
         return (
@@ -229,8 +224,6 @@ function ChainGroup(props: {
     if (props.hideDisabled && (!visibleItems || visibleItems.length === 0)) {
         return null;
     }
-
-    const hasSelectedItem = group.items?.some((item) => item.enum === currentChain?.enum);
 
     return (
         <div
@@ -317,7 +310,7 @@ function ChainGroup(props: {
                             background: colors.containerBorder
                         }}
                     />
-                    {visibleItems.map((v, index) => (
+                    {visibleItems.map((v) => (
                         <ChainItem
                             key={v.enum}
                             inGroup
@@ -335,33 +328,27 @@ function ChainGroup(props: {
 export const SwitchChainModal = ({ onClose }: { onClose: () => void }) => {
     const wallet = useWallet();
     const [showAddNetwork, setShowAddNetwork] = useState(false);
-    const [customNetworks, setCustomNetworks] = useState<TypeChain<ChainType>[]>([]);
-    const [chainGroups, setChainGroups] = useState<TypeChainGroup[]>([]);
     const [hideDisabled, setHideDisabled] = useState(true);
     const tools = useTools();
 
-    const loadData = async () => {
-        try {
-            await customNetworksManager.reload();
+    const loadData = useCallback(async () => {
+        await customNetworksManager.reload();
 
-            const networks = await customNetworksManager.getAllCustomNetworks();
-            const chains = networks
-                .map((network) => customNetworksManager.getChain(network.chainType))
-                .filter(Boolean) as TypeChain<ChainType>[];
-            setCustomNetworks(chains);
+        const networks = await customNetworksManager.getAllCustomNetworks();
+        const customNetworks = networks
+            .map((network) => customNetworksManager.getChain(network.chainType))
+            .filter(Boolean) as TypeChain<ChainType>[];
 
-            const groups = await customNetworksManager.getChainGroups();
-            setChainGroups(groups);
-        } catch (error) {
-            console.error('Error loading chain data:', error);
-            tools.toastError('Failed to load network data');
-        }
-    };
+        const chainGroups = await customNetworksManager.getChainGroups();
 
-    useEffect(() => {
-        // eslint-disable-next-line react-hooks/set-state-in-effect -- Async data loading on mount
-        void loadData();
+        return {
+            customNetworks,
+            chainGroups
+        };
     }, []);
+    const { data } = useInit(loadData, { customNetworks: [], chainGroups: [] },
+        () => tools.toastError('Failed to load network data'));
+    const { customNetworks, chainGroups } = data;
 
     const handleDeleteCustomNetwork = async (chainType: ChainType) => {
         const customNetwork = await customNetworksManager.getCustomNetworkByChainType(chainType);

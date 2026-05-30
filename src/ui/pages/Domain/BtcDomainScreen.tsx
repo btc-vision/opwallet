@@ -270,7 +270,7 @@ export default function BtcDomainScreen() {
             }, 2000);
             return () => clearTimeout(timer);
         }
-    }, [pendingTxDomain]); // eslint-disable-line react-hooks/exhaustive-deps
+    }, [pendingTxDomain]);
 
     // Add domain to tracking
     const handleAddDomain = useCallback(async () => {

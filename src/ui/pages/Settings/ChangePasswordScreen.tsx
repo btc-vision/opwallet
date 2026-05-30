@@ -1,6 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
-import { useTranslation } from 'react-i18next';
-
+import { useMemo, useState } from 'react';
 import { Button, Column, Content, Header, Input, Layout, Row, Text } from '@/ui/components';
 import { useTools } from '@/ui/components/ActionComponent';
 import { useWallet } from '@/ui/utils';
@@ -10,7 +8,6 @@ import { isWalletError } from '@/shared/utils/errors';
 import { RouteTypes, useNavigate } from '../routeTypes';
 
 export default function ChangePasswordScreen() {
-    const { t } = useTranslation();
     const navigate = useNavigate();
     const [originPassword, setOriginPassword] = useState('');
     const [newPassword, setNewPassword] = useState('');
@@ -108,9 +105,7 @@ export default function ChangePasswordScreen() {
                         disabled={disabled}
                         text="Change Password"
                         preset="primary"
-                        onClick={() => {
-                            verify();
-                        }}
+                        onClick={verify}
                     />
                 </Column>
             </Content>

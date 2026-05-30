@@ -35,10 +35,10 @@ export class Web3Provider {
             (params as Record<string, unknown>).signer = undefined;
         }
 
-        return this.provider._request({
+        return (await this.provider._request({
             method: 'sendBitcoin',
             params
-        }) as Promise<BitcoinTransferBase>;
+        })) as Promise<BitcoinTransferBase>;
     }
 
     /**
@@ -92,7 +92,7 @@ export class Web3Provider {
      * @returns The Schnorr signature in hex format
      */
     public async signSchnorr(message: string): Promise<string> {
-        return this.provider.signData(message, 'schnorr') as Promise<string>;
+        return (await this.provider.signData(message, 'schnorr')) as Promise<string>;
     }
 
     public async getMLDSAPublicKey(): Promise<string> {

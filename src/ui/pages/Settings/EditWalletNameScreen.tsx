@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useState, KeyboardEvent } from 'react';
 
 import { WalletKeyring } from '@/shared/types';
 import { Button, Column, Content, Header, Input, Layout } from '@/ui/components';
@@ -22,18 +22,13 @@ export default function EditWalletNameScreen() {
         window.history.go(-1);
     };
 
-    const handleOnKeyUp = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    const handleOnKeyUp = async (e: KeyboardEvent<HTMLInputElement>) => {
         if ('Enter' == e.key) {
-            handleOnClick();
+            await handleOnClick();
         }
     };
 
-    const isValidName = useMemo(() => {
-        if (alianName.length == 0) {
-            return false;
-        }
-        return true;
-    }, [alianName]);
+    const isValidName =alianName.length != 0;
 
     return (
         <Layout>
@@ -58,9 +53,7 @@ export default function EditWalletNameScreen() {
                         disabled={!isValidName}
                         text="Change Wallet Name"
                         preset="primary"
-                        onClick={(e) => {
-                            handleOnClick();
-                        }}
+                        onClick={handleOnClick}
                     />
                 </Column>
             </Content>

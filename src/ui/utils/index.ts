@@ -80,7 +80,7 @@ export const copyToClipboard = async (textToCopy: string | number): Promise<void
             throw new Error('Copy command was unsuccessful');
         }
     } catch (err) {
-        throw new Error('Failed to copy text to clipboard');
+        throw new Error('Failed to copy text to clipboard', { cause: err });
     } finally {
         document.body.removeChild(textArea);
     }

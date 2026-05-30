@@ -21,7 +21,7 @@ export const extensionIsInTab = async () => {
 export const focusExtensionTab = async () => {
     const tab = await browserTabsGetCurrent();
     if (tab && tab.id && tab?.id !== browser.tabs.TAB_ID_NONE) {
-        browserTabsUpdate(tab.id, { active: true });
+        await browserTabsUpdate(tab.id, { active: true });
     }
 };
 

@@ -1,11 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { Column, Content, Header, Input, Layout } from '@/ui/components';
 import { AsyncImage } from '@/ui/components/AsyncImage';
 import { FeeRateBar } from '@/ui/components/FeeRateBar';
 import { RouteTypes, useNavigate } from '@/ui/pages/routeTypes';
 import { useCurrentAccount } from '@/ui/state/accounts/hooks';
-import { isValidAddress, useWallet } from '@/ui/utils';
+import { useWallet } from '@/ui/utils';
 import Web3API, { OwnedNFT } from '@/shared/web3/Web3API';
 import {
     InfoCircleOutlined,
@@ -16,6 +16,7 @@ import {
 } from '@ant-design/icons';
 import { AddressTypes, AddressVerificator } from '@btc-vision/transaction';
 import { Action, Features, NFTMetadata, SendNFTParameters } from '@/shared/interfaces/RawTxParameters';
+import { useInit } from '@/ui/hooks/useInit';
 
 const colors = {
     main: '#f37413',
@@ -55,36 +56,36 @@ export default function NFTSendScreen() {
     const [toAddress, setToAddress] = useState('');
     const [feeRate, setFeeRate] = useState(5);
     const [note, setNote] = useState('');
-    const [error, setError] = useState('');
-    const [disabled, setDisabled] = useState(true);
-    const [showP2PKWarning, setShowP2PKWarning] = useState(false);
-    const [showP2OPWarning, setShowP2OPWarning] = useState(false);
-    const [metadata, setMetadata] = useState<NFTMetadata | null>(null);
-    const [loadingMetadata, setLoadingMetadata] = useState(true);
 
-    // Initialize Web3API
-    useEffect(() => {
-        void (async () => {
-            const chain = await wallet.getChainType();
-            await Web3API.setNetwork(chain);
-        })();
-    }, [wallet]);
+    const loadNftMetadata = useCallback(async () => {
+        const chain = await wallet.getChainType();
+        await Web3API.setNetwork(chain);
+        return nft ? await (await fetch(nft.tokenURI)).json() as NFTMetadata : null;
+    }, [nft, wallet]);
+    const { loading: loadingMetadata, data: metadata } = useInit(loadNftMetadata, null);
 
-    // Load NFT metadata
-    useEffect(() => {
-        if (!nft) return;
+    const [error, showP2OPWarning] = useMemo(() => {
+        if (!toAddress) return ['', false];
 
-        fetch(nft.tokenURI)
-            .then((res) => res.json())
-            .then((data: object) => {
-                setMetadata(data as NFTMetadata);
-            })
-            .catch((err: unknown) => {
-                console.error('Failed to fetch NFT metadata:', err);
-            })
-            .finally(() => setLoadingMetadata(false));
-    }, [nft]);
+        const type = AddressVerificator.detectAddressType(toAddress, Web3API.network);
+        if (!type) {
+            return ['Invalid recipient address', false];
+        }
+        if (type === AddressTypes.P2OP) {
+            return ['Cannot send NFT to contract address', true];
+        }
 
+        if (feeRate <= 0) return ['', false];
+
+        // Check if sending to self
+        if (toAddress.toLowerCase() === currentAccount.address.toLowerCase()) {
+            return ['Cannot send NFT to yourself', false];
+        }
+        return [false, false];
+    }, [currentAccount.address, feeRate, toAddress]);
+    const disabled = error !== false;
+
+    /*
     // Validate form
     useEffect(() => {
         setError('');
@@ -105,25 +106,10 @@ export default function NFTSendScreen() {
 
         setDisabled(false);
     }, [toAddress, feeRate, currentAccount.address]);
+     */
 
     const handleAddressChange = (val: string) => {
-        setShowP2PKWarning(false);
-        setShowP2OPWarning(false);
         setToAddress(val);
-
-        if (!val) return;
-
-        const type = AddressVerificator.detectAddressType(val, Web3API.network);
-        if (type === null) {
-            setError('Invalid recipient address');
-            return;
-        }
-
-        if (type === AddressTypes.P2OP) {
-            setShowP2OPWarning(true);
-            setError('Cannot send NFT to contract address');
-            return;
-        }
     };
 
     const handleSend = () => {
@@ -295,38 +281,6 @@ export default function NFTSendScreen() {
                                 padding: '14px'
                             }}
                         />
-
-                        {showP2PKWarning && (
-                            <div
-                                style={{
-                                    marginTop: '8px',
-                                    padding: '8px',
-                                    background: `${colors.warning}15`,
-                                    border: `1px solid ${colors.warning}30`,
-                                    borderRadius: '8px',
-                                    display: 'flex',
-                                    gap: '6px'
-                                }}>
-                                <InfoCircleOutlined
-                                    style={{
-                                        fontSize: 12,
-                                        color: colors.warning,
-                                        flexShrink: 0,
-                                        marginTop: '2px'
-                                    }}
-                                />
-                                <div>
-                                    <span
-                                        style={{
-                                            fontSize: '11px',
-                                            color: colors.warning,
-                                            lineHeight: '1.4'
-                                        }}>
-                                        P2PK Address Detected - NFT will be sent to the associated Taproot address.
-                                    </span>
-                                </div>
-                            </div>
-                        )}
 
                         {showP2OPWarning && (
                             <div

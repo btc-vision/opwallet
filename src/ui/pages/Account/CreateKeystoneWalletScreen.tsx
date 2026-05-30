@@ -66,6 +66,7 @@ function Step1({ onNext }: { onNext: () => void }) {
                             height: '100%',
                             zIndex: 1
                         }}
+                     alt={'Keystone Product Image'}
                     />
                     <Column
                         justifyCenter
@@ -195,7 +196,7 @@ function Step3({
             }
             return;
         }
-        wallet.setShowSafeNotice(true);
+        await wallet.setShowSafeNotice(true);
         navigate(RouteTypes.MainScreen);
     };
 

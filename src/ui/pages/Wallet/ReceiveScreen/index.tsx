@@ -28,6 +28,7 @@ import { sizes } from '@/ui/theme/spacing';
 import { copyToClipboard, useWallet } from '@/ui/utils';
 import { Address, AddressTypes } from '@btc-vision/transaction';
 import { RECEIVE_CONFIG, ReceiveType } from '@/ui/pages/Wallet/receive/constants.js';
+import { useInit } from '@/ui/hooks/useInit';
 
 // =============================================================================
 // TYPES
@@ -106,6 +107,15 @@ function CopyableRow({
 // MAIN COMPONENT
 // =============================================================================
 
+const emptyAddresses = {
+    addressTypes: [],
+    csv1Address: '',
+    csv2Address: '',
+    csv3Address: '',
+    csv75Address: '',
+    tweakedPublicKey: ''
+}
+
 export default function ReceiveScreen() {
     const navigate = useNavigate();
     const location = useLocation();
@@ -141,20 +151,7 @@ export default function ReceiveScreen() {
     // =========================================================================
     // BTC-specific state
     const [showAddressTypeDropdown, setShowAddressTypeDropdown] = useState(false);
-    const [addressTypes, setAddressTypes] = useState<AddressTypeOption[]>([]);
     const [selectedAddressType, setSelectedAddressType] = useState<AddressTypeOption | null>(null);
-
-    // OP_20-specific state
-    const [quantumPublicKeyHash, setQuantumPublicKeyHash] = useState<string>('');
-    const [loadingQuantum, setLoadingQuantum] = useState(true);
-
-    // Additional address/key state (BTC mode only)
-    const [csv1Address, setCsv1Address] = useState<string>('');
-    const [csv2Address, setCsv2Address] = useState<string>('');
-    const [csv3Address, setCsv3Address] = useState<string>('');
-    const [csv75Address, setCsv75Address] = useState<string>('');
-    const [tweakedPublicKey, setTweakedPublicKey] = useState<string>('');
-    const [mldsaPublicKey, setMldsaPublicKey] = useState<string>('');
 
     // Computed BTC address (considering rotation)
     const btcAddress = rotationEnabled && currentRotationAddress ? currentRotationAddress.address : baseAddress;
@@ -174,111 +171,62 @@ export default function ReceiveScreen() {
      */
     const loadAddressTypes = useCallback(async () => {
         // Skip for OP_20 mode - no address type selection needed
-        if (isOP20) return;
+        if (isOP20 || !currentAccount.quantumPublicKeyHash || !currentAccount.pubkey)
+            return emptyAddresses;
 
-        try {
-            if (!currentAccount.quantumPublicKeyHash || !currentAccount.pubkey) {
-                return;
+        const networkType = await wallet.getNetworkType();
+        const chainType = await wallet.getChainType();
+        const network = getBitcoinLibJSNetwork(networkType, chainType);
+
+        const addr = Address.fromString(currentAccount.quantumPublicKeyHash, currentAccount.pubkey);
+
+        // Generate addresses for each type
+        const addressTypes: AddressTypeOption[] = [
+            {
+                value: AddressTypes.P2TR,
+                name: 'Taproot',
+                label: 'P2TR',
+                address: addr.p2tr(network)
+            },
+            {
+                value: AddressTypes.P2WPKH,
+                name: 'Native SegWit',
+                label: 'P2WPKH',
+                address: addr.p2wpkh(network)
+            },
+            {
+                value: AddressTypes.P2PKH,
+                name: 'Legacy',
+                label: 'P2PKH',
+                address: addr.p2pkh(network)
             }
+        ];
 
-            const networkType = await wallet.getNetworkType();
-            const chainType = await wallet.getChainType();
-            const network = getBitcoinLibJSNetwork(networkType, chainType);
+        // Set current keyring's address type as selected
+        const currentType = addressTypes.find((t) => t.value === currentKeyring.addressType);
+        setSelectedAddressType(currentType || addressTypes[0]);
 
-            const addr = Address.fromString(currentAccount.quantumPublicKeyHash, currentAccount.pubkey);
-
-            // Generate addresses for each type
-            const types: AddressTypeOption[] = [
-                {
-                    value: AddressTypes.P2TR,
-                    name: 'Taproot',
-                    label: 'P2TR',
-                    address: addr.p2tr(network)
-                },
-                {
-                    value: AddressTypes.P2WPKH,
-                    name: 'Native SegWit',
-                    label: 'P2WPKH',
-                    address: addr.p2wpkh(network)
-                },
-                {
-                    value: AddressTypes.P2PKH,
-                    name: 'Legacy',
-                    label: 'P2PKH',
-                    address: addr.p2pkh(network)
-                }
-            ];
-
-            setAddressTypes(types);
-
-            // Compute additional addresses/keys
-            setCsv1Address(addr.toCSV(1, network).address);
-            setCsv2Address(addr.toCSV(2, network).address);
-            setCsv3Address(addr.toCSV(3, network).address);
-            setCsv75Address(addr.toCSV(75, network).address);
-            setTweakedPublicKey(addr.tweakedToHex());
-
-            // Set current keyring's address type as selected
-            const currentType = types.find((t) => t.value === currentKeyring.addressType);
-            if (currentType) {
-                setSelectedAddressType(currentType);
-            } else {
-                setSelectedAddressType(types[0]);
-            }
-        } catch (error) {
-            console.error('Failed to load address types:', error);
-        }
+        return {
+            addressTypes,
+            csv1Address: addr.toCSV(1, network).address,
+            csv2Address: addr.toCSV(2, network).address,
+            csv3Address: addr.toCSV(3, network).address,
+            csv75Address: addr.toCSV(75, network).address,
+            tweakedPublicKey: addr.tweakedToHex(),
+        };
     }, [currentAccount, wallet, currentKeyring.addressType, isOP20]);
-
-    useEffect(() => {
-        void loadAddressTypes();
-    }, [loadAddressTypes]);
+    const { data} = useInit(loadAddressTypes, emptyAddresses);
+    const { addressTypes, csv1Address, csv2Address, csv3Address, csv75Address, tweakedPublicKey } = data;
 
     /**
      * Fetch MLDSA/quantum address for OP_20 mode
      * Only runs in OP_20 mode - skipped for BTC
      */
-    useEffect(() => {
-        // Skip for BTC mode - no MLDSA address needed
-        if (!isOP20) {
-            setLoadingQuantum(false);
-            return;
-        }
-
-        const fetchQuantumInfo = async () => {
-            setLoadingQuantum(true);
-            try {
-                const [mldsaHashPubKey] = await wallet.getWalletAddress();
-                if (mldsaHashPubKey) {
-                    setQuantumPublicKeyHash(`0x${mldsaHashPubKey}`);
-                }
-            } catch (e) {
-                console.error('Error fetching quantum public key:', e);
-            } finally {
-                setLoadingQuantum(false);
-            }
-        };
-
-        void fetchQuantumInfo();
-    }, [wallet, isOP20]);
-
-    /**
-     * Fetch MLDSA public key for BTC mode additional display
-     */
-    useEffect(() => {
-        if (isOP20) return;
-
-        const fetchMldsaKey = async () => {
-            try {
-                const mldsaKey = await wallet.getQuantumPublicKey();
-                if (mldsaKey) setMldsaPublicKey(`0x${mldsaKey}`);
-            } catch (e) {
-                console.error('Error fetching MLDSA public key:', e);
-            }
-        };
-
-        void fetchMldsaKey();
-    }, [wallet, isOP20]);
+    const loadQuantum = useCallback(async () => {
+        const mldsaKey = isOP20 && await wallet.getQuantumPublicKey();
+        return mldsaKey ? `0x${mldsaKey}` : ''
+    }, [isOP20, wallet]);
+    const { loading: loadingQuantum, data: mldsaPublicKey } = useInit(loadQuantum, '');
 
     // =========================================================================
     // HANDLERS
@@ -311,7 +259,7 @@ export default function ReceiveScreen() {
      */
     const getDisplayAddress = (): string => {
         if (isOP20) {
-            return quantumPublicKeyHash;
+            return currentAccount.quantumPublicKeyHash || '';
         }
         return selectedAddressType?.address || btcAddress;
     };

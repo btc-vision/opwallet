@@ -210,7 +210,7 @@ export default function AdvancedScreen() {
 
             setInit(true);
         };
-        initSettings();
+        void initSettings();
     }, []);
 
     if (!init) {

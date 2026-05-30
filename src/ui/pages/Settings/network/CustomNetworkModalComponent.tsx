@@ -13,7 +13,7 @@ import {
     InfoCircleOutlined,
     LinkOutlined
 } from '@ant-design/icons';
-import { useMemo, useState } from 'react';
+import { useMemo, useState, ReactNode } from 'react';
 
 const colors = {
     main: '#f37413',
@@ -62,7 +62,7 @@ const InputField = ({
     value: string;
     onChange: (value: string) => void;
     placeholder: string;
-    icon?: React.ReactNode;
+    icon?: ReactNode;
     required?: boolean;
     info?: string;
 }) => (
@@ -217,7 +217,7 @@ export const AddCustomNetworkModal = ({ onClose, onSuccess }: { onClose: () => v
         setChainType(ct);
         setShowChainDropdown(false);
 
-        // Auto-fill defaults from chain config
+        // Autofill defaults from chain config
         const config = CHAINS_MAP[ct];
         if (config) {
             setUnit(config.unit);

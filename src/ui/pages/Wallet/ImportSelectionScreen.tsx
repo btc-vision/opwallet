@@ -2,7 +2,7 @@ import { Column, Content, Header, Layout } from '@/ui/components';
 import { RouteTypes, useNavigate } from '@/ui/pages/routeTypes';
 import { useChain } from '@/ui/state/settings/hooks';
 import { DollarOutlined, PictureOutlined } from '@ant-design/icons';
-import { useState } from 'react';
+import { ReactNode, useState } from 'react';
 
 const colors = {
     main: '#f37413',
@@ -16,14 +16,14 @@ const colors = {
     containerBorder: '#303030'
 };
 
-export enum ImportType {
+enum ImportType {
     TOKEN = 'token',
     NFT = 'nft'
 }
 
 interface ImportOptionProps {
     type: ImportType;
-    icon: React.ReactNode;
+    icon: ReactNode;
     title: string;
     description: string;
     isHovered: boolean;
