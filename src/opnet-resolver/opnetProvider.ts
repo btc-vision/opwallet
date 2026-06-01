@@ -139,7 +139,7 @@ class OpnetResolverProvider extends EventEmitter {
     }
 
     async signData(data: string, type: string, originalMessage?: string): Promise<string> {
-        return this._request({
+        return await this._request({
             method: 'signData',
             params: { data, type, originalMessage }
         }) as Promise<string>;

@@ -5,8 +5,7 @@ import { Card, Column, Image, Row, Text } from '@/ui/components';
 import { DecodedDecreaseAllowance, DecodedIncreaseAllowance } from '@/ui/pages/OpNet/decoded/DecodedTypes';
 import { sliceAddress } from '@/ui/pages/OpNet/decoded/helpper';
 import { fontSizes } from '@/ui/theme/font';
-
-export const MAX_UINT256 = new BigNumber('0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff');
+import { MAX_UINT256 } from '@/ui/pages/OpNet/decoded/types';
 
 interface DecodedApproveProps {
     readonly decoded: DecodedIncreaseAllowance | DecodedDecreaseAllowance;

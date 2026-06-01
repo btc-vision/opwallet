@@ -9,10 +9,6 @@ import {
     isInteractionType
 } from '@/shared/types/InteractionType';
 import {
-    AddLiquidityDecoded,
-    AddLiquidityDecodedInfo
-} from '@/ui/pages/OpNet/decoded/motoswap/AddLiquidityDecodedInfo';
-import {
     AddLiquidityDecodedInfoNative,
     CancelListingDecodedInfo,
     CreatePoolDecodedInfo,
@@ -47,18 +43,15 @@ import {
     DecodedSetFees,
     DecodedSwap
 } from './DecodedTypes';
-import { DepositDecoded, DepositDecodedInfo } from './motochef/DepositDecodedInfo';
-import { HarvestDecoded, HarvestDecodedInfo } from './motochef/HarvestDecodedInfo';
-import { StakeBTCDecoded, StakeBTCDecodedInfo } from './motochef/StakeBTCDecodedInfo';
+import { DepositDecodedInfo } from './motochef/DepositDecodedInfo';
+import { HarvestDecodedInfo } from './motochef/HarvestDecodedInfo';
+import { StakeBTCDecodedInfo } from './motochef/StakeBTCDecodedInfo';
 import { UnstakeBTCDecodedInfo } from './motochef/UnstakeBTCDecodedInfo';
-import { WithdrawDecoded, WithdrawDecodedInfo } from './motochef/WithdrawDecodedInfo';
+import { WithdrawDecodedInfo } from './motochef/WithdrawDecodedInfo';
 import { ClaimRewardsDecodedInfo } from './motoswap/ClaimRewardsDecodedInfo';
-import {
-    RemoveLiquidityMotoswapDecoded,
-    RemoveLiquidityMotoswapDecodedInfo
-} from './motoswap/RemoveLiquidityMotoSwapDecodedInfo';
-import { StakeDecoded, StakeDecodedInfo } from './motoswap/StakeDecodedInfo';
-import { SwapTokensDecoded, SwapTokensDecodedInfo } from './motoswap/SwapTokensDecodedInfo';
+import { RemoveLiquidityMotoswapDecodedInfo } from './motoswap/RemoveLiquidityMotoSwapDecodedInfo';
+import { StakeDecodedInfo } from './motoswap/StakeDecodedInfo';
+import { SwapTokensDecodedInfo } from './motoswap/SwapTokensDecodedInfo';
 import { UnstakeDecodedInfo } from './motoswap/UnstakeDecodedInfo';
 import {
     AirdropDecodedInfo,
@@ -69,6 +62,17 @@ import {
     TransferFromDecodedInfo
 } from './op20/OP20';
 import { useEffect } from 'react';
+import { AddLiquidityDecodedInfo } from '@/ui/pages/OpNet/decoded/motoswap/AddLiquidityDecodedInfo';
+import {
+    AddLiquidityDecoded,
+    DepositDecoded,
+    HarvestDecoded,
+    RemoveLiquidityMotoswapDecoded,
+    StakeBTCDecoded,
+    StakeDecoded,
+    SwapTokensDecoded,
+    WithdrawDecoded
+} from '@/ui/pages/OpNet/decoded/types';
 
 interface DecodedProps {
     readonly decoded: Decoded;

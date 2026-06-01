@@ -317,7 +317,7 @@ class GatewayManager {
 
             return result.response;
         } catch (error) {
-            throw new Error('All gateways failed');
+            throw new Error('All gateways failed', { cause: error });
         }
     }
 

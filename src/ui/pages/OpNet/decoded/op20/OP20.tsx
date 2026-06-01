@@ -17,7 +17,7 @@ import {
 import { sliceAddress } from '@/ui/pages/OpNet/decoded/helpper';
 import BigNumber from 'bignumber.js';
 import { BitcoinUtils } from 'opnet';
-import { MAX_UINT256 } from './ApproveDecodedInfo';
+import { MAX_UINT256 } from '@/ui/pages/OpNet/decoded/types';
 
 interface CommonProps {
     readonly contractInfo: Partial<ContractInformation>;
