@@ -9,6 +9,7 @@ import { useChain, useChainType } from '@/ui/state/settings/hooks';
 import { CheckCircleOutlined, DollarOutlined, PlusCircleOutlined, SearchOutlined, StarOutlined } from '@ant-design/icons';
 import { Address, AddressTypes, AddressVerificator } from '@btc-vision/transaction';
 import { useEffect, useState } from 'react';
+import { DEFAULT_TOKEN_DECIMALS } from '@/shared/constant';
 
 const colors = {
     main: '#f37413',
@@ -147,7 +148,7 @@ export default function ImportTokenScreen() {
                     address: type === AddressTypes.P2OP ? address : Address.fromString(address).p2op(Web3API.network),
                     name: info.name || 'Unknown Token',
                     symbol: info.symbol || 'UNKNOWN',
-                    decimals: info.decimals || 18,
+                    decimals: info.decimals || DEFAULT_TOKEN_DECIMALS,
                     totalSupply: info.totalSupply?.toString() || '0',
                     icon: info.logo
                 });

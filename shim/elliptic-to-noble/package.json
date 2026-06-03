@@ -1,0 +1,41 @@
+{
+  "name": "@soatok/elliptic-to-noble",
+  "version": "9999.0.0",
+  "description": "Replace npm elliptic with noble-curves, including all dependencies.",
+  "main": "index.js",
+  "types": "index.d.ts",
+  "files": [
+    "index.js",
+    "index.d.ts",
+    "postinstall.js"
+  ],
+  "scripts": {
+    "test": "vitest",
+    "postinstall": "node postinstall.js"
+  },
+  "dependencies": {
+    "@noble/curves": "^2.0.1"
+  },
+  "overrides": {
+    "elliptic": "./"
+  },
+  "keywords": [
+    "elliptic",
+    "noble",
+    "secp256k1",
+    "ecdsa",
+    "ed25519",
+    "crypto",
+    "security",
+    "shim"
+  ],
+  "author": "Soatok Dreamseeker",
+  "license": "ISC",
+  "repository": "https://github.com/soatok/elliptic-to-noble",
+  "publishConfig": {
+    "access": "public"
+  },
+  "devDependencies": {
+    "vitest": "^4.0.10"
+  }
+}

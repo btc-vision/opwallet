@@ -11,6 +11,8 @@ import { useChain, useChainType } from '@/ui/state/settings/hooks';
 import { LoadingOutlined, PlusOutlined } from '@ant-design/icons';
 import { Address } from '@btc-vision/transaction';
 import React, { useEffect, useState } from 'react';
+import { Account } from '@/shared/types';
+import { ChainType } from '@/shared/constant';
 
 const colors = {
     main: '#f37413',
@@ -45,6 +47,7 @@ interface CacheItem<T> {
 class NFTCache {
     private metadata = new Map<string, CacheItem<NFTMetadata>>();
     private ownedNfts = new Map<string, CacheItem<OwnedNFT[]>>();
+    private ownedNftsCount = new Map<string, CacheItem<number>>();
 
     setMetadata(key: string, data: NFTMetadata, ttl: number = 7200000) {
         this.metadata.set(key, {
@@ -55,6 +58,14 @@ class NFTCache {
 
     setOwnedNfts(key: string, data: OwnedNFT[], ttl: number = 30000) {
         this.ownedNfts.set(key, {
+            data,
+            expiry: Date.now() + ttl
+        });
+    }
+
+    setOwnedNftsCount(account: Account, chainType: ChainType, address: string, data: number, ttl: number = 30000) {
+        const key = `opnet_nft_collections_count_${chainType}_${account.pubkey}_${address}`;
+        this.ownedNftsCount.set(key, {
             data,
             expiry: Date.now() + ttl
         });
@@ -79,6 +90,17 @@ class NFTCache {
         }
         return item.data;
     }
+
+    getOwnedNftsCount(account: Account, chainType: ChainType, address: string): number | undefined {
+        const storageKey = `opnet_nft_collections_count_${chainType}_${account.pubkey}_${address}`;
+        const item = this.ownedNftsCount.get(storageKey);
+        if (!item) return undefined;
+        if (Date.now() > item.expiry) {
+            this.ownedNftsCount.delete(storageKey);
+            return undefined;
+        }
+        return item.data;
+    }
 }
 
 const nftCache = new NFTCache();
@@ -90,7 +112,6 @@ export default function NFTTabScreen() {
     const chain = useChain();
 
     const [collections, setCollections] = useState<NFTCollection[]>([]);
-    const [collectionCounts, setCollectionCounts] = useState<Record<string, number>>({});
     const [selectedCollection, setSelectedCollection] = useState<NFTCollection | null>(null);
     const [ownedNFTs, setOwnedNFTs] = useState<OwnedNFT[]>([]);
     const [loadingNFTs, setLoadingNFTs] = useState(false);
@@ -102,46 +123,6 @@ export default function NFTTabScreen() {
         setCollections(updatedCollections);
         localStorage.setItem(storageKey, JSON.stringify(updatedCollections));
     };
-
-    useEffect(() => {
-        const fetchCollectionCounts = async () => {
-            // Skip if no quantum key (migration not complete)
-            if (!currentAccount.quantumPublicKeyHash) {
-                return;
-            }
-
-            const counts: Record<string, number> = {};
-            const userAddress = Address.fromString(currentAccount.quantumPublicKeyHash, currentAccount.pubkey);
-
-            for (const collection of collections) {
-                const cacheKey = `${collection.address}-${currentAccount.pubkey}`;
-                const cached = nftCache.getOwnedNfts(cacheKey);
-
-                if (cached) {
-                    counts[collection.address] = cached.length;
-                } else {
-                    try {
-                        const nfts = await Web3API.getOwnedNFTsForCollection(collection.address, userAddress);
-                        if (nfts && typeof nfts !== 'boolean') {
-                            counts[collection.address] = nfts.length;
-                            nftCache.setOwnedNfts(cacheKey, nfts);
-                        } else {
-                            counts[collection.address] = 0;
-                        }
-                    } catch (error) {
-                        console.error(`Failed to fetch NFTs for ${collection.address}:`, error);
-                        counts[collection.address] = 0;
-                    }
-                }
-            }
-
-            setCollectionCounts(counts);
-        };
-
-        if (collections.length > 0) {
-            void fetchCollectionCounts();
-        }
-    }, [collections, currentAccount.pubkey]);
 
     useEffect(() => {
         const storedCollections = localStorage.getItem(storageKey);
@@ -329,7 +310,6 @@ export default function NFTTabScreen() {
                                             collection={collection}
                                             onClick={() => handleCollectionClick(collection)}
                                             onDelete={() => handleDeleteCollection(collection.address)}
-                                            ownedCount={collectionCounts[collection.address]}
                                         />
                                     ))}
                                 </div>
@@ -392,13 +372,32 @@ function CollectionCard({
     collection,
     onClick,
     onDelete,
-    ownedCount
 }: {
     collection: NFTCollection;
     onClick: () => void;
     onDelete: () => void;
-    ownedCount?: number;
 }) {
+    const currentAccount = useCurrentAccount();
+    const chainType = useChainType();
+
+    const [ownedCount, setOwnedCount] = useState<number | undefined>(
+        nftCache.getOwnedNftsCount(currentAccount, chainType, collection.address)
+    );
+
+    useEffect(() => {
+        if (!currentAccount.quantumPublicKeyHash) return;
+        if (ownedCount !== undefined) return;
+
+        const userAddress = Address.fromString(currentAccount.quantumPublicKeyHash, currentAccount.pubkey);
+        Web3API.getOwnedNFTsCount(collection.address, userAddress)
+            .then(count => {
+                if (count !== undefined) {
+                    setOwnedCount(count);
+                    nftCache.setOwnedNftsCount(currentAccount, chainType, collection.address, count);
+                }
+            })
+    })
+
     const handleDelete = (e: React.MouseEvent) => {
         e.stopPropagation();
         if (window.confirm(`Remove ${collection.name} from your collections?`)) {

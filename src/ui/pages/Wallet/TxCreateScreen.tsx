@@ -31,6 +31,7 @@ import {
     WarningOutlined
 } from '@ant-design/icons';
 import { Address, AddressTypes, AddressVerificator } from '@btc-vision/transaction';
+import { BaseUTXO } from '@/shared/types';
 
 BigNumber.config({ EXPONENTIAL_AT: 256 });
 
@@ -59,6 +60,7 @@ interface AddressBalance {
     totalBalance?: string; // For CSV addresses, show total
     lockedBalance?: string; // For CSV addresses, show locked amount
     satoshis: bigint;
+    utxos: BaseUTXO[],
     available: boolean;
     lockTime?: number;
     description: string;
@@ -105,6 +107,7 @@ export default function TxCreateScreen() {
 
     const consolidationParams = (location.state as LocationState | undefined)?.consolidation;
     const splitParams = (location.state as LocationState | undefined)?.split;
+    const isSplitOrConsolation = !!consolidationParams || !!splitParams;
 
     const [disabled, setDisabled] = useState(true);
     const [splitInputsInto, setSplitInputsInto] = useState<number | undefined>(
@@ -114,7 +117,7 @@ export default function TxCreateScreen() {
     const [showP2PKWarning, setDisplayP2PKWarning] = useState(false);
     const [showP2OPWarning, setDisplayP2OPWarning] = useState(false);
     const [show32ByteError, setShow32ByteError] = useState(false);
-    const [autoAdjust, setAutoAdjust] = useState(false);
+    const [autoAdjust, setAutoAdjust] = useState(isSplitOrConsolation);
     const [note, setNote] = useState<string>('');
     const [checked, setChecked] = useState(false);
 
@@ -189,6 +192,7 @@ export default function TxCreateScreen() {
                         balance: totalRotationBTC,
                         satoshis: totalRotation,
                         available: totalRotation > 0n,
+                        utxos: [], // TODO, retrieve UTXOs for rotation
                         description: `Hot: ${satoshisToAmount(Number(totalHot))} + Cold: ${satoshisToAmount(Number(totalCold))} BTC`,
                         description2: 'Sends from all rotation addresses (hot + cold storage)'
                     });
@@ -201,6 +205,7 @@ export default function TxCreateScreen() {
                     address: account.address,
                     balance: currentBalance.btc_total_amount,
                     satoshis: BigInt(amountToSatoshis(currentBalance.btc_total_amount)),
+                    utxos: currentBalance.utxosByType.main,
                     available: true,
                     description: isRotationEnabled ? 'Active rotation address' : 'Standard wallet address'
                 });
@@ -218,6 +223,7 @@ export default function TxCreateScreen() {
                         balance: p2wdaAmount,
                         satoshis: satBal,
                         available: hasBalance,
+                        utxos: currentBalance.utxosByType.p2wda,
                         description: 'Pay-to-Witness-Data-Authentication (P2WDA)',
                         description2: 'Up to 75% cheaper fees for contract interactions (not for trading)'
                     });
@@ -237,29 +243,10 @@ export default function TxCreateScreen() {
                         totalBalance: currentBalance.csv1_total_amount,
                         lockedBalance: csv1LockedAmount,
                         satoshis: BigInt(amountToSatoshis(csv1UnlockedAmount)),
+                        utxos: currentBalance.utxosByType.csv1,
                         available: hasUnlocked,
                         lockTime: 1,
                         description: 'Anti-pinning protection (1 block lock)'
-                    });
-                }
-
-                // Check CSV3 balance from the response
-                if (currentBalance.csv3_total_amount && currentBalance.csv3_total_amount !== '0') {
-                    const csv3UnlockedAmount = currentBalance.csv3_unlocked_amount || '0';
-                    const csv3LockedAmount = currentBalance.csv3_locked_amount || '0';
-                    const hasUnlocked = csv3UnlockedAmount !== '0';
-
-                    balances.push({
-                        type: SourceType.CSV3,
-                        label: 'CSV-3 Fast Access',
-                        address: csv3Address.address,
-                        balance: csv3UnlockedAmount,
-                        totalBalance: currentBalance.csv3_total_amount,
-                        lockedBalance: csv3LockedAmount,
-                        satoshis: BigInt(amountToSatoshis(csv3UnlockedAmount)),
-                        available: hasUnlocked,
-                        lockTime: 3,
-                        description: 'Anti-pinning protection (3 block lock)'
                     });
                 }
 
@@ -278,8 +265,30 @@ export default function TxCreateScreen() {
                         lockedBalance: csv2LockedAmount,
                         satoshis: BigInt(amountToSatoshis(csv2UnlockedAmount)),
                         available: hasUnlocked,
+                        utxos: currentBalance.utxosByType.csv2,
                         lockTime: 2,
                         description: 'Anti-pinning protection (2 block lock)'
+                    });
+                }
+
+                // Check CSV3 balance from the response
+                if (currentBalance.csv3_total_amount && currentBalance.csv3_total_amount !== '0') {
+                    const csv3UnlockedAmount = currentBalance.csv3_unlocked_amount || '0';
+                    const csv3LockedAmount = currentBalance.csv3_locked_amount || '0';
+                    const hasUnlocked = csv3UnlockedAmount !== '0';
+
+                    balances.push({
+                        type: SourceType.CSV3,
+                        label: 'CSV-3 Fast Access',
+                        address: csv3Address.address,
+                        balance: csv3UnlockedAmount,
+                        totalBalance: currentBalance.csv3_total_amount,
+                        lockedBalance: csv3LockedAmount,
+                        satoshis: BigInt(amountToSatoshis(csv3UnlockedAmount)),
+                        available: hasUnlocked,
+                        utxos: currentBalance.utxosByType.csv3,
+                        lockTime: 3,
+                        description: 'Anti-pinning protection (3 block lock)'
                     });
                 }
 
@@ -298,6 +307,7 @@ export default function TxCreateScreen() {
                         lockedBalance: csv75LockedAmount,
                         satoshis: BigInt(amountToSatoshis(csv75UnlockedAmount)),
                         available: hasUnlocked,
+                        utxos: currentBalance.utxosByType.csv75,
                         lockTime: 75,
                         description: 'SHA1 mining rewards (75 block lock)'
                     });
@@ -354,11 +364,11 @@ export default function TxCreateScreen() {
                             case 'csv1':
                                 consolidationAmount = balance.consolidation_csv1_unlocked_amount || '0';
                                 break;
-                            case 'csv3':
-                                consolidationAmount = balance.consolidation_csv3_unlocked_amount || '0';
-                                break;
                             case 'csv2':
                                 consolidationAmount = balance.consolidation_csv2_unlocked_amount || '0';
+                                break;
+                            case 'csv3':
+                                consolidationAmount = balance.consolidation_csv3_unlocked_amount || '0';
                                 break;
                             case 'csv75':
                                 consolidationAmount = balance.consolidation_csv75_unlocked_amount || '0';
@@ -488,6 +498,18 @@ export default function TxCreateScreen() {
 
     const canShowUsd = chain.showPrice && btcPrice > 0;
 
+    // If include small UTXO is checked, all UTXOs, if not filter small UTXOs
+    const spendableBalance = useMemo(() => {
+        if (!selectedBalance) return 0n;
+        if (checked) return selectedBalance.satoshis;
+
+        const smallUTXOsValue = selectedBalance.utxos
+            .filter((v) => v.value < 1000n)
+            // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-conversion
+            .reduce((sum, utxo) => sum + BigInt(utxo.value), 0n);
+        return selectedBalance.satoshis - smallUTXOsValue;
+    }, [selectedBalance, checked])
+
     // Compute the display equivalent: when in USD mode show BTC, when in BTC mode show USD
     const conversionDisplay = useMemo(() => {
         if (!canShowUsd) return '';
@@ -573,7 +595,7 @@ export default function TxCreateScreen() {
             sourceType: selectedBalance.type,
             optimize: !checked,
             splitInputsInto: splitInputsInto,
-            autoAdjustAmount: true
+            autoAdjustAmount: autoAdjust
         };
 
         navigate(RouteTypes.TxOpnetConfirmScreen, { rawTxInfo: event });
@@ -1239,10 +1261,18 @@ export default function TxCreateScreen() {
                             <div
                                 style={{
                                     fontSize: '12px',
-                                    color: colors.success,
+                                    color: `${colors.success}b0`,
                                     marginTop: '2px'
                                 }}>
                                 {selectedBalance?.balance} {btcUnit} available
+                            </div>
+                            <div
+                                style={{
+                                    fontSize: '12px',
+                                    color: colors.success,
+                                    marginTop: '2px'
+                                }}>
+                                {BitcoinUtils.formatUnits(spendableBalance,8)} {btcUnit} spendable
                             </div>
                         </div>
                         <button
@@ -1565,7 +1595,9 @@ export default function TxCreateScreen() {
                                             // Switching to USD mode - pre-fill USD from current BTC amount
                                             setIsUsdMode(true);
                                             if (inputAmount && !isNaN(Number(inputAmount))) {
-                                                const usd = new BigNumber(inputAmount).multipliedBy(btcPrice).toFixed(2);
+                                                const usd = new BigNumber(inputAmount)
+                                                    .multipliedBy(btcPrice)
+                                                    .toFixed(2);
                                                 setUsdInputAmount(usd);
                                             } else {
                                                 setUsdInputAmount('');
@@ -1587,8 +1619,7 @@ export default function TxCreateScreen() {
                                         transition: 'all 0.15s'
                                     }}
                                     onMouseEnter={(e) => {
-                                        if (!isUsdMode)
-                                            e.currentTarget.style.background = colors.buttonHoverBg;
+                                        if (!isUsdMode) e.currentTarget.style.background = colors.buttonHoverBg;
                                     }}
                                     onMouseLeave={(e) => {
                                         if (!isUsdMode) e.currentTarget.style.background = colors.buttonBg;
@@ -1661,7 +1692,7 @@ export default function TxCreateScreen() {
                                 onClick={async () => {
                                     if (selectedBalance) {
                                         setAutoAdjust(true);
-                                        let maxBtcAmount = selectedBalance.balance;
+                                        let maxBtcAmount = BitcoinUtils.formatUnits(spendableBalance, 8);
                                         // In consolidation mode, use the consolidation amount (first 1400 UTXOs)
                                         if (consolidationParams?.enabled) {
                                             const balance = await wallet.getAddressBalance(
@@ -1670,37 +1701,29 @@ export default function TxCreateScreen() {
                                             );
                                             switch (consolidationParams.selectedType) {
                                                 case 'csv1':
-                                                    maxBtcAmount =
-                                                        balance.consolidation_csv1_unlocked_amount || '0';
+                                                    maxBtcAmount = balance.consolidation_csv1_unlocked_amount || '0';
                                                     break;
                                                 case 'csv3':
-                                                    maxBtcAmount =
-                                                        balance.consolidation_csv3_unlocked_amount || '0';
+                                                    maxBtcAmount = balance.consolidation_csv3_unlocked_amount || '0';
                                                     break;
                                                 case 'csv2':
-                                                    maxBtcAmount =
-                                                        balance.consolidation_csv2_unlocked_amount || '0';
+                                                    maxBtcAmount = balance.consolidation_csv2_unlocked_amount || '0';
                                                     break;
                                                 case 'csv75':
-                                                    maxBtcAmount =
-                                                        balance.consolidation_csv75_unlocked_amount || '0';
+                                                    maxBtcAmount = balance.consolidation_csv75_unlocked_amount || '0';
                                                     break;
                                                 case 'p2wda':
-                                                    maxBtcAmount =
-                                                        balance.consolidation_p2wda_unspent_amount || '0';
+                                                    maxBtcAmount = balance.consolidation_p2wda_unspent_amount || '0';
                                                     break;
                                                 case 'unspent':
                                                 default:
-                                                    maxBtcAmount =
-                                                        balance.consolidation_unspent_amount || '0';
+                                                    maxBtcAmount = balance.consolidation_unspent_amount || '0';
                                                     break;
                                             }
                                         }
                                         setUiState({ inputAmount: maxBtcAmount });
                                         if (isUsdMode && btcPrice > 0) {
-                                            const usd = new BigNumber(maxBtcAmount)
-                                                .multipliedBy(btcPrice)
-                                                .toFixed(2);
+                                            const usd = new BigNumber(maxBtcAmount).multipliedBy(btcPrice).toFixed(2);
                                             setUsdInputAmount(usd);
                                         }
                                     }
@@ -1849,6 +1872,92 @@ export default function TxCreateScreen() {
                             </div>
                         )}
                     </div>
+
+                    {/* Auto-adjust amount Option */}
+                    {!isSplitOrConsolation && (
+                        <div
+                            style={{
+                                background: autoAdjust ? `${colors.warning}10` : colors.containerBgFaded,
+                                borderRadius: '12px',
+                                padding: '14px',
+                                marginBottom: '12px',
+                                border: autoAdjust ? `1px solid ${colors.warning}30` : 'none',
+                                transition: 'all 0.2s'
+                            }}>
+                            <label
+                                style={{
+                                    display: 'flex',
+                                    alignItems: 'flex-start',
+                                    gap: '12px',
+                                    cursor: 'pointer',
+                                    userSelect: 'none'
+                                }}
+                                onClick={(e) => {
+                                    e.preventDefault();
+                                    setAutoAdjust(!autoAdjust);
+                                }}>
+                                <div
+                                    style={{
+                                        width: '20px',
+                                        height: '20px',
+                                        minWidth: '20px',
+                                        marginTop: '1px',
+                                        borderRadius: '6px',
+                                        border: autoAdjust
+                                            ? `2px solid ${colors.warning}`
+                                            : '2px solid rgba(255, 255, 255, 0.2)',
+                                        background: autoAdjust ? colors.warning : 'rgba(255, 255, 255, 0.04)',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        transition: 'all 0.2s ease',
+                                        cursor: 'pointer',
+                                        boxShadow: autoAdjust ? `0 0 8px ${colors.warning}40` : 'none'
+                                    }}>
+                                    {autoAdjust && (
+                                        <svg
+                                            width="12"
+                                            height="12"
+                                            viewBox="0 0 12 12"
+                                            fill="none"
+                                            style={{ transition: 'opacity 0.15s ease' }}>
+                                            <path
+                                                d="M2.5 6L5 8.5L9.5 3.5"
+                                                stroke="#000"
+                                                strokeWidth="2"
+                                                strokeLinecap="round"
+                                                strokeLinejoin="round"
+                                            />
+                                        </svg>
+                                    )}
+                                </div>
+                                <div style={{ flex: 1 }}>
+                                    <div
+                                        style={{
+                                            fontSize: '12px',
+                                            fontWeight: 600,
+                                            color: autoAdjust ? colors.warning : colors.textFaded,
+                                            textTransform: 'uppercase',
+                                            letterSpacing: '0.5px',
+                                            marginBottom: '6px'
+                                        }}>
+                                        Automatically adjust amount
+                                    </div>
+
+                                    {/* Additional Info */}
+                                    <div
+                                        style={{
+                                            fontSize: '10px',
+                                            color: colors.textFaded,
+                                            lineHeight: '1.4'
+                                        }}>
+                                        This option will reduce amount if there is not enough UTXOs to cover the amount
+                                        and the transaction fees.
+                                    </div>
+                                </div>
+                            </label>
+                        </div>
+                    )}
 
                     {/* Small UTXOs Consolidation Option */}
                     <div

@@ -207,6 +207,7 @@
     },
     "overrides": {
         "qrcode.react": "^4.2.0",
+	"elliptic": "npm:@soatok/elliptic-to-noble@9999.0.0",
         "eslint-plugin-react-hooks": {
             "eslint": "$eslint"
         },
@@ -225,8 +226,10 @@
         "typescript": {
             "typescript": "$typescript"
         },
+	"uuid": "^11.1.1",
         "vite": {
             "esbuild": "$esbuild"
-        }
+        },
+	"ws": "^8.21.0"
     }
 }

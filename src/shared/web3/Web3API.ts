@@ -11,7 +11,7 @@ import {
     UTXOs
 } from 'opnet';
 
-import { ChainId as WalletChainId, ChainType } from '@/shared/constant';
+import { ChainId as WalletChainId, ChainType, DEFAULT_TOKEN_DECIMALS } from '@/shared/constant';
 import { NetworkType } from '@/shared/types';
 import { customNetworksManager } from '@/shared/utils/CustomNetworksManager';
 import { contractLogoManager } from '@/shared/web3/contracts-logo/ContractLogoManager';
@@ -109,6 +109,13 @@ export function bigIntToDecimal(amount: bigint, decimal: number): string {
     return number.decimalPlaces(decimal).toPrecision();
 }
 
+type ConstantTokenInfo = {
+    name: string;
+    symbol: string;
+    decimals: number;
+    icon: string;
+};
+
 class Web3API {
     public readonly INVALID_PUBKEY_ERROR: string =
         'Please use the recipient token deposit address (aka "public key").\nOP_NET was unable to automatically find the public key associated with the address you are trying to send to because this address never spent an UTXO before.';
@@ -119,6 +126,8 @@ class Web3API {
     public transactionFactory: TransactionFactory = new TransactionFactory();
 
     private currentChain?: ChainType;
+
+    private infoCache: Map<string, ConstantTokenInfo> = new Map();
 
     //constructor() {
     // Initialize with default, will be set properly when setNetwork is called
@@ -243,6 +252,31 @@ class Web3API {
         return !!AddressVerificator.detectAddressType(address, this.network);
     }
 
+    /**
+     * Get contract metadata (name, symbol, decimals, etc.)
+     * @param contract - Contract
+     * @returns Constant contract information from cache or newly fetched
+     */
+    private async getConstantContractInfo(contract: IOP20Contract): Promise<ConstantTokenInfo> {
+        let info: ConstantTokenInfo | undefined = this.infoCache.get(contract.p2op);
+        if (!info) {
+            const results = await Promise.all([
+                contract.name(),
+                contract.symbol(),
+                contract.decimals(),
+                contract.icon()
+            ]);
+            const name = results[0]?.properties?.name ?? 'Unknown';
+            const symbol = results[1]?.properties?.symbol ?? 'UNKNOWN';
+            const decimals = results[2]?.properties?.decimals ?? 0;
+            const icon = results[3]?.properties?.icon || '';
+
+            info = { name, symbol, decimals, icon };
+            this.infoCache.set(contract.p2op, info);
+        }
+        return info;
+    }
+
     public async queryDecimal(address: string): Promise<number> {
         const genericContract: IOP20Contract = getContract<IOP20Contract>(
             address,
@@ -273,25 +307,18 @@ class Web3API {
                 this.network
             );
 
-            const results = await Promise.all([
-                genericContract.metadata(),
+            const [info, supply, icon]= await Promise.all([
+                this.getConstantContractInfo(genericContract),
+                genericContract.totalSupply(),
                 contractLogoManager.getContractLogo(addressP2OP)
             ]);
 
-            const metadata = results[0].properties;
-
-            const name = metadata.name ?? this.getContractName(addressP2OP);
-            const symbol = metadata.symbol ?? 'UNKNOWN';
-            const decimals = metadata.decimals ?? 0;
-            const totalSupply = metadata.totalSupply ?? 0n;
-
-            const logo = metadata.icon || results[1];
             return {
-                name,
-                symbol,
-                decimals,
-                logo,
-                totalSupply
+                name: info.name ?? this.getContractName(addressP2OP),
+                symbol: info.symbol ?? 'UNKNOWN',
+                decimals: info.decimals ?? 0,
+                logo: info.icon || icon,
+                totalSupply: supply.properties.totalSupply ?? 0n
             };
         } catch (e) {
             console.warn(`Couldn't query name/symbol/decimals/logo for contract ${address}:`, e);
@@ -299,6 +326,55 @@ class Web3API {
                 return false;
             }
             return;
+        }
+    }
+
+    /*
+     * Try to get contract decimals
+     * If contract have a OP20 parts, decimals default to 18 if not specified
+     * else it defaults to 0 as the contract should be pure OP721
+     */
+    public async getDecimals(collectionAddress: string): Promise<number> {
+        try {
+            let addressP2OP: string = collectionAddress;
+            if (collectionAddress.startsWith('0x')) {
+                addressP2OP = Address.fromString(collectionAddress).p2op(this.network);
+            }
+
+            const tokenContract: IOP20Contract = getContract<IOP20Contract>(
+                addressP2OP,
+                OP_20_ABI,
+                this.provider,
+                this.network
+            );
+            const decimals = await tokenContract.decimals();
+            return decimals?.properties?.decimals || DEFAULT_TOKEN_DECIMALS;
+        } catch (e) {
+            return 0;
+        }
+    }
+
+    public async getOwnedNFTsCount(collectionAddress: string, ownerAddress: Address): Promise<number | undefined> {
+        try {
+            let addressP2OP: string = collectionAddress;
+            if (collectionAddress.startsWith('0x')) {
+                addressP2OP = Address.fromString(collectionAddress).p2op(this.network);
+            }
+
+            const nftContract: IExtendedOP721 = getContract<IExtendedOP721>(
+                addressP2OP,
+                EXTENDED_OP721_ABI,
+                this.provider,
+                this.network
+            );
+
+            const decimals = await this.getDecimals(addressP2OP);
+            const balance = await nftContract.balanceOf(ownerAddress);
+            const divider = Math.pow(10, decimals);
+            return Number(balance?.properties?.balance || 0) / divider;
+        } catch (e) {
+            console.log('getOwnedNFTsCount error getting balance', e);
+            return undefined;
         }
     }
 
@@ -319,10 +395,13 @@ class Web3API {
                 this.network
             );
 
-            const balance = await nftContract.balanceOf(ownerAddress);
+            const balanceOf = await nftContract.balanceOf(ownerAddress);
+            const decimals = await this.getDecimals(addressP2OP);
+            const divider = Math.pow(10, decimals);
+            const balance = Number(balanceOf?.properties?.balance || 0) / divider;
 
             const ownedNFTs: Promise<TokenOfOwnerByIndex>[] = [];
-            for (let i = 0n; i < balance.properties.balance; i++) {
+            for (let i = 0n; i < balance; i++) {
                 ownedNFTs.push(nftContract.tokenOfOwnerByIndex(ownerAddress, i));
             }
 

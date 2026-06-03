@@ -101,6 +101,9 @@ export interface PreSignedTransactionData {
     createdAt: number;
     // Parsed transactions for bowtie display
     transactions: ParsedTransaction[];
+    // Amount change information
+    amountReducedBy?: bigint;
+    amountReducedTo?: bigint;
     // Total fees breakdown
     totalMiningFee: bigint; // inputs - outputs across all TXs
     opnetGasFee: bigint; // First output of interaction TX (epoch miner)

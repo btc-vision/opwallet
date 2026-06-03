@@ -130,6 +130,15 @@ export function useFetchBalanceCallback() {
 
             usd_value: accountBalance.usd_value,
 
+            utxosByType: {
+                main: [...accountBalance.utxosByType.main],
+                csv1: [...accountBalance.utxosByType.csv1],
+                csv2: [...accountBalance.utxosByType.csv2],
+                csv3: [...accountBalance.utxosByType.csv3],
+                csv75: [...accountBalance.utxosByType.csv75],
+                p2wda: [...accountBalance.utxosByType.p2wda],
+            },
+
             all_utxos_count: accountBalance.all_utxos_count,
             unspent_utxos_count: accountBalance.unspent_utxos_count,
             csv75_locked_utxos_count: accountBalance.csv75_locked_utxos_count,
