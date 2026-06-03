@@ -22,6 +22,7 @@ import {
 import { RecordTransactionInput, TransactionType } from '@/shared/types/TransactionHistory';
 import { decodeBitcoinTransfer, DecodedPreSignedData, decodeSignedInteractionReceipt } from '@/shared/utils/txDecoder';
 import Web3API from '@/shared/web3/Web3API';
+import web3API from '@/shared/web3/Web3API';
 import { Column, Content, Footer, Header, Layout, OPNetTxFlowPreview, Text } from '@/ui/components';
 import { FeeRateBar } from '@/ui/components/FeeRateBar';
 import { ContextType } from '@/ui/components/ActionComponent/ActionComponentContext';
@@ -71,10 +72,10 @@ import type { UniversalSigner } from '@btc-vision/ecpair';
 import { createSatoshi } from '@btc-vision/ecpair';
 import BigNumber from 'bignumber.js';
 import {
+    AddressesInfo,
     Airdrop,
     BitcoinAbiTypes,
     BitcoinInterfaceAbi,
-    AddressesInfo,
     BitcoinUtils,
     CallResult,
     EXTENDED_OP721_ABI,
@@ -93,7 +94,6 @@ import { BTC_NAME_RESOLVER_ABI } from '@/shared/web3/abi/BTC_NAME_RESOLVER_ABI';
 import { IBtcNameResolverContract } from '@/shared/web3/interfaces/IBtcNameResolverContract';
 import { Dispatch, SetStateAction, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { RouteTypes, useNavigate } from '../routeTypes';
-import web3API from '@/shared/web3/Web3API';
 import { Account } from '@/shared/types';
 import { UTXO_CONFIG } from '@/shared/config';
 
@@ -905,23 +905,15 @@ export default function TxOpnetConfirmScreen() {
                         );
 
                         const swapAmountIn =
-                            typeof rawTxInfo.amountIn === 'bigint'
-                                ? rawTxInfo.amountIn
-                                : BigInt(rawTxInfo.amountIn);
+                            typeof rawTxInfo.amountIn === 'bigint' ? rawTxInfo.amountIn : BigInt(rawTxInfo.amountIn);
 
-                        const currentAllowance = await tokenInContract.allowance(
-                            userWallet.address,
-                            routerAddr
-                        );
+                        const currentAllowance = await tokenInContract.allowance(userWallet.address, routerAddr);
 
                         if (currentAllowance.properties.remaining < swapAmountIn) {
                             setOpenLoading(true);
 
                             const deficit = swapAmountIn - currentAllowance.properties.remaining;
-                            const approveSimulation = await tokenInContract.increaseAllowance(
-                                routerAddr,
-                                deficit
-                            );
+                            const approveSimulation = await tokenInContract.increaseAllowance(routerAddr, deficit);
 
                             const approveSignedTx = await approveSimulation.signTransaction(interactionParameters);
                             const approveReceipt = await approveSimulation.sendPresignedTransaction(approveSignedTx);
@@ -937,18 +929,16 @@ export default function TxOpnetConfirmScreen() {
 
                         // Resolve all addresses in the swap path
                         const swapPath = rawTxInfo.path ?? [rawTxInfo.tokenIn, rawTxInfo.tokenOut];
-                        const pubKeyInfo: AddressesInfo =
-                            await Web3API.provider.getPublicKeysInfo(swapPath, true);
+                        const pubKeyInfo: AddressesInfo = await Web3API.provider.getPublicKeysInfo(swapPath, true);
                         const resolvedPath: Address[] = swapPath.map((addr) => pubKeyInfo[addr]);
 
-                        const routerContract: IMotoswapRouterContract =
-                            getContract<IMotoswapRouterContract>(
-                                routerAddr,
-                                MOTOSWAP_ROUTER_ABI,
-                                Web3API.provider,
-                                Web3API.network,
-                                userWallet.address
-                            );
+                        const routerContract: IMotoswapRouterContract = getContract<IMotoswapRouterContract>(
+                            routerAddr,
+                            MOTOSWAP_ROUTER_ABI,
+                            Web3API.provider,
+                            Web3API.network,
+                            userWallet.address
+                        );
 
                         const amountOutMin =
                             typeof rawTxInfo.amountOutMin === 'bigint'
@@ -958,14 +948,13 @@ export default function TxOpnetConfirmScreen() {
                         const currentBlock = await Web3API.provider.getBlockNumber();
                         const deadline = currentBlock + 1000n;
 
-                        simulation =
-                            await routerContract.swapExactTokensForTokensSupportingFeeOnTransferTokens(
-                                swapAmountIn,
-                                amountOutMin,
-                                resolvedPath,
-                                userWallet.address,
-                                deadline
-                            );
+                        simulation = await routerContract.swapExactTokensForTokensSupportingFeeOnTransferTokens(
+                            swapAmountIn,
+                            amountOutMin,
+                            resolvedPath,
+                            userWallet.address,
+                            deadline
+                        );
 
                         symbol = rawTxInfo.tokens.map((t) => t?.symbol ?? '?').join(' -> ');
                         break;
@@ -1056,7 +1045,11 @@ export default function TxOpnetConfirmScreen() {
         };
     }, [rawTxInfo, wallet, getOPNetWallet, feeRate]);
 
-    const getCsvUtxoFetcher = (currentAddress:Address, duration: CsvDuration, optimize?: boolean): [Promise<UTXO[]>, string] => {
+    const getCsvUtxoFetcher = (
+        currentAddress: Address,
+        duration: CsvDuration,
+        optimize?: boolean
+    ): [Promise<UTXO[]>, string] => {
         const ip2wshAddress = duration
             ? currentAddress.toCSV(duration, web3API.network)
             : currentAddress.p2wda(web3API.network);
@@ -1068,15 +1061,17 @@ export default function TxOpnetConfirmScreen() {
             .then((utxos) => (witnessScript ? utxos.map((utxo) => ({ ...utxo, witnessScript })) : utxos));
 
         return [utxoFetcher, fromAddress];
-    }
+    };
 
-    const getUtxoFetcher = (fromAddresses:string[], optimize: boolean|undefined):  [Promise<UTXO[]>, string, string[]] => {
-        const utxoFetcher = web3API
-            .getAllUTXOsForAddresses(fromAddresses, undefined, undefined, optimize);
-        return [utxoFetcher, fromAddresses[0], fromAddresses]
-    }
+    const getUtxoFetcher = (
+        fromAddresses: string[],
+        optimize: boolean | undefined
+    ): [Promise<UTXO[]>, string, string[]] => {
+        const utxoFetcher = web3API.getAllUTXOsForAddresses(fromAddresses, undefined, undefined, optimize);
+        return [utxoFetcher, fromAddresses[0], fromAddresses];
+    };
 
-    const getFeeUtxoFetchers = (account:Account, optimize:boolean|undefined)=> {
+    const getFeeUtxoFetchers = (account: Account, optimize: boolean | undefined) => {
         const zeroHash = '0x0000000000000000000000000000000000000000000000000000000000000000';
         const address = Address.fromString(zeroHash, account.pubkey);
         const network = Web3API.network;
@@ -1090,7 +1085,7 @@ export default function TxOpnetConfirmScreen() {
         ];
 
         return results;
-    }
+    };
 
     /*
      * Loop through all UTXOs and add them one by one to transaction.
@@ -1109,11 +1104,11 @@ export default function TxOpnetConfirmScreen() {
         let fees: FeeEstimation | undefined;
 
         // Try to retrieve enough UTXO for amount and fees
-        for (const utxo of (await utxoFetcher)) {
+        for (const utxo of await utxoFetcher) {
             params.utxos.push(utxo); // Add the next UTXOs
             currentAmount = currentAmount + utxo.value;
-            fees = await estimateBitcoinFee(params)
-            if (currentAmount >= (amountSats + fees.transactionFees)) return fees;
+            fees = await estimateBitcoinFee(params);
+            if (currentAmount >= amountSats + fees.transactionFees) return fees;
             if (params.utxos.length > UTXO_CONFIG.CONSOLIDATION_LIMIT) return fees;
         }
 
@@ -1282,7 +1277,13 @@ export default function TxOpnetConfirmScreen() {
                             // Note: Change goes back to cold wallet (from address).
                             // User can make additional withdrawals for remaining funds.
                         };
-                        const fees = await fillTransactionUTXOs(currentWalletAddress, utxoFetcher, coldFundingParams, fromAddresses, optimize);
+                        const fees = await fillTransactionUTXOs(
+                            currentWalletAddress,
+                            utxoFetcher,
+                            coldFundingParams,
+                            fromAddresses,
+                            optimize
+                        );
 
                         // Build and sign with cold wallet
                         if (!utxos || utxos.length === 0) {
@@ -1689,7 +1690,13 @@ export default function TxOpnetConfirmScreen() {
                     splitInputsInto: parameters.splitInputsInto,
                     autoAdjustAmount: parameters.autoAdjustAmount ?? false
                 };
-                const fees = await fillTransactionUTXOs(currentWalletAddress, utxoFetcher, fundingParams, fromAddresses, optimize);
+                const fees = await fillTransactionUTXOs(
+                    currentWalletAddress,
+                    utxoFetcher,
+                    fundingParams,
+                    fromAddresses,
+                    optimize
+                );
 
                 if (!utxos || utxos.length === 0) {
                     throw new Error('No UTXOs available for funding transaction');
@@ -1774,7 +1781,6 @@ export default function TxOpnetConfirmScreen() {
             setCachedBtcTx(null);
         };
     }, []);
-
 
     const transferToken = async (parameters: TransferParameters) => {
         const currentWalletAddress = await wallet.getCurrentAccount();
@@ -2660,11 +2666,18 @@ export default function TxOpnetConfirmScreen() {
     const amountReducedBy = cachedBtcTx?.preSignedTxData?.amountReducedBy || false;
     const amountReducedTo = cachedBtcTx?.preSignedTxData?.amountReducedTo || false;
     const amountReducedToFormatted = BitcoinUtils.formatUnits(amountReducedTo || 0n, 8);
-    const showInformation = !!amountReducedBy
+    const isSplitOrConsolation =
+        (rawTxInfo.action === Action.SendBitcoin && !!rawTxInfo.splitInputsInto)
+        || !!cachedBtcTx?.isConsolidation;
+    const showInformation = (!isSplitOrConsolation && !!amountReducedBy);
 
-    const submitDisabled = disabled || isSigning || !!signingError
-        || !feeRate || feeRate < 1
-        || (rawTxInfo.action === Action.SendBitcoin && !cachedBtcTx)
+    const submitDisabled =
+        disabled ||
+        isSigning ||
+        !!signingError ||
+        !feeRate ||
+        feeRate < 1 ||
+        (rawTxInfo.action === Action.SendBitcoin && !cachedBtcTx);
 
     return (
         <Layout>
