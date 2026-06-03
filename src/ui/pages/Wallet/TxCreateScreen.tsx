@@ -105,6 +105,7 @@ export default function TxCreateScreen() {
 
     const consolidationParams = (location.state as LocationState | undefined)?.consolidation;
     const splitParams = (location.state as LocationState | undefined)?.split;
+    const isSplitOrConsolation = !!consolidationParams || !!splitParams;
 
     const [disabled, setDisabled] = useState(true);
     const [splitInputsInto, setSplitInputsInto] = useState<number | undefined>(
@@ -114,7 +115,7 @@ export default function TxCreateScreen() {
     const [showP2PKWarning, setDisplayP2PKWarning] = useState(false);
     const [showP2OPWarning, setDisplayP2OPWarning] = useState(false);
     const [show32ByteError, setShow32ByteError] = useState(false);
-    const [autoAdjust, setAutoAdjust] = useState(false);
+    const [autoAdjust, setAutoAdjust] = useState(isSplitOrConsolation);
     const [note, setNote] = useState<string>('');
     const [checked, setChecked] = useState(false);
 
@@ -563,7 +564,7 @@ export default function TxCreateScreen() {
             sourceType: selectedBalance.type,
             optimize: !checked,
             splitInputsInto: splitInputsInto,
-            autoAdjustAmount: true
+            autoAdjustAmount: autoAdjust
         };
 
         navigate(RouteTypes.TxOpnetConfirmScreen, { rawTxInfo: event });
@@ -1555,7 +1556,9 @@ export default function TxCreateScreen() {
                                             // Switching to USD mode - pre-fill USD from current BTC amount
                                             setIsUsdMode(true);
                                             if (inputAmount && !isNaN(Number(inputAmount))) {
-                                                const usd = new BigNumber(inputAmount).multipliedBy(btcPrice).toFixed(2);
+                                                const usd = new BigNumber(inputAmount)
+                                                    .multipliedBy(btcPrice)
+                                                    .toFixed(2);
                                                 setUsdInputAmount(usd);
                                             } else {
                                                 setUsdInputAmount('');
@@ -1577,8 +1580,7 @@ export default function TxCreateScreen() {
                                         transition: 'all 0.15s'
                                     }}
                                     onMouseEnter={(e) => {
-                                        if (!isUsdMode)
-                                            e.currentTarget.style.background = colors.buttonHoverBg;
+                                        if (!isUsdMode) e.currentTarget.style.background = colors.buttonHoverBg;
                                     }}
                                     onMouseLeave={(e) => {
                                         if (!isUsdMode) e.currentTarget.style.background = colors.buttonBg;
@@ -1660,37 +1662,29 @@ export default function TxCreateScreen() {
                                             );
                                             switch (consolidationParams.selectedType) {
                                                 case 'csv1':
-                                                    maxBtcAmount =
-                                                        balance.consolidation_csv1_unlocked_amount || '0';
+                                                    maxBtcAmount = balance.consolidation_csv1_unlocked_amount || '0';
                                                     break;
                                                 case 'csv3':
-                                                    maxBtcAmount =
-                                                        balance.consolidation_csv3_unlocked_amount || '0';
+                                                    maxBtcAmount = balance.consolidation_csv3_unlocked_amount || '0';
                                                     break;
                                                 case 'csv2':
-                                                    maxBtcAmount =
-                                                        balance.consolidation_csv2_unlocked_amount || '0';
+                                                    maxBtcAmount = balance.consolidation_csv2_unlocked_amount || '0';
                                                     break;
                                                 case 'csv75':
-                                                    maxBtcAmount =
-                                                        balance.consolidation_csv75_unlocked_amount || '0';
+                                                    maxBtcAmount = balance.consolidation_csv75_unlocked_amount || '0';
                                                     break;
                                                 case 'p2wda':
-                                                    maxBtcAmount =
-                                                        balance.consolidation_p2wda_unspent_amount || '0';
+                                                    maxBtcAmount = balance.consolidation_p2wda_unspent_amount || '0';
                                                     break;
                                                 case 'unspent':
                                                 default:
-                                                    maxBtcAmount =
-                                                        balance.consolidation_unspent_amount || '0';
+                                                    maxBtcAmount = balance.consolidation_unspent_amount || '0';
                                                     break;
                                             }
                                         }
                                         setUiState({ inputAmount: maxBtcAmount });
                                         if (isUsdMode && btcPrice > 0) {
-                                            const usd = new BigNumber(maxBtcAmount)
-                                                .multipliedBy(btcPrice)
-                                                .toFixed(2);
+                                            const usd = new BigNumber(maxBtcAmount).multipliedBy(btcPrice).toFixed(2);
                                             setUsdInputAmount(usd);
                                         }
                                     }
@@ -1839,6 +1833,92 @@ export default function TxCreateScreen() {
                             </div>
                         )}
                     </div>
+
+                    {/* Auto-adjust amount Option */}
+                    {!isSplitOrConsolation && (
+                        <div
+                            style={{
+                                background: autoAdjust ? `${colors.warning}10` : colors.containerBgFaded,
+                                borderRadius: '12px',
+                                padding: '14px',
+                                marginBottom: '12px',
+                                border: autoAdjust ? `1px solid ${colors.warning}30` : 'none',
+                                transition: 'all 0.2s'
+                            }}>
+                            <label
+                                style={{
+                                    display: 'flex',
+                                    alignItems: 'flex-start',
+                                    gap: '12px',
+                                    cursor: 'pointer',
+                                    userSelect: 'none'
+                                }}
+                                onClick={(e) => {
+                                    e.preventDefault();
+                                    setAutoAdjust(!autoAdjust);
+                                }}>
+                                <div
+                                    style={{
+                                        width: '20px',
+                                        height: '20px',
+                                        minWidth: '20px',
+                                        marginTop: '1px',
+                                        borderRadius: '6px',
+                                        border: autoAdjust
+                                            ? `2px solid ${colors.warning}`
+                                            : '2px solid rgba(255, 255, 255, 0.2)',
+                                        background: autoAdjust ? colors.warning : 'rgba(255, 255, 255, 0.04)',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        transition: 'all 0.2s ease',
+                                        cursor: 'pointer',
+                                        boxShadow: autoAdjust ? `0 0 8px ${colors.warning}40` : 'none'
+                                    }}>
+                                    {autoAdjust && (
+                                        <svg
+                                            width="12"
+                                            height="12"
+                                            viewBox="0 0 12 12"
+                                            fill="none"
+                                            style={{ transition: 'opacity 0.15s ease' }}>
+                                            <path
+                                                d="M2.5 6L5 8.5L9.5 3.5"
+                                                stroke="#000"
+                                                strokeWidth="2"
+                                                strokeLinecap="round"
+                                                strokeLinejoin="round"
+                                            />
+                                        </svg>
+                                    )}
+                                </div>
+                                <div style={{ flex: 1 }}>
+                                    <div
+                                        style={{
+                                            fontSize: '12px',
+                                            fontWeight: 600,
+                                            color: autoAdjust ? colors.warning : colors.textFaded,
+                                            textTransform: 'uppercase',
+                                            letterSpacing: '0.5px',
+                                            marginBottom: '6px'
+                                        }}>
+                                        Automatically adjust amount
+                                    </div>
+
+                                    {/* Additional Info */}
+                                    <div
+                                        style={{
+                                            fontSize: '10px',
+                                            color: colors.textFaded,
+                                            lineHeight: '1.4'
+                                        }}>
+                                        This option will reduce amount if there is not enough UTXOs to cover the amount
+                                        and the transaction fees.
+                                    </div>
+                                </div>
+                            </label>
+                        </div>
+                    )}
 
                     {/* Small UTXOs Consolidation Option */}
                     <div
