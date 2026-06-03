@@ -1,5 +1,4 @@
 import { AddressTypes, WalletNetworks } from '@btc-vision/transaction';
-
 import { ChainType } from '@/shared/constant/chainType';
 
 export enum LegacyAddressType {
@@ -85,6 +84,21 @@ export enum RestoreWalletType {
     OTHERS
 }
 
+export interface BaseUTXO {
+    readonly transactionId: string;
+    readonly outputIndex: number;
+    readonly value: bigint;
+}
+
+export interface AddressTypeUTXOs {
+    main: BaseUTXO[];
+    csv75: BaseUTXO[];
+    csv3: BaseUTXO[];
+    csv2: BaseUTXO[];
+    csv1: BaseUTXO[];
+    p2wda: BaseUTXO[];
+}
+
 export interface BitcoinBalance {
     btc_total_amount: string;
     btc_confirm_amount: string;
@@ -119,6 +133,8 @@ export interface BitcoinBalance {
     consolidation_csv2_unlocked_amount: string;
     consolidation_csv1_unlocked_amount: string;
     consolidation_p2wda_unspent_amount: string;
+
+    utxosByType: AddressTypeUTXOs;
 
     all_utxos_count: number;
     unspent_utxos_count: number;
