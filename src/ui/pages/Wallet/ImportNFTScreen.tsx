@@ -41,7 +41,33 @@ interface RawNFTCollectionInfo extends NFTCollectionInfo {
 interface ParsedNFTCollectionInfo extends NFTCollectionInfo {
     totalSupply: bigint;
     maximumSupply?: bigint;
+    decimals?: number;
 }
+
+const formatSupply = (supply: string, decimals: number): string => {
+    try {
+        const supplyBigInt = BigInt(supply);
+        const divisor = BigInt(10 ** decimals);
+        const whole = supplyBigInt / divisor;
+        const remainder = supplyBigInt % divisor;
+
+        if (remainder === 0n) {
+            return whole.toLocaleString();
+        }
+
+        // Format with decimals
+        const decimalStr = remainder.toString().padStart(decimals, '0');
+        const trimmedDecimal = decimalStr.replace(/0+$/, '');
+
+        if (trimmedDecimal === '') {
+            return whole.toLocaleString();
+        }
+
+        return `${whole.toLocaleString()}.${trimmedDecimal}`;
+    } catch {
+        return '0';
+    }
+};
 
 export default function ImportNFTScreen() {
     const navigate = useNavigate();
@@ -79,6 +105,7 @@ export default function ImportNFTScreen() {
         setLoading(true);
         try {
             const info = await Web3API.queryNFTContractInformation(address);
+            const decimals = await Web3API.getDecimals(address);
 
             if (info === false) {
                 setError('Contract not found');
@@ -90,6 +117,7 @@ export default function ImportNFTScreen() {
                     icon: info.icon,
                     banner: info.banner,
                     description: info.description,
+                    decimals: decimals,
                     totalSupply: info.totalSupply || 0n
                 });
             }
@@ -264,7 +292,7 @@ export default function ImportNFTScreen() {
                                         {collectionInfo.symbol}
                                     </div>
                                     <div style={{ fontSize: '12px', color: colors.textFaded, marginTop: '4px' }}>
-                                        Total Supply: {collectionInfo.totalSupply.toString()}
+                                        Total Supply: {formatSupply(collectionInfo.totalSupply.toString(), collectionInfo.decimals || 0)}
                                     </div>
                                     {collectionInfo.description && (
                                         <div style={{ fontSize: '11px', color: colors.textFaded, marginTop: '8px' }}>
