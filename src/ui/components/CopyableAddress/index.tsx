@@ -1,6 +1,6 @@
 import { copyToClipboard, shortAddress } from '@/ui/utils';
 
-import { useTools } from '../ActionComponent';
+import { useTools } from '../ActionComponent/useTools';
 import { Icon } from '../Icon';
 import { Row } from '../Row';
 import { Text } from '../Text';

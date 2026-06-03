@@ -7,7 +7,7 @@ import { SignPsbtApprovalParams } from '@/shared/types/Approval';
 import { isWalletError } from '@/shared/utils/errors';
 import Web3API from '@/shared/web3/Web3API';
 import { Button, Card, Column, Content, Footer, Header, Icon, Image, Layout, Row, Text, TxFlowPreview } from '@/ui/components';
-import { useTools } from '@/ui/components/ActionComponent';
+import { useTools } from '@/ui/components/ActionComponent/useTools';
 import { AddressText } from '@/ui/components/AddressText';
 import { BtcUsd } from '@/ui/components/BtcUsd';
 import WebsiteBar from '@/ui/components/WebsiteBar';
@@ -306,11 +306,12 @@ export default function SignPsbt({
     const [isKeystoneSigning, setIsKeystoneSigning] = useState(false);
     const init = async () => {
         let txError = '';
+        let workingPsbtHex = psbtHex;
         if (type === TxType.SIGN_TX) {
-            if (psbtHex && currentAccount.type === KEYRING_TYPE.KeystoneKeyring) {
+            if (workingPsbtHex && currentAccount.type === KEYRING_TYPE.KeystoneKeyring) {
                 try {
-                    const toSignInputs = await wallet.formatOptionsToSignInputs(psbtHex, options);
-                    psbtHex = await wallet.signPsbtWithHex(psbtHex, toSignInputs, false);
+                    const toSignInputs = await wallet.formatOptionsToSignInputs(workingPsbtHex, options);
+                    workingPsbtHex = await wallet.signPsbtWithHex(workingPsbtHex, toSignInputs, false);
                 } catch (e: unknown) {
                     console.error(e);
                     if (isWalletError(e)) {
@@ -325,17 +326,17 @@ export default function SignPsbt({
             throw new Error('Not supported');
         }
 
-        if (!psbtHex) {
+        if (!workingPsbtHex) {
             setLoading(false);
             setTxInfo(Object.assign({}, initTxInfo, { txError }));
             return;
         }
 
-        const decodedPsbt = await wallet.decodePsbt(psbtHex);
+        const decodedPsbt = await wallet.decodePsbt(workingPsbtHex);
 
         let toSignInputs: ToSignInput[] = [];
         try {
-            toSignInputs = await wallet.formatOptionsToSignInputs(psbtHex, options);
+            toSignInputs = await wallet.formatOptionsToSignInputs(workingPsbtHex, options);
         } catch (e) {
             txError = (e as Error).message;
             tools.toastError(txError);
@@ -344,7 +345,7 @@ export default function SignPsbt({
         setTxInfo({
             decodedPsbt,
             changedBalance: 0,
-            psbtHex,
+            psbtHex: workingPsbtHex,
             rawtx: '',
             toSignInputs,
             txError
@@ -354,17 +355,20 @@ export default function SignPsbt({
     };
 
     useEffect(() => {
-        init();
+        queueMicrotask(() => {
+            void init();
+        });
     }, []);
 
-    if (!handleCancel) {
-        handleCancel = () => {
+    const effectiveHandleCancel =
+        handleCancel ??
+        (() => {
             rejectApproval();
-        };
-    }
+        });
 
-    if (!handleConfirm) {
-        handleConfirm = (res) => {
+    const baseHandleConfirm =
+        handleConfirm ??
+        ((res?: { psbtHex: string }) => {
             let signed = true;
             if (type === TxType.SIGN_TX && currentAccount.type !== KEYRING_TYPE.KeystoneKeyring) {
                 signed = false;
@@ -373,15 +377,15 @@ export default function SignPsbt({
                 psbtHex: (res ?? txInfo).psbtHex,
                 signed
             });
-        };
-    }
+        });
 
-    const originalHandleConfirm = handleConfirm;
-    if (currentAccount.type === KEYRING_TYPE.KeystoneKeyring) {
-        handleConfirm = () => {
-            setIsKeystoneSigning(true);
-        };
-    }
+    const originalHandleConfirm = baseHandleConfirm;
+    const effectiveHandleConfirm =
+        currentAccount.type === KEYRING_TYPE.KeystoneKeyring
+            ? () => {
+                  setIsKeystoneSigning(true);
+              }
+            : baseHandleConfirm;
 
     const networkFee = useMemo(() => satoshisToAmount(txInfo.decodedPsbt.fee), [txInfo.decodedPsbt]);
 
@@ -663,12 +667,12 @@ export default function SignPsbt({
 
             <Footer>
                 <Row full>
-                    <Button preset="default" text="Reject" onClick={handleCancel} full />
+                    <Button preset="default" text="Reject" onClick={effectiveHandleCancel} full />
                     <Button
                         preset="primary"
                         text={type == TxType.SIGN_TX ? 'Sign' : 'Sign & Pay'}
                         onClick={() => {
-                            handleConfirm?.();
+                            effectiveHandleConfirm();
                         }}
                         disabled={!isValid}
                         full

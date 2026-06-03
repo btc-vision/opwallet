@@ -14,7 +14,6 @@ export class Agent {
 
 export function fetch(input, init) {
     if (init && 'dispatcher' in init) {
-        // eslint-disable-next-line no-unused-vars
         const { dispatcher: _dispatcher, ...rest } = init;
         return globalThis.fetch(input, rest);
     }

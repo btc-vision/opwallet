@@ -13,7 +13,7 @@ import { ADDRESS_TYPES } from '@/shared/constant';
 import { WalletKeyring } from '@/shared/types';
 import { isWalletError } from '@/shared/utils/errors';
 import { Content, Header, Layout } from '@/ui/components';
-import { useTools } from '@/ui/components/ActionComponent';
+import { useTools } from '@/ui/components/ActionComponent/useTools';
 import { copyToClipboard, useLocationState, useWallet } from '@/ui/utils';
 
 const colors = {

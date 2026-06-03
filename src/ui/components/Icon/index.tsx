@@ -3,7 +3,7 @@ import React, { CSSProperties } from 'react';
 import { colors, ColorTypes } from '@/ui/theme/colors';
 import { fontSizes } from '@/ui/theme/font';
 
-export enum svgRegistry {
+enum svgRegistry {
     history = './images/icons/clock-solid.svg',
     send = './images/icons/arrow-left-right.svg',
     receive = './images/icons/qrcode.svg',

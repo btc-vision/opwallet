@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 
 import { ContactBookItem } from '@/background/service/contactBook';
 import { Content, Header, Layout } from '@/ui/components';
-import { useTools } from '@/ui/components/ActionComponent';
+import { useTools } from '@/ui/components/ActionComponent/useTools';
 import { isValidAddress, useWallet } from '@/ui/utils';
 import {
     BookOutlined,
@@ -66,7 +66,9 @@ export default function AddressBookScreen() {
     }, [wallet]);
 
     useEffect(() => {
-        void loadContacts();
+        queueMicrotask(() => {
+            void loadContacts();
+        });
     }, [loadContacts]);
 
     const filtered = contacts.filter((c) => {

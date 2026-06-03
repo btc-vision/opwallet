@@ -123,9 +123,11 @@ export function Select(props: SelectProps) {
             await Web3API.setNetwork(await wallet.getChainType());
         };
 
-        if (props.selectedoptionuse) {
-            setSelectedOption(props.selectedoptionuse);
-        }
+        queueMicrotask(() => {
+            if (props.selectedoptionuse) {
+                setSelectedOption(props.selectedoptionuse);
+            }
+        });
         setWallet();
     }, [props.selectedoptionuse]);
     useEffect(() => {

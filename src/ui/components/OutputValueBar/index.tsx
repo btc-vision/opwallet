@@ -2,7 +2,7 @@ import { CSSProperties, useEffect, useState } from 'react';
 
 import { colors } from '@/ui/theme/colors';
 
-import { useTools } from '../ActionComponent';
+import { useTools } from '../ActionComponent/useTools';
 import { Column } from '../Column';
 import { Input } from '../Input';
 import { Row } from '../Row';

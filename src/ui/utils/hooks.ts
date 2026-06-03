@@ -6,7 +6,7 @@ import { WalletError } from '@/shared/types/Error';
 import { isWalletError } from '@/shared/utils/errors';
 import { InteractionParametersWithoutSigner } from '@btc-vision/transaction';
 import { getUiType } from './uiType';
-import { useWallet } from './WalletContext';
+import { useWallet } from './useWallet';
 
 export const useApproval = () => {
     const wallet = useWallet();

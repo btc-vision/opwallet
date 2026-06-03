@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { ChainType, TypeChain, TypeChainGroup } from '@/shared/constant';
 import { customNetworksManager } from '@/shared/utils/CustomNetworksManager';
 import { Column, Image, Row, Text } from '@/ui/components';
-import { useTools } from '@/ui/components/ActionComponent';
+import { useTools } from '@/ui/components/ActionComponent/useTools';
 import { BottomModal } from '@/ui/components/BottomModal';
 import { useReloadAccounts } from '@/ui/state/accounts/hooks';
 import { useChain, useChangeChainTypeCallback } from '@/ui/state/settings/hooks';

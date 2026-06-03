@@ -11,7 +11,7 @@ import {
 } from '@/shared/constant';
 import { getCurrentTab } from '@/shared/utils/browser-tabs';
 import { Column, Content, Footer, Header, Layout } from '@/ui/components';
-import { useTools } from '@/ui/components/ActionComponent';
+import { useTools } from '@/ui/components/ActionComponent/useTools';
 import { NavTabBar } from '@/ui/components/NavTabBar';
 import { useExtensionIsInTab, useOpenExtensionInTab } from '@/ui/features/browser/tabs';
 import { useCurrentAccount } from '@/ui/state/accounts/hooks';

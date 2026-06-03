@@ -1,6 +1,6 @@
 import { CHAINS } from '@/shared/constant';
 import { Card, Column, Content, Header, Icon, Image, Layout, Row, Text } from '@/ui/components';
-import { useTools } from '@/ui/components/ActionComponent';
+import { useTools } from '@/ui/components/ActionComponent/useTools';
 import { useReloadAccounts } from '@/ui/state/accounts/hooks';
 import { useChainType, useChangeChainTypeCallback } from '@/ui/state/settings/hooks';
 

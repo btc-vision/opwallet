@@ -9,7 +9,7 @@ import {
 } from '@/shared/constant';
 import { checkAddressFlag } from '@/shared/utils';
 import { Column, Content, Header, Layout, OPNetLoader } from '@/ui/components';
-import { useTools } from '@/ui/components/ActionComponent';
+import { useTools } from '@/ui/components/ActionComponent/useTools';
 import { EnableUnconfirmedPopover } from '@/ui/components/EnableUnconfirmedPopover';
 import { Popover } from '@/ui/components/Popover';
 import { useCurrentAccount, useReloadAccounts } from '@/ui/state/accounts/hooks';

@@ -1,19 +1,5 @@
 import { Card, Column, Text } from '@/ui/components';
-import { Decoded } from '@/ui/pages/OpNet/decoded/DecodedTypes';
-import { BinaryReader } from '@btc-vision/transaction';
-
-export function decodeStakeBTCMotoChef(selector: string, reader: BinaryReader): StakeBTCDecoded {
-    const amount: bigint = reader.readU256();
-
-    return {
-        selector,
-        amount
-    };
-}
-
-export interface StakeBTCDecoded extends Decoded {
-    readonly amount: bigint;
-}
+import { StakeBTCDecoded } from './decoders';
 
 interface StakeBTCProps {
     readonly decoded: StakeBTCDecoded;

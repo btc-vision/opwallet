@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { AddressAssets } from '@/shared/types';
 import { AddressTypes } from '@btc-vision/transaction';
 import { Column, Content, Header, Layout, OPNetLoader, Text } from '@/ui/components';
-import { useTools } from '@/ui/components/ActionComponent';
+import { useTools } from '@/ui/components/ActionComponent/useTools';
 import { useCurrentAccount, useReloadAccounts } from '@/ui/state/accounts/hooks';
 import { useCurrentKeyring } from '@/ui/state/keyrings/hooks';
 import { copyToClipboard, satoshisToAmount, useWallet } from '@/ui/utils';
@@ -348,7 +348,9 @@ export default function AddressTypeScreen() {
     };
 
     useEffect(() => {
-        void loadAddresses();
+        queueMicrotask(() => {
+            void loadAddresses();
+        });
     }, []);
 
     const addressTypes = useMemo(() => {

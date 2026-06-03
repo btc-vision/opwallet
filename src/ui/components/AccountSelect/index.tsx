@@ -8,7 +8,7 @@ import { KEYRING_TYPE } from '@/shared/constant';
 import { AddressTypes } from '@btc-vision/transaction';
 import { useCurrentKeyring } from '@/ui/state/keyrings/hooks';
 import { useSimpleModeEnabled } from '@/ui/hooks/useExperienceMode';
-import { useTools } from '../ActionComponent';
+import { useTools } from '../ActionComponent/useTools';
 import { Icon } from '../Icon';
 import './index.less';
 

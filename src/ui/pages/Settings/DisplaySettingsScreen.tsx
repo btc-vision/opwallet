@@ -1,7 +1,7 @@
 import { useState } from 'react';
 
 import { Column, Header, Layout } from '@/ui/components';
-import { useTools } from '@/ui/components/ActionComponent';
+import { useTools } from '@/ui/components/ActionComponent/useTools';
 import { useDisplaySettings, useUpdateDisplaySettings } from '@/ui/state/settings/hooks';
 import { DisplaySettings } from '@/ui/state/settings/reducer';
 import {

@@ -15,7 +15,7 @@ import {
 } from '@ant-design/icons';
 
 import { Layout, Header, Content, Column, Row, Button, Text, OPNetLoader } from '@/ui/components';
-import { useTools } from '@/ui/components/ActionComponent';
+import { useTools } from '@/ui/components/ActionComponent/useTools';
 import { useWallet, copyToClipboard, satoshisToAmount } from '@/ui/utils';
 import { RouteTypes, useNavigate } from '@/ui/pages/routeTypes';
 import {

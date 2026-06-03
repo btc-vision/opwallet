@@ -13,7 +13,7 @@ import { FooterButtonContainer } from '@/ui/components/FooterButtonContainer';
 import { ContextData, UpdateContextDataParams } from './types';
 import { RouteTypes, useNavigate } from '@/ui/pages/routeTypes';
 import { useCreateAccountCallback } from '@/ui/state/global/hooks';
-import { useTools } from '@/ui/components/ActionComponent';
+import { useTools } from '@/ui/components/ActionComponent/useTools';
 import { usePrivacyModeEnabled } from '@/ui/hooks/useAppConfig';
 
 const colors = {

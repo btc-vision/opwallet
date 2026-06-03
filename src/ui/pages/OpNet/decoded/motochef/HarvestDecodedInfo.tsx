@@ -1,23 +1,6 @@
 import { Card, Column, Text } from '@/ui/components';
-import { Decoded } from '@/ui/pages/OpNet/decoded/DecodedTypes';
-import { Address, BinaryReader } from '@btc-vision/transaction';
 import { sliceAddress } from '../helpper';
-
-export function decodeHarvestMotoChef(selector: string, reader: BinaryReader): HarvestDecoded {
-    const poolId: bigint = reader.readU64();
-    const to: Address = reader.readAddress();
-
-    return {
-        selector,
-        poolId,
-        to
-    };
-}
-
-export interface HarvestDecoded extends Decoded {
-    readonly poolId: bigint;
-    readonly to: Address;
-}
+import { HarvestDecoded } from './decoders';
 
 interface HarvestProps {
     readonly decoded: HarvestDecoded;

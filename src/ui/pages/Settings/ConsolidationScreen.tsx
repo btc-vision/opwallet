@@ -81,7 +81,9 @@ export default function ConsolidationScreen() {
     }, [wallet, addressesWithBalance.length]);
 
     useEffect(() => {
-        void loadData();
+        queueMicrotask(() => {
+            void loadData();
+        });
     }, [loadData]);
 
     const handleConsolidate = () => {

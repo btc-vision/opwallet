@@ -5,7 +5,7 @@ import { Action, Features, MintParameters } from '@/shared/interfaces/RawTxParam
 import { OPTokenInfo } from '@/shared/types';
 import Web3API, { bigIntToDecimal } from '@/shared/web3/Web3API';
 import { Column, Content, Header, Input, Layout } from '@/ui/components';
-import { useTools } from '@/ui/components/ActionComponent';
+import { useTools } from '@/ui/components/ActionComponent/useTools';
 import { FeeRateBar } from '@/ui/components/FeeRateBar';
 import { PriorityFeeBar } from '@/ui/components/PriorityFeeBar';
 import { useLocationState, useWallet } from '@/ui/utils';
@@ -60,12 +60,14 @@ export default function Mint() {
     }, [wallet]);
 
     useEffect(() => {
-        setDisabled(true);
-        if (!inputAmount) {
-            setError('');
-            return;
-        }
-        void cb();
+        queueMicrotask(() => {
+            setDisabled(true);
+            if (!inputAmount) {
+                setError('');
+                return;
+            }
+            void cb();
+        });
     }, [inputAmount, cb]);
 
     useEffect(() => {

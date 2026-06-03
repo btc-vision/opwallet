@@ -7,7 +7,7 @@ import { addressShortner } from '@/shared/utils';
 import Web3API from '@/shared/web3/Web3API';
 import { ContractInformation } from '@/shared/web3/interfaces/ContractInformation';
 import { Content, Header, Layout, OPNetLoader } from '@/ui/components';
-import { useTools } from '@/ui/components/ActionComponent';
+import { useTools } from '@/ui/components/ActionComponent/useTools';
 import { useCurrentAccount } from '@/ui/state/accounts/hooks';
 import { useBTCUnit } from '@/ui/state/settings/hooks';
 import { copyToClipboard, useLocationState, useWallet } from '@/ui/utils';

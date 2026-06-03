@@ -8,7 +8,7 @@ import {
 } from '@ant-design/icons';
 
 import { Layout, Header, Content, Column, Row, Text, OPNetLoader } from '@/ui/components';
-import { useTools } from '@/ui/components/ActionComponent';
+import { useTools } from '@/ui/components/ActionComponent/useTools';
 import { copyToClipboard, satoshisToAmount, shortAddress } from '@/ui/utils';
 import { useRotationHistory, useRefreshRotation, useRotationLoading } from '@/ui/state/rotation/hooks';
 import { RotatedAddressStatus } from '@/shared/types/AddressRotation';

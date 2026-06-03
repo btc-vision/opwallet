@@ -14,7 +14,7 @@ import {
 import { Address } from '@btc-vision/transaction';
 import { BitcoinUtils } from 'opnet';
 import { useState } from 'react';
-import { useTools } from '../ActionComponent';
+import { useTools } from '../ActionComponent/useTools';
 
 const colors = {
     main: '#f37413',

@@ -1,6 +1,6 @@
 import { CHAINS_MAP, ChainType } from '@/shared/constant';
 import { Column, Image, Row, Text } from '@/ui/components';
-import { useTools } from '@/ui/components/ActionComponent';
+import { useTools } from '@/ui/components/ActionComponent/useTools';
 import { BottomModal } from '@/ui/components/BottomModal';
 import { useWallet } from '@/ui/utils';
 import {

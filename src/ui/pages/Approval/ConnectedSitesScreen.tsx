@@ -300,7 +300,9 @@ export default function ConnectedSitesScreen() {
     };
 
     useEffect(() => {
-        getSites();
+        queueMicrotask(() => {
+            void getSites();
+        });
     }, []);
 
     const handleRemove = async (origin: string) => {

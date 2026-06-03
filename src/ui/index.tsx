@@ -109,14 +109,6 @@ eventBus.addEventListener(EVENTS.broadcastToBackground, async (params: unknown) 
     });
 });
 
-function Updaters() {
-    return (
-        <>
-            <AccountUpdater />
-            <ChainUpdater />
-        </>
-    );
-}
 
 // wallet.getLocale().then((locale) => {
 //   addResourceBundle(locale).then(() => {
@@ -163,7 +155,8 @@ if (rootElement) {
                                     'MSPointerMove',
                                     'visibilitychange'
                                 ]}>
-                                <Updaters />
+                                <AccountUpdater />
+                                <ChainUpdater />
                                 <AsyncMainRoute />
                             </IdleTimerProvider>
                         </PriceProvider>

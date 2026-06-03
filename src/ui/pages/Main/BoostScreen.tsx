@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 
 import { getUiType, useApproval, useWallet } from '@/ui/utils';
-import { isOnboardingComplete } from '../Onboarding';
+import { isOnboardingComplete } from '../Onboarding/state';
 
 import { RouteTypes, useNavigate } from '../routeTypes';
 

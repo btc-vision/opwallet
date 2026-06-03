@@ -62,13 +62,15 @@ export default function UTXOOptimizeScreen() {
     useEffect(() => {
         if (selectedSource !== null) return;
 
-        if (primaryBalance > 0n && csv1Balance <= 0n) {
-            setSelectedSource(SourceType.CURRENT);
-        } else if (csv1Balance > 0n && primaryBalance <= 0n) {
-            setSelectedSource(SourceType.CSV1);
-        } else if (primaryBalance > 0n && csv1Balance > 0n) {
-            setSelectedSource(primaryBalance >= csv1Balance ? SourceType.CURRENT : SourceType.CSV1);
-        }
+        queueMicrotask(() => {
+            if (primaryBalance > 0n && csv1Balance <= 0n) {
+                setSelectedSource(SourceType.CURRENT);
+            } else if (csv1Balance > 0n && primaryBalance <= 0n) {
+                setSelectedSource(SourceType.CSV1);
+            } else if (primaryBalance > 0n && csv1Balance > 0n) {
+                setSelectedSource(primaryBalance >= csv1Balance ? SourceType.CURRENT : SourceType.CSV1);
+            }
+        });
     }, [primaryBalance, csv1Balance, selectedSource]);
 
     const selectedBalance = useMemo(() => {

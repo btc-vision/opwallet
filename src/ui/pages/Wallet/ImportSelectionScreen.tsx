@@ -16,7 +16,7 @@ const colors = {
     containerBorder: '#303030'
 };
 
-export enum ImportType {
+enum ImportType {
     TOKEN = 'token',
     NFT = 'nft'
 }

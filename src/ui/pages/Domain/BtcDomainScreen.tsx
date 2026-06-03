@@ -14,7 +14,7 @@ import {
 } from '@/shared/interfaces/RawTxParameters';
 import { NetworkType } from '@/shared/types';
 import { Content, Header, Layout } from '@/ui/components';
-import { useTools } from '@/ui/components/ActionComponent';
+import { useTools } from '@/ui/components/ActionComponent/useTools';
 import { FeeRateBar } from '@/ui/components/FeeRateBar';
 import { useAccountAddress } from '@/ui/state/accounts/hooks';
 import { useChain } from '@/ui/state/settings/hooks';
@@ -252,25 +252,31 @@ export default function BtcDomainScreen() {
     // Load domains on mount and when tab changes
     useEffect(() => {
         if (activeTab === 'mydomains' || activeTab === 'transfer') {
-            loadMyDomains();
+            queueMicrotask(() => {
+                void loadMyDomains();
+            });
         }
     }, [activeTab, loadMyDomains]);
+
+    const checkDomainRef = React.useRef<(() => void) | null>(null);
 
     // Auto-fill and check domain when returning from a reserve tx
     useEffect(() => {
         if (pendingTxDomain) {
-            setDomainInput(pendingTxDomain);
-            if (locationState?.pendingYears) {
-                setRegistrationYears(locationState.pendingYears);
-            }
-            setPendingTxDomain(null);
+            queueMicrotask(() => {
+                setDomainInput(pendingTxDomain);
+                if (locationState?.pendingYears) {
+                    setRegistrationYears(locationState.pendingYears);
+                }
+                setPendingTxDomain(null);
+            });
             // Small delay to let the block confirm, then auto-check
             const timer = setTimeout(() => {
-                checkDomain();
+                checkDomainRef.current?.();
             }, 2000);
             return () => clearTimeout(timer);
         }
-    }, [pendingTxDomain]); // eslint-disable-line react-hooks/exhaustive-deps
+    }, [pendingTxDomain]);
 
     // Add domain to tracking
     const handleAddDomain = useCallback(async () => {
@@ -376,6 +382,12 @@ export default function BtcDomainScreen() {
             setIsCheckingDomain(false);
         }
     }, [domainInput, wallet, userAddress, tools, registrationYears]);
+
+    useEffect(() => {
+        checkDomainRef.current = () => {
+            void checkDomain();
+        };
+    }, [checkDomain]);
 
     // Check publish domain ownership
     const checkPublishDomain = useCallback(async () => {
@@ -546,7 +558,9 @@ export default function BtcDomainScreen() {
     // Load pending transfers when switching to transfer tab
     useEffect(() => {
         if (activeTab === 'transfer' && myDomains.length > 0) {
-            loadPendingTransfers();
+            queueMicrotask(() => {
+                void loadPendingTransfers();
+            });
         }
     }, [activeTab, myDomains.length]);
 

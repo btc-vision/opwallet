@@ -1,33 +1,9 @@
-import React, { useCallback, useContext, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
 
 import { Loading } from './Loading';
 import { Tip } from './Tip';
 import { Toast, ToastPresets, ToastProps } from './Toast';
-
-type ToastFunction = (content: string) => void;
-type LoadingFunction = (visible: boolean, content?: string) => void;
-
-export interface ContextType {
-    toast: ToastFunction;
-    toastSuccess: ToastFunction;
-    toastError: ToastFunction;
-    toastWarning: ToastFunction;
-    showLoading: LoadingFunction;
-    showTip: ToastFunction;
-}
-
-// Noop handlers for initial context
-const noopToast = () => {};
-const noopLoading = () => {};
-
-const ActionComponentContext = React.createContext<ContextType>({
-    toast: noopToast,
-    toastSuccess: noopToast,
-    toastError: noopToast,
-    toastWarning: noopToast,
-    showLoading: noopLoading,
-    showTip: noopToast
-});
+import { ActionComponentContext, ContextType } from './ActionComponentContext';
 
 interface ToastItem {
     key: string;
@@ -131,8 +107,4 @@ export function ActionComponentProvider({ children }: { children: React.ReactNod
             {tipData.visible && <Tip text={tipData.content} onClose={closeTip} />}
         </ActionComponentContext.Provider>
     );
-}
-
-export function useTools() {
-    return useContext(ActionComponentContext);
 }

@@ -3,11 +3,11 @@ import { useEffect, useState } from 'react';
 import { ParsedSignMsgUr, ParsedSignPsbtUr } from '@/shared/types';
 import { isWalletError } from '@/shared/utils/errors';
 import { Button, Column, Content, Footer, Header, Layout, Row, Text } from '@/ui/components';
-import { useTools } from '@/ui/components/ActionComponent';
+import { useTools } from '@/ui/components/ActionComponent/useTools';
 import KeystoneDisplay from '@/ui/components/Keystone/Display';
 import KeystoneLogoWithText from '@/ui/components/Keystone/LogoWithText';
 import KeystoneScan from '@/ui/components/Keystone/Scan';
-import { $textPresets } from '@/ui/components/Text';
+import { $textPresets } from '@/ui/components/Text/presets';
 import { colors } from '@/ui/theme/colors';
 import { useWallet } from '@/ui/utils';
 

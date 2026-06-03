@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 
 import { DecodedPsbt, Risk, RiskType } from '@/shared/types';
 import { colors } from '@/ui/theme/colors';
@@ -27,13 +27,9 @@ export const SignPsbtWithRisksPopover: React.FC<SignPsbtWithRisksPopoverProps> =
     onClose
 }) => {
     const [inputValue, setInputValue] = useState('');
-    const [understand, setUnderstand] = useState(false);
     const [detailRisk, setDetailRisk] = useState<Risk | null>(null);
 
-    // 1. Call all Hooks at the top
-    useEffect(() => {
-        setUnderstand(inputValue.toUpperCase() === AGREEMENT_TEXT);
-    }, [inputValue]);
+    const understand = inputValue.toUpperCase() === AGREEMENT_TEXT;
 
     // 2. If there is any CRITICAL risk, user cannot confirm
     const confirmable = useMemo(() => {

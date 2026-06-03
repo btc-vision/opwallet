@@ -3,7 +3,7 @@ import { OPTokenInfo } from '@/shared/types';
 import Web3API from '@/shared/web3/Web3API';
 import { ContractInformation } from '@/shared/web3/interfaces/ContractInformation';
 import { Column, Content, Header, Layout, Row, Text } from '@/ui/components';
-import { useTools } from '@/ui/components/ActionComponent';
+import { useTools } from '@/ui/components/ActionComponent/useTools';
 import { FeeRateBar } from '@/ui/components/FeeRateBar';
 import { PriorityFeeBar } from '@/ui/components/PriorityFeeBar';
 import { Select } from '@/ui/components/Select';

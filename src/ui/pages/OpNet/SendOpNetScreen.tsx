@@ -110,49 +110,50 @@ export default function SendOpNetScreen() {
     }, [toInfo.address]);
 
     useEffect(() => {
-        setError('');
-        setDisabled(true);
+        queueMicrotask(() => {
+            setError('');
+            setDisabled(true);
 
-        if (!toInfo.address) {
-            return;
-        }
+            if (!toInfo.address) {
+                return;
+            }
 
-        // Check if address is a p2op (contract) address
-        const isP2OP = AddressVerificator.detectAddressType(toInfo.address, Web3API.network) === AddressTypes.P2OP;
-        if (isP2OP) {
-            setError('Cannot send to contract addresses (p2op)');
-            return;
-        }
+            // Check if address is a p2op (contract) address
+            const isP2OP =
+                AddressVerificator.detectAddressType(toInfo.address, Web3API.network) === AddressTypes.P2OP;
+            if (isP2OP) {
+                setError('Cannot send to contract addresses (p2op)');
+                return;
+            }
 
-        if (!inputAmount.trim()) {
-            return;
-        }
+            if (!inputAmount.trim()) {
+                return;
+            }
 
-        // Check if public key is being fetched
-        if (fetchingPubKey) {
-            return;
-        }
+            if (fetchingPubKey) {
+                return;
+            }
 
-        // Check if public key is found
-        if (!publicKey) {
-            setError('Cannot send: Public key not found for this address');
-            return;
-        }
+            if (!publicKey) {
+                setError('Cannot send: Public key not found for this address');
+                return;
+            }
 
-        const amountBN = new BigNumber(BitcoinUtils.expandToDecimals(inputAmount, divisibility).toString());
-        const availableBalance = new BigNumber(balance.toString());
+            const amountBN = new BigNumber(BitcoinUtils.expandToDecimals(inputAmount, divisibility).toString());
+            const availableBalance = new BigNumber(balance.toString());
 
-        if (amountBN.isLessThanOrEqualTo(0)) {
-            setError('Invalid amount');
-            return;
-        }
+            if (amountBN.isLessThanOrEqualTo(0)) {
+                setError('Invalid amount');
+                return;
+            }
 
-        if (amountBN.isGreaterThan(availableBalance)) {
-            setError('Insufficient balance');
-            return;
-        }
+            if (amountBN.isGreaterThan(availableBalance)) {
+                setError('Insufficient balance');
+                return;
+            }
 
-        setDisabled(false);
+            setDisabled(false);
+        });
     }, [toInfo, inputAmount, balance, divisibility, publicKey, fetchingPubKey]);
 
     const handleNext = () => {

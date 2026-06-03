@@ -12,7 +12,7 @@ import { useLocation } from 'react-router-dom';
 
 import { getBitcoinLibJSNetwork } from '@/shared/web3/Web3API';
 import { Column, Content, Header, Icon, Layout, Row, Text } from '@/ui/components';
-import { useTools } from '@/ui/components/ActionComponent';
+import { useTools } from '@/ui/components/ActionComponent/useTools';
 import { RouteTypes, useNavigate } from '@/ui/pages/routeTypes';
 import { useAccountAddress, useCurrentAccount } from '@/ui/state/accounts/hooks';
 import { useCurrentKeyring } from '@/ui/state/keyrings/hooks';
@@ -231,7 +231,9 @@ export default function ReceiveScreen() {
     }, [currentAccount, wallet, currentKeyring.addressType, isOP20]);
 
     useEffect(() => {
-        void loadAddressTypes();
+        queueMicrotask(() => {
+            void loadAddressTypes();
+        });
     }, [loadAddressTypes]);
 
     /**
@@ -239,12 +241,6 @@ export default function ReceiveScreen() {
      * Only runs in OP_20 mode - skipped for BTC
      */
     useEffect(() => {
-        // Skip for BTC mode - no MLDSA address needed
-        if (!isOP20) {
-            setLoadingQuantum(false);
-            return;
-        }
-
         const fetchQuantumInfo = async () => {
             setLoadingQuantum(true);
             try {
@@ -259,7 +255,13 @@ export default function ReceiveScreen() {
             }
         };
 
-        void fetchQuantumInfo();
+        queueMicrotask(() => {
+            if (!isOP20) {
+                setLoadingQuantum(false);
+                return;
+            }
+            void fetchQuantumInfo();
+        });
     }, [wallet, isOP20]);
 
     /**

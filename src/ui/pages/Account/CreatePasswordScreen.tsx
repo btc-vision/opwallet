@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 
 import { Layout, Content, Header } from '@/ui/components';
-import { useTools } from '@/ui/components/ActionComponent';
+import { useTools } from '@/ui/components/ActionComponent/useTools';
 import { useWallet, useWalletRequest } from '@/ui/utils';
 import { getPasswordStrengthWord, MIN_PASSWORD_LENGTH } from '@/ui/utils/password-utils';
 import { LockOutlined } from '@ant-design/icons';

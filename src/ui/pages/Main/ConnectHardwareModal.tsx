@@ -1,6 +1,6 @@
 import { HARDWARE_WALLETS, HardwareWalletType } from '@/shared/constant';
 import { Card, Column, Image, Row, Text } from '@/ui/components';
-import { useTools } from '@/ui/components/ActionComponent';
+import { useTools } from '@/ui/components/ActionComponent/useTools';
 import { BottomModal } from '@/ui/components/BottomModal';
 import { useExtensionIsInTab } from '@/ui/features/browser/tabs';
 import { colors } from '@/ui/theme/colors';
