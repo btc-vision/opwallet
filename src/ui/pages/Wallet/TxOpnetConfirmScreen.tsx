@@ -96,6 +96,7 @@ import { RouteTypes, useNavigate } from '../routeTypes';
 import web3API from '@/shared/web3/Web3API';
 import { Account } from '@/shared/types';
 import { UTXO_CONFIG } from '@/shared/config';
+import { waitContractManager } from '@/shared/utils/WaitContractManager';
 
 BigNumber.config({ EXPONENTIAL_AT: 256 });
 
@@ -2010,6 +2011,7 @@ export default function TxOpnetConfirmScreen() {
     const deployContract = async (parameters: DeployContractParameters) => {
         try {
             const currentWalletAddress = await wallet.getCurrentAccount();
+            const chainType = await wallet.getChainType();
             const userWallet = await getOPNetWallet();
             // Ensure bigint values are properly converted (navigation state may serialize them as strings)
             const priorityFeeRaw = parameters.priorityFee ?? 0;
@@ -2059,8 +2061,8 @@ export default function TxOpnetConfirmScreen() {
                 return;
             }
 
-            setLoadingMessage(`Deployment in progress.. This might take a while.`);
-            setDeploymentContract(sendTransact);
+            //setLoadingMessage(`Deployment in progress.. This might take a while.`);
+            //setDeploymentContract(sendTransact);
 
             // This transaction is partially signed. You can not submit it to the Bitcoin network. It must pass via the OPNet network.
             const secondTransaction = await Web3API.provider.sendRawTransaction(sendTransact.transaction[1], false);
@@ -2069,7 +2071,13 @@ export default function TxOpnetConfirmScreen() {
 
                 wallet.invalidateBalanceAndUtxoCache(currentWalletAddress.address);
 
-                await waitForTransaction(secondTransaction.result, setOpenLoading, tools);
+                //await waitForTransaction(secondTransaction.result, setOpenLoading, tools);
+                waitContractManager.addContract(
+                    secondTransaction.result,
+                    sendTransact.contractAddress,
+                    currentWalletAddress,
+                    chainType
+                );
 
                 const getChain = await wallet.getChainType();
                 const key = `opnetTokens_${getChain}_${currentWalletAddress.pubkey}`;

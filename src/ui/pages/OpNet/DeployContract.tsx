@@ -1,11 +1,11 @@
 import { Action, Features } from '@/shared/interfaces/RawTxParameters';
-import { Content, Header, Layout } from '@/ui/components';
+import { Button, Column, Content, Header, Input, Layout, Row, Text } from '@/ui/components';
 import { useTools } from '@/ui/components/ActionComponent/useTools';
 import { PriorityFeeBar } from '@/ui/components/PriorityFeeBar';
 import { useCurrentAccount } from '@/ui/state/accounts/hooks';
 import {
     BookOutlined,
-    CheckCircleOutlined,
+    CheckCircleOutlined, CloseOutlined,
     CloudUploadOutlined,
     CodeOutlined,
     EditOutlined,
@@ -19,6 +19,8 @@ import {
 import React, { useState } from 'react';
 import { RouteTypes, useNavigate } from '../routeTypes';
 import { useChain } from '@/ui/state/settings/hooks';
+import { WaitContract, waitContractManager } from '@/shared/utils/WaitContractManager';
+import { BottomModal } from '@/ui/components/BottomModal';
 
 const colors = {
     main: '#f37413',
@@ -37,6 +39,91 @@ const colors = {
     info: '#3b82f6'
 };
 
+interface ShowWaitingModalProps {
+    visible: boolean;
+    contracts: WaitContract[];
+    onClose: () => void;
+}
+
+export const ShowWaitingModal = ({ onClose, visible, contracts }: ShowWaitingModalProps) => {
+    const plural = contracts.length > 1 ? 's' : '';
+
+    return !visible ? (
+        <></>
+    ) : (
+        <BottomModal onClose={onClose}>
+            <Column justifyCenter itemsCenter>
+                <Row justifyBetween itemsCenter style={{ height: 20 }} fullX>
+                    <Row />
+                    <Text text={`Contract${plural} waiting confirmation`} textCenter size="md" />
+                    <Row onClick={onClose}>
+                        <CloseOutlined />
+                    </Row>
+                </Row>
+
+                {contracts.map((contract, index) => (
+                    <Column key={contract.addressP20P} mt="lg" style={{ width: '100%', marginBottom: '20px' }}>
+                        <div
+                            style={{
+                                background: 'rgba(255, 255, 255, 0.03)',
+                                borderRadius: '10px',
+                                padding: '10px 12px'
+                            }}>
+                            <Row justifyBetween style={{ marginBottom: '5px' }}>
+                                <div
+                                    style={{
+                                        fontSize: '14px',
+                                        fontWeight: 700,
+                                        color: colors.main,
+                                        marginBottom: '8px',
+                                        textTransform: 'uppercase',
+                                        letterSpacing: '0.5px',
+                                        textAlign: 'left'
+                                    }}>
+                                    Contract #{index + 1}
+                                </div>
+                                <div
+                                    style={{
+                                        fontSize: '14px',
+                                        fontWeight: 700,
+                                        color: colors.text,
+                                        marginBottom: '8px',
+                                        letterSpacing: '0.5px',
+                                        textAlign: 'right'
+                                    }}>
+                                    SINCE
+                                </div>
+                            </Row>
+                            <Row justifyBetween style={{ marginBottom: '5px' }}>
+                                <span style={{ color: colors.success, fontSize: '12px' }}>
+                                    {contract.addressP20P}
+                                </span>
+                                <span
+                                    style={{
+                                        color: colors.success,
+                                        fontSize: '14px',
+                                        fontWeight: 600
+                                    }}>
+                                    TEST1
+                                </span>
+                            </Row>
+                        </div>
+                    </Column>
+                ))}
+            </Column>
+
+            <Button
+                disabled={false}
+                preset="primary"
+                text="Close"
+                onClick={() => {
+                    onClose();
+                }}
+            />
+        </BottomModal>
+    );
+};
+
 export default function DeployContractOpnet() {
     const account = useCurrentAccount();
     const navigate = useNavigate();
@@ -50,7 +137,9 @@ export default function DeployContractOpnet() {
     const [note, setNote] = useState<string>('');
     const [isDragging, setIsDragging] = useState(false);
     const [showGuide, setShowGuide] = useState(false);
+    const [showWaitingContracts, setShowWaitingContracts] = useState(false);
 
+    const contracts = waitContractManager.getContracts(account, chain.enum);
     const disabled = !wasmFile;
 
     const handleFile = (file: File) => {
@@ -124,6 +213,9 @@ export default function DeployContractOpnet() {
         <Layout wide>
             <Header title="Deploy Smart Contract" onBack={() => navigate(RouteTypes.MainScreen)} />
 
+            <ShowWaitingModal contracts={contracts} visible={showWaitingContracts}
+                              onClose={() => setShowWaitingContracts(false)} />
+
             <Content
                 style={{
                     maxWidth: '800px',
@@ -165,7 +257,6 @@ export default function DeployContractOpnet() {
                         Upload your compiled WASM file to deploy it on the OP_NET network
                     </p>
                 </div>
-
                 {/* Warning Banner */}
                 <div
                     style={{
@@ -207,7 +298,75 @@ export default function DeployContractOpnet() {
                         </div>
                     </div>
                 </div>
-
+                // Show waiting contract count
+                {contracts.length > 0 && (
+                    <div
+                        style={{
+                            background: `${colors.success}10`,
+                            border: `1px solid ${colors.success}30`,
+                            borderRadius: '12px',
+                            padding: '16px',
+                            marginBottom: '24px',
+                            display: 'flex',
+                            gap: '12px',
+                            alignItems: 'flex-start'
+                        }}>
+                        <InfoCircleOutlined
+                            style={{
+                                fontSize: 20,
+                                color: colors.success,
+                                flexShrink: 0,
+                                marginTop: '2px'
+                            }}
+                        />
+                        <div>
+                            <div
+                                style={{
+                                    fontSize: '14px',
+                                    fontWeight: 600,
+                                    color: colors.success,
+                                    marginBottom: '4px'
+                                }}>
+                                Contract Deployment
+                            </div>
+                            <div
+                                style={{
+                                    fontSize: '13px',
+                                    color: colors.text,
+                                    lineHeight: '1.5'
+                                }}>
+                                You have {contracts.length} contract{contracts.length > 1 ? 's' : ''} waiting for
+                                confirmation.
+                            </div>
+                        </div>
+                        <div style={{ flex: 1 }}></div>
+                        <button
+                            style={{
+                                padding: '6px 12px',
+                                fontSize: '12px',
+                                fontWeight: 600,
+                                color: colors.text,
+                                background: colors.main,
+                                border: `1px solid ${colors.main}`,
+                                borderRadius: '8px',
+                                transition: 'all 0.2s',
+                                alignSelf: 'center'
+                            }}
+                            onMouseEnter={(e) => {
+                                e.currentTarget.style.transform = 'translateY(-2px)';
+                                e.currentTarget.style.boxShadow = '0 6px 30px rgba(243, 116, 19, 0.4)';
+                            }}
+                            onMouseLeave={(e) => {
+                                e.currentTarget.style.transform = 'translateY(0)';
+                                e.currentTarget.style.boxShadow = disabled
+                                    ? 'none'
+                                    : '0 4px 20px rgba(243, 116, 19, 0.3)';
+                            }}
+                            onClick={() => setShowWaitingContracts(true)}>
+                            Show
+                        </button>
+                    </div>
+                )}
                 {/* Main Content Grid */}
                 <div
                     style={{
@@ -501,7 +660,6 @@ export default function DeployContractOpnet() {
                         </div>
                     </div>
                 </div>
-
                 {/* Quick Guide Section */}
                 <div
                     style={{
@@ -650,7 +808,6 @@ export default function DeployContractOpnet() {
                         </div>
                     )}
                 </div>
-
                 {/* Deploy Button */}
                 <button
                     style={{
