@@ -268,7 +268,7 @@ export const DEFAULT_CHAINS_MAP: { [key in ChainType]?: TypeChain<key> } = {
         networkType: NetworkType.TESTNET,
         opnetUrl: 'https://testnet.opnet.org',
         endpoints: ['https://wallet.opnet.org'],
-        mempoolSpaceUrl: 'https://mempool.space/testnet',
+        mempoolSpaceUrl: 'https://mempool.opnet.org/testnet4',
         faucetUrl: 'https://faucet.opnet.org/',
         okxExplorerUrl: '',
         showPrice: false,

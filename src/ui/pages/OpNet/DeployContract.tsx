@@ -1,14 +1,17 @@
 import { Action, Features } from '@/shared/interfaces/RawTxParameters';
-import { Button, Column, Content, Header, Input, Layout, Row, Text } from '@/ui/components';
+import { Button, Column, Content, Header, Layout, Row, Text } from '@/ui/components';
 import { useTools } from '@/ui/components/ActionComponent/useTools';
 import { PriorityFeeBar } from '@/ui/components/PriorityFeeBar';
 import { useCurrentAccount } from '@/ui/state/accounts/hooks';
 import {
     BookOutlined,
-    CheckCircleOutlined, CloseOutlined,
+    CheckCircleOutlined,
+    CloseOutlined,
     CloudUploadOutlined,
     CodeOutlined,
+    CopyOutlined,
     EditOutlined,
+    ExportOutlined,
     FileOutlined,
     GithubOutlined,
     InfoCircleOutlined,
@@ -21,6 +24,9 @@ import { RouteTypes, useNavigate } from '../routeTypes';
 import { useChain } from '@/ui/state/settings/hooks';
 import { WaitContract, waitContractManager } from '@/shared/utils/WaitContractManager';
 import { BottomModal } from '@/ui/components/BottomModal';
+import {format} from 'timeago.js';
+import { copyToClipboard } from '@/ui/utils';
+import { ChainType, TypeChain } from '@/shared/constant';
 
 const colors = {
     main: '#f37413',
@@ -45,81 +51,202 @@ interface ShowWaitingModalProps {
     onClose: () => void;
 }
 
+function getMempoolUrl(txId: string, chain: TypeChain<ChainType>) {
+    try {
+        console.log("MEMPOOL", chain.mempoolSpaceUrl, chain);
+        if (!chain) return `https://mempool.space/tx/${txId}`;
+        return `${chain.mempoolSpaceUrl}/tx/${txId}`;
+    } catch (error) {
+        console.error('Failed to get explorer URL:', error);
+        return `https://mempool.space/tx/${txId}`;
+    }
+}
+
+function getTxExplorerUrl(txId: string, chain: TypeChain<ChainType>) {
+    switch (chain?.enum) {
+        case ChainType.BITCOIN_MAINNET:
+            return `https://opscan.org/transactions/${txId}?network=mainnet`;
+        case ChainType.BITCOIN_TESTNET:
+            return `https://opscan.org/transactions/${txId}?network=testnet`;
+        case ChainType.BITCOIN_REGTEST:
+            return `https://opscan.org/transactions/${txId}?network=regtest`;
+        case ChainType.OPNET_TESTNET:
+            return `https://opscan.org/transactions/${txId}?network=op_testnet`;
+        default:
+            return `https://opscan.org/transactions/${txId}`;
+    }
+}
+
 export const ShowWaitingModal = ({ onClose, visible, contracts }: ShowWaitingModalProps) => {
+    const chain = useChain();
+    const tools = useTools()
     const plural = contracts.length > 1 ? 's' : '';
+
+    /** Copy current display address to clipboard */
+    const handleCopyAddress = (contract: WaitContract) => {
+        const addressToCopy = contract.addressP20P;
+        if (addressToCopy) {
+            copyToClipboard(addressToCopy).then(() => {
+                tools.toastSuccess('Address copied to clipboard');
+            });
+        }
+    };
 
     return !visible ? (
         <></>
     ) : (
         <BottomModal onClose={onClose}>
-            <Column justifyCenter itemsCenter>
-                <Row justifyBetween itemsCenter style={{ height: 20 }} fullX>
-                    <Row />
-                    <Text text={`Contract${plural} waiting confirmation`} textCenter size="md" />
-                    <Row onClick={onClose}>
-                        <CloseOutlined />
+            <Column justifyCenter itemsCenter style={{ width: '100%' }}>
+                <Column justifyCenter itemsCenter style={{ width: '50%' }}>
+                    <Row justifyBetween itemsCenter style={{ height: 20 }} fullX>
+                        <Row />
+                        <Text text={`Contract${plural} waiting confirmation`} textCenter size="md" />
+                        <Row onClick={onClose} style={{ color: colors.text }}>
+                            <CloseOutlined />
+                        </Row>
                     </Row>
-                </Row>
 
-                {contracts.map((contract, index) => (
-                    <Column key={contract.addressP20P} mt="lg" style={{ width: '100%', marginBottom: '20px' }}>
-                        <div
-                            style={{
-                                background: 'rgba(255, 255, 255, 0.03)',
-                                borderRadius: '10px',
-                                padding: '10px 12px'
-                            }}>
-                            <Row justifyBetween style={{ marginBottom: '5px' }}>
-                                <div
-                                    style={{
-                                        fontSize: '14px',
-                                        fontWeight: 700,
-                                        color: colors.main,
-                                        marginBottom: '8px',
-                                        textTransform: 'uppercase',
-                                        letterSpacing: '0.5px',
-                                        textAlign: 'left'
-                                    }}>
-                                    Contract #{index + 1}
-                                </div>
-                                <div
-                                    style={{
-                                        fontSize: '14px',
-                                        fontWeight: 700,
-                                        color: colors.text,
-                                        marginBottom: '8px',
-                                        letterSpacing: '0.5px',
-                                        textAlign: 'right'
-                                    }}>
-                                    SINCE
-                                </div>
-                            </Row>
-                            <Row justifyBetween style={{ marginBottom: '5px' }}>
-                                <span style={{ color: colors.success, fontSize: '12px' }}>
-                                    {contract.addressP20P}
-                                </span>
-                                <span
-                                    style={{
-                                        color: colors.success,
-                                        fontSize: '14px',
-                                        fontWeight: 600
-                                    }}>
-                                    TEST1
-                                </span>
-                            </Row>
-                        </div>
-                    </Column>
-                ))}
+                    {contracts.map((contract, index) => (
+                        <Column key={contract.addressP20P} mt="lg" style={{ width: '100%', marginBottom: '20px' }}>
+                            <div
+                                style={{
+                                    background: 'rgba(255, 255, 255, 0.03)',
+                                    borderRadius: '10px',
+                                    padding: '10px 12px'
+                                }}>
+                                <Row justifyBetween style={{ marginBottom: '5px' }}>
+                                    <div
+                                        style={{
+                                            fontSize: '14px',
+                                            fontWeight: 700,
+                                            color: colors.main,
+                                            marginBottom: '8px',
+                                            textTransform: 'uppercase',
+                                            letterSpacing: '0.5px',
+                                            textAlign: 'left'
+                                        }}>
+                                        Contract #{index + 1}
+                                    </div>
+                                    <div
+                                        style={{
+                                            alignSelf: 'center',
+                                            color: colors.text,
+                                            fontSize: '14px',
+                                            textAlign: 'right'
+                                        }}>
+                                        {format(new Date(contract.time))}
+                                    </div>
+                                </Row>
+                                <Row justifyBetween style={{ marginBottom: '5px' }}>
+                                    <span
+                                        style={{
+                                            fontSize: '14px',
+                                            color: colors.text,
+                                            marginBottom: '8px',
+                                            letterSpacing: '0.5px'
+                                        }}>
+                                        {contract.addressP20P}
+                                    </span>
+                                    {/* Copy button - uses accentColor from config */}
+                                    <div
+                                        onClick={() => handleCopyAddress(contract)}
+                                        style={{
+                                            display: 'flex',
+                                            flexDirection: 'row',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            gap: 8,
+                                            backgroundColor: colors.main,
+                                            borderRadius: 10,
+                                            padding: 10,
+                                            marginTop: 2,
+                                            cursor: 'pointer'
+                                        }}>
+                                        <CopyOutlined style={{ fontSize: 18, color: colors.text }} />
+                                        <Text
+                                            text="Copy Address"
+                                            style={{ fontSize: 14, fontWeight: 600, color: colors.text }}
+                                        />
+                                    </div>
+                                </Row>
+                                <Row>
+                                    {/* Explorer Link Button */}
+                                    <button
+                                        style={{
+                                            width: '100%',
+                                            padding: '12px',
+                                            background: 'transparent',
+                                            border: `1px solid ${colors.main}40`,
+                                            borderRadius: '10px',
+                                            color: colors.main,
+                                            fontSize: '13px',
+                                            fontWeight: 600,
+                                            cursor: 'pointer',
+                                            transition: 'all 0.2s',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            gap: '8px',
+                                            marginBottom: '12px'
+                                        }}
+                                        onClick={() => window.open(getMempoolUrl(contract.txId, chain))}
+                                        onMouseEnter={(e) => {
+                                            e.currentTarget.style.background = `${colors.main}15`;
+                                            e.currentTarget.style.borderColor = colors.main;
+                                        }}
+                                        onMouseLeave={(e) => {
+                                            e.currentTarget.style.background = 'transparent';
+                                            e.currentTarget.style.borderColor = `${colors.main}40`;
+                                        }}>
+                                        <span>View on Mempool</span>
+                                        <ExportOutlined style={{ fontSize: 12 }} />
+                                    </button>
+                                    {/* Explorer Link Button */}
+                                    <button
+                                        style={{
+                                            width: '100%',
+                                            padding: '12px',
+                                            background: 'transparent',
+                                            border: `1px solid ${colors.main}40`,
+                                            borderRadius: '10px',
+                                            color: colors.main,
+                                            fontSize: '13px',
+                                            fontWeight: 600,
+                                            cursor: 'pointer',
+                                            transition: 'all 0.2s',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            gap: '8px',
+                                            marginBottom: '12px'
+                                        }}
+                                        onClick={() => window.open(getTxExplorerUrl(contract.txId, chain))}
+                                        onMouseEnter={(e) => {
+                                            e.currentTarget.style.background = `${colors.main}15`;
+                                            e.currentTarget.style.borderColor = colors.main;
+                                        }}
+                                        onMouseLeave={(e) => {
+                                            e.currentTarget.style.background = 'transparent';
+                                            e.currentTarget.style.borderColor = `${colors.main}40`;
+                                        }}>
+                                        <span>View on OP_SCAN</span>
+                                        <ExportOutlined style={{ fontSize: 12 }} />
+                                    </button>
+                                </Row>
+                            </div>
+                        </Column>
+                    ))}
+
+                    <Button
+                        disabled={false}
+                        preset="primary"
+                        text="Close"
+                        onClick={() => {
+                            onClose();
+                        }}
+                    />
+                </Column>
             </Column>
-
-            <Button
-                disabled={false}
-                preset="primary"
-                text="Close"
-                onClick={() => {
-                    onClose();
-                }}
-            />
         </BottomModal>
     );
 };
