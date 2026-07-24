@@ -80,7 +80,7 @@
         "@types/react": "^19.2.17",
         "@types/react-dom": "^19.2.3",
         "@vitejs/plugin-react-swc": "^4.3.2",
-        "antd": "^6.5.1",
+        "antd": "^6.5.2",
         "assert": "^2.1.0",
         "base-x": "^5.0.1",
         "bignumber.js": "^11.1.5",
