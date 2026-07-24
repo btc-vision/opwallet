@@ -2036,6 +2036,25 @@ export default function TxOpnetConfirmScreen() {
             const challenge = await Web3API.provider.getChallenge();
             const calldata = parameters.calldataHex ? fromHex(parameters.calldataHex) : new Uint8Array();
 
+            // This screen calls signDeployment() directly rather than going through
+            // wallet.deployContract(), so it has to resolve the ML-DSA link status
+            // itself. A first link must reveal the public key; once OPNet knows the
+            // key the reveal is skipped to avoid paying for it every time.
+            let alreadyLinkedMLDSA = false;
+            try {
+                const pubKeyInfo = await Web3API.provider.getPublicKeysInfoRaw(
+                    currentWalletAddress.pubkey
+                );
+                const info = pubKeyInfo[currentWalletAddress.pubkey];
+                alreadyLinkedMLDSA =
+                    !!info &&
+                    !('error' in info) &&
+                    !!(info as { mldsaHashedPublicKey?: string }).mldsaHashedPublicKey;
+            } catch {
+                // Unknown: fall through to revealing. Wasted bytes beat a rejected tx.
+                alreadyLinkedMLDSA = false;
+            }
+
             // TODO: Add calldata support
             const deploymentParameters: IDeploymentParameters = {
                 challenge,
@@ -2052,7 +2071,8 @@ export default function TxOpnetConfirmScreen() {
                 optionalInputs: [],
                 optionalOutputs: [],
                 note: parameters.note,
-                linkMLDSAPublicKeyToAddress: true
+                linkMLDSAPublicKeyToAddress: true,
+                revealMLDSAPublicKey: !alreadyLinkedMLDSA
             };
 
             const sendTransact: DeploymentResult =
