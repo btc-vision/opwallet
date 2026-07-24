@@ -1,13 +1,12 @@
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react-swc';
-import archiver from 'archiver';
+import { ZipArchive } from 'archiver';
 import fs from 'fs';
 import path, { resolve } from 'path';
 import { defineConfig, type PluginOption } from 'vite';
 import checker from 'vite-plugin-checker';
 import { nodePolyfills } from 'vite-plugin-node-polyfills';
 import wasm from 'vite-plugin-wasm';
-
 
 const packageJson = JSON.parse(fs.readFileSync('./package.json', 'utf-8'));
 const version = packageJson.version.replace(/-(alpha|beta|rc).*$/, '');
@@ -58,9 +57,7 @@ function manifestPlugin(): PluginOption {
             // out of _base_v3.json by default lets the extension ship without
             // triggering Chrome Web Store's in-depth host-permission review.
             if (enableOpnetBrowser) {
-                const existingPermissions: string[] = Array.isArray(manifest.permissions)
-                    ? manifest.permissions
-                    : [];
+                const existingPermissions: string[] = Array.isArray(manifest.permissions) ? manifest.permissions : [];
                 if (!existingPermissions.includes('webNavigation')) {
                     manifest.permissions = [...existingPermissions, 'webNavigation'];
                 }
@@ -241,7 +238,7 @@ function packagePlugin(): PluginOption {
 
                 await new Promise<void>((resolve, reject) => {
                     const output = fs.createWriteStream(outputFile);
-                    const archive = archiver('zip', { zlib: { level: 9 } });
+                    const archive = new ZipArchive({ zlib: { level: 9 } });
 
                     output.on('close', () => {
                         console.log(
