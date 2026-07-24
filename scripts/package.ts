@@ -1,4 +1,4 @@
-import archiver from 'archiver';
+import { ZipArchive } from 'archiver';
 import fs from 'fs';
 import minimist from 'minimist';
 
@@ -19,7 +19,7 @@ async function createPackage(): Promise<void> {
     return new Promise((resolve, reject) => {
         const outputFile = `./dist/${brandName}-${options.browser}-v${version}.zip`;
         const output = fs.createWriteStream(outputFile);
-        const archive = archiver('zip', {
+        const archive = new ZipArchive({
             zlib: { level: 9 }
         });
 
