@@ -102,7 +102,7 @@
         "loglevel": "^1.9.2",
         "lru-cache": "^11.3.5",
         "nanoid": "^5.1.9",
-        "opnet": "^1.8.14-rc.1",
+        "opnet": "^1.9.1",
         "pako": "^2.1.0",
         "postcss": "^8.5.10",
         "postcss-preset-env": "^11.2.1",
@@ -207,7 +207,7 @@
     },
     "overrides": {
         "qrcode.react": "^4.2.0",
-	"elliptic": "npm:@soatok/elliptic-to-noble@9999.0.0",
+        "elliptic": "npm:@soatok/elliptic-to-noble@9999.0.0",
         "eslint-plugin-react-hooks": {
             "eslint": "$eslint"
         },
@@ -226,10 +226,10 @@
         "typescript": {
             "typescript": "$typescript"
         },
-	"uuid": "^11.1.1",
+        "uuid": "^11.1.1",
         "vite": {
             "esbuild": "$esbuild"
         },
-	"ws": "^8.21.0"
+        "ws": "^8.21.0"
     }
 }
