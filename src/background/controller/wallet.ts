@@ -1402,6 +1402,11 @@ export class WalletController {
             const utxos = params.utxos.map(this.processUTXOFields);
             const optionalInputs = params.optionalInputs?.map(this.processUTXOFields) || [];
 
+            const account = await this.getCurrentAccount();
+            const alreadyLinkedMLDSA = account
+                ? await this.isMLDSALinkedOnChain(account.pubkey)
+                : false;
+
             const cancelParameters: ICancelTransactionParameters = {
                 ...params,
                 utxos,
@@ -1413,7 +1418,8 @@ export class WalletController {
                 optionalOutputs: (params.optionalOutputs || []).map(this.processOutputFields),
                 optionalInputs: optionalInputs,
                 note: params.note,
-                linkMLDSAPublicKeyToAddress: true
+                linkMLDSAPublicKeyToAddress: true,
+                revealMLDSAPublicKey: params.revealMLDSAPublicKey ?? !alreadyLinkedMLDSA
             };
 
             return await Web3API.transactionFactory.createCancellableTransaction(cancelParameters);
@@ -1432,6 +1438,11 @@ export class WalletController {
         try {
             const utxos = params.utxos.map(this.processUTXOFields);
             const optionalInputs = params.optionalInputs?.map(this.processUTXOFields) || [];
+
+            const account = await this.getCurrentAccount();
+            const alreadyLinkedMLDSA = account
+                ? await this.isMLDSALinkedOnChain(account.pubkey)
+                : false;
 
             const challenge = await Web3API.provider.getChallenge();
             const deployContractParameters: IDeploymentParameters = {
@@ -1457,7 +1468,8 @@ export class WalletController {
                 optionalOutputs: (params.optionalOutputs || []).map(this.processOutputFields),
                 optionalInputs: optionalInputs,
                 note: params.note,
-                linkMLDSAPublicKeyToAddress: true
+                linkMLDSAPublicKeyToAddress: true,
+                revealMLDSAPublicKey: params.revealMLDSAPublicKey ?? !alreadyLinkedMLDSA
             };
 
             return await Web3API.transactionFactory.signDeployment(deployContractParameters);
@@ -4928,6 +4940,36 @@ export class WalletController {
         return { value } as PsbtOutputExtended;
     };
 
+    /**
+     * Whether OPNet already knows the ML-DSA key linked to this Bitcoin pubkey.
+     *
+     * Drives `revealMLDSAPublicKey`. A link request that does NOT reveal the
+     * ML-DSA public key carries no proof that the sender knows a preimage for the
+     * claimed `hashedPublicKey` -- the accompanying Schnorr signature only proves
+     * ownership of the Bitcoin key -- so the node refuses to create a NEW identity
+     * that way. Once the link exists the node verifies against its own store and
+     * the reveal is unnecessary, which matters because revealing costs ~3.7 KB
+     * (ML-DSA-44: 1312-byte key + 2420-byte signature).
+     *
+     * Fails safe: if the lookup errors we treat the key as UNLINKED and reveal.
+     * Revealing when it was not required merely wastes bytes; failing to reveal
+     * when it was required gets the transaction rejected outright.
+     */
+    private isMLDSALinkedOnChain = async (pubkey: string): Promise<boolean> => {
+        try {
+            const pubKeyInfo = await Web3API.provider.getPublicKeysInfoRaw(pubkey);
+            const info = pubKeyInfo[pubkey];
+
+            if (!info || 'error' in info) {
+                return false;
+            }
+
+            return !!(info as { mldsaHashedPublicKey?: string }).mldsaHashedPublicKey;
+        } catch {
+            return false;
+        }
+    };
+
     private signInteractionInternal = async (
         account: Account,
         wallet: Wallet,
@@ -4964,6 +5006,8 @@ export class WalletController {
         const optionalInputs = interactionParameters.optionalInputs?.map(this.processUTXOFields) || [];
         const optionalOutputs = interactionParameters.optionalOutputs?.map(this.processOutputFields) || [];
 
+        const alreadyLinkedMLDSA = await this.isMLDSALinkedOnChain(account.pubkey);
+
         const submit: IInteractionParameters = {
             from: interactionParameters.from,
             to: interactionParameters.to,
@@ -4981,7 +5025,9 @@ export class WalletController {
             contract: interactionParameters.contract,
             note: interactionParameters.note,
             linkMLDSAPublicKeyToAddress: true,
-            revealMLDSAPublicKey: interactionParameters.revealMLDSAPublicKey,
+            // Reveal only when OPNet does not already know this key. An explicit
+            // caller-supplied value still wins.
+            revealMLDSAPublicKey: interactionParameters.revealMLDSAPublicKey ?? !alreadyLinkedMLDSA,
             subtractExtraUTXOFromAmountRequired: interactionParameters.subtractExtraUTXOFromAmountRequired
         };
 
