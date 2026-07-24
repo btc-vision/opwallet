@@ -1,4 +1,4 @@
-import pako from 'pako';
+import * as pako from 'pako';
 
 export function gzipSync(data, options = {}) {
     return Buffer.from(pako.gzip(data, { level: options.level || 6 }));
@@ -10,5 +10,5 @@ export function gunzipSync(data) {
 
 export default {
     gzipSync,
-    gunzipSync,
+    gunzipSync
 };
