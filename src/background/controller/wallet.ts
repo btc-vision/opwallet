@@ -4964,7 +4964,19 @@ export class WalletController {
                 return false;
             }
 
-            return !!(info as { mldsaHashedPublicKey?: string }).mldsaHashedPublicKey;
+            const mldsa = info as { mldsaLinked?: boolean; mldsaHashedPublicKey?: string };
+
+            // `mldsaLinked` is authoritative. `mldsaHashedPublicKey` is NOT a linkage
+            // signal: when the node is queried with a 32-byte key it echoes that key
+            // back as the identity whether or not a link exists, so keying off its
+            // presence reports a false positive on a first link, skips the reveal and
+            // gets the transaction rejected. Nodes older than that field omit it, so
+            // fall back to the previous behaviour rather than always revealing.
+            if (typeof mldsa.mldsaLinked === 'boolean') {
+                return mldsa.mldsaLinked;
+            }
+
+            return !!mldsa.mldsaHashedPublicKey;
         } catch {
             return false;
         }
