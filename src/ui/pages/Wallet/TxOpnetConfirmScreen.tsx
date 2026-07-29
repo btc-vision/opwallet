@@ -2046,10 +2046,20 @@ export default function TxOpnetConfirmScreen() {
                     currentWalletAddress.pubkey
                 );
                 const info = pubKeyInfo[currentWalletAddress.pubkey];
-                alreadyLinkedMLDSA =
-                    !!info &&
-                    !('error' in info) &&
-                    !!(info as { mldsaHashedPublicKey?: string }).mldsaHashedPublicKey;
+
+                if (info && !('error' in info)) {
+                    const mldsa = info as { mldsaLinked?: boolean; mldsaHashedPublicKey?: string };
+
+                    // `mldsaLinked` is authoritative. `mldsaHashedPublicKey` is NOT a
+                    // linkage signal — for a 32-byte query the node echoes the key back
+                    // whether or not a link exists, so testing it reports a false
+                    // positive on a first link and the reveal gets skipped. Older nodes
+                    // omit the field, so fall back to the previous behaviour.
+                    alreadyLinkedMLDSA =
+                        typeof mldsa.mldsaLinked === 'boolean'
+                            ? mldsa.mldsaLinked
+                            : !!mldsa.mldsaHashedPublicKey;
+                }
             } catch {
                 // Unknown: fall through to revealing. Wasted bytes beat a rejected tx.
                 alreadyLinkedMLDSA = false;
